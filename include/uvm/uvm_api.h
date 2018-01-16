@@ -20,6 +20,8 @@
 #include <memory>
 
 #include <uvm/lua.h>
+#include <jsondiff/jsondiff.h>
+#include <jsondiff/exceptions.h>
 
 #define LOG_INFO(...)  fprintf(stderr, "[INFO] " ##__VA_ARGS__)
 
@@ -228,7 +230,7 @@ public:
     virtual ~GluaModuleByteStream();
 };
 
-typedef GluaModuleByteStream *GluaModuleByteStreamP;
+typedef GluaModuleByteStream* GluaModuleByteStreamP;
 
 class GluaContractInfo
 {
@@ -403,6 +405,7 @@ typedef struct GluaStorageChangeItem
 {
     std::string contract_id;
     std::string key;
+	jsondiff::DiffResult diff;
     struct GluaStorageValue before;
     struct GluaStorageValue after;
 } GluaStorageChangeItem;
@@ -418,6 +421,9 @@ struct GluaStorageValue lua_type_to_storage_value_type(lua_State *L, int index);
 bool luaL_commit_storage_changes(lua_State *L);
 
 bool lua_push_storage_value(lua_State *L, const GluaStorageValue &value);
+
+GluaStorageValue json_to_uvm_storage_value(lua_State *L, jsondiff::JsonValue json_value);
+jsondiff::JsonValue uvm_storage_value_to_json(GluaStorageValue value);
 
 typedef std::unordered_map<std::string, GluaStorageChangeItem> ContractChangesMap;
 

@@ -8,6 +8,8 @@
 #include <memory>
 
 #include <uvm/uvm_storage.h>
+#include <jsondiff/jsondiff.h>
+#include <jsondiff/exceptions.h>
 
 using uvm::lua::api::global_uvm_chain_api;
 
@@ -164,43 +166,190 @@ bool lua_push_storage_value(lua_State *L, const GluaStorageValue &value)
 	return true;
 }
 
+
+jsondiff::JsonValue uvm_storage_value_to_json(GluaStorageValue value)
+{
+	switch (value.type)
+	{
+	case uvm::blockchain::StorageValueTypes::storage_value_null:
+		return jsondiff::JsonValue();
+	case uvm::blockchain::StorageValueTypes::storage_value_bool:
+		return value.value.bool_value;
+	case uvm::blockchain::StorageValueTypes::storage_value_int:
+		return value.value.int_value;
+	case uvm::blockchain::StorageValueTypes::storage_value_number:
+		return value.value.number_value;
+	case uvm::blockchain::StorageValueTypes::storage_value_string:
+		return std::string(value.value.string_value);
+	case uvm::blockchain::StorageValueTypes::storage_value_bool_array:
+	case uvm::blockchain::StorageValueTypes::storage_value_int_array:
+	case uvm::blockchain::StorageValueTypes::storage_value_number_array:
+	case uvm::blockchain::StorageValueTypes::storage_value_string_array:
+	case uvm::blockchain::StorageValueTypes::storage_value_unknown_array:
+	{
+		fc::variants json_array;
+		for (const auto &p : *value.value.table_value)
+		{
+			json_array.push_back(uvm_storage_value_to_json(p.second));
+		}
+		return json_array;
+	}
+	case uvm::blockchain::StorageValueTypes::storage_value_bool_table:
+	case uvm::blockchain::StorageValueTypes::storage_value_int_table:
+	case uvm::blockchain::StorageValueTypes::storage_value_number_table:
+	case uvm::blockchain::StorageValueTypes::storage_value_string_table:
+	case uvm::blockchain::StorageValueTypes::storage_value_unknown_table:
+	{
+		fc::mutable_variant_object json_object;
+		for (const auto &p : *value.value.table_value)
+		{
+			json_object[p.first] = uvm_storage_value_to_json(p.second);
+		}
+		return json_object;
+	}
+	default:
+		throw jsondiff::JsonDiffException("not supported json value type");
+	}
+}
+
+GluaStorageValue json_to_uvm_storage_value(lua_State *L, jsondiff::JsonValue json_value)
+{
+	GluaStorageValue value;
+	if (json_value.is_null())
+	{
+		value.type = uvm::blockchain::StorageValueTypes::storage_value_null;
+		value.value.int_value = 0;
+		return value;
+	}
+	else if (json_value.is_bool())
+	{
+		value.type = uvm::blockchain::StorageValueTypes::storage_value_bool;
+		value.value.bool_value = json_value.as_bool();
+		return value;
+	}
+	else if (json_value.is_integer() || json_value.is_int64())
+	{
+		value.type = uvm::blockchain::StorageValueTypes::storage_value_int;
+		value.value.int_value = json_value.as_int64();
+		return value;
+	}
+	else if (json_value.is_numeric())
+	{
+		value.type = uvm::blockchain::StorageValueTypes::storage_value_number;
+		value.value.number_value = json_value.as_double();
+		return value;
+	}
+	else if (json_value.is_string())
+	{
+		value.type = uvm::blockchain::StorageValueTypes::storage_value_string;
+		value.value.string_value = uvm::lua::lib::malloc_and_copy_string(L, json_value.as_string().c_str());
+		return value;
+	}
+	else if (json_value.is_array())
+	{
+		fc::variants json_array = json_value.as<fc::variants>();
+		value.value.table_value = uvm::lua::lib::create_managed_lua_table_map(L);
+		if (json_array.empty())
+		{
+			value.type = uvm::blockchain::StorageValueTypes::storage_value_unknown_array;
+		}
+		else
+		{
+			std::vector<GluaStorageValue> item_values;
+			for (size_t i = 0; i < json_array.size(); i++)
+			{
+				const auto &json_item = json_array[i];
+				const auto &item_value = json_to_uvm_storage_value(L, json_item);
+				item_values.push_back(item_value);
+				(*value.value.table_value)[std::to_string(i + 1)] = item_value;
+			}
+			switch (item_values[0].type)
+			{
+			case uvm::blockchain::StorageValueTypes::storage_value_null:
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_unknown_array;
+				break;
+			case uvm::blockchain::StorageValueTypes::storage_value_bool:
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_bool_array;
+				break;
+			case uvm::blockchain::StorageValueTypes::storage_value_int:
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_int_array;
+				break;
+			case uvm::blockchain::StorageValueTypes::storage_value_number:
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_number_array;
+				break;
+			case uvm::blockchain::StorageValueTypes::storage_value_string:
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_string_array;
+				break;
+			default:
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_unknown_array;
+			}
+		}
+		return value;
+	}
+	else if (json_value.is_object())
+	{
+		fc::mutable_variant_object json_map = json_value.as<fc::mutable_variant_object>();
+		value.value.table_value = uvm::lua::lib::create_managed_lua_table_map(L);
+		if (json_map.size()<1)
+		{
+			value.type = uvm::blockchain::StorageValueTypes::storage_value_unknown_table;
+		}
+		else
+		{
+			std::vector<GluaStorageValue> item_values;
+			for (const auto &p : json_map)
+			{
+				const auto &item_value = json_to_uvm_storage_value(L, p.value());
+				item_values.push_back(item_value);
+				(*value.value.table_value)[p.key()] = item_value;
+			}
+			switch (item_values[0].type)
+			{
+			case uvm::blockchain::StorageValueTypes::storage_value_null:
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_unknown_table;
+				break;
+			case uvm::blockchain::StorageValueTypes::storage_value_bool:
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_bool_table;
+				break;
+			case uvm::blockchain::StorageValueTypes::storage_value_int:
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_int_table;
+				break;
+			case uvm::blockchain::StorageValueTypes::storage_value_number:
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_number_table;
+				break;
+			case uvm::blockchain::StorageValueTypes::storage_value_string:
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_string_table;
+				break;
+			default:
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_unknown_table;
+			}
+		}
+		return value;
+	}
+	else
+	{
+		throw jsondiff::JsonDiffException("not supported json value type");
+	}
+}
+
 static GluaStorageChangeItem diff_storage_change_if_is_table(lua_State *L, GluaStorageChangeItem change_item)
 {
 	if (!lua_storage_is_table(change_item.after.type))
 		return change_item;
 	if (!lua_storage_is_table(change_item.before.type) || !lua_storage_is_table(change_item.after.type))
 		return change_item;
-	auto new_before = (GluaTableMapP)malloc(sizeof(GluaTableMap));
-	new (new_before)GluaTableMap();
-	auto new_after = (GluaTableMapP)malloc(sizeof(GluaTableMap));
-	new (new_after)GluaTableMap();
-	for (auto it1 = change_item.before.value.table_value->begin(); it1 != change_item.before.value.table_value->end(); ++it1)
+	try
 	{
-		auto found = change_item.after.value.table_value->find(it1->first);
-		if (found == change_item.after.value.table_value->end())
-		{
-			new_before->insert(new_before->end(), std::make_pair(it1->first, it1->second));
-			continue;
-		}
-		if (found->second.equals(it1->second))
-		{
-			continue;
-		}
-		if (it1->second.type == uvm::blockchain::StorageValueTypes::storage_value_null)
-			continue;
-		new_before->insert(new_before->end(), std::make_pair(it1->first, it1->second));
-		new_after->insert(new_after->end(), std::make_pair(found->first, found->second));
+		const auto &before_json = uvm_storage_value_to_json(change_item.before);
+		const auto &after_json = uvm_storage_value_to_json(change_item.after);
+		jsondiff::JsonDiff json_diff;
+		const auto &diff_json = json_diff.diff(before_json, after_json);
+		change_item.diff = *diff_json;
 	}
-	for (auto it1 = change_item.after.value.table_value->begin(); it1 != change_item.after.value.table_value->end(); ++it1)
+	catch (jsondiff::JsonDiffException &e)
 	{
-		auto found = change_item.before.value.table_value->find(it1->first);
-		if (found == change_item.before.value.table_value->end())
-		{
-			new_after->insert(new_after->end(), std::make_pair(it1->first, it1->second));
-		}
+		return change_item; // FIXME: throw error
 	}
-	change_item.before.value.table_value = new_before;
-	change_item.after.value.table_value = new_after;
 	return change_item;
 }
 static bool has_property_changed_in_changelist(GluaStorageChangeList *list, std::string contract_id, std::string name)
