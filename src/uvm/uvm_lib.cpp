@@ -978,7 +978,7 @@ next: (table) => bool
 			static int uvm_core_lib_pairs_by_keys_func_loader(lua_State *L)
             {
 				lua_getglobal(L, "__real_pairs_by_keys_func");
-				bool exist = !lua_isnil(L, -1);
+				bool exist = !lua_isnil(L, -1) && (lua_isfunction(L, -1) || lua_iscfunction(L, -1));
 				lua_pop(L, 1);
 				if (exist)
 					return 0; 
@@ -1073,6 +1073,9 @@ end
 				lua_pushvalue(L, -1);
 				lua_setfield(L, -2, "__index");
 				lua_pop(L, 1);
+
+                lua_pushinteger(L, 0);
+				lua_setglobal(L, "__real_pairs_by_keys_func");
 
 				add_global_c_function(L, "Stream", &uvm_core_lib_Stream);
 				add_global_c_function(L, "uvm_core_lib_pairs_by_keys_func_loader", &uvm_core_lib_pairs_by_keys_func_loader);
@@ -1617,6 +1620,8 @@ end
                         {
                             in_whitelist = true; // whether this can do? maybe need to get what property are fetching
                         }
+                        if (strcmp(upvalue_name, "-") == 0)
+							continue;
                         if (!in_whitelist)
                         {
                             Upvaldesc upvaldesc = proto->upvalues[c];
@@ -1651,7 +1656,7 @@ end
                             bool in_whitelist = false;
                             for (size_t i = 0; i < globalvar_whitelist_count; ++i)
                             {
-                                if (strcmp(cname, globalvar_whitelist[i]) == 0)
+                                if (strcmp(cname, globalvar_whitelist[i]) == 0 || strcmp(cname, "-") == 0)
                                 {
                                     in_whitelist = true;
                                     break;
