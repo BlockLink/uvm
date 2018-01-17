@@ -1780,6 +1780,12 @@ int luaL_import_contract_module(lua_State *L)
                     lua_pop(L, 1);
                     continue;
                 }
+				if (!lua_isfunction(L, -1))
+				{
+					lua_pop(L, 1);
+					continue;
+				}
+
                 char *key = (char *)lua_tostring(L, -2);
                 if (strcmp(key, "locals") == 0)
                 {

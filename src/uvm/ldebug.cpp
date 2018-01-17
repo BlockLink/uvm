@@ -564,6 +564,11 @@ static const char *getupvalname(CallInfo *ci, const TValue *o,
     LClosure *c = ci_func(ci);
     int i;
     for (i = 0; i < c->nupvalues; i++) {
+		if (!c->upvals[i])
+		{
+			*name = "";
+			return "upvalue";
+		}
         if (c->upvals[i]->v == o) {
             *name = upvalname(c->p, i);
             return "upvalue";
