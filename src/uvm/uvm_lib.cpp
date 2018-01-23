@@ -28,9 +28,7 @@
 #include <uvm/ldebug.h>
 #include <uvm/lauxlib.h>
 #include <uvm/lualib.h>
-#include <uvm/lrepl.h>
 #include <uvm/lfunc.h>
-#include <uvm/lcompile.h>
 #include <uvm/uvm_storage.h>
 
 namespace uvm
@@ -50,7 +48,6 @@ namespace uvm
 			std::vector<std::string> contract_special_api_names = { "init", "on_deposit", "on_destroy", "on_upgrade" };
 			std::vector<std::string> contract_int_argument_special_api_names = { "on_deposit" };
 
-#define LUA_REPL_RUNNING_STATE_KEY "lua_repl_running"
 #define LUA_IN_SANDBOX_STATE_KEY "lua_in_sandbox"
             // storagecontract idstate key
 #define LUA_MAYBE_CHANGE_STORAGE_CONTRACT_IDS_STATE_KEY "maybe_change_storage_contract_ids_state"
@@ -58,7 +55,7 @@ namespace uvm
             static const char *globalvar_whitelist[] = {
                 "print", "pprint", "table", "string", "time", "math", "json", "type", "require", "Array", "Stream",
                 "import_contract_from_address", "import_contract", "emit", "is_valid_address",
-                "uvm", "storage", "repl", "exit", "exit_repl", "self", "debugger", "exit_debugger",
+                "uvm", "storage", "exit", "self", "debugger", "exit_debugger",
                 "caller", "caller_address",
                 "contract_transfer", "contract_transfer_to", "transfer_from_contract_to_address",
 				"transfer_from_contract_to_public_account",
@@ -70,249 +67,6 @@ namespace uvm
                 "next", "rawequal", "rawlen", "rawget", "rawset", "select",
                 "setmetatable"
             };
-
-            // ordered_mapunordered_map，Stream typeStream
-			static const std::map<std::string, std::string> globalvar_type_infos =
-			{
-				// inner types
-				{ GLUA_TYPE_NAMESPACE_PREFIX_WRAP(string), "string" },
-				{ GLUA_TYPE_NAMESPACE_PREFIX_WRAP(int), "int" },
-				{ GLUA_TYPE_NAMESPACE_PREFIX_WRAP(number), "number" },
-				{ GLUA_TYPE_NAMESPACE_PREFIX_WRAP(bool), "bool" },
-				{ GLUA_TYPE_NAMESPACE_PREFIX_WRAP(table), "table" },
-				{ GLUA_TYPE_NAMESPACE_PREFIX_WRAP(Array), "Array" },
-				{ GLUA_TYPE_NAMESPACE_PREFIX_WRAP(Map), "Map" },
-				{ GLUA_TYPE_NAMESPACE_PREFIX_WRAP(Nil), "nil" },
-				{ GLUA_TYPE_NAMESPACE_PREFIX_WRAP(Function), "function" },
-				{ GLUA_TYPE_NAMESPACE_PREFIX_WRAP(object), "object" },
-
-				// bin operations
-			{ "(+)", "(number, number) => number" }, // bin operations functions are '(' + op + ')'
-			{ "(-)", "(number, number) => number" },
-			{ "(*)", "(number, number) => number" },
-
-			// (func_name/operator$arg_type$arg_type...) represents a specific overloaded function signature, eg. (+$int$int).
-			// if it's not infix function/operator, its format is func_name/operator$arg_type$arg_type..., eg. func$int$int$int
-			{ "(+$int$int)", "(int, int) => int" },
-			{ "(-$int$int)", "(int, int) => int" },
-			{ "(*$int$int)", "(int, int) => int" },
-			{ "(^$int$int)", "(int, int) => int" },
-
-			{ "(/)", "(number, number) => number" },
-			{ "(//)", "(number, number) => int" },
-			{ "(^)", "(number, number) => number" },
-			{ "(%)", "(number, number) => number" },
-			{ "(&)", "(int, int) => int" },
-			{ "(~)", "(int, int) => int" },
-			{ "(|)", "(number, number) => int" },
-			{ "(>>)", "(number, number) => number" },
-			{ "(<<)", "(number, number) => number" },
-			{ "(<)", "(number, number) => bool" },
-			{ "(<=)", "(number, number) => bool" },
-			{ "(>)", "(number, number) => bool" },
-			{ "(>=)", "(number, number) => bool" },
-			{ "(==)", "(object, object) => bool" },
-			{ "(~=)", "(object, object) => bool" },
-			{ "(and)", "(object, object) => object" },
-			{ "(or)", "(object, object) => object" },
-			{ "(..)", "(string, string) => string" },
-			// infix operations
-		{ "-", "(number) => number" },
-		{ "not", "(object) => bool" },
-		{ "#", "(object) => int" },
-		{ "~", "(int) => int" },
-		// global functions
-	{ "print", "(...) => void" },
-	{ "pprint", "(...) => void" },
-	{ "table", R"END(record {
-concat:(table,string, ...)=>string;
-insert:(table, ...)=>void;
-append: (table, object) => void;
-length: (table) => int;
-remove:(table, ...) => object;
-sort:(table, ...) => void
-})END" },
-{ "string", R"END(record {
-split: (string, string) => table;
-byte: (string) => int;
-char: (...) => string;
-find: (string, string, ...) => string;
-format: (string, ...) => string;
-gmatch: (string, string) => function;
-gsub: (string, string, string, ...) => string;
-len: (string) => int;
-match: (string, string, ...) => string;
-rep: (string, int, ...) => string;
-reverse: (string) => string;
-sub: (string, int, ...) => string;
-upper: (string) => string
-})END" },
-{ "Array", "(object) => table" },
-{ "time", R"END(record {
-add: (int, string, int) => int;
-tostr: (int) => string;
-difftime: (int, int) => int
-})END" },
-{ "math", R"END(record {
-abs$int: (int) => int;
-abs: (number) => number;
-ceil: (number) => int;
-floor: (number) => int;
-max: (...) => number;
-maxinteger: int;
-min: (...) => number;
-mininteger: int;
-pi: number;
-tointeger: (number) => int;
-type: (number) => string
-})END" },
-{ "json", R"END(record {
-dumps: (object) => string;
-loads: (string) => object
-})END" },
-{ "utf8", R"END(record {
-char: (...) => string;
-charpattern: string;
-codes: (string) => function;
-codepoint: (string, int, int) => int;
-len: (striing, int, int) => int;
-offset: (string, int, int) => int
-})END" },
-{ "os", R"END(record {
-clock: () => int;
-date: (string, int) => string;
-difftime: (int, int) => int;
-execute: (string) => void;
-exit: (int, bool) => void;
-getenv: (string) => string;
-remove: (string) => void;
-rename: (string, string) => void;
-setlocale: (string, string) => void;
-time: (...) => int;
-tmpname: () => string
-})END" },
-{ "io", R"END(record {
-close: (...) => void;
-flush: () => void;
-input: (...) => void;
-lines: (string) => function;
-open: (string, string) => void;
-read: (string) => string;
-seek: (...) => int;
-write: (string) => void
-})END" },
-{ "net", R"END(record {
-listen: (string, port) => object;
-connect: (string, port) => object;
-accept: (object) => object;
-accept_async: (object, function) => void;
-start_io_loop: (object) => void;
-read: (object, int) => string;
-read_until: (object, string) => string;
-write: (object, object) => void;
-close_socket: (object) => void;
-close_server: (object) => void;
-shutdown: () => void
-})END" },
-{ "http", R"END(record {
-listen: (string, port) => object;
-connect: (string, port) => object;
-request: (string, string, string, table) => object;
-close: (object) => void;
-accept: (object) => object;
-accept_async: (object, function) => void;
-start_io_loop: (object) => void;
-get_req_header: (object, string) => string;
-get_res_header: (object, string) => string;
-get_req_http_method: (object) => string;
-get_req_path: (object) => string;
-get_req_http_protocol: (object) => string;
-get_req_body: (object) => string;
-set_res_header: (object, string, string) => void;
-write_res_body: (object, string) => void;
-set_status: (object, int, string) => void;
-get_status: (object) => int;
-get_status_message: (object) => string;
-get_res_body: (object) => string;
-finish_res: (object) => void
-})END" },
-// FIXME: Stream record's member function's first argument must be self
-{ GLUA_TYPE_NAMESPACE_PREFIX_WRAP(Stream), R"END(record {
-size: (table) => int;
-pos: (table) => int;
-reset_pos: (table) => void;
-current: (table) => int;
-eof: (table) => bool;
-push: (table, int) => void;
-push_string: (table, string) => void;
-next: (table) => bool
-})END"},
-{"Stream", "() => Stream"},
-				{ "jsonrpc", R"END(record {})END" },
-                { "type", "(object) => string" },
-                { "require", "(string) => object" },
-                { "import_contract_from_address", "(string) => table" },
-                { "import_contract", "(string) => table" },
-                // { "emit", "(string, string) => void" },
-                { "uvm", "table" },
-                { "storage", "table" },
-                { "repl", "() => void" },
-                { "exit", "(object) => object" },
-				{ "exit_repl", "object (object)" },
-                { "debugger", "(...) => void" },
-                { "exit_debugger", "() => void" },
-                { "caller", "string" },
-                { "caller_address", "string" },
-				// global variables in script mode
-				{ "param", "string" },
-				{ "truncated", "bool" },
-				{ "contract_id", "string" },
-				{ "event_type", "string" },
-
-                { "contract_transfer", "(...) => object" },
-                { "contract_transfer_to", "(...) => object" },
-                { "transfer_from_contract_to_address", "(string, string, int) => int" },
-				{ "transfer_from_contract_to_public_account", "(string, string, int) => int"},
-                { "get_chain_random", "() => number" },
-                { "get_transaction_fee", "() => int" },
-                { "get_transaction_id", "() => string" },
-                { "get_header_block_num", "() => int" },
-                { "wait_for_future_random", "(int) => int" },
-                { "get_waited", "(int) => int" },
-                { "get_contract_balance_amount", "(string, string) => int" },
-                { "get_chain_now", "() => int" },
-                { "get_current_contract_address", "() => string" },
-				{ "get_system_asset_symbol", "() => string" },
-				{ "is_valid_address", "(string) => bool" },
-                { "pairs", "(table) => object" },
-                { "ipairs", "(table) => object" },
-				{ "pairsByKeys", "(table) => object" },
-                { "collectgarbage", "object (...)" },
-                { "error", "(...) => object" },
-                { "getmetatable", "(table) => table" },
-                { "_VERSION", "string" },
-				{ "_ENV", "table" },
-				{ "_G", "table" },
-                { "tostring", "(object) => string" },
-                { "tojsonstring", "(object) => string" },
-                { "tonumber", "(object) => number" },
-                { "tointeger", "(object) => int" },
-                { "todouble", "(object) => number" },
-                { "totable", "(object) => table" },
-				{ "toboolean", "(object) => bool" },
-                { "next", "(...) => object" },
-                { "rawequal", "(object, object) => bool" },
-                { "rawlen", "(object) => int" },
-                { "rawget", "(object, object) => object" },
-                { "rawset", "(object, object, object) => void" },
-                { "select", "(...) => object" },
-                { "setmetatable", "(table, table) => void" }
-            };
-
-            const std::map<std::string, std::string> *get_globalvar_type_infos()
-            {
-                return &globalvar_type_infos;
-            }
 
             typedef lua_State* L_Key1;
 
@@ -1198,11 +952,6 @@ end
                         lua_free(L, list);
                     }
 
-                    GluaStateValueNode repl_state_node = get_lua_state_value_node(L, LUA_REPL_RUNNING_STATE_KEY);
-                    if (repl_state_node.type == LUA_STATE_VALUE_INT_POINTER)
-                    {
-                        lua_free(L, repl_state_node.value.int_pointer_value);
-                    }
                     int *insts_executed_count = get_lua_state_value(L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
                     if (nullptr != insts_executed_count)
                     {
@@ -1213,12 +962,7 @@ end
                     {
                         lua_free(L, stopped_pointer);
                     }
-                    auto repl_running_node = get_lua_state_value_node(L, LUA_REPL_RUNNING_STATE_KEY);
-                    if (repl_running_node.type == LUA_STATE_VALUE_INT_POINTER && nullptr != repl_running_node.value.int_pointer_value)
-                    {
-                        lua_free(L, repl_running_node.value.int_pointer_value);
-                    }
-
+                    
                     states_map->erase(L);
                 }
 
@@ -1371,7 +1115,7 @@ end
             static const char* reader_of_stream(lua_State *L, void *ud, size_t *size)
             {
                 UNUSED(L);
-                GluaModuleByteStream *stream = static_cast<GluaModuleByteStream*>(ud);
+                UvmModuleByteStream *stream = static_cast<UvmModuleByteStream*>(ud);
                 if (!stream)
                     return nullptr;
 				if (size)
@@ -1385,7 +1129,7 @@ end
                 FILE *f = fopen(binary_filename, "rb");
                 if (nullptr == f)
                     return nullptr;
-				auto stream = std::make_shared<GluaModuleByteStream>();
+				auto stream = std::make_shared<UvmModuleByteStream>();
                 if (nullptr == stream)
                     return nullptr;
 				auto f_cur = ftell(f);
@@ -1403,12 +1147,12 @@ end
                 return closure;
             }
 
-            void free_bytecode_stream(GluaModuleByteStreamP stream)
+            void free_bytecode_stream(UvmModuleByteStreamP stream)
             {
 				delete stream;
             }
 
-            LClosure *luaU_undump_from_stream(lua_State *L, GluaModuleByteStream *stream, const char *name)
+            LClosure *luaU_undump_from_stream(lua_State *L, UvmModuleByteStream *stream, const char *name)
             {
                 ZIO z;
                 luaZ_init(L, &z, reader_of_stream, (void*) stream);
@@ -1416,25 +1160,6 @@ end
                 auto cl = luaU_undump(L, &z, name);
 				return cl;
             }
-
-			bool undump_from_bytecode_stream_to_file(lua_State *L, GluaModuleByteStream *stream, FILE *out)
-            {
-				LClosure *closure = luaU_undump_from_stream(L, stream, "undump_tmp");
-				if (!closure)
-					return false;
-				luaL_PrintFunctionToFile(out, closure->p, 1);
-				return true;
-            }
-
-			bool undump_from_bytecode_file_to_file(lua_State *L, const char *bytecode_filename, FILE *out)
-            {
-				LClosure *closure = luaU_undump_from_file(L, bytecode_filename, "undump_tmp");
-				if (!closure)
-					return false;
-				luaL_PrintFunctionToFile(out, closure->p, 1);
-				return true;
-            }
-
 
 #define UPVALNAME_OF_PROTO(proto, x) (((proto)->upvalues[x].name) ? getstr((proto)->upvalues[x].name) : "-")
 #define MYK(x)		(-1-(x))
@@ -1742,7 +1467,7 @@ end
                 return check_contract_proto(L, closure->p);
             }
 
-            bool check_contract_bytecode_stream(lua_State *L, GluaModuleByteStream *stream, char *error)
+            bool check_contract_bytecode_stream(lua_State *L, UvmModuleByteStream *stream, char *error)
             {
                 LClosure *closure = luaU_undump_from_stream(L, stream, "check_contract");
                 if (!closure)
@@ -1799,9 +1524,9 @@ end
 				return malloc_managed_string(L, sizeof(char) * (strlen(init_data) + 1), init_data);
             }
 
-            GluaModuleByteStream *malloc_managed_byte_stream(lua_State *L)
+            UvmModuleByteStream *malloc_managed_byte_stream(lua_State *L)
             {
-                return (GluaModuleByteStream*)lua_calloc(L, 1, sizeof(GluaModuleByteStream));
+                return (UvmModuleByteStream*)lua_calloc(L, 1, sizeof(UvmModuleByteStream));
             }
 
             bool run_compiledfile(lua_State *L, const char *filename)
@@ -1930,7 +1655,7 @@ end
                 return lua_execute_contract_api_by_address(L, contract_address, api_name, arg1, result_json_string);
             }
 
-            int execute_contract_api_by_stream(lua_State *L, GluaModuleByteStream *stream,
+            int execute_contract_api_by_stream(lua_State *L, UvmModuleByteStream *stream,
                 const char *api_name, const char *arg1, std::string *result_json_string)
             {
                 return lua_execute_contract_api_by_stream(L, stream, api_name, arg1, result_json_string);
@@ -1968,7 +1693,7 @@ end
                 return execute_contract_api_by_address(L, contract_address, "start", arg1, result_json_string) == LUA_OK;
             }
 
-            bool execute_contract_init(lua_State *L, const char *name, GluaModuleByteStreamP stream, const char *arg1, std::string *result_json_string)
+            bool execute_contract_init(lua_State *L, const char *name, UvmModuleByteStreamP stream, const char *arg1, std::string *result_json_string)
             {
                 GluaStateValue state_value;
                 state_value.int_value = 1;
@@ -1978,54 +1703,9 @@ end
                 set_lua_state_value(L, UVM_CONTRACT_INITING, state_value, LUA_STATE_VALUE_INT);
                 return status == 0;
             }
-            bool execute_contract_start(lua_State *L, const char *name, GluaModuleByteStreamP stream, const char *arg1, std::string *result_json_string)
+            bool execute_contract_start(lua_State *L, const char *name, UvmModuleByteStreamP stream, const char *arg1, std::string *result_json_string)
             {
                 return execute_contract_api_by_stream(L, stream, "start", arg1, result_json_string) == LUA_OK;
-            }
-
-            bool start_repl(lua_State *L)
-            {
-				// TODO: REPLmain.cppREPL
-                luaL_doREPL(L);
-                return true;
-            }
-
-            int *get_repl_state(lua_State *L)
-            {
-                auto node = get_lua_state_value_node(L, LUA_REPL_RUNNING_STATE_KEY);
-                if (node.type == LUA_STATE_VALUE_INT_POINTER && nullptr != node.value.int_pointer_value)
-                {
-                    return node.value.int_pointer_value;
-                }
-                GluaStateValue value;
-                value.int_pointer_value = (int*)lua_malloc(L, sizeof(int));
-                *value.int_pointer_value = 0;
-                set_lua_state_value(L, LUA_REPL_RUNNING_STATE_KEY, value, LUA_STATE_VALUE_INT_POINTER);
-                return value.int_pointer_value;
-            }
-
-            bool stop_repl(lua_State *L)
-            {
-                int * state = get_repl_state(L);
-                *state = 0;
-                return true;
-            }
-
-            bool start_repl_async(lua_State *L)
-            {
-                int * state = get_repl_state(L);
-                if (nullptr == state)
-                    return false;
-                *state = 1;
-                std::thread t(start_repl, L);
-                t.detach();
-                return true;
-            }
-
-            bool check_repl_running(lua_State *L)
-            {
-                int * state = get_repl_state(L);
-                return nullptr != state && *state > 0;
             }
 
             std::string wrap_contract_name(const char *contract_name)

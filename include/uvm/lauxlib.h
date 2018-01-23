@@ -127,19 +127,19 @@ LUALIB_API void (luaL_requiref)(lua_State *L, const char *modname,
  */
 int luaL_require_module(lua_State *L);
 
-LUA_API int lua_execute_contract_api_by_stream(lua_State *L, GluaModuleByteStream *stream,
+LUA_API int lua_execute_contract_api_by_stream(lua_State *L, UvmModuleByteStream *stream,
 	const char *api_name, const char *arg1, std::string *result_json_string);
 
 /**
  * get contract apis in stream
  */
-bool luaL_get_contract_apis(lua_State *L, GluaModuleByteStream *stream, char *error = nullptr);
+bool luaL_get_contract_apis(lua_State *L, UvmModuleByteStream *stream, char *error = nullptr);
 
 int luaL_import_contract_module(lua_State *L);
 
 int luaL_import_contract_module_from_address(lua_State *L);
 
-std::shared_ptr<GluaModuleByteStream> lua_common_open_contract(lua_State *L, const char *name, char *error = nullptr);
+std::shared_ptr<UvmModuleByteStream> lua_common_open_contract(lua_State *L, const char *name, char *error = nullptr);
 
 GluaTableMapP luaL_create_lua_table_map_in_memory_pool(lua_State *L);
 

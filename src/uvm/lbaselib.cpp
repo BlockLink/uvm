@@ -71,13 +71,6 @@ static int luaB_pprint(lua_State *L)
     return 0;
 }
 
-static int luaB_exit_repl(lua_State *L)
-{
-    uvm::lua::lib::stop_repl(L);
-    return 0;
-}
-
-
 #define SPACECHARS	" \f\n\r\t\v"
 
 static const char *b_str2int(const char *s, int base, lua_Integer *pn) {
@@ -606,19 +599,11 @@ static int luaB_toboolean(lua_State *L)
 static const luaL_Reg base_funcs[] = {
     { "assert", luaB_assert },
     { "collectgarbage", luaB_collectgarbage },
-    // {"dofile", luaB_dofile},
     { "error", luaB_error },
     { "getmetatable", luaB_getmetatable },
     { "ipairs", luaB_ipairs },
-    // {"loadfile", luaB_loadfile},
-    // {"load", luaB_load},
-#if defined(LUA_COMPAT_LOADSTRING)
-    // {"loadstring", luaB_load},
-#endif
     { "next", luaB_next },
     { "pairs", luaB_pairs },
-    // {"pcall", luaB_pcall},
-    { "exit_repl", luaB_exit_repl },
 	{ "exit", luaB_exit },
     { "print", luaB_print },
     { "pprint", luaB_pprint },
@@ -636,7 +621,6 @@ static const luaL_Reg base_funcs[] = {
     { "totable", luaB_totable },
 	{ "toboolean", luaB_toboolean },
     { "type", luaB_type },
-    // {"xpcall", luaB_xpcall},
     /* placeholders */
     { "_G", nullptr },
     // { "_VERSION", nullptr },

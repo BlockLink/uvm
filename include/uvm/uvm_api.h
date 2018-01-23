@@ -208,7 +208,7 @@ enum GluaTypeInfoEnum
 	LTI_UNDEFINED = 100 // ，undefined
 };
 
-class GluaModuleByteStream {
+class UvmModuleByteStream {
 public:
     bool is_bytes;
     std::vector<char> buff;
@@ -226,11 +226,11 @@ public:
 	std::map<std::string, std::vector<GluaTypeInfoEnum>> contract_api_arg_types;
 
 public:
-    GluaModuleByteStream();
-    virtual ~GluaModuleByteStream();
+    UvmModuleByteStream();
+    virtual ~UvmModuleByteStream();
 };
 
-typedef GluaModuleByteStream* GluaModuleByteStreamP;
+typedef UvmModuleByteStream *UvmModuleByteStreamP;
 
 class GluaContractInfo
 {
@@ -480,13 +480,13 @@ namespace uvm {
 
             virtual int get_stored_contract_info_by_address(lua_State *L, const char *address, std::shared_ptr<GluaContractInfo> contract_info_ret) = 0;
 
-            virtual std::shared_ptr<GluaModuleByteStream> get_bytestream_from_code(lua_State *L, const uvm::blockchain::Code& code) = 0;
+            virtual std::shared_ptr<UvmModuleByteStream> get_bytestream_from_code(lua_State *L, const uvm::blockchain::Code& code) = 0;
             /**
             * load contract lua byte stream from uvm api
             */
-            virtual std::shared_ptr<GluaModuleByteStream> open_contract(lua_State *L, const char *name) = 0;
+            virtual std::shared_ptr<UvmModuleByteStream> open_contract(lua_State *L, const char *name) = 0;
 
-            virtual std::shared_ptr<GluaModuleByteStream> open_contract_by_address(lua_State *L, const char *address) = 0;
+            virtual std::shared_ptr<UvmModuleByteStream> open_contract_by_address(lua_State *L, const char *address) = 0;
 
             /**
              * get contract address/id from uvm by contract name

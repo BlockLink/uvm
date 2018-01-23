@@ -1020,7 +1020,7 @@ LUA_API int lua_docompiledfile(lua_State *L, const char *filename)
 
 LUA_API int lua_docompiled_bytestream(lua_State *L, void *stream_addr)
 {
-    GluaModuleByteStreamP stream = (GluaModuleByteStreamP) stream_addr;
+    UvmModuleByteStreamP stream = (UvmModuleByteStreamP) stream_addr;
     if (luaL_loadbufferx(L, stream->buff.data(), stream->buff.size(), "compiled_chunk", "binary"))
     {
         printf("error\n");
@@ -1158,7 +1158,7 @@ static bool contract_table_traverser_to_wrap_api(lua_State *L, void *ud)
 	return true;
 }
 
-static bool lua_get_contract_apis_direct(lua_State *L, GluaModuleByteStream *stream, char *error)
+static bool lua_get_contract_apis_direct(lua_State *L, UvmModuleByteStream *stream, char *error)
 {
     int *stopped_pointer = uvm::lua::lib::get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
     if (nullptr != stopped_pointer && (*stopped_pointer) > 0)
@@ -1318,7 +1318,7 @@ static int lua_get_contract_apis_cfunction(lua_State *L)
         lua_pushboolean(L, false);
         return 1;
     }
-    GluaModuleByteStream *stream = (GluaModuleByteStream*)lua_touserdata(L, 1);
+    UvmModuleByteStream *stream = (UvmModuleByteStream*)lua_touserdata(L, 1);
     char *error = lua_gettop(L) > 1 ? (char *)lua_touserdata(L, 2) : nullptr;
     auto result = lua_get_contract_apis_direct(L, stream, error);
     lua_pushboolean(L, result);
@@ -1328,7 +1328,7 @@ static int lua_get_contract_apis_cfunction(lua_State *L)
 /**
  * get contract apis in stream
  */
-bool luaL_get_contract_apis(lua_State *L, GluaModuleByteStream *stream, char *error)
+bool luaL_get_contract_apis(lua_State *L, UvmModuleByteStream *stream, char *error)
 {
     lua_pushcfunction(L, lua_get_contract_apis_cfunction);
     lua_pushlightuserdata(L, stream);
@@ -1376,12 +1376,12 @@ static std::string unwrap_get_contract_address(std::string namestr)
     return address;
 }
 
-static GluaModuleByteStream *unwrap_get_contract_stream(std::string namestr)
+static UvmModuleByteStream *unwrap_get_contract_stream(std::string namestr)
 {
     intptr_t stream_p;
     std::stringstream ss(namestr.substr(strlen(STREAM_CONTRACT_PREFIX)));
     ss >> stream_p;
-    GluaModuleByteStream *stream = (GluaModuleByteStream*)stream_p;
+    UvmModuleByteStream *stream = (UvmModuleByteStream*)stream_p;
     return stream;
 }
 
@@ -1726,7 +1726,7 @@ int luaL_import_contract_module(lua_State *L)
     }
     else if (is_stream)
     {
-        GluaModuleByteStream *stream = unwrap_get_contract_stream(namestr);
+        UvmModuleByteStream *stream = unwrap_get_contract_stream(namestr);
         exists = true;
     }
     else
@@ -2098,7 +2098,7 @@ LUA_API int lua_execute_contract_api_by_address(lua_State *L, const char *addres
     return lua_execute_contract_api(L, name.c_str(), api_name, arg1, result_json_string);
 }
 
-LUA_API int lua_execute_contract_api_by_stream(lua_State *L, GluaModuleByteStream *stream,
+LUA_API int lua_execute_contract_api_by_stream(lua_State *L, UvmModuleByteStream *stream,
 	const char *api_name, const char *arg1, std::string *result_json_string)
 {
     intptr_t stream_p = (intptr_t)stream;
@@ -2106,7 +2106,7 @@ LUA_API int lua_execute_contract_api_by_stream(lua_State *L, GluaModuleByteStrea
     return lua_execute_contract_api(L, name.c_str(), api_name, arg1, result_json_string);
 }
 
-std::shared_ptr<GluaModuleByteStream> lua_common_open_contract(lua_State *L, const char *name, char *error)
+std::shared_ptr<UvmModuleByteStream> lua_common_open_contract(lua_State *L, const char *name, char *error)
 {
     std::string namestr(name);
     if (uvm::util::starts_with(namestr, ADDRESS_CONTRACT_PREFIX))
@@ -2118,12 +2118,17 @@ std::shared_ptr<GluaModuleByteStream> lua_common_open_contract(lua_State *L, con
         if (stream && stream->contract_level != CONTRACT_LEVEL_FOREVER && (stream->contract_name.length() < 1 || stream->contract_state == CONTRACT_STATE_DELETED))
         {
             auto start_contract_address = uvm::lua::lib::get_starting_contract_address(L);
+			/*
             if (start_contract_address.length()>0 && stream->contract_name.length() < 1 && std::string(address) == start_contract_address)
             {
                 return stream;
             }
             lerror_set(L, error, "only active and upgraded contract %s can be imported by others", namestr.c_str());
             return nullptr;
+			*/
+			if (stream->contract_state == CONTRACT_STATE_DELETED)
+				return nullptr;
+			return stream;
         }
         else
             return stream;
@@ -2133,7 +2138,7 @@ std::shared_ptr<GluaModuleByteStream> lua_common_open_contract(lua_State *L, con
         std::string p_str = namestr.substr(strlen(STREAM_CONTRACT_PREFIX), namestr.length() - strlen(STREAM_CONTRACT_PREFIX));
         intptr_t p;
         std::stringstream(p_str) >> p;
-		auto stream = std::make_shared<GluaModuleByteStream>(*(GluaModuleByteStream*)p);
+		auto stream = std::make_shared<UvmModuleByteStream>(*(UvmModuleByteStream*)p);
         return stream;
     }
     else
@@ -2210,7 +2215,7 @@ static int writer(lua_State* L, const void* p, size_t size, void* u)
 static int writer_to_stream(lua_State *L, const void *p, size_t size, void *u)
 {
     UNUSED(L);
-	GluaModuleByteStreamP stream = (GluaModuleByteStreamP) u;
+	UvmModuleByteStreamP stream = (UvmModuleByteStreamP) u;
     if (!stream)
         return 1;
 	auto old_buff_size = stream->buff.size();
