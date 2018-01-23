@@ -455,9 +455,9 @@ static int searcher_uvm(lua_State *L) {
     }
     struct StreamScope {
         lua_State *L;
-        GluaModuleByteStream *stream;
+        UvmModuleByteStream *stream;
         const char *name;
-        StreamScope(lua_State *L, const char *name, GluaModuleByteStream *stream) {
+        StreamScope(lua_State *L, const char *name, UvmModuleByteStream *stream) {
             this->name = name; this->L = L; this->stream = stream;
         }
         ~StreamScope() {

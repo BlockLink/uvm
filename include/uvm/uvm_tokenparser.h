@@ -78,7 +78,7 @@ namespace uvm
 #define LUA_TOKEN_MAX_LENGTH 10240
 #define EOF_TOKEN_CHAR (-1)
 
-#define THROW_PERROR(errorstr, ...)	do{_L->err && fprintf(_L->err, errorstr, ##__VA_ARGS__); throw uvm::core::GluaException(errorstr);}while(0)
+#define THROW_PERROR(errorstr, ...)	do{_L->err && fprintf(_L->err, errorstr, ##__VA_ARGS__); throw uvm::core::UvmException(errorstr);}while(0)
 
         class GluaTokenParser
         {
@@ -123,7 +123,7 @@ namespace uvm
             GluaTokenParser(lua_State *L);
             ~GluaTokenParser();
             /************************************************************************/
-            /* @throw uvm::core::GluaException                                                */
+            /* @throw uvm::core::UvmException                                                */
             /************************************************************************/
             void parse(const std::string &code);
             bool next();

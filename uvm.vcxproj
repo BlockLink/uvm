@@ -25,14 +25,12 @@
     <ClCompile Include="src\uvm\uvm_proto_info.cpp" />
     <ClCompile Include="src\uvm\uvm_state_scope.cpp" />
     <ClCompile Include="src\uvm\uvm_storage.cpp" />
-    <ClCompile Include="src\uvm\uvm_structs.cpp" />
     <ClCompile Include="src\uvm\uvm_tokenparser.cpp" />
     <ClCompile Include="src\uvm\lapi.cpp" />
     <ClCompile Include="src\uvm\lauxlib.cpp" />
     <ClCompile Include="src\uvm\lbaselib.cpp" />
     <ClCompile Include="src\uvm\lbitlib.cpp" />
     <ClCompile Include="src\uvm\lcode.cpp" />
-    <ClCompile Include="src\uvm\lcompile.cpp" />
     <ClCompile Include="src\uvm\lcorolib.cpp" />
     <ClCompile Include="src\uvm\lctype.cpp" />
     <ClCompile Include="src\uvm\ldblib.cpp" />
@@ -57,7 +55,6 @@
     <ClCompile Include="src\uvm\loslib.cpp" />
     <ClCompile Include="src\uvm\lparser.cpp" />
     <ClCompile Include="src\uvm\lprefix.cpp" />
-    <ClCompile Include="src\uvm\lrepl.cpp" />
     <ClCompile Include="src\uvm\lstate.cpp" />
     <ClCompile Include="src\uvm\lstring.cpp" />
     <ClCompile Include="src\uvm\lstrlib.cpp" />
@@ -65,7 +62,6 @@
     <ClCompile Include="src\uvm\ltablib.cpp" />
     <ClCompile Include="src\uvm\ltimelib.cpp" />
     <ClCompile Include="src\uvm\ltm.cpp" />
-    <ClCompile Include="src\uvm\lua.cpp" />
     <ClCompile Include="src\uvm\lundump.cpp" />
     <ClCompile Include="src\uvm\lutf8lib.cpp" />
     <ClCompile Include="src\uvm\lvm.cpp" />
@@ -81,12 +77,10 @@
     <ClInclude Include="include\uvm\uvm_lutil.h" />
     <ClInclude Include="include\uvm\uvm_proto_info.h" />
     <ClInclude Include="include\uvm\uvm_storage.h" />
-    <ClInclude Include="include\uvm\uvm_structs.h" />
     <ClInclude Include="include\uvm\uvm_tokenparser.h" />
     <ClInclude Include="include\uvm\lapi.h" />
     <ClInclude Include="include\uvm\lauxlib.h" />
     <ClInclude Include="include\uvm\lcode.h" />
-    <ClInclude Include="include\uvm\lcompile.h" />
     <ClInclude Include="include\uvm\lctype.h" />
     <ClInclude Include="include\uvm\ldebug.h" />
     <ClInclude Include="include\uvm\ldo.h" />
@@ -101,7 +95,6 @@
     <ClInclude Include="include\uvm\lopcodes.h" />
     <ClInclude Include="include\uvm\lparser.h" />
     <ClInclude Include="include\uvm\lprefix.h" />
-    <ClInclude Include="include\uvm\lrepl.h" />
     <ClInclude Include="include\uvm\lstate.h" />
     <ClInclude Include="include\uvm\lstring.h" />
     <ClInclude Include="include\uvm\ltable.h" />

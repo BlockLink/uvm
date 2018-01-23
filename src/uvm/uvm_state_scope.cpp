@@ -180,39 +180,18 @@ namespace uvm
                 return uvm::lua::lib::execute_contract_start_by_address(_L, contract_address, arg1, result_json_string);
             }
 
-            bool GluaStateScope::execute_contract_init(GluaModuleByteStream *stream, const char *arg1, std::string *result_json_string)
+            bool GluaStateScope::execute_contract_init(UvmModuleByteStream *stream, const char *arg1, std::string *result_json_string)
             {
                 return uvm::lua::lib::execute_contract_init(_L, "tmp", stream, arg1, result_json_string);
             }
-            bool GluaStateScope::execute_contract_start(GluaModuleByteStream *stream, const char *arg1, std::string *result_json_string)
+            bool GluaStateScope::execute_contract_start(UvmModuleByteStream *stream, const char *arg1, std::string *result_json_string)
             {
                 return uvm::lua::lib::execute_contract_start(_L, "tmp", stream, arg1, result_json_string);
             }
 
-            bool GluaStateScope::check_contract_bytecode_stream(GluaModuleByteStream *stream)
+            bool GluaStateScope::check_contract_bytecode_stream(UvmModuleByteStream *stream)
             {
                 return uvm::lua::lib::check_contract_bytecode_stream(_L, stream);
-            }
-
-            bool GluaStateScope::start_repl()
-            {
-                return uvm::lua::lib::start_repl(_L);
-            }
-            bool GluaStateScope::stop_repl()
-            {
-                return uvm::lua::lib::stop_repl(_L);
-            }
-            bool GluaStateScope::start_repl_async()
-            {
-                return uvm::lua::lib::start_repl_async(_L);
-            }
-            bool GluaStateScope::check_repl_running()
-            {
-                return uvm::lua::lib::check_repl_running(_L);
-            }
-            int *GluaStateScope::get_repl_state()
-            {
-                return uvm::lua::lib::get_repl_state(_L);
             }
 
 			void GluaStateScope::add_system_extra_libs()

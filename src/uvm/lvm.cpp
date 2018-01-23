@@ -928,7 +928,6 @@ newframe:  /* reentry point when frame changes (call/return) */
         ra = RA(i);
         lua_assert(base == ci->u.l.base);
         lua_assert(base <= L->top && L->top < L->stack + L->stacksize);
-		// TODO: ，
 		
         vmdispatch(GET_OPCODE(i)) {
             vmcase(UOP_MOVE) {
@@ -1267,7 +1266,6 @@ newframe:  /* reentry point when frame changes (call/return) */
                 int c = GETARG_C(i);
                 StkId rb;
                 L->top = base + c + 1;  /* mark the end of concat operands */
-                // TODO: check args are string
                 Protect(luaV_concat(L, c - b + 1));
                 ra = RA(i);  /* 'luaV_concat' may invoke TMs and move the stack */
                 rb = base + b;
@@ -1385,12 +1383,6 @@ newframe:  /* reentry point when frame changes (call/return) */
                 // return R(a), R(a+1), ... , R(a+b-2), b is return result count + 1, index from 0
                 if (use_last_return && b > 1 && top >= a + 1)
                 {
-					/*for(int i=1;i<=top;++i)
-					{
-						auto param_json_str = luaL_tojsonstring(L, i, nullptr);
-						printf("");
-					}*/
-					// auto ret_json_str = luaL_tojsonstring(L, a + 1, nullptr);
                     lua_getglobal(L, "_G");
                     lua_pushvalue(L, a + 1);
                     lua_setfield(L, -2, "last_return");
