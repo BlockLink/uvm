@@ -163,7 +163,7 @@ static int lualib_http_request(lua_State *L)
 	auto body = luaL_tolstring(L, 3, &body_len);
 	/*
 	auto headers_table_value = lua_type_to_storage_value_type(L, 4);
-	if(headers_table_value.type != GluaStorageValueType::LVALUE_TABLE)
+	if(headers_table_value.type != UvmStorageValueType::LVALUE_TABLE)
 	{
 		global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "headers must be table");
 		return 0;
@@ -185,13 +185,13 @@ static int lualib_http_request(lua_State *L)
 	/*
 	for(const auto &p : *headers_table)
 	{
-		if (p.second.type == GluaStorageValueType::LVALUE_STRING)
+		if (p.second.type == UvmStorageValueType::LVALUE_STRING)
 			ss << p.first << ":" << p.second.value.string_value << "\r\n";
-		else if(p.second.type == GluaStorageValueType::LVALUE_INTEGER)
+		else if(p.second.type == UvmStorageValueType::LVALUE_INTEGER)
 			ss << p.first << ":" << p.second.value.int_value << "\r\n";
-		else if (p.second.type == GluaStorageValueType::LVALUE_NUMBER)
+		else if (p.second.type == UvmStorageValueType::LVALUE_NUMBER)
 			ss << p.first << ":" << p.second.value.number_value << "\r\n";
-		else if (p.second.type == GluaStorageValueType::LVALUE_BOOLEAN)
+		else if (p.second.type == UvmStorageValueType::LVALUE_BOOLEAN)
 			ss << p.first << ":" << p.second.value.bool_value << "\r\n";
 	}
 	*/

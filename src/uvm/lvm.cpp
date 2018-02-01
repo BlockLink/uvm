@@ -873,7 +873,7 @@ newframe:  /* reentry point when frame changes (call/return) */
     {
         insts_executed_count = static_cast<int*>(lua_malloc(L, sizeof(int)));
         *insts_executed_count = 0;
-        GluaStateValue lua_state_value_of_exected_count;
+        UvmStateValue lua_state_value_of_exected_count;
         lua_state_value_of_exected_count.int_pointer_value = insts_executed_count;
         uvm::lua::lib::set_lua_state_value(L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY, lua_state_value_of_exected_count, LUA_STATE_VALUE_INT_POINTER);
     }

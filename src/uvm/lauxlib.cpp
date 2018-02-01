@@ -1101,8 +1101,8 @@ int luaL_require_module(lua_State *L)
     return 1;
 }
 
-struct GluaStorageValue;
-struct GluaStorageValue lua_type_to_storage_value_type(lua_State *L, int index, size_t len);
+struct UvmStorageValue;
+struct UvmStorageValue lua_type_to_storage_value_type(lua_State *L, int index, size_t len);
 
 // wrappered contract api func(proxy of contract api)
 static int contract_api_wrapper_func(lua_State *L)
@@ -1436,11 +1436,6 @@ int luaL_import_contract_module_from_address(lua_State *L)
     if (!contract_id)
         return 0;
     const char *name = contract_id;
-    if (uvm::util::ends_with(std::string(name), std::string(".lua"))
-		|| uvm::util::ends_with(std::string(name), std::string(GLUA_SOURCE_FILE_EXTENTION_NAME))) {
-        global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "this contract byte stream not matched with the info stored in uvm api");
-        return 0;
-    }
     std::string name_str;
     name_str = std::string(ADDRESS_CONTRACT_PREFIX) + uvm::lua::lib::unwrap_any_contract_name(contract_id);
     name = name_str.c_str();
@@ -1539,7 +1534,7 @@ int luaL_import_contract_module_from_address(lua_State *L)
                 // global_uvm_chain_api->free_contract_info(L, unwrap_name.c_str(), stored_contract_apis, &stored_contract_apis_count);
             };
             std::string address = contract_id;
-			auto stored_contract_info = std::make_shared<GluaContractInfo>();
+			auto stored_contract_info = std::make_shared<UvmContractInfo>();
             if (global_uvm_chain_api->get_stored_contract_info_by_address(L, address.c_str(), stored_contract_info))
             {
                 struct exit_scope_of_stored_contract_info
@@ -1690,10 +1685,6 @@ int luaL_import_contract_module(lua_State *L)
     }
     const char *origin_contract_name = luaL_checkstring(L, -1);
     const char *name = origin_contract_name;
-    if (uvm::util::ends_with(name, ".lua"), uvm::util::ends_with(name, GLUA_SOURCE_FILE_EXTENTION_NAME)) {
-        global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "this contract byte stream not matched with the info stored in uvm api");
-        return 0;
-    }
     bool is_pointer = uvm::util::starts_with(name, ADDRESS_CONTRACT_PREFIX);
     bool is_stream = uvm::util::starts_with(name, STREAM_CONTRACT_PREFIX);
     std::string name_str;
@@ -1806,7 +1797,7 @@ int luaL_import_contract_module(lua_State *L)
                 apis_count += 1;
             }
             // if the contract info stored in uvm before, fetch and check whether the apis are the same. if not the same, error
-			auto stored_contract_info = std::make_shared<GluaContractInfo>();
+			auto stored_contract_info = std::make_shared<UvmContractInfo>();
             auto clear_stored_contract_info = [&]() {
                 //if (!is_stream)
                 //    global_uvm_chain_api->free_contract_info(L, unwrap_name.c_str(), stored_contract_apis, &stored_contract_apis_count);
@@ -2065,7 +2056,7 @@ LUA_API int lua_execute_contract_api(lua_State *L, const char *contract_name,
 	global_uvm_chain_api->get_contract_address_by_name(L, contract_name, contract_address, &address_size);
 	if (address_size > 0)
 	{
-		GluaStateValue value;
+		UvmStateValue value;
 		value.string_value = contract_address;
 		uvm::lua::lib::set_lua_state_value(L, STARTING_CONTRACT_ADDRESS, value, LUA_STATE_VALUE_STRING);
 	}
@@ -2341,29 +2332,29 @@ LUALIB_API const char *luaL_tolstring(lua_State *L, int idx, size_t *len) {
     return lua_tolstring(L, -1, len);
 }
 
-GluaTableMapP luaL_create_lua_table_map_in_memory_pool(lua_State *L)
+UvmTableMapP luaL_create_lua_table_map_in_memory_pool(lua_State *L)
 {
     auto lua_table_map_list_p = uvm::lua::lib::get_lua_state_value(L, LUA_TABLE_MAP_LIST_STATE_MAP_KEY).pointer_value;
     if (nullptr == lua_table_map_list_p)
     {
-        lua_table_map_list_p = (void*)new std::list<GluaTableMapP>();
+        lua_table_map_list_p = (void*)new std::list<UvmTableMapP>();
         if (nullptr == lua_table_map_list_p)
         {
             exit(1);
         }
-        GluaStateValue value;
+        UvmStateValue value;
         value.pointer_value = lua_table_map_list_p;
         uvm::lua::lib::set_lua_state_value(L, LUA_TABLE_MAP_LIST_STATE_MAP_KEY, value, LUA_STATE_VALUE_POINTER);
     }
-    auto p = new GluaTableMap();
+    auto p = new UvmTableMap();
     if (nullptr == p)
     {
         global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "out of memory");
         uvm::lua::lib::notify_lua_state_stop(L);
         return nullptr;
     }
-    // new(p)GluaTableMap();
-    auto list_p = (std::list<GluaTableMapP>*)lua_table_map_list_p;
+    // new(p)UvmTableMap();
+    auto list_p = (std::list<UvmTableMapP>*)lua_table_map_list_p;
     list_p->push_back(p);
     return p;
 }
@@ -2371,20 +2362,20 @@ GluaTableMapP luaL_create_lua_table_map_in_memory_pool(lua_State *L)
 /**
 * read lua table to hashmap
 */
-GluaTableMapP lua_table_to_map_with_nested(lua_State *L, int index, std::list<const void*> &jsons, size_t recur_depth)
+UvmTableMapP lua_table_to_map_with_nested(lua_State *L, int index, std::list<const void*> &jsons, size_t recur_depth)
 {
     if (index > lua_gettop(L))
         return nullptr;
     if (!lua_istable(L, index))
         return nullptr;
-    GluaTableMapP map = luaL_create_lua_table_map_in_memory_pool(L);
+    UvmTableMapP map = luaL_create_lua_table_map_in_memory_pool(L);
     luaL_traverse_table_with_nested(L, index, lua_table_to_map_traverser_with_nested, map, jsons, recur_depth);
     return map;
 }
 
-struct GluaStorageValue lua_type_to_storage_value_type_with_nested(lua_State *L, int index, size_t len, std::list<const void *> &jsons, size_t recur_depth)
+struct UvmStorageValue lua_type_to_storage_value_type_with_nested(lua_State *L, int index, size_t len, std::list<const void *> &jsons, size_t recur_depth)
 {
-    struct GluaStorageValue storage_value;
+    struct UvmStorageValue storage_value;
     if (index > lua_gettop(L))
     {
         storage_value.type = uvm::blockchain::StorageValueTypes::storage_value_not_support;
@@ -2449,7 +2440,7 @@ struct GluaStorageValue lua_type_to_storage_value_type_with_nested(lua_State *L,
     case LUA_TUSERDATA:
 	{
 		auto addr = lua_touserdata(L, index);
-		if (global_uvm_chain_api->is_object_in_pool(L, (intptr_t)addr, GluaOutsideObjectTypes::OUTSIDE_STREAM_STORAGE_TYPE))
+		if (global_uvm_chain_api->is_object_in_pool(L, (intptr_t)addr, UvmOutsideObjectTypes::OUTSIDE_STREAM_STORAGE_TYPE))
 		{
 			storage_value.type = uvm::blockchain::StorageValueTypes::storage_value_stream;
 			storage_value.value.userdata_value = addr;
@@ -2472,7 +2463,7 @@ struct GluaStorageValue lua_type_to_storage_value_type_with_nested(lua_State *L,
     }
 }
 
-struct GluaStorageValue lua_type_to_storage_value_type(lua_State *L, int index, size_t len)
+struct UvmStorageValue lua_type_to_storage_value_type(lua_State *L, int index, size_t len)
 {
     std::list<const void*> jsons;
     return lua_type_to_storage_value_type_with_nested(L, index, len, jsons, 0);
@@ -2480,7 +2471,7 @@ struct GluaStorageValue lua_type_to_storage_value_type(lua_State *L, int index, 
 
 bool lua_table_to_map_traverser_with_nested(lua_State *L, void *ud, size_t len, std::list<const void*> &jsons, size_t recur_depth)
 {
-    GluaTableMapP map = (GluaTableMapP) ud;
+    UvmTableMapP map = (UvmTableMapP) ud;
     if (lua_gettop(L) < 2)
         return false;
     if (!lua_isstring(L, -2) && !lua_isinteger(L, -1)) // now only support integer and string as table key, when using by uvm
@@ -2500,7 +2491,7 @@ bool lua_table_to_map_traverser_with_nested(lua_State *L, void *ud, size_t len, 
 	if (key == "package")
 		return true;
     auto addr = lua_topointer(L, -1);
-    GluaStorageValue value;
+    UvmStorageValue value;
     bool json_found=false;
     auto jit=jsons.begin();
     while(jit!=jsons.end())
@@ -2533,7 +2524,7 @@ bool lua_table_to_map_traverser_with_nested(lua_State *L, void *ud, size_t len, 
  * @param ss
  * @param is_array whether treat it as a json array(table have hash port and array part)
  */
-static void luatablemap_to_json_stream(GluaTableMapP map, std::stringstream &ss, bool is_array=false)
+static void luatablemap_to_json_stream(UvmTableMapP map, std::stringstream &ss, bool is_array=false)
 {
 	if(!is_array)
 	{
@@ -2597,7 +2588,7 @@ static void luatablemap_to_json_stream(GluaTableMapP map, std::stringstream &ss,
     {
         if (it != map->begin())
             ss << ",";
-        struct GluaStorageValue value = it->second;
+        struct UvmStorageValue value = it->second;
 		if (!is_array)
 		{
 			std::string key(it->first);
@@ -2672,7 +2663,7 @@ static const char *tojsonstring_with_nested(lua_State *L, int idx, size_t *len, 
         case LUA_TTABLE:
         {
             jsons.push_back(addr);
-            GluaTableMapP map = luaL_create_lua_table_map_in_memory_pool(L);
+            UvmTableMapP map = luaL_create_lua_table_map_in_memory_pool(L);
             luaL_traverse_table_with_nested(L, idx, lua_table_to_map_traverser_with_nested, map, jsons, 0);
             std::stringstream ss;
             luatablemap_to_json_stream(map, ss);
