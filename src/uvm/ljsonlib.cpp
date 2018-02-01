@@ -23,15 +23,15 @@ using uvm::lua::api::global_uvm_chain_api;
 
 using namespace uvm::parser;
 
-static GluaStorageValue nil_storage_value()
+static UvmStorageValue nil_storage_value()
 {
-    GluaStorageValue value;
+    UvmStorageValue value;
     value.type = uvm::blockchain::StorageValueTypes::storage_value_null;
     value.value.int_value = 0;
     return value;
 }
 
-static GluaStorageValue tokens_to_lua_value(lua_State *L, GluaTokenParser *token_parser, bool *result)
+static UvmStorageValue tokens_to_lua_value(lua_State *L, UvmTokenParser *token_parser, bool *result)
 {
     if (token_parser->eof())
     {
@@ -55,7 +55,7 @@ static GluaStorageValue tokens_to_lua_value(lua_State *L, GluaTokenParser *token
             ss << token_str;
             lua_Integer token_int = 0;
             ss >> token_int;
-            GluaStorageValue value;
+            UvmStorageValue value;
             value.type = uvm::blockchain::StorageValueTypes::storage_value_int;
             value.value.int_value = token_int;
             if (nullptr != result)
@@ -69,7 +69,7 @@ static GluaStorageValue tokens_to_lua_value(lua_State *L, GluaTokenParser *token
             ss << token_str;
             lua_Number token_num = 0;
             ss >> token_num;
-            GluaStorageValue value;
+            UvmStorageValue value;
             value.type = uvm::blockchain::StorageValueTypes::storage_value_number;
             value.value.number_value = token_num;
             if (nullptr != result)
@@ -83,7 +83,7 @@ static GluaStorageValue tokens_to_lua_value(lua_State *L, GluaTokenParser *token
             auto token_str = token.token;
             if (token_str == "true")
             {
-                GluaStorageValue value;
+                UvmStorageValue value;
                 value.type = uvm::blockchain::StorageValueTypes::storage_value_bool;
                 value.value.bool_value = true;
                 if (nullptr != result)
@@ -92,7 +92,7 @@ static GluaStorageValue tokens_to_lua_value(lua_State *L, GluaTokenParser *token
             }
             else if (token_str == "false")
             {
-                GluaStorageValue value;
+                UvmStorageValue value;
                 value.type = uvm::blockchain::StorageValueTypes::storage_value_bool;
                 value.value.bool_value = false;
                 if (nullptr != result)
@@ -101,7 +101,7 @@ static GluaStorageValue tokens_to_lua_value(lua_State *L, GluaTokenParser *token
             }
             else if (token_str == "null")
             {
-                GluaStorageValue value;
+                UvmStorageValue value;
                 value.type = uvm::blockchain::StorageValueTypes::storage_value_null;
                 value.value.int_value = 0;
                 if (nullptr != result)
@@ -118,7 +118,7 @@ static GluaStorageValue tokens_to_lua_value(lua_State *L, GluaTokenParser *token
         } break;
         case TOKEN_RESERVED::LTK_STRING:
         {
-            GluaStorageValue value;
+            UvmStorageValue value;
             value.type = uvm::blockchain::StorageValueTypes::storage_value_string;
             auto token_str = token.token;
 			// FIXME: unescape
@@ -154,7 +154,7 @@ static GluaStorageValue tokens_to_lua_value(lua_State *L, GluaTokenParser *token
         if (token_parser->current().type == '}')
         {
             token_parser->next();
-            GluaStorageValue value;
+            UvmStorageValue value;
             value.type = uvm::blockchain::StorageValueTypes::storage_value_unknown_table;
             value.value.table_value = uvm::lua::lib::create_managed_lua_table_map(L);
             assert(nullptr != value.value.table_value);
@@ -162,7 +162,7 @@ static GluaStorageValue tokens_to_lua_value(lua_State *L, GluaTokenParser *token
                 *result = true;
             return value;
         }
-        GluaStorageValue table_value;
+        UvmStorageValue table_value;
         table_value.type = uvm::blockchain::StorageValueTypes::storage_value_unknown_table; // FIXME: change it by sub item value type
         table_value.value.table_value = uvm::lua::lib::create_managed_lua_table_map(L);
         assert(nullptr != table_value.value.table_value);
@@ -260,7 +260,7 @@ static GluaStorageValue tokens_to_lua_value(lua_State *L, GluaTokenParser *token
         if (token_parser->current().type == ']')
         {
             token_parser->next();
-            GluaStorageValue value;
+            UvmStorageValue value;
             value.type = uvm::blockchain::StorageValueTypes::storage_value_unknown_array;
             value.value.table_value = uvm::lua::lib::create_managed_lua_table_map(L);
             assert(nullptr != value.value.table_value);
@@ -268,7 +268,7 @@ static GluaStorageValue tokens_to_lua_value(lua_State *L, GluaTokenParser *token
                 *result = true;
             return value;
         }
-        GluaStorageValue table_value;
+        UvmStorageValue table_value;
         table_value.type = uvm::blockchain::StorageValueTypes::storage_value_unknown_array; // FIXME: change by sub item value type
         table_value.value.table_value = uvm::lua::lib::create_managed_lua_table_map(L);
         assert(nullptr != table_value.value.table_value);
@@ -342,8 +342,8 @@ static int json_to_lua(lua_State *L)
     if (!lua_isstring(L, 1))
         return 0;
     auto json_str = luaL_checkstring(L, 1);
-    uvm::lua::lib::GluaStateScope scope;
-    auto token_parser = std::make_shared<GluaTokenParser>(scope.L());
+    uvm::lua::lib::UvmStateScope scope;
+    auto token_parser = std::make_shared<UvmTokenParser>(scope.L());
     token_parser->parse(std::string(json_str));
     token_parser->reset_position();
     bool result = false;

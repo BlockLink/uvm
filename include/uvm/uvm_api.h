@@ -25,8 +25,6 @@
 
 #define ERROR_INFO(...) fprintf(stderr, "[ERROR] " ##__VA_ARGS__)
 
-#define GLUA_SOURCE_FILE_EXTENTION_NAME ".uvm"
-
 #define LUA_MODULE_BYTE_STREAM_BUF_SIZE 1024*1024
 
 #define LUA_VM_EXCEPTION_STRNG_MAX_LENGTH 256
@@ -64,19 +62,19 @@
 #define CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT 50
 
 // ，register_object_in_pool
-enum GluaOutsideObjectTypes
+enum UvmOutsideObjectTypes
 {
 	OUTSIDE_STREAM_STORAGE_TYPE = 0
 };
 
-typedef enum GluaStorageValueType
+typedef enum UvmStorageValueType
 {
     LVALUE_INTEGER = 0, LVALUE_NUMBER = 1, LVALUE_TABLE = 2, LVALUE_STRING = 3,
     LVALUE_BOOLEAN = 4, LVALUE_USERDATA = 5, LVALUE_NIL = 6, LVALUE_ARRAY = 7
     ,LVALUE_STREAM = 9
 
-	, LVALUE_NOT_SUPPORT = 100
-} GluaStorageValueType;
+	,LVALUE_NOT_SUPPORT = 100
+} UvmStorageValueType;
 
 namespace uvm {
     namespace blockchain {
@@ -186,7 +184,7 @@ namespace uvm {
     }
 }
 
-enum GluaTypeInfoEnum
+enum UvmTypeInfoEnum
 {
 	LTI_OBJECT = 0,
 	LTI_NIL = 1,
@@ -221,7 +219,7 @@ public:
     std::map<std::string, uvm::blockchain::StorageValueTypes> contract_storage_properties;
 
 	// APIAPI
-	std::map<std::string, std::vector<GluaTypeInfoEnum>> contract_api_arg_types;
+	std::map<std::string, std::vector<UvmTypeInfoEnum>> contract_api_arg_types;
 
 public:
     UvmModuleByteStream();
@@ -230,7 +228,7 @@ public:
 
 typedef UvmModuleByteStream *UvmModuleByteStreamP;
 
-class GluaContractInfo
+class UvmContractInfo
 {
 public:
     std::vector<std::string> contract_apis;
@@ -256,7 +254,7 @@ public:
 #define lua_storage_is_array(t) (uvm::blockchain::is_any_array_storage_value_type(t))
 #define lua_storage_is_hashtable(t) (uvm::blockchain::is_any_table_storage_value_type(t))
 
-struct GluaStorageValue;
+struct UvmStorageValue;
 
 struct lua_table_binary_function
 {	// base class for binary functions
@@ -276,42 +274,42 @@ struct lua_table_less
     }
 };
 
-typedef std::map<std::string, struct GluaStorageValue, struct lua_table_less> GluaTableMap;
+typedef std::map<std::string, struct UvmStorageValue, struct lua_table_less> UvmTableMap;
 
-typedef GluaTableMap* GluaTableMapP;
+typedef UvmTableMap* UvmTableMapP;
 
-struct GluaStorageChangeItem;
+struct UvmStorageChangeItem;
 
 
-typedef union GluaStorageValueUnion
+typedef union UvmStorageValueUnion
 {
     lua_Integer int_value;
     lua_Number number_value;
     bool bool_value;
     char *string_value;
-    GluaTableMapP table_value;
+    UvmTableMapP table_value;
     void *userdata_value;
     void *pointer_value;
-} GluaStorageValueUnion;
+} UvmStorageValueUnion;
 
-typedef struct GluaStorageValue
+typedef struct UvmStorageValue
 {
     uvm::blockchain::StorageValueTypes type;
-    union GluaStorageValueUnion value;
-    inline GluaStorageValue()
+    union UvmStorageValueUnion value;
+    inline UvmStorageValue()
     {
         type = uvm::blockchain::StorageValueTypes::storage_value_null;
     }
-    inline static GluaStorageValue from_int(int val)
+    inline static UvmStorageValue from_int(int val)
     {
-        GluaStorageValue sv;
+        UvmStorageValue sv;
         sv.type = uvm::blockchain::StorageValueTypes::storage_value_int;
         sv.value.int_value = val;
         return sv;
     }
-    inline static GluaStorageValue from_string(char *val)
+    inline static UvmStorageValue from_string(char *val)
     {
-        GluaStorageValue sv;
+        UvmStorageValue sv;
         sv.type = uvm::blockchain::StorageValueTypes::storage_value_string;
         sv.value.string_value = val;
         return sv;
@@ -357,7 +355,7 @@ typedef struct GluaStorageValue
     {
         return type1 == type2;
     }
-    inline bool equals(GluaStorageValue &other)
+    inline bool equals(UvmStorageValue &other)
     {
         if (type != other.type)
             return false;
@@ -397,29 +395,29 @@ typedef struct GluaStorageValue
         }
         }
     }
-} GluaStorageValue;
+} UvmStorageValue;
 
-typedef struct GluaStorageChangeItem
+typedef struct UvmStorageChangeItem
 {
     std::string contract_id;
     std::string key;
-    struct GluaStorageValue before;
-    struct GluaStorageValue after;
-} GluaStorageChangeItem;
+    struct UvmStorageValue before;
+    struct UvmStorageValue after;
+} UvmStorageChangeItem;
 
 
 
-typedef std::list<GluaStorageChangeItem> GluaStorageChangeList;
+typedef std::list<UvmStorageChangeItem> UvmStorageChangeList;
 
-typedef std::list<GluaStorageChangeItem> GluaStorageTableReadList;
+typedef std::list<UvmStorageChangeItem> UvmStorageTableReadList;
 
-struct GluaStorageValue lua_type_to_storage_value_type(lua_State *L, int index);
+struct UvmStorageValue lua_type_to_storage_value_type(lua_State *L, int index);
 
 bool luaL_commit_storage_changes(lua_State *L);
 
-bool lua_push_storage_value(lua_State *L, const GluaStorageValue &value);
+bool lua_push_storage_value(lua_State *L, const UvmStorageValue &value);
 
-typedef std::unordered_map<std::string, GluaStorageChangeItem> ContractChangesMap;
+typedef std::unordered_map<std::string, UvmStorageChangeItem> ContractChangesMap;
 
 typedef std::shared_ptr<ContractChangesMap> ContractChangesMapP;
 
@@ -434,7 +432,7 @@ namespace uvm {
     namespace lua {
         namespace api {
 
-          class IGluaChainApi
+          class IUvmChainApi
           {
           public:
             /**
@@ -470,9 +468,9 @@ namespace uvm {
             * @param contract_info_ret this api save the contract's api name array here if found, this var will be free by this api
             * @return TRUE(1 or not 0) if success, FALSE(0) if failed
             */
-            virtual int get_stored_contract_info(lua_State *L, const char *name, std::shared_ptr<GluaContractInfo> contract_info_ret) = 0;
+            virtual int get_stored_contract_info(lua_State *L, const char *name, std::shared_ptr<UvmContractInfo> contract_info_ret) = 0;
 
-            virtual int get_stored_contract_info_by_address(lua_State *L, const char *address, std::shared_ptr<GluaContractInfo> contract_info_ret) = 0;
+            virtual int get_stored_contract_info_by_address(lua_State *L, const char *address, std::shared_ptr<UvmContractInfo> contract_info_ret) = 0;
 
             virtual std::shared_ptr<UvmModuleByteStream> get_bytestream_from_code(lua_State *L, const uvm::blockchain::Code& code) = 0;
             /**
@@ -502,9 +500,9 @@ namespace uvm {
              */
             virtual bool register_storage(lua_State *L, const char *contract_name, const char *name) = 0;
 
-            virtual GluaStorageValue get_storage_value_from_uvm(lua_State *L, const char *contract_name, std::string name) = 0;
+            virtual UvmStorageValue get_storage_value_from_uvm(lua_State *L, const char *contract_name, std::string name) = 0;
 
-            virtual GluaStorageValue get_storage_value_from_uvm_by_address(lua_State *L, const char *contract_address, std::string name) = 0;
+            virtual UvmStorageValue get_storage_value_from_uvm_by_address(lua_State *L, const char *contract_address, std::string name) = 0;
 
             /**
              * after lua merge storage changes in lua_State, use the function to store the merged changes of storage to uvm
@@ -516,13 +514,13 @@ namespace uvm {
              * lua_State
              * uvm/，，lightuserdatauvm
              */
-            virtual intptr_t register_object_in_pool(lua_State *L, intptr_t object_addr, GluaOutsideObjectTypes type) = 0;
+            virtual intptr_t register_object_in_pool(lua_State *L, intptr_t object_addr, UvmOutsideObjectTypes type) = 0;
 
             /**
              * (register_object_in_pool，)lua_State（)
              * ，，0
              */
-            virtual intptr_t is_object_in_pool(lua_State *L, intptr_t object_key, GluaOutsideObjectTypes type) = 0;
+            virtual intptr_t is_object_in_pool(lua_State *L, intptr_t object_key, UvmOutsideObjectTypes type) = 0;
 
             /**
              * lua_State
@@ -554,11 +552,13 @@ namespace uvm {
             virtual void emit(lua_State *L, const char* contract_id, const char* event_name, const char* event_param) = 0;
 
 			virtual bool is_valid_address(lua_State *L, const char *address_str) = 0;
+			virtual bool is_valid_contract_address(lua_State *L, const char *address_str) = 0;
 			virtual const char *get_system_asset_symbol(lua_State *L) = 0;
+			virtual uint64_t get_system_asset_precision(lua_State *L) = 0;
           };
 
 
-          extern IGluaChainApi *global_uvm_chain_api;
+          extern IUvmChainApi *global_uvm_chain_api;
 
         }
     }

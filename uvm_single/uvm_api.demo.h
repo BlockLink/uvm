@@ -25,7 +25,7 @@ namespace uvm {
     namespace api {
       // demo，API
 
-      class DemoGluaChainApi : public IGluaChainApi
+      class DemoUvmChainApi : public IUvmChainApi
       {
       public:
         /**
@@ -61,17 +61,17 @@ namespace uvm {
         * @param contract_info_ret this api save the contract's api name array here if found, this var will be free by this api
         * @return TRUE(1 or not 0) if success, FALSE(0) if failed
         */
-        virtual int get_stored_contract_info(lua_State *L, const char *name, std::shared_ptr<GluaContractInfo> contract_info_ret);
+        virtual int get_stored_contract_info(lua_State *L, const char *name, std::shared_ptr<UvmContractInfo> contract_info_ret);
 
-        virtual int get_stored_contract_info_by_address(lua_State *L, const char *address, std::shared_ptr<GluaContractInfo> contract_info_ret);
+        virtual int get_stored_contract_info_by_address(lua_State *L, const char *address, std::shared_ptr<UvmContractInfo> contract_info_ret);
 
-        virtual std::shared_ptr<GluaModuleByteStream> get_bytestream_from_code(lua_State *L, const uvm::blockchain::Code& code);
+        virtual std::shared_ptr<UvmModuleByteStream> get_bytestream_from_code(lua_State *L, const uvm::blockchain::Code& code);
         /**
         * load contract lua byte stream from uvm api
         */
-        virtual std::shared_ptr<GluaModuleByteStream> open_contract(lua_State *L, const char *name);
+        virtual std::shared_ptr<UvmModuleByteStream> open_contract(lua_State *L, const char *name);
 
-        virtual std::shared_ptr<GluaModuleByteStream> open_contract_by_address(lua_State *L, const char *address);
+        virtual std::shared_ptr<UvmModuleByteStream> open_contract_by_address(lua_State *L, const char *address);
 
         /**
         * get contract address/id from uvm by contract name
@@ -91,7 +91,7 @@ namespace uvm {
         /**
         * store contract lua module byte stream to uvm api
         */
-        //int save_contract(lua_State *L, const char *name, GluaModuleByteStream *stream);
+        //int save_contract(lua_State *L, const char *name, UvmModuleByteStream *stream);
 
         /**
         * register new storage name of contract to uvm
@@ -101,11 +101,11 @@ namespace uvm {
         /**
         * directly get storage value from uvm
         */
-        //void free_contract_storage(lua_State *L, GluaStorageValue* storage);
+        //void free_contract_storage(lua_State *L, UvmStorageValue* storage);
 
-        virtual GluaStorageValue get_storage_value_from_uvm(lua_State *L, const char *contract_name, std::string name);
+        virtual UvmStorageValue get_storage_value_from_uvm(lua_State *L, const char *contract_name, std::string name);
 
-        virtual GluaStorageValue get_storage_value_from_uvm_by_address(lua_State *L, const char *contract_address, std::string name);
+        virtual UvmStorageValue get_storage_value_from_uvm_by_address(lua_State *L, const char *contract_address, std::string name);
 
         /**
         * after lua merge storage changes in lua_State, use the function to store the merged changes of storage to uvm
@@ -117,13 +117,13 @@ namespace uvm {
         * lua_State
         * uvm/，，lightuserdatauvm
         */
-        virtual intptr_t register_object_in_pool(lua_State *L, intptr_t object_addr, GluaOutsideObjectTypes type);
+        virtual intptr_t register_object_in_pool(lua_State *L, intptr_t object_addr, UvmOutsideObjectTypes type);
 
         /**
         * (register_object_in_pool，)lua_State（)
         * ，，0
         */
-        virtual intptr_t is_object_in_pool(lua_State *L, intptr_t object_key, GluaOutsideObjectTypes type);
+        virtual intptr_t is_object_in_pool(lua_State *L, intptr_t object_key, UvmOutsideObjectTypes type);
 
         /**
         * lua_State
@@ -154,7 +154,9 @@ namespace uvm {
 
         virtual void emit(lua_State *L, const char* contract_id, const char* event_name, const char* event_param);
 		virtual bool is_valid_address(lua_State *L, const char *address_str);
+		virtual bool is_valid_contract_address(lua_State *L, const char *address_str);
 		virtual const char *get_system_asset_symbol(lua_State *L);
+		virtual uint64_t get_system_asset_precision(lua_State *L);
 
       };
 

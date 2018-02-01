@@ -38,7 +38,7 @@ namespace uvm {
 			/**
 			* whether exception happen in L
 			*/
-			bool DemoGluaChainApi::has_exception(lua_State *L)
+			bool DemoUvmChainApi::has_exception(lua_State *L)
 			{
 				return has_error ? true : false;
 			}
@@ -46,7 +46,7 @@ namespace uvm {
 			/**
 			* clear exception marked
 			*/
-			void DemoGluaChainApi::clear_exceptions(lua_State *L)
+			void DemoUvmChainApi::clear_exceptions(lua_State *L)
 			{
 				has_error = 0;
 			}
@@ -58,7 +58,7 @@ namespace uvm {
 			* @param error_format error info string, will be released by lua
 			* @param ... error arguments
 			*/
-			void DemoGluaChainApi::throw_exception(lua_State *L, int code, const char *error_format, ...)
+			void DemoUvmChainApi::throw_exception(lua_State *L, int code, const char *error_format, ...)
 			{
 				has_error = 1;
 				char *msg = (char*)malloc(sizeof(char)*(LUA_VM_EXCEPTION_STRNG_MAX_LENGTH +1));
@@ -86,12 +86,12 @@ namespace uvm {
 			* @param L the lua stack
 			* @return TRUE(1 or not 0) if over limit(will break the vm), FALSE(0) if not over limit
 			*/
-			int DemoGluaChainApi::check_contract_api_instructions_over_limit(lua_State *L)
+			int DemoUvmChainApi::check_contract_api_instructions_over_limit(lua_State *L)
 			{
 				return 0;
 			}
 
-			int DemoGluaChainApi::get_stored_contract_info(lua_State *L, const char *name, std::shared_ptr<GluaContractInfo> contract_info_ret)
+			int DemoUvmChainApi::get_stored_contract_info(lua_State *L, const char *name, std::shared_ptr<UvmContractInfo> contract_info_ret)
 			{
 				if (uvm::util::starts_with(name, "@"))
 				{
@@ -105,7 +105,7 @@ namespace uvm {
 				}
 				return 1;
 			}
-			int DemoGluaChainApi::get_stored_contract_info_by_address(lua_State *L, const char *contract_id, std::shared_ptr<GluaContractInfo> contract_info_ret)
+			int DemoUvmChainApi::get_stored_contract_info_by_address(lua_State *L, const char *contract_id, std::shared_ptr<UvmContractInfo> contract_info_ret)
 			{
 				if (uvm::util::starts_with(contract_id, "@"))
 				{
@@ -120,12 +120,12 @@ namespace uvm {
 				return 1;
 			}
 
-			std::shared_ptr<GluaModuleByteStream> DemoGluaChainApi::get_bytestream_from_code(lua_State *L, const uvm::blockchain::Code& code)
+			std::shared_ptr<UvmModuleByteStream> DemoUvmChainApi::get_bytestream_from_code(lua_State *L, const uvm::blockchain::Code& code)
 			{
 				return nullptr;
 			}
 
-			void DemoGluaChainApi::get_contract_address_by_name(lua_State *L, const char *name, char *address, size_t *address_size)
+			void DemoUvmChainApi::get_contract_address_by_name(lua_State *L, const char *name, char *address, size_t *address_size)
 			{
 				std::string name_str(name);
 				if (name_str == std::string("not_found"))
@@ -140,12 +140,12 @@ namespace uvm {
 					*address_size = addr_str.size() + 1;
 			}
             
-            bool DemoGluaChainApi::check_contract_exist_by_address(lua_State *L, const char *address)
+            bool DemoUvmChainApi::check_contract_exist_by_address(lua_State *L, const char *address)
             {
                 return true;
             }
 
-			bool DemoGluaChainApi::check_contract_exist(lua_State *L, const char *name)
+			bool DemoUvmChainApi::check_contract_exist(lua_State *L, const char *name)
 			{
 				std::string filename = std::string("uvm_modules") + uvm::util::file_separator_str() + "uvm_contract_" + name;
 				FILE *f = fopen(filename.c_str(), "rb");
@@ -161,7 +161,7 @@ namespace uvm {
 			/**
 			* load contract lua byte stream from uvm api
 			*/
-			std::shared_ptr<GluaModuleByteStream> DemoGluaChainApi::open_contract(lua_State *L, const char *name)
+			std::shared_ptr<UvmModuleByteStream> DemoUvmChainApi::open_contract(lua_State *L, const char *name)
 			{
               uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
 				bool is_bytes = true;
@@ -174,14 +174,14 @@ namespace uvm {
 					f = fopen(filename.c_str(), "rb");
 					if (!f)
 					{
-						filename = origin_filename + GLUA_SOURCE_FILE_EXTENTION_NAME;
+						filename = origin_filename + ".glua";
 						f = fopen(filename.c_str(), "rb");
 						if(nullptr == f)
 							return nullptr;
 					}
 					is_bytes = false;
 				}
-				auto stream = std::make_shared<GluaModuleByteStream>();
+				auto stream = std::make_shared<UvmModuleByteStream>();
                 if(nullptr == stream)
                     return nullptr;
 				fseek(f, 0, SEEK_END);
@@ -200,7 +200,7 @@ namespace uvm {
 				return stream;
 			}
             
-			std::shared_ptr<GluaModuleByteStream> DemoGluaChainApi::open_contract_by_address(lua_State *L, const char *address)
+			std::shared_ptr<UvmModuleByteStream> DemoUvmChainApi::open_contract_by_address(lua_State *L, const char *address)
             {
 				if (uvm::util::starts_with(address, "id_"))
 				{
@@ -210,8 +210,8 @@ namespace uvm {
 					{
 						// stream
 						auto addr_pointer = std::atoll(name.c_str());
-						auto stream = (GluaModuleByteStream*)addr_pointer;
-						auto result_stream = std::make_shared<GluaModuleByteStream>();
+						auto stream = (UvmModuleByteStream*)addr_pointer;
+						auto result_stream = std::make_shared<UvmModuleByteStream>();
 						*result_stream = *stream;
 						return result_stream;
 					}
@@ -222,9 +222,9 @@ namespace uvm {
 
             // storage,mapkey contract_id + "$" + storage_name
             // TODO: lua_closepost_callback，
-            static std::map<lua_State *, std::shared_ptr<std::map<std::string, GluaStorageValue>>> _demo_chain_storage_buffer;
+            static std::map<lua_State *, std::shared_ptr<std::map<std::string, UvmStorageValue>>> _demo_chain_storage_buffer;
 
-			GluaStorageValue DemoGluaChainApi::get_storage_value_from_uvm(lua_State *L, const char *contract_name, std::string name)
+			UvmStorageValue DemoUvmChainApi::get_storage_value_from_uvm(lua_State *L, const char *contract_name, std::string name)
 			{
               // fetch storage value from uvm
               if (_demo_chain_storage_buffer.find(L) == _demo_chain_storage_buffer.end()) {
@@ -232,7 +232,7 @@ namespace uvm {
                 {
                   _demo_chain_storage_buffer.clear();
                 }
-                _demo_chain_storage_buffer[L] = std::make_shared<std::map<std::string, GluaStorageValue>>();
+                _demo_chain_storage_buffer[L] = std::make_shared<std::map<std::string, UvmStorageValue>>();
               }
               auto cache = _demo_chain_storage_buffer[L];
               // auto key = std::string(contract_address) + "$" + name;
@@ -241,14 +241,14 @@ namespace uvm {
               {
                 return (*cache)[key];
               }
-              GluaStorageValue value;
+              UvmStorageValue value;
               value.type = uvm::blockchain::StorageValueTypes::storage_value_null;
               value.value.int_value = 0;
               (*cache)[key] = value;
               return value;
 			}
 
-			GluaStorageValue DemoGluaChainApi::get_storage_value_from_uvm_by_address(lua_State *L, const char *contract_address, std::string name)
+			UvmStorageValue DemoUvmChainApi::get_storage_value_from_uvm_by_address(lua_State *L, const char *contract_address, std::string name)
 			{
 				// fetch storage value from uvm
                 if (_demo_chain_storage_buffer.find(L) == _demo_chain_storage_buffer.end()) {
@@ -256,7 +256,7 @@ namespace uvm {
                   {
                     _demo_chain_storage_buffer.clear();
                   }
-                    _demo_chain_storage_buffer[L] = std::make_shared<std::map<std::string, GluaStorageValue>>();
+                    _demo_chain_storage_buffer[L] = std::make_shared<std::map<std::string, UvmStorageValue>>();
                 }
                 auto cache = _demo_chain_storage_buffer[L];
                 // auto key = std::string(contract_address) + "$" + name;
@@ -265,14 +265,14 @@ namespace uvm {
                 {
                   return (*cache)[key];
                 }
-				GluaStorageValue value;
+				UvmStorageValue value;
 				value.type = uvm::blockchain::StorageValueTypes::storage_value_null;
 				value.value.int_value = 0;
                 (*cache)[key] = value;
 				return value;
 			}
 
-			bool DemoGluaChainApi::commit_storage_changes_to_uvm(lua_State *L, AllContractsChangesMap &changes)
+			bool DemoUvmChainApi::commit_storage_changes_to_uvm(lua_State *L, AllContractsChangesMap &changes)
 			{
 				// printf("commited storage changes to uvm\n");
                 if (_demo_chain_storage_buffer.find(L) == _demo_chain_storage_buffer.end()) {
@@ -280,7 +280,7 @@ namespace uvm {
                   {
                     _demo_chain_storage_buffer.clear();
                   }
-                  _demo_chain_storage_buffer[L] = std::make_shared<std::map<std::string, GluaStorageValue>>();
+                  _demo_chain_storage_buffer[L] = std::make_shared<std::map<std::string, UvmStorageValue>>();
                 }
                 auto cache = _demo_chain_storage_buffer[L];
                 for (const auto &change : changes)
@@ -293,28 +293,28 @@ namespace uvm {
                     // auto key = contract_id + "$" + name;
                     auto key =  std::string("demo$") + name; // democontract_idid_+，
                     // FIIXME: merge
-                    GluaStorageValue value = change_item.after;
+                    UvmStorageValue value = change_item.after;
                     (*cache)[key] = value;
                   }
                 }
 				return true;
 			}
 
-			intptr_t DemoGluaChainApi::register_object_in_pool(lua_State *L, intptr_t object_addr, GluaOutsideObjectTypes type)
+			intptr_t DemoUvmChainApi::register_object_in_pool(lua_State *L, intptr_t object_addr, UvmOutsideObjectTypes type)
 			{
 				auto node = uvm::lua::lib::get_lua_state_value_node(L, GLUA_OUTSIDE_OBJECT_POOLS_KEY);
 				// Map<type, Map<object_key, object_addr>>
-				std::map<GluaOutsideObjectTypes, std::shared_ptr<std::map<intptr_t, intptr_t>>> *object_pools = nullptr;
-				if(node.type == GluaStateValueType::LUA_STATE_VALUE_nullptr)
+				std::map<UvmOutsideObjectTypes, std::shared_ptr<std::map<intptr_t, intptr_t>>> *object_pools = nullptr;
+				if(node.type == UvmStateValueType::LUA_STATE_VALUE_nullptr)
 				{
-					node.type = GluaStateValueType::LUA_STATE_VALUE_POINTER;
-					object_pools = new std::map<GluaOutsideObjectTypes, std::shared_ptr<std::map<intptr_t, intptr_t>>>();
+					node.type = UvmStateValueType::LUA_STATE_VALUE_POINTER;
+					object_pools = new std::map<UvmOutsideObjectTypes, std::shared_ptr<std::map<intptr_t, intptr_t>>>();
 					node.value.pointer_value = (void*)object_pools;
 					uvm::lua::lib::set_lua_state_value(L, GLUA_OUTSIDE_OBJECT_POOLS_KEY, node.value, node.type);
 				} 
 				else
 				{
-					object_pools = (std::map<GluaOutsideObjectTypes, std::shared_ptr<std::map<intptr_t, intptr_t>>> *) node.value.pointer_value;
+					object_pools = (std::map<UvmOutsideObjectTypes, std::shared_ptr<std::map<intptr_t, intptr_t>>> *) node.value.pointer_value;
 				}
 				if(object_pools->find(type) == object_pools->end())
 				{
@@ -326,18 +326,18 @@ namespace uvm {
 				return object_key;
 			}
 
-			intptr_t DemoGluaChainApi::is_object_in_pool(lua_State *L, intptr_t object_key, GluaOutsideObjectTypes type)
+			intptr_t DemoUvmChainApi::is_object_in_pool(lua_State *L, intptr_t object_key, UvmOutsideObjectTypes type)
 			{
 				auto node = uvm::lua::lib::get_lua_state_value_node(L, GLUA_OUTSIDE_OBJECT_POOLS_KEY);
 				// Map<type, Map<object_key, object_addr>>
-				std::map<GluaOutsideObjectTypes, std::shared_ptr<std::map<intptr_t, intptr_t>>> *object_pools = nullptr;
-				if (node.type == GluaStateValueType::LUA_STATE_VALUE_nullptr)
+				std::map<UvmOutsideObjectTypes, std::shared_ptr<std::map<intptr_t, intptr_t>>> *object_pools = nullptr;
+				if (node.type == UvmStateValueType::LUA_STATE_VALUE_nullptr)
 				{
 					return 0;
 				}
 				else
 				{
-					object_pools = (std::map<GluaOutsideObjectTypes, std::shared_ptr<std::map<intptr_t, intptr_t>>> *) node.value.pointer_value;
+					object_pools = (std::map<UvmOutsideObjectTypes, std::shared_ptr<std::map<intptr_t, intptr_t>>> *) node.value.pointer_value;
 				}
 				if (object_pools->find(type) == object_pools->end())
 				{
@@ -347,16 +347,16 @@ namespace uvm {
 				return (*pool)[object_key];
 			}
 
-			void DemoGluaChainApi::release_objects_in_pool(lua_State *L)
+			void DemoUvmChainApi::release_objects_in_pool(lua_State *L)
 			{
 				auto node = uvm::lua::lib::get_lua_state_value_node(L, GLUA_OUTSIDE_OBJECT_POOLS_KEY);
 				// Map<type, Map<object_key, object_addr>>
-				std::map<GluaOutsideObjectTypes, std::shared_ptr<std::map<intptr_t, intptr_t>>> *object_pools = nullptr;
-				if (node.type == GluaStateValueType::LUA_STATE_VALUE_nullptr)
+				std::map<UvmOutsideObjectTypes, std::shared_ptr<std::map<intptr_t, intptr_t>>> *object_pools = nullptr;
+				if (node.type == UvmStateValueType::LUA_STATE_VALUE_nullptr)
 				{
 					return;
 				}
-				object_pools = (std::map<GluaOutsideObjectTypes, std::shared_ptr<std::map<intptr_t, intptr_t>>> *) node.value.pointer_value;
+				object_pools = (std::map<UvmOutsideObjectTypes, std::shared_ptr<std::map<intptr_t, intptr_t>>> *) node.value.pointer_value;
 				// TODO: object_pools，
 				for(const auto &p : *object_pools)
 				{
@@ -370,9 +370,9 @@ namespace uvm {
 							continue;
 						switch(type)
 						{
-						case GluaOutsideObjectTypes::OUTSIDE_STREAM_STORAGE_TYPE:
+						case UvmOutsideObjectTypes::OUTSIDE_STREAM_STORAGE_TYPE:
 						{
-							auto stream = (uvm::lua::lib::GluaByteStream*) object_addr;
+							auto stream = (uvm::lua::lib::UvmByteStream*) object_addr;
 							delete stream;
 						} break;
 						default: {
@@ -382,18 +382,18 @@ namespace uvm {
 					}
 				}
 				delete object_pools;
-				GluaStateValue null_state_value;
+				UvmStateValue null_state_value;
 				null_state_value.int_value = 0;
-				uvm::lua::lib::set_lua_state_value(L, GLUA_OUTSIDE_OBJECT_POOLS_KEY, null_state_value, GluaStateValueType::LUA_STATE_VALUE_nullptr);
+				uvm::lua::lib::set_lua_state_value(L, GLUA_OUTSIDE_OBJECT_POOLS_KEY, null_state_value, UvmStateValueType::LUA_STATE_VALUE_nullptr);
 			}
 
-			bool DemoGluaChainApi::register_storage(lua_State *L, const char *contract_name, const char *name)
+			bool DemoUvmChainApi::register_storage(lua_State *L, const char *contract_name, const char *name)
 			{
 				// printf("registered storage %s[%s] to uvm\n", contract_name, name);
 				return true;
 			}
 
-			lua_Integer DemoGluaChainApi::transfer_from_contract_to_address(lua_State *L, const char *contract_address, const char *to_address,
+			lua_Integer DemoUvmChainApi::transfer_from_contract_to_address(lua_State *L, const char *contract_address, const char *to_address,
 				const char *asset_type, int64_t amount_str)
 			{
               uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
@@ -401,7 +401,7 @@ namespace uvm {
 				return 0;
 			}
 
-			lua_Integer DemoGluaChainApi::transfer_from_contract_to_public_account(lua_State *L, const char *contract_address, const char *to_account_name,
+			lua_Integer DemoUvmChainApi::transfer_from_contract_to_public_account(lua_State *L, const char *contract_address, const char *to_account_name,
 				const char *asset_type, int64_t amount)
 			{
               uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
@@ -409,68 +409,78 @@ namespace uvm {
 				return 0;
 			}
 
-			int64_t DemoGluaChainApi::get_contract_balance_amount(lua_State *L, const char *contract_address, const char* asset_symbol)
+			int64_t DemoUvmChainApi::get_contract_balance_amount(lua_State *L, const char *contract_address, const char* asset_symbol)
 			{
               uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
 				return 0;
 			}
 
-			int64_t DemoGluaChainApi::get_transaction_fee(lua_State *L)
+			int64_t DemoUvmChainApi::get_transaction_fee(lua_State *L)
 			{
               uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
 				return 0;
 			}
 
-			uint32_t DemoGluaChainApi::get_chain_now(lua_State *L)
+			uint32_t DemoUvmChainApi::get_chain_now(lua_State *L)
 			{				
               uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
 				return 0;
 			}
 
-			uint32_t DemoGluaChainApi::get_chain_random(lua_State *L)
+			uint32_t DemoUvmChainApi::get_chain_random(lua_State *L)
 			{
               uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
 				return 0;
 			}
 
-			std::string DemoGluaChainApi::get_transaction_id(lua_State *L)
+			std::string DemoUvmChainApi::get_transaction_id(lua_State *L)
 			{
               uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
 				return "";
 			}
 
-			uint32_t DemoGluaChainApi::get_header_block_num(lua_State *L)
+			uint32_t DemoUvmChainApi::get_header_block_num(lua_State *L)
 			{
               uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
 				return 0;
 			}
 
-			uint32_t DemoGluaChainApi::wait_for_future_random(lua_State *L, int next)
+			uint32_t DemoUvmChainApi::wait_for_future_random(lua_State *L, int next)
 			{
               uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
 				return 0;
 			}
 
-			int32_t DemoGluaChainApi::get_waited(lua_State *L, uint32_t num)
+			int32_t DemoUvmChainApi::get_waited(lua_State *L, uint32_t num)
 			{
               uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
 				return num;
 			}
 
-			void DemoGluaChainApi::emit(lua_State *L, const char* contract_id, const char* event_name, const char* event_param)
+			void DemoUvmChainApi::emit(lua_State *L, const char* contract_id, const char* event_name, const char* event_param)
 			{
               uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
 				printf("emit called\n");
 			}
 
-			bool DemoGluaChainApi::is_valid_address(lua_State *L, const char *address_str)
+			bool DemoUvmChainApi::is_valid_address(lua_State *L, const char *address_str)
 			{
 				return true;
 			}
 
-			const char * DemoGluaChainApi::get_system_asset_symbol(lua_State *L)
+			bool DemoUvmChainApi::is_valid_contract_address(lua_State *L, const char *address_str)
+			{
+				return true;
+			}
+
+			const char * DemoUvmChainApi::get_system_asset_symbol(lua_State *L)
 			{
 				return "COIN";
+			}
+
+			uint64_t DemoUvmChainApi::get_system_asset_precision(lua_State *L)
+			{
+				return 10000;
 			}
 
 		}

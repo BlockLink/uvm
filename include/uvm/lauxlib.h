@@ -45,10 +45,10 @@ typedef struct LuaCompileFilePreloadResult
 
 #define LUA_MAP_TRAVERSER_MAX_DEPTH 100
 
-GluaTableMapP(lua_table_to_map)(lua_State *L, int index);
-GluaTableMapP(lua_table_to_map_with_nested)(lua_State *L, int index, std::list<const void*> &jsons, size_t recur_depth);
-struct GluaStorageValue(lua_type_to_storage_value_type)(lua_State *L, int index, size_t len);
-struct GluaStorageValue(lua_type_to_storage_value_type_with_nested)(lua_State *L, int index, size_t len, std::list<const void*> &jsons, size_t recur_depth);
+UvmTableMapP(lua_table_to_map)(lua_State *L, int index);
+UvmTableMapP(lua_table_to_map_with_nested)(lua_State *L, int index, std::list<const void*> &jsons, size_t recur_depth);
+struct UvmStorageValue(lua_type_to_storage_value_type)(lua_State *L, int index, size_t len);
+struct UvmStorageValue(lua_type_to_storage_value_type_with_nested)(lua_State *L, int index, size_t len, std::list<const void*> &jsons, size_t recur_depth);
 bool (lua_table_to_map_traverser)(lua_State *L, void *ud);
 bool (lua_table_to_map_traverser_with_nested)(lua_State *L, void *ud, size_t len, std::list<const void*> &jsons, size_t recur_depth);
 LUALIB_API const char *(luaL_tojsonstring)(lua_State *L, int idx, size_t *len);
@@ -141,7 +141,7 @@ int luaL_import_contract_module_from_address(lua_State *L);
 
 std::shared_ptr<UvmModuleByteStream> lua_common_open_contract(lua_State *L, const char *name, char *error = nullptr);
 
-GluaTableMapP luaL_create_lua_table_map_in_memory_pool(lua_State *L);
+UvmTableMapP luaL_create_lua_table_map_in_memory_pool(lua_State *L);
 
 
 /************************************************************************/
