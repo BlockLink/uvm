@@ -45,7 +45,7 @@
 * in lua_State scope, share some values, after close lua_State, you must release these shared values
 * all keys and values need copied to shared pool
 */
-enum GluaStateValueType {
+enum UvmStateValueType {
     LUA_STATE_VALUE_INT = 1,
     LUA_STATE_VALUE_INT_POINTER = 2,
     LUA_STATE_VALUE_STRING = 3,
@@ -53,17 +53,17 @@ enum GluaStateValueType {
     LUA_STATE_VALUE_nullptr = 0
 };
 
-typedef union _GluaStateValue {
+typedef union _UvmStateValue {
     int int_value;
     int *int_pointer_value;
     const char *string_value;
     void *pointer_value;
-} GluaStateValue;
+} UvmStateValue;
 
-typedef struct _GluaStateValueNode {
-    enum GluaStateValueType type;
-    GluaStateValue value;
-} GluaStateValueNode;
+typedef struct _UvmStateValueNode {
+    enum UvmStateValueType type;
+    UvmStateValue value;
+} UvmStateValueNode;
 
 
 namespace uvm
@@ -78,15 +78,15 @@ namespace uvm
 			// special contract api names with int argument
 			extern std::vector<std::string> contract_int_argument_special_api_names;
 
-            class GluaStateScope
+            class UvmStateScope
             {
             private:
                 lua_State *_L;
                 bool _use_contract;
             public:
-                GluaStateScope(bool use_contract = true);
-                GluaStateScope(const GluaStateScope &other);
-                ~GluaStateScope();
+                UvmStateScope(bool use_contract = true);
+                UvmStateScope(const UvmStateScope &other);
+                ~UvmStateScope();
 
                 inline lua_State *L() const { return this->_L; }
 
@@ -118,15 +118,15 @@ namespace uvm
                 /************************************************************************/
                 /* every lua stack has a key=>value map                                 */
                 /************************************************************************/
-                GluaStateValueNode get_value_node(const char *key);
+                UvmStateValueNode get_value_node(const char *key);
                 /************************************************************************/
                 /* every lua stack has a key=>value map                                 */
                 /************************************************************************/
-                GluaStateValue get_value(const char *key);
+                UvmStateValue get_value(const char *key);
                 /************************************************************************/
                 /* every lua stack has a key=>value map                                 */
                 /************************************************************************/
-                void set_value(const char *key, GluaStateValue value, enum GluaStateValueType type);
+                void set_value(const char *key, UvmStateValue value, enum UvmStateValueType type);
 
                 /************************************************************************/
                 /* set how many lua vm instructions can run in the lua stack            */
@@ -211,14 +211,14 @@ namespace uvm
                 bool check_contract_bytecode_stream(UvmModuleByteStreamP stream);
             };
 
-			class GluaByteStream
+			class UvmByteStream
 			{
 			private:
 				size_t _pos;
 				std::vector<char> _buff;
 			public:
-				inline GluaByteStream(): _pos(0) {}
-				inline virtual ~GluaByteStream(){}
+				inline UvmByteStream(): _pos(0) {}
+				inline virtual ~UvmByteStream(){}
 
 				inline bool eof() const
 				{
@@ -274,7 +274,7 @@ namespace uvm
 					memcpy(_buff.data() + _buff.size(), data.data(), sizeof(char) * data.size());
 				}
 
-				inline bool equals(GluaByteStream *other)
+				inline bool equals(UvmByteStream *other)
 				{
                     if (!other)
                         return false;
@@ -299,8 +299,8 @@ namespace uvm
             void close_all_lua_state_values();
             void close_lua_state_values(lua_State *L);
 
-            GluaStateValueNode get_lua_state_value_node(lua_State *L, const char *key);
-            GluaStateValue get_lua_state_value(lua_State *L, const char *key);
+            UvmStateValueNode get_lua_state_value_node(lua_State *L, const char *key);
+            UvmStateValue get_lua_state_value(lua_State *L, const char *key);
             void set_lua_state_instructions_limit(lua_State *L, int limit);
 
             int get_lua_state_instructions_limit(lua_State *L);
@@ -328,9 +328,9 @@ namespace uvm
              */
             void resume_lua_state_running(lua_State *L);
 
-            void set_lua_state_value(lua_State *L, const char *key, GluaStateValue value, enum GluaStateValueType type);
+            void set_lua_state_value(lua_State *L, const char *key, UvmStateValue value, enum UvmStateValueType type);
 
-            GluaTableMapP create_managed_lua_table_map(lua_State *L);
+            UvmTableMapP create_managed_lua_table_map(lua_State *L);
 
             char *malloc_managed_string(lua_State *L, size_t size, const char *init_data=nullptr);
 
@@ -366,9 +366,9 @@ namespace uvm
 
             const char *get_contract_id_in_api(lua_State *L);
 
-            // GluaStorageValue luvm_get_storage(lua_State *L, const char *contract_id, const char *name);
+            // UvmStorageValue luvm_get_storage(lua_State *L, const char *contract_id, const char *name);
             
-			//bool luvm_set_storage(lua_State *L, const char *contract_id, const char *name, GluaStorageValue value);
+			//bool luvm_set_storage(lua_State *L, const char *contract_id, const char *name, UvmStorageValue value);
 
             void free_bytecode_stream(UvmModuleByteStreamP stream);
 
