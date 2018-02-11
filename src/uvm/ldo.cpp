@@ -806,6 +806,8 @@ static void f_parser(lua_State *L, void *ud) {
         checkmode(L, p->mode, "text");
         cl = luaY_parser(L, p->z, &p->buff, &p->dyd, p->name, c);
     }
+	if (!cl)
+		return;
     lua_assert(cl->nupvalues == cl->p->sizeupvalues);
     luaF_initupvals(L, cl);
 }

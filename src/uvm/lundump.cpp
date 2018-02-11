@@ -313,7 +313,9 @@ LClosure *luaU_undump(lua_State *L, ZIO *Z, const char *name) {
         S.name = name;
     S.L = L;
     S.Z = Z;
-    checkHeader(&S); // FIXME: release
+    checkHeader(&S);
+	if (strlen(L->runerror) > 0 || strlen(L->compile_error) > 0)
+		return nullptr;
     cl = luaF_newLclosure(L, LoadByte(&S));
     setclLvalue(L, L->top, cl);
     luaD_inctop(L);
