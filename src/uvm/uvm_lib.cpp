@@ -1165,6 +1165,8 @@ end
                 luaZ_init(L, &z, reader_of_stream, (void*)stream.get());
                 luaZ_fill(&z);
                 LClosure *closure = luaU_undump(L, &z, name);
+				if (!closure)
+					return nullptr;
                 fclose(f);
                 return closure;
             }
