@@ -60,6 +60,8 @@ namespace uvm {
 			*/
 			void DemoGluaChainApi::throw_exception(lua_State *L, int code, const char *error_format, ...)
 			{
+				if (has_error)
+					return;
 				has_error = 1;
 				char *msg = (char*)malloc(sizeof(char)*(LUA_VM_EXCEPTION_STRNG_MAX_LENGTH +1));
 				if(!msg)

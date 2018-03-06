@@ -42,10 +42,10 @@ using uvm::lua::api::global_uvm_chain_api;
 ** Some sizes are better limited to fit in 'int', but must also fit in
 ** 'size_t'. (We assume that 'lua_Integer' cannot be smaller than 'int'.)
 */
-#define MAX_SIZET	((size_t)(~(size_t)0))
+#define UVM_MAX_SIZET	((size_t)(~(size_t)0))
 
 #define MAXSIZE  \
-	(sizeof(size_t) < sizeof(int) ? MAX_SIZET : (size_t)(INT_MAX))
+	(sizeof(size_t) < sizeof(int) ? UVM_MAX_SIZET : (size_t)(INT_MAX))
 
 
 
@@ -608,10 +608,10 @@ static void prepstate(MatchState *ms, lua_State *L,
     ms->src_init = s;
     ms->src_end = s + ls;
     ms->p_end = p + lp;
-    if (ls < (MAX_SIZET - B_REPS) / A_REPS)
+    if (ls < (UVM_MAX_SIZET - B_REPS) / A_REPS)
         ms->nrep = A_REPS * ls + B_REPS;
     else  /* overflow (very long subject) */
-        ms->nrep = MAX_SIZET;  /* no limit */
+        ms->nrep = UVM_MAX_SIZET;  /* no limit */
 }
 
 

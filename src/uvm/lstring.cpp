@@ -201,7 +201,7 @@ TString *luaS_newlstr(lua_State *L, const char *str, size_t l) {
         return internshrstr(L, str, l);
     else {
         TString *ts;
-        if (l >= (MAX_SIZE - sizeof(TString)) / sizeof(char))
+        if (l >= (UVM_MAX_SIZE - sizeof(TString)) / sizeof(char))
             luaM_toobig(L);
         ts = luaS_createlngstrobj(L, l);
         memcpy(getstr(ts), str, l * sizeof(char));
@@ -236,7 +236,7 @@ TString *luaS_new(lua_State *L, const char *str) {
 Udata *luaS_newudata(lua_State *L, size_t s) {
     Udata *u;
     GCObject *o;
-    if (s > MAX_SIZE - sizeof(Udata))
+    if (s > UVM_MAX_SIZE - sizeof(Udata))
         luaM_toobig(L);
     o = luaC_newobj(L, LUA_TUSERDATA, sizeludata(s));
     u = gco2u(o);

@@ -60,7 +60,7 @@ static void save(LexState *ls, int c) {
     Mbuffer *b = ls->buff;
     if (luaZ_bufflen(b) + 1 > luaZ_sizebuffer(b)) {
         size_t newsize;
-        if (luaZ_sizebuffer(b) >= MAX_SIZE / 2)
+        if (luaZ_sizebuffer(b) >= UVM_MAX_SIZE / 2)
             lexerror(ls, "lexical element too long", 0);
         newsize = luaZ_sizebuffer(b) * 2;
         luaZ_resizebuffer(ls->L, b, newsize);

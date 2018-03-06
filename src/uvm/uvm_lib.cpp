@@ -37,7 +37,7 @@ namespace uvm
     {
       namespace api
       {
-        IGluaChainApi *global_uvm_chain_api = nullptr;
+        IUvmChainApi *global_uvm_chain_api = nullptr;
       }
 
       using uvm::lua::api::global_uvm_chain_api;
@@ -54,14 +54,14 @@ namespace uvm
 
             static const char *globalvar_whitelist[] = {
                 "print", "pprint", "table", "string", "time", "math", "json", "type", "require", "Array", "Stream",
-                "import_contract_from_address", "import_contract", "emit", "is_valid_address",
+                "import_contract_from_address", "import_contract", "emit", "is_valid_address", "is_valid_contract_address", "get_prev_call_frame_contract_address",
                 "uvm", "storage", "exit", "self", "debugger", "exit_debugger",
                 "caller", "caller_address",
                 "contract_transfer", "contract_transfer_to", "transfer_from_contract_to_address",
 				"transfer_from_contract_to_public_account",
                 "get_chain_random", "get_transaction_fee",
                 "get_transaction_id", "get_header_block_num", "wait_for_future_random", "get_waited",
-                "get_contract_balance_amount", "get_chain_now", "get_current_contract_address", "get_system_asset_symbol",
+                "get_contract_balance_amount", "get_chain_now", "get_current_contract_address", "get_system_asset_symbol", "get_system_asset_precision",
                 "pairs", "ipairs", "pairsByKeys", "collectgarbage", "error", "getmetatable", "_VERSION",
                 "tostring", "tojsonstring", "tonumber", "tointeger", "todouble", "totable", "toboolean",
                 "next", "rawequal", "rawlen", "rawget", "rawset", "select",
@@ -70,7 +70,7 @@ namespace uvm
 
             typedef lua_State* L_Key1;
 
-            typedef std::unordered_map<std::string, GluaStateValueNode> L_VM1;
+            typedef std::unordered_map<std::string, UvmStateValueNode> L_VM1;
 
             typedef std::shared_ptr<L_VM1> L_V1;
 
@@ -173,6 +173,13 @@ namespace uvm
 			{
 				const char *system_asset_symbol = uvm::lua::api::global_uvm_chain_api->get_system_asset_symbol(L);
 				lua_pushstring(L, system_asset_symbol);
+				return 1;
+			}
+
+			static int get_system_asset_precision(lua_State *L)
+			{
+				auto precision = uvm::lua::api::global_uvm_chain_api->get_system_asset_precision(L);
+				lua_pushinteger(L, precision);
 				return 1;
 			}
 
@@ -402,11 +409,24 @@ namespace uvm
 				return 1;
 			}
 
+			static int is_valid_contract_address(lua_State *L)
+			{
+				if (lua_gettop(L) < 1 || !lua_isstring(L, 1))
+				{
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "is_valid_contract_address need a param of address string");
+					return 0;
+				}
+				auto address = luaL_checkstring(L, 1);
+				auto result = uvm::lua::api::global_uvm_chain_api->is_valid_contract_address(L, address);
+				lua_pushboolean(L, result ? 1 : 0);
+				return 1;
+			}
+
 			static int uvm_core_lib_Stream_size(lua_State *L)
             {
-				auto stream = (GluaByteStream*) luaL_checkudata(L, 1, "GluaByteStream_metatable");
+				auto stream = (UvmByteStream*) luaL_checkudata(L, 1, "UvmByteStream_metatable");
 				if(uvm::lua::api::global_uvm_chain_api->is_object_in_pool(L, (intptr_t) stream,
-					GluaOutsideObjectTypes::OUTSIDE_STREAM_STORAGE_TYPE)>0)
+					UvmOutsideObjectTypes::OUTSIDE_STREAM_STORAGE_TYPE)>0)
 				{
 					auto stream_size = stream->size();
 					lua_pushinteger(L, stream_size);
@@ -421,9 +441,9 @@ namespace uvm
 
 			static int uvm_core_lib_Stream_eof(lua_State *L)
 			{
-				auto stream = (GluaByteStream*)luaL_checkudata(L, 1, "GluaByteStream_metatable");
+				auto stream = (UvmByteStream*)luaL_checkudata(L, 1, "UvmByteStream_metatable");
 				if (uvm::lua::api::global_uvm_chain_api->is_object_in_pool(L, (intptr_t)stream,
-					GluaOutsideObjectTypes::OUTSIDE_STREAM_STORAGE_TYPE)>0)
+					UvmOutsideObjectTypes::OUTSIDE_STREAM_STORAGE_TYPE)>0)
 				{
 					lua_pushboolean(L, stream->eof());
 					return 1;
@@ -437,9 +457,9 @@ namespace uvm
 
 			static int uvm_core_lib_Stream_current(lua_State *L)
 			{
-				auto stream = (GluaByteStream*)luaL_checkudata(L, 1, "GluaByteStream_metatable");
+				auto stream = (UvmByteStream*)luaL_checkudata(L, 1, "UvmByteStream_metatable");
 				if (uvm::lua::api::global_uvm_chain_api->is_object_in_pool(L, (intptr_t)stream,
-					GluaOutsideObjectTypes::OUTSIDE_STREAM_STORAGE_TYPE)>0)
+					UvmOutsideObjectTypes::OUTSIDE_STREAM_STORAGE_TYPE)>0)
 				{
 					lua_pushinteger(L, stream->current());
 					return 1;
@@ -453,9 +473,9 @@ namespace uvm
 
 			static int uvm_core_lib_Stream_next(lua_State *L)
 			{
-				auto stream = (GluaByteStream*)luaL_checkudata(L, 1, "GluaByteStream_metatable");
+				auto stream = (UvmByteStream*)luaL_checkudata(L, 1, "UvmByteStream_metatable");
 				if (uvm::lua::api::global_uvm_chain_api->is_object_in_pool(L, (intptr_t)stream,
-					GluaOutsideObjectTypes::OUTSIDE_STREAM_STORAGE_TYPE)>0)
+					UvmOutsideObjectTypes::OUTSIDE_STREAM_STORAGE_TYPE)>0)
 				{
 					lua_pushboolean(L, stream->next());
 					return 1;
@@ -469,9 +489,9 @@ namespace uvm
 
 			static int uvm_core_lib_Stream_pos(lua_State *L)
 			{
-				auto stream = (GluaByteStream*)luaL_checkudata(L, 1, "GluaByteStream_metatable");
+				auto stream = (UvmByteStream*)luaL_checkudata(L, 1, "UvmByteStream_metatable");
 				if (uvm::lua::api::global_uvm_chain_api->is_object_in_pool(L, (intptr_t)stream,
-					GluaOutsideObjectTypes::OUTSIDE_STREAM_STORAGE_TYPE)>0)
+					UvmOutsideObjectTypes::OUTSIDE_STREAM_STORAGE_TYPE)>0)
 				{
 					lua_pushinteger(L, stream->pos());
 					return 1;
@@ -485,9 +505,9 @@ namespace uvm
 
 			static int uvm_core_lib_Stream_reset_pos(lua_State *L)
 			{
-				auto stream = (GluaByteStream*)luaL_checkudata(L, 1, "GluaByteStream_metatable");
+				auto stream = (UvmByteStream*)luaL_checkudata(L, 1, "UvmByteStream_metatable");
 				if (uvm::lua::api::global_uvm_chain_api->is_object_in_pool(L, (intptr_t)stream,
-					GluaOutsideObjectTypes::OUTSIDE_STREAM_STORAGE_TYPE)>0)
+					UvmOutsideObjectTypes::OUTSIDE_STREAM_STORAGE_TYPE)>0)
 				{
 					stream->reset_pos();
 					return 0;
@@ -501,10 +521,10 @@ namespace uvm
 
 			static int uvm_core_lib_Stream_push(lua_State *L)
 			{
-				auto stream = (GluaByteStream*)luaL_checkudata(L, 1, "GluaByteStream_metatable");
+				auto stream = (UvmByteStream*)luaL_checkudata(L, 1, "UvmByteStream_metatable");
 				auto c = luaL_checkinteger(L, 2);
 				if (uvm::lua::api::global_uvm_chain_api->is_object_in_pool(L, (intptr_t)stream,
-					GluaOutsideObjectTypes::OUTSIDE_STREAM_STORAGE_TYPE)>0)
+					UvmOutsideObjectTypes::OUTSIDE_STREAM_STORAGE_TYPE)>0)
 				{
 					stream->push((char)c);
 					return 0;
@@ -518,10 +538,10 @@ namespace uvm
 
 			static int uvm_core_lib_Stream_push_string(lua_State *L)
 			{
-				auto stream = (GluaByteStream*)luaL_checkudata(L, 1, "GluaByteStream_metatable");
+				auto stream = (UvmByteStream*)luaL_checkudata(L, 1, "UvmByteStream_metatable");
 				auto argstr = luaL_checkstring(L, 2);
 				if (uvm::lua::api::global_uvm_chain_api->is_object_in_pool(L, (intptr_t)stream,
-					GluaOutsideObjectTypes::OUTSIDE_STREAM_STORAGE_TYPE)>0)
+					UvmOutsideObjectTypes::OUTSIDE_STREAM_STORAGE_TYPE)>0)
 				{
 					for(size_t i=0;i<strlen(argstr);++i)
 					{
@@ -541,10 +561,10 @@ namespace uvm
 			 */
 			static int uvm_core_lib_Stream(lua_State *L)
             {
-				auto stream = new GluaByteStream();
-				uvm::lua::api::global_uvm_chain_api->register_object_in_pool(L, (intptr_t) stream, GluaOutsideObjectTypes::OUTSIDE_STREAM_STORAGE_TYPE);
+				auto stream = new UvmByteStream();
+				uvm::lua::api::global_uvm_chain_api->register_object_in_pool(L, (intptr_t) stream, UvmOutsideObjectTypes::OUTSIDE_STREAM_STORAGE_TYPE);
 				lua_pushlightuserdata(L, (void*) stream);
-				luaL_getmetatable(L, "GluaByteStream_metatable");
+				luaL_getmetatable(L, "UvmByteStream_metatable");
 				lua_setmetatable(L, -2);
 				return 1;
             }
@@ -806,7 +826,7 @@ end
 				}
 				lua_pop(L, 1);
 
-				luaL_newmetatable(L, "GluaByteStream_metatable");
+				luaL_newmetatable(L, "UvmByteStream_metatable");
 				lua_pushcfunction(L, &uvm_core_lib_Stream_size);
 				lua_setfield(L, -2, "size");
 				lua_pushcfunction(L, &uvm_core_lib_Stream_eof);
@@ -878,7 +898,9 @@ end
                     add_global_c_function(L, "get_transaction_fee", get_transaction_fee);
                     add_global_c_function(L, "emit", emit_uvm_event);
 					add_global_c_function(L, "is_valid_address", is_valid_address);
+					add_global_c_function(L, "is_valid_contract_address", is_valid_contract_address);
 					add_global_c_function(L, "get_system_asset_symbol", get_system_asset_symbol);
+					add_global_c_function(L, "get_system_asset_precision", get_system_asset_precision);
                 }
                 return L;
             }
@@ -902,11 +924,11 @@ end
                     auto lua_table_map_list_p = get_lua_state_value(L, LUA_TABLE_MAP_LIST_STATE_MAP_KEY).pointer_value;
                     if (nullptr != lua_table_map_list_p)
                     {
-                        auto list_p = (std::list<GluaTableMapP>*) lua_table_map_list_p;
+                        auto list_p = (std::list<UvmTableMapP>*) lua_table_map_list_p;
                         for (auto it = list_p->begin(); it != list_p->end(); ++it)
                         {
-                            GluaTableMapP lua_table_map = *it;
-                            // lua_table_map->~GluaTableMap();
+                            UvmTableMapP lua_table_map = *it;
+                            // lua_table_map->~UvmTableMap();
                             // lua_free(L, lua_table_map);
                             delete lua_table_map;
                         }
@@ -923,14 +945,14 @@ end
                         }
                     }
                     // close values in state values(some pointers need free), eg. storage infos, contract infos
-                    GluaStateValueNode storage_changelist_node = get_lua_state_value_node(L, LUA_STORAGE_CHANGELIST_KEY);
+                    UvmStateValueNode storage_changelist_node = get_lua_state_value_node(L, LUA_STORAGE_CHANGELIST_KEY);
                     if (storage_changelist_node.type == LUA_STATE_VALUE_POINTER && nullptr != storage_changelist_node.value.pointer_value)
                     {
-                        GluaStorageChangeList *list = (GluaStorageChangeList*)storage_changelist_node.value.pointer_value;
+                        UvmStorageChangeList *list = (UvmStorageChangeList*)storage_changelist_node.value.pointer_value;
                         for (auto it = list->begin(); it != list->end(); ++it)
                         {
-                            GluaStorageValue before = it->before;
-                            GluaStorageValue after = it->after;
+                            UvmStorageValue before = it->before;
+                            UvmStorageValue after = it->after;
                             if (lua_storage_is_table(before.type))
                             {
                                 // free_lua_table_map(L, before.value.table_value);
@@ -940,15 +962,15 @@ end
                                 // free_lua_table_map(L, after.value.table_value);
                             }
                         }
-                        list->~GluaStorageChangeList();
+                        list->~UvmStorageChangeList();
                         lua_free(L, list);
                     }
 
-                    GluaStateValueNode storage_table_read_list_node = get_lua_state_value_node(L, LUA_STORAGE_READ_TABLES_KEY);
+                    UvmStateValueNode storage_table_read_list_node = get_lua_state_value_node(L, LUA_STORAGE_READ_TABLES_KEY);
                     if (storage_table_read_list_node.type == LUA_STATE_VALUE_POINTER && nullptr != storage_table_read_list_node.value.pointer_value)
                     {
-                        GluaStorageTableReadList *list = (GluaStorageTableReadList*)storage_table_read_list_node.value.pointer_value;
-                        list->~GluaStorageTableReadList();
+                        UvmStorageTableReadList *list = (UvmStorageTableReadList*)storage_table_read_list_node.value.pointer_value;
+                        list->~UvmStorageTableReadList();
                         lua_free(L, list);
                     }
 
@@ -983,10 +1005,10 @@ end
                 states_map->erase(L);
             }
 
-            GluaStateValueNode get_lua_state_value_node(lua_State *L, const char *key)
+            UvmStateValueNode get_lua_state_value_node(lua_State *L, const char *key)
             {
-                GluaStateValue nil_value = { 0 };
-                GluaStateValueNode nil_value_node;
+                UvmStateValue nil_value = { 0 };
+                UvmStateValueNode nil_value_node;
                 nil_value_node.type = LUA_STATE_VALUE_nullptr;
                 nil_value_node.value = nil_value;
                 if (nullptr == L || nullptr == key || strlen(key) < 1)
@@ -1004,13 +1026,13 @@ end
                     return map->at(key_str);
             }
 
-            GluaStateValue get_lua_state_value(lua_State *L, const char *key)
+            UvmStateValue get_lua_state_value(lua_State *L, const char *key)
             {
                 return get_lua_state_value_node(L, key).value;
             }
             void set_lua_state_instructions_limit(lua_State *L, int limit)
             {
-                GluaStateValue value = { limit };
+                UvmStateValue value = { limit };
                 set_lua_state_value(L, INSTRUCTIONS_LIMIT_LUA_STATE_MAP_KEY, value, LUA_STATE_VALUE_INT);
             }
 
@@ -1034,14 +1056,14 @@ end
 
             void enter_lua_sandbox(lua_State *L)
             {
-                GluaStateValue value;
+                UvmStateValue value;
                 value.int_value = 1;
                 set_lua_state_value(L, LUA_IN_SANDBOX_STATE_KEY, value, LUA_STATE_VALUE_INT);
             }
 
             void exit_lua_sandbox(lua_State *L)
             {
-                GluaStateValue value;
+                UvmStateValue value;
                 value.int_value = 0;
                 set_lua_state_value(L, LUA_IN_SANDBOX_STATE_KEY, value, LUA_STATE_VALUE_INT);
             }
@@ -1061,7 +1083,7 @@ end
                 {
                     pointer = (int*)lua_malloc(L, sizeof(int));
                     *pointer = 1;
-                    GluaStateValue value;
+                    UvmStateValue value;
                     value.int_pointer_value = pointer;
                     set_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY, value, LUA_STATE_VALUE_INT_POINTER);
                 }
@@ -1094,7 +1116,7 @@ end
                 }
             }
 
-            void set_lua_state_value(lua_State *L, const char *key, GluaStateValue value, enum GluaStateValueType type)
+            void set_lua_state_value(lua_State *L, const char *key, UvmStateValue value, enum UvmStateValueType type)
             {
                 if (nullptr == L || nullptr == key || strlen(key) < 1)
                 {
@@ -1102,7 +1124,7 @@ end
                 }
 
                 L_V1 map = create_value_map_for_lua_state(L);
-                GluaStateValueNode node_v;
+                UvmStateValueNode node_v;
                 node_v.type = type;
                 node_v.value = value;
                 if (node_v.type == LUA_STATE_VALUE_STRING)
@@ -1143,6 +1165,8 @@ end
                 luaZ_init(L, &z, reader_of_stream, (void*)stream.get());
                 luaZ_fill(&z);
                 LClosure *closure = luaU_undump(L, &z, name);
+				if (!closure)
+					return nullptr;
                 fclose(f);
                 return closure;
             }
@@ -1490,7 +1514,7 @@ end
 						return nullptr;
 					}
 					contract_id_stack_value_in_state_map.pointer_value = (void*)contract_id_stack;
-					uvm::lua::lib::set_lua_state_value(L, GLUA_CONTRACT_API_CALL_STACK_STATE_MAP_KEY, contract_id_stack_value_in_state_map, GluaStateValueType::LUA_STATE_VALUE_POINTER);
+					uvm::lua::lib::set_lua_state_value(L, GLUA_CONTRACT_API_CALL_STACK_STATE_MAP_KEY, contract_id_stack_value_in_state_map, UvmStateValueType::LUA_STATE_VALUE_POINTER);
 				}
 				else
 					contract_id_stack = (std::stack<std::string>*) (contract_id_stack_value_in_state_map.pointer_value);
@@ -1505,7 +1529,7 @@ end
 				return contract_id_stack->top();
             }
 
-            GluaTableMapP create_managed_lua_table_map(lua_State *L)
+            UvmTableMapP create_managed_lua_table_map(lua_State *L)
             {
                 return luaL_create_lua_table_map_in_memory_pool(L);
             }
@@ -1636,7 +1660,7 @@ end
                 uvm::lua::api::global_uvm_chain_api->get_contract_address_by_name(L, contract_name, contract_address, &address_size);
                 if (address_size > 0)
                 {
-                    GluaStateValue value;
+                    UvmStateValue value;
                     value.string_value = contract_address;
                     set_lua_state_value(L, STARTING_CONTRACT_ADDRESS, value, LUA_STATE_VALUE_STRING);
                 }
@@ -1646,7 +1670,7 @@ end
             LUA_API int execute_contract_api_by_address(lua_State *L, const char *contract_address,
 				const char *api_name, const char *arg1, std::string *result_json_string)
             {
-                GluaStateValue value;
+                UvmStateValue value;
                 auto str = malloc_managed_string(L, strlen(contract_address) + 1);
                 memset(str, 0x0, strlen(contract_address) + 1);
                 strncpy(str, contract_address, strlen(contract_address));
@@ -1670,7 +1694,7 @@ end
 			std::string get_starting_contract_address(lua_State *L)
             {
 				auto starting_contract_address_node = uvm::lua::lib::get_lua_state_value_node(L, STARTING_CONTRACT_ADDRESS);
-				if (starting_contract_address_node.type == GluaStateValueType::LUA_STATE_VALUE_STRING)
+				if (starting_contract_address_node.type == UvmStateValueType::LUA_STATE_VALUE_STRING)
 				{
 					return starting_contract_address_node.value.string_value;
 				}
@@ -1680,7 +1704,7 @@ end
 
             bool execute_contract_init_by_address(lua_State *L, const char *contract_address, const char *arg1, std::string *result_json_string)
             {
-                GluaStateValue state_value;
+                UvmStateValue state_value;
                 state_value.int_value = 1;
                 set_lua_state_value(L, UVM_CONTRACT_INITING, state_value, LUA_STATE_VALUE_INT);
                 int status = execute_contract_api_by_address(L, contract_address, "init", arg1, result_json_string);
@@ -1695,7 +1719,7 @@ end
 
             bool execute_contract_init(lua_State *L, const char *name, UvmModuleByteStreamP stream, const char *arg1, std::string *result_json_string)
             {
-                GluaStateValue state_value;
+                UvmStateValue state_value;
                 state_value.int_value = 1;
                 set_lua_state_value(L, UVM_CONTRACT_INITING, state_value, LUA_STATE_VALUE_INT);
                 int status = execute_contract_api_by_stream(L, stream, "init", arg1, result_json_string);
