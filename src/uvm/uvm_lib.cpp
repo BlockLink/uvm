@@ -54,7 +54,7 @@ namespace uvm
 
             static const char *globalvar_whitelist[] = {
                 "print", "pprint", "table", "string", "time", "math", "json", "type", "require", "Array", "Stream",
-                "import_contract_from_address", "import_contract", "emit", "is_valid_address", "is_valid_contract_address",
+                "import_contract_from_address", "import_contract", "emit", "is_valid_address", "is_valid_contract_address", "get_prev_call_frame_contract_address",
                 "uvm", "storage", "exit", "self", "debugger", "exit_debugger",
                 "caller", "caller_address",
                 "contract_transfer", "contract_transfer_to", "transfer_from_contract_to_address",
