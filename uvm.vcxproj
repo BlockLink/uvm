@@ -152,7 +152,7 @@
   <PropertyGroup />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>E:\projects\fc\include;E:\projects\boost_1.55.x64;..\uvm\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\projects\jsondiff-cpp\jsondiff-cpp\include;E:\projects\fc\include;E:\projects\boost_1.55.x64;..\uvm\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -166,7 +166,7 @@
       <AdditionalLibraryDirectories>E:\projects\boost_1.55.x64\stage\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <ClCompile>
-      <AdditionalIncludeDirectories>..\uvm\include;E:\projects\fc\include;E:\projects\boost_1.55.x64;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\projects\jsondiff-cpp\jsondiff-cpp\include;..\uvm\include;E:\projects\fc\include;E:\projects\boost_1.55.x64;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>

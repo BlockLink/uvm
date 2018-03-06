@@ -404,8 +404,8 @@ typedef struct UvmStorageChangeItem
     std::string contract_id;
     std::string key;
 	jsondiff::DiffResult diff;
-    struct GluaStorageValue before;
-    struct GluaStorageValue after;
+    struct UvmStorageValue before;
+    struct UvmStorageValue after;
 } UvmStorageChangeItem;
 
 

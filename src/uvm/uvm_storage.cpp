@@ -8,12 +8,9 @@
 #include <memory>
 
 #include <uvm/uvm_storage.h>
-<<<<<<< HEAD
 #include <jsondiff/jsondiff.h>
 #include <jsondiff/exceptions.h>
-=======
 #include <uvm/uvm_lib.h>
->>>>>>> master
 
 using uvm::lua::api::global_uvm_chain_api;
 
@@ -170,9 +167,7 @@ bool lua_push_storage_value(lua_State *L, const UvmStorageValue &value)
 	return true;
 }
 
-<<<<<<< HEAD
-
-jsondiff::JsonValue uvm_storage_value_to_json(GluaStorageValue value)
+jsondiff::JsonValue uvm_storage_value_to_json(UvmStorageValue value)
 {
 	switch (value.type)
 	{
@@ -217,9 +212,9 @@ jsondiff::JsonValue uvm_storage_value_to_json(GluaStorageValue value)
 	}
 }
 
-GluaStorageValue json_to_uvm_storage_value(lua_State *L, jsondiff::JsonValue json_value)
+UvmStorageValue json_to_uvm_storage_value(lua_State *L, jsondiff::JsonValue json_value)
 {
-	GluaStorageValue value;
+	UvmStorageValue value;
 	if (json_value.is_null())
 	{
 		value.type = uvm::blockchain::StorageValueTypes::storage_value_null;
@@ -245,19 +240,6 @@ GluaStorageValue json_to_uvm_storage_value(lua_State *L, jsondiff::JsonValue jso
 		return value;
 	}
 	else if (json_value.is_string())
-=======
-static UvmStorageChangeItem diff_storage_change_if_is_table(lua_State *L, UvmStorageChangeItem change_item)
-{
-	if (!lua_storage_is_table(change_item.after.type))
-		return change_item;
-	if (!lua_storage_is_table(change_item.before.type) || !lua_storage_is_table(change_item.after.type))
-		return change_item;
-	auto new_before = (UvmTableMapP)malloc(sizeof(UvmTableMap));
-	new (new_before)UvmTableMap();
-	auto new_after = (UvmTableMapP)malloc(sizeof(UvmTableMap));
-	new (new_after)UvmTableMap();
-	for (auto it1 = change_item.before.value.table_value->begin(); it1 != change_item.before.value.table_value->end(); ++it1)
->>>>>>> master
 	{
 		value.type = uvm::blockchain::StorageValueTypes::storage_value_string;
 		value.value.string_value = uvm::lua::lib::malloc_and_copy_string(L, json_value.as_string().c_str());
@@ -273,7 +255,7 @@ static UvmStorageChangeItem diff_storage_change_if_is_table(lua_State *L, UvmSto
 		}
 		else
 		{
-			std::vector<GluaStorageValue> item_values;
+			std::vector<UvmStorageValue> item_values;
 			for (size_t i = 0; i < json_array.size(); i++)
 			{
 				const auto &json_item = json_array[i];
@@ -314,7 +296,7 @@ static UvmStorageChangeItem diff_storage_change_if_is_table(lua_State *L, UvmSto
 		}
 		else
 		{
-			std::vector<GluaStorageValue> item_values;
+			std::vector<UvmStorageValue> item_values;
 			for (const auto &p : json_map)
 			{
 				const auto &item_value = json_to_uvm_storage_value(L, p.value());
@@ -350,7 +332,7 @@ static UvmStorageChangeItem diff_storage_change_if_is_table(lua_State *L, UvmSto
 	}
 }
 
-static GluaStorageChangeItem diff_storage_change_if_is_table(lua_State *L, GluaStorageChangeItem change_item)
+static UvmStorageChangeItem diff_storage_change_if_is_table(lua_State *L, UvmStorageChangeItem change_item)
 {
 	if (!lua_storage_is_table(change_item.after.type))
 		return change_item;
