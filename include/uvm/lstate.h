@@ -153,7 +153,7 @@ typedef struct global_State {
 } global_State;
 
 
-typedef struct GluaStatePreProcessorFunction
+typedef struct UvmStatePreProcessorFunction
 {
     std::list<void*> args;
     void(*processor)(lua_State *L, std::list<void*>*args_list);
@@ -162,11 +162,11 @@ typedef struct GluaStatePreProcessorFunction
         if (nullptr != processor)
             processor(L, &args);
     }
-} GluaStatePreProcessorFunction;
+} UvmStatePreProcessorFunction;
 
-inline GluaStatePreProcessorFunction make_lua_state_preprocessor(std::list<void*> &args, void(*processor)(lua_State *L, std::list<void*>*args_list))
+inline UvmStatePreProcessorFunction make_lua_state_preprocessor(std::list<void*> &args, void(*processor)(lua_State *L, std::list<void*>*args_list))
 {
-    GluaStatePreProcessorFunction func;
+    UvmStatePreProcessorFunction func;
     func.args = args;
     func.processor = processor;
     return func;
@@ -213,7 +213,7 @@ struct lua_State {
     FILE *err;
     bool force_stopping;
 	int exit_code;
-    GluaStatePreProcessorFunction *preprocessor;
+    UvmStatePreProcessorFunction *preprocessor;
 };
 
 void *lua_malloc(lua_State *L, size_t size);

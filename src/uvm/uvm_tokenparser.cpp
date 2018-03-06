@@ -49,7 +49,7 @@ namespace uvm
                 return LTK_NAME;
         }
 
-        GluaTokenParser::GluaTokenParser(lua_State *L)
+        UvmTokenParser::UvmTokenParser(lua_State *L)
         {
             _L = L;
             _pos = 0;
@@ -60,18 +60,18 @@ namespace uvm
             _reset_parse_buff();
         }
 
-        GluaTokenParser::~GluaTokenParser()
+        UvmTokenParser::~UvmTokenParser()
         {
             delete[] _parsing_buff;
         }
 
-        void GluaTokenParser::_reset_parse_buff()
+        void UvmTokenParser::_reset_parse_buff()
         {
             memset(_parsing_buff, 0x0, sizeof(_parsing_buff));
             _parsing_buff_len = 0;
         }
 
-        int GluaTokenParser::_save_to_buff(int c)
+        int UvmTokenParser::_save_to_buff(int c)
         {
             if (_parsing_buff_len >= LUA_TOKEN_MAX_LENGTH - 1)
                 return c;
@@ -79,7 +79,7 @@ namespace uvm
             return c;
         }
 
-        int GluaTokenParser::_save_to_buff_and_next(int c)
+        int UvmTokenParser::_save_to_buff_and_next(int c)
         {
             if (_parsing_buff_len >= LUA_TOKEN_MAX_LENGTH - 1)
                 return c;
@@ -88,7 +88,7 @@ namespace uvm
             return c;
         }
 
-        int GluaTokenParser::_skip_sep(std::string &code)
+        int UvmTokenParser::_skip_sep(std::string &code)
         {
             int count = 0;
             int s = code[_parsing_pos];
@@ -136,12 +136,12 @@ namespace uvm
             return c == '\n' || c == '\r' || c == ' ' || c == '\f' || c == '\t' || c == '\v';
         }
 
-        int GluaTokenParser::_current_char(std::string &code)
+        int UvmTokenParser::_current_char(std::string &code)
         {
             return _parsing_pos < code.length() ? code[_parsing_pos] : EOF_TOKEN_CHAR;
         }
 
-        void GluaTokenParser::_inc_line(std::string &code)
+        void UvmTokenParser::_inc_line(std::string &code)
         {
             if (_parsing_pos >= code.length())
                 return;
@@ -161,7 +161,7 @@ namespace uvm
             }
         }
 
-        void GluaTokenParser::_push_new_token(int type, size_t line)
+        void UvmTokenParser::_push_new_token(int type, size_t line)
         {
             _parsing_buff[_parsing_buff_len] = '\0';
             char buff[LUA_TOKEN_MAX_LENGTH];
@@ -171,7 +171,7 @@ namespace uvm
             }
             buff[_parsing_buff_len] = '\0';
             std::string token_str(buff);
-            GluaParserToken token;
+            UvmParserToken token;
             token.token = token_str;
             auto enum_type = static_cast<enum TOKEN_RESERVED>(type);
             if (enum_type == LTK_NAME)
@@ -184,19 +184,19 @@ namespace uvm
             _reset_parse_buff();
         }
 
-        GluaParserToken GluaTokenParser::_last_token() const
+        UvmParserToken UvmTokenParser::_last_token() const
         {
             return *(std::next(_tokens.begin(), _tokens.size() - 1));
         }
 
-        GluaParserToken GluaTokenParser::_single_char_token(std::string &code, int type)
+        UvmParserToken UvmTokenParser::_single_char_token(std::string &code, int type)
         {
             _save_to_buff_and_next(_current_char(code));
             _push_new_token(type);
             return _last_token();
         }
 
-        GluaParserToken GluaTokenParser::_double_chars_token(std::string &code, int type)
+        UvmParserToken UvmTokenParser::_double_chars_token(std::string &code, int type)
         {
             _save_to_buff_and_next(_current_char(code));
             _save_to_buff_and_next(_current_char(code));
@@ -204,7 +204,7 @@ namespace uvm
             return _last_token();
         }
 
-        GluaParserToken GluaTokenParser::_three_chars_token(std::string &code, int type)
+        UvmParserToken UvmTokenParser::_three_chars_token(std::string &code, int type)
         {
             _save_to_buff_and_next(_current_char(code));
             _save_to_buff_and_next(_current_char(code));
@@ -213,7 +213,7 @@ namespace uvm
             return _last_token();
         }
 
-        int GluaTokenParser::_next_token_char(std::string &code) const
+        int UvmTokenParser::_next_token_char(std::string &code) const
         {
             return (_parsing_pos + 1 < code.length()) ? code[_parsing_pos + 1] : EOF_TOKEN_CHAR;
         }
@@ -223,7 +223,7 @@ namespace uvm
             return is_digit(c) ? (c - '0') : (is_big_alpha(c) ? (c - 'A' + 10) : (c - 'a' + 10));
         }
 
-        void GluaTokenParser::_loadhexaesc(std::string &code, std::stringstream *ss)
+        void UvmTokenParser::_loadhexaesc(std::string &code, std::stringstream *ss)
         {
             --_parsing_buff_len;
             int c1 = _current_char(code);
@@ -248,7 +248,7 @@ namespace uvm
             }
         }
 
-        void GluaTokenParser::_loadutf8esc(std::string &code, std::stringstream *ss)
+        void UvmTokenParser::_loadutf8esc(std::string &code, std::stringstream *ss)
         {
             // char buff[8];
             unsigned long r;
@@ -278,7 +278,7 @@ namespace uvm
             ++_parsing_pos;	// skip }
         }
 
-        void GluaTokenParser::_loaddecesc(std::string &code, std::stringstream *ss)
+        void UvmTokenParser::_loaddecesc(std::string &code, std::stringstream *ss)
         {
             int i;
             int r = 0; // result accumulator
@@ -295,7 +295,7 @@ namespace uvm
             }
         }
 
-        bool GluaTokenParser::_check_next2(std::string &code, const char *str)
+        bool UvmTokenParser::_check_next2(std::string &code, const char *str)
         {
             ++_parsing_pos;
             int n1 = _current_char(code);
@@ -305,7 +305,7 @@ namespace uvm
             return n1 == str[0] && n2 == str[1];
         }
 
-        void GluaTokenParser::_read_numeral(std::string &code, std::stringstream *ss)
+        void UvmTokenParser::_read_numeral(std::string &code, std::stringstream *ss)
         {
             const char *expo = "Ee";
             int first = _current_char(code);
@@ -348,7 +348,7 @@ namespace uvm
             }
         }
 
-        void GluaTokenParser::_read_string(std::string &code, int delimiter)
+        void UvmTokenParser::_read_string(std::string &code, int delimiter)
         {
             std::stringstream literal_str;
             literal_str << (char)_current_char(code);
@@ -438,7 +438,7 @@ namespace uvm
             return cycle_count > MAX_TOKEN_PARSER_CYCLES_COUNT;
         }
 
-        void GluaTokenParser::_read_long_string(std::string &code, bool is_string, int sep)
+        void UvmTokenParser::_read_long_string(std::string &code, bool is_string, int sep)
         {
             ++_cycle_count;
             if (end_cycle(_cycle_count))
@@ -509,7 +509,7 @@ namespace uvm
                 _reset_parse_buff();
         }
 
-        GluaParserToken GluaTokenParser::_parse_next_token(std::string &code)
+        UvmParserToken UvmTokenParser::_parse_next_token(std::string &code)
         {
             ++_cycle_count;
             if (end_cycle(_cycle_count))
@@ -534,7 +534,7 @@ namespace uvm
                     ++_parsing_pos;
                     if (_parsing_pos >= code.length() || (_parsing_pos < code.length() && code[_parsing_pos] != '-'))
                     {
-                        GluaParserToken token;
+                        UvmParserToken token;
                         token.linenumber = _parsing_linenumber;
                         token.position = _parsing_pos - 1;
                         char codestr[2];
@@ -740,7 +740,7 @@ namespace uvm
             return eof_token();
         }
 
-        void GluaTokenParser::parse(const std::string &code)
+        void UvmTokenParser::parse(const std::string &code)
         {
             _parsing_linenumber = 1;
             _parsing_pos = 0;
@@ -754,13 +754,13 @@ namespace uvm
 			}
         }
 
-        void GluaTokenParser::goback()
+        void UvmTokenParser::goback()
         {
             if (_pos > 0)
                 --_pos;
         }
 
-        bool GluaTokenParser::next()
+        bool UvmTokenParser::next()
         {
             if (!hasNext())
                 return false;
@@ -768,21 +768,21 @@ namespace uvm
             return true;
         }
 
-        GluaParserToken GluaTokenParser::current() const
+        UvmParserToken UvmTokenParser::current() const
         {
             if (eof())
                 return eof_token();
             return *std::next(_tokens.begin(), _pos);
         }
 
-        GluaParserToken GluaTokenParser::lookahead() const
+        UvmParserToken UvmTokenParser::lookahead() const
         {
             if (!hasNext())
                 return eof_token();
             return *std::next(_tokens.begin(), _pos + 1);
         }
 
-        std::string GluaTokenParser::dump() const
+        std::string UvmTokenParser::dump() const
         {
 			// TODO: ldf
             std::stringstream ss;

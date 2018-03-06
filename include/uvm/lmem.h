@@ -18,7 +18,7 @@
 ** This macro reallocs a vector 'b' from 'on' to 'n' elements, where
 ** each element has size 'e'. In case of arithmetic overflow of the
 ** product 'n'*'e', it raises an error (calling 'luaM_toobig'). Because
-** 'e' is always constant, it avoids the runtime division MAX_SIZET/(e).
+** 'e' is always constant, it avoids the runtime division UVM_MAX_SIZET/(e).
 **
 ** (The macro is somewhat complex to avoid warnings:  The 'sizeof'
 ** comparison avoids a runtime comparison when overflow cannot occur.
@@ -28,7 +28,7 @@
 ** avoiding this warning but also this optimization.)
 */
 #define luaM_reallocv(L,b,on,n,e) \
-  (((sizeof(n) >= sizeof(size_t) && lua_cast(size_t, (n)) + 1 > MAX_SIZET/(e)) \
+  (((sizeof(n) >= sizeof(size_t) && lua_cast(size_t, (n)) + 1 > UVM_MAX_SIZET/(e)) \
       ? luaM_toobig(L) : cast_void(0)) , \
    luaM_realloc_(L, (b), (on)*(e), (n)*(e)))
 

@@ -35,7 +35,7 @@ namespace uvm
         /* number of reserved words */
 #define NUM_RESERVED	(lua_cast(int, TK_WHILE-FIRST_RESERVED+1))
 
-        class GluaParserToken
+        class UvmParserToken
         {
 		public:
             std::string token;
@@ -46,9 +46,9 @@ namespace uvm
 			size_t end_linenumber;
         };
 
-        inline GluaParserToken eof_token()
+        inline UvmParserToken eof_token()
         {
-            GluaParserToken eof;
+            UvmParserToken eof;
             eof.type = TOKEN_RESERVED::LTK_EOS;
             eof.position = 0;
             eof.linenumber = 0;
@@ -58,9 +58,9 @@ namespace uvm
         }
 
 		// token of literal code, used to generate code string from token
-        inline GluaParserToken literal_code_token(std::string code)
+        inline UvmParserToken literal_code_token(std::string code)
         {
-            GluaParserToken token;
+            UvmParserToken token;
             token.type = TOKEN_RESERVED::LTK_NAME;
             token.position = 0;
             token.linenumber = 0;
@@ -70,7 +70,7 @@ namespace uvm
             return token;
         }
 
-        inline bool is_eof_token(GluaParserToken &token)
+        inline bool is_eof_token(UvmParserToken &token)
         {
             return token.type == LTK_EOS;
         }
@@ -80,10 +80,10 @@ namespace uvm
 
 #define THROW_PERROR(errorstr, ...)	do{_L->err && fprintf(_L->err, errorstr, ##__VA_ARGS__); throw uvm::core::UvmException(errorstr);}while(0)
 
-        class GluaTokenParser
+        class UvmTokenParser
         {
         private:
-            std::vector<GluaParserToken> _tokens;
+            std::vector<UvmParserToken> _tokens;
             size_t _pos;
             lua_State *_L;
 
@@ -93,7 +93,7 @@ namespace uvm
             size_t _parsing_buff_len;
             size_t _cycle_count;
         private:
-            GluaParserToken _parse_next_token(std::string &code);
+            UvmParserToken _parse_next_token(std::string &code);
             /*
             ** skip a sequence '[=*[' or ']=*]'; if sequence is well formed, return
             ** its number of '='s; otherwise, return a negative number (-1 iff there
@@ -113,23 +113,23 @@ namespace uvm
             inline int _current_char(std::string &code);
             void _push_new_token(int type, size_t line = 0);
             bool _check_next2(std::string &code, const char *str);
-            GluaParserToken _last_token() const;
-            GluaParserToken _single_char_token(std::string &code, int type);
-            GluaParserToken _double_chars_token(std::string &code, int type);
-            GluaParserToken _three_chars_token(std::string &code, int type);
+            UvmParserToken _last_token() const;
+            UvmParserToken _single_char_token(std::string &code, int type);
+            UvmParserToken _double_chars_token(std::string &code, int type);
+            UvmParserToken _three_chars_token(std::string &code, int type);
             int _next_token_char(std::string &code) const;
 
         public:
-            GluaTokenParser(lua_State *L);
-            ~GluaTokenParser();
+            UvmTokenParser(lua_State *L);
+            ~UvmTokenParser();
             /************************************************************************/
             /* @throw uvm::core::UvmException                                                */
             /************************************************************************/
             void parse(const std::string &code);
             bool next();
-            GluaParserToken current() const;
+            UvmParserToken current() const;
 
-            GluaParserToken lookahead() const;
+            UvmParserToken lookahead() const;
 
             inline size_t current_position() const
             {
@@ -155,13 +155,13 @@ namespace uvm
                 _pos = pos;
             }
 
-			inline GluaParserToken nth_token(size_t pos) const
+			inline UvmParserToken nth_token(size_t pos) const
             {
 				if (pos < _tokens.size())
 					return _tokens[pos];
 				else
 				{
-					GluaParserToken token;
+					UvmParserToken token;
 					token.linenumber = 0;
 					token.position = 0;
 					token.end_linenumber = 0;
@@ -170,12 +170,12 @@ namespace uvm
 				}
             }
 
-            inline std::vector<GluaParserToken>::iterator begin()
+            inline std::vector<UvmParserToken>::iterator begin()
             {
                 return _tokens.begin();
             }
 
-            inline std::vector<GluaParserToken>::iterator end()
+            inline std::vector<UvmParserToken>::iterator end()
             {
                 return _tokens.end();
             }
@@ -195,13 +195,13 @@ namespace uvm
                 return _tokens.size();
             }
 
-            inline void replace_all_tokens(std::vector<GluaParserToken> &tokens)
+            inline void replace_all_tokens(std::vector<UvmParserToken> &tokens)
             {
                 _tokens = tokens;
                 reset_position();
             }
 
-            inline const std::vector<GluaParserToken> *all_tokens() const
+            inline const std::vector<UvmParserToken> *all_tokens() const
             {
                 return &_tokens;
             }

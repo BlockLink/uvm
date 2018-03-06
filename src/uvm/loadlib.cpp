@@ -468,7 +468,10 @@ static int searcher_uvm(lua_State *L) {
         }
     } stream_scope(L, name, stream.get());
     LClosure *closure = uvm::lua::lib::luaU_undump_from_stream(L, stream.get(), uvm::lua::lib::unwrap_any_contract_name(origin_contract_name).c_str());
-
+	if (!closure)
+	{
+		return 1;
+	}
     if (!uvm::lua::lib::check_contract_proto(L, closure->p, error))
     {
         if (strlen(L->compile_error) < 1)

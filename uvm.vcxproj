@@ -22,7 +22,6 @@
     <ClCompile Include="src\uvm\uvm_api_types.cpp" />
     <ClCompile Include="src\uvm\uvm_lib.cpp" />
     <ClCompile Include="src\uvm\uvm_lutil.cpp" />
-    <ClCompile Include="src\uvm\uvm_proto_info.cpp" />
     <ClCompile Include="src\uvm\uvm_state_scope.cpp" />
     <ClCompile Include="src\uvm\uvm_storage.cpp" />
     <ClCompile Include="src\uvm\uvm_tokenparser.cpp" />
@@ -75,7 +74,6 @@
     <ClInclude Include="include\uvm\uvm_compat.h" />
     <ClInclude Include="include\uvm\uvm_lib.h" />
     <ClInclude Include="include\uvm\uvm_lutil.h" />
-    <ClInclude Include="include\uvm\uvm_proto_info.h" />
     <ClInclude Include="include\uvm\uvm_storage.h" />
     <ClInclude Include="include\uvm\uvm_tokenparser.h" />
     <ClInclude Include="include\uvm\lapi.h" />
@@ -154,7 +152,7 @@
   <PropertyGroup />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>E:\projects\fc\include;E:\projects\boost_1.55.x64;E:\projects\uvm\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\projects\fc\include;E:\projects\boost_1.55.x64;..\uvm\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -168,7 +166,7 @@
       <AdditionalLibraryDirectories>E:\projects\boost_1.55.x64\stage\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <ClCompile>
-      <AdditionalIncludeDirectories>E:\projects\uvm\include;E:\projects\fc\include;E:\projects\boost_1.55.x64;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\uvm\include;E:\projects\fc\include;E:\projects\boost_1.55.x64;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
