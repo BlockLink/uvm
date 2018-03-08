@@ -1159,7 +1159,7 @@ static bool contract_table_traverser_to_wrap_api(lua_State *L, void *ud)
 	lua_pushvalue(L, -2);
 	lua_pushstring(L, contract_id);
 	lua_pushstring(L, key);
-	lua_call(L, 2, 1);
+	lua_call(L, 3, 1);
 	lua_setfield(L, contract_table_index, key);
 	
 	return true;
