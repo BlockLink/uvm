@@ -1415,6 +1415,11 @@ end
                         // when instack=1, find in parent localvars, when instack=0, find in parent upval pool
                         if (a == 0)
                             break;
+						if (b >= proto->sizeupvalues || b < 0)
+						{
+							lcompile_error_set(L, error, "upvalue error");
+							return false;
+						}
                         const char *upvalue_name = UPVALNAME_OF_PROTO(proto, b);
                         int cidx = MYK(INDEXK(b));
                         if (nullptr == proto->k)
@@ -1450,6 +1455,11 @@ end
                     }	 break;
                     case UOP_SETUPVAL:
                     {
+						if (b >= proto->sizeupvalues || b < 0)
+						{
+							lcompile_error_set(L, error, "upvalue error");
+							return false;
+						}
                         const char *upvalue_name = UPVALNAME_OF_PROTO(proto, b);
                         // not support change _ENV or _G
                         if (strcmp("_ENV", upvalue_name) == 0
@@ -1462,7 +1472,11 @@ end
                     }
                     case UOP_GETTABUP:
                     {
-                        // FIXME
+						if (b >= proto->sizeupvalues || b < 0)
+						{
+							lcompile_error_set(L, error, "upvalue error");
+							return false;
+						}
                         const char *upvalue_name = UPVALNAME_OF_PROTO(proto, b);
                         if (ISK(c)){
                             int cidx = MYK(INDEXK(c));
@@ -1494,6 +1508,11 @@ end
                     break;
                     case UOP_SETTABUP:
                     {
+						if (a >= proto->sizeupvalues || a < 0)
+						{
+							lcompile_error_set(L, error, "upvalue error");
+							return false;
+						}
                         const char *upvalue_name = UPVALNAME_OF_PROTO(proto, a);
                         // not support change _ENV or _G
                         if (strcmp("_ENV", upvalue_name) == 0
