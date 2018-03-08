@@ -1108,12 +1108,16 @@ struct UvmStorageValue lua_type_to_storage_value_type(lua_State *L, int index, s
 static int contract_api_wrapper_func(lua_State *L)
 {
 	int api_func_index = lua_upvalueindex(1); // api func
-	const char *contract_id = lua_tostring(L, lua_upvalueindex(2));
+	const char* contract_id = lua_tostring(L, lua_upvalueindex(2));
+	const char* api_name = lua_tostring(L, lua_upvalueindex(3));
 	// push contract id to stack
-	auto contract_id_stack = uvm::lua::lib::get_using_contract_id_stack(L, true);
-	if (!contract_id_stack)
+	auto contract_info_stack = uvm::lua::lib::get_using_contract_id_stack(L, true);
+	if (!contract_info_stack)
 		return 0;
-	contract_id_stack->push(contract_id);
+	uvm::lua::lib::contract_info_stack_entry stack_entry;
+	stack_entry.contract_id = contract_id;
+	stack_entry.api_name = api_name;
+	contract_info_stack->push(stack_entry);
 	lua_pushvalue(L, api_func_index);
 	auto args_count = lua_gettop(L) - 1;
 	for(int i=0;i<args_count;++i)
@@ -1123,8 +1127,8 @@ static int contract_api_wrapper_func(lua_State *L)
     auto nresults = 1;
 	lua_call(L, args_count, nresults);
 	// pop contract id from stack
-	if (contract_id_stack->size() > 0)
-		contract_id_stack->pop();
+	if (contract_info_stack->size() > 0)
+		contract_info_stack->pop();
 	return nresults;
 }
 
@@ -1136,7 +1140,9 @@ static int contract_api_wrapper(lua_State *L)
 	const char *contract_id = luaL_checkstring(L, 2);
 	lua_pushvalue(L, 1); // push contract api func to stack
 	lua_pushstring(L, contract_id);
-	lua_pushcclosure(L, &contract_api_wrapper_func, 2);
+	const char* api_name = luaL_checkstring(L, 3);
+	lua_pushstring(L, api_name);
+	lua_pushcclosure(L, &contract_api_wrapper_func, 3);
 	return 1;
 }
 
@@ -1152,6 +1158,7 @@ static bool contract_table_traverser_to_wrap_api(lua_State *L, void *ud)
 	lua_pushcfunction(L, contract_api_wrapper);
 	lua_pushvalue(L, -2);
 	lua_pushstring(L, contract_id);
+	lua_pushstring(L, key);
 	lua_call(L, 2, 1);
 	lua_setfield(L, contract_table_index, key);
 	
