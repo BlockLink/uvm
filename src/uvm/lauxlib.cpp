@@ -1138,9 +1138,9 @@ static int contract_api_wrapper(lua_State *L)
 {
 	// get contract id, and push it to upval of the contract api closure
 	const char *contract_id = luaL_checkstring(L, 2);
+	const char* api_name = luaL_checkstring(L, 3);
 	lua_pushvalue(L, 1); // push contract api func to stack
 	lua_pushstring(L, contract_id);
-	const char* api_name = luaL_checkstring(L, 3);
 	lua_pushstring(L, api_name);
 	lua_pushcclosure(L, &contract_api_wrapper_func, 3);
 	return 1;
@@ -1778,13 +1778,13 @@ int luaL_import_contract_module(lua_State *L)
                     lua_pop(L, 1);
                     continue;
                 }
+				char *key = (char *)lua_tostring(L, -2);
 				if (!lua_isfunction(L, -1))
 				{
 					lua_pop(L, 1);
 					continue;
 				}
 
-                char *key = (char *)lua_tostring(L, -2);
                 if (strcmp(key, "locals") == 0)
                 {
                     lua_pop(L, 1);
@@ -2040,7 +2040,12 @@ static int lua_real_execute_contract_api(lua_State *L
 			lua_pushstring(L, arg1_str.c_str());
 		}
 
-		lua_pcall(L, 2, 1, 0);
+		int status = lua_pcall(L, 2, 1, 0);
+		if (status != LUA_OK)
+		{
+			global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "execute api %s contract error", api_name_str.c_str());
+			return 0;
+		}
 		lua_pop(L, 1);
         lua_pop(L, 1); // pop self
     } else
