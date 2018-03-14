@@ -45,8 +45,9 @@ namespace uvm
 		namespace lib
 		{
 
-			std::vector<std::string> contract_special_api_names = { "init", "on_deposit", "on_destroy", "on_upgrade" };
+			std::vector<std::string> contract_special_api_names = { "init", "on_deposit", "on_deposit_asset", "on_destroy", "on_upgrade" };
 			std::vector<std::string> contract_int_argument_special_api_names = { "on_deposit" };
+			std::vector<std::string> contract_string_argument_special_api_names = { "on_deposit_asset" };
 
 #define LUA_IN_SANDBOX_STATE_KEY "lua_in_sandbox"
             // storagecontract idstate key
