@@ -77,6 +77,8 @@ namespace uvm
 			extern std::vector<std::string> contract_special_api_names;
 			// special contract api names with int argument
 			extern std::vector<std::string> contract_int_argument_special_api_names;
+			// special contract api names with string argument
+			extern std::vector<std::string> contract_string_argument_special_api_names;
 
             class UvmStateScope
             {
