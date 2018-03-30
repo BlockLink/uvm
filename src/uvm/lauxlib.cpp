@@ -38,6 +38,8 @@
 #include <uvm/uvm_lib.h>
 #include <uvm/uvm_lutil.h>
 #include <uvm/exceptions.h>
+#include <boost/variant.hpp>
+#include <boost/lexical_cast.hpp>
 
 using uvm::lua::api::global_uvm_chain_api;
 
@@ -2560,7 +2562,7 @@ static void luatablemap_to_json_stream(UvmTableMapP map, std::stringstream &ss, 
 			{
 				try
 				{
-					int_key = std::stoi(key);
+					int_key = boost::lexical_cast<int>(key);
 					if (int_key == 0)
 					{
 						has_wrong_array_format = true;
@@ -2679,9 +2681,10 @@ static const char *tojsonstring_with_nested(lua_State *L, int idx, size_t *len, 
             luaL_traverse_table_with_nested(L, idx, lua_table_to_map_traverser_with_nested, map, jsons, 0);
             std::stringstream ss;
             luatablemap_to_json_stream(map, ss);
+			const auto& result_str = ss.str();
             if (len)
-                *len = ss.str().size();
-            lua_pushlstring(L, ss.str().c_str(), ss.str().size());
+                *len = result_str.size();
+            lua_pushlstring(L, result_str.c_str(), ss.str().size());
         }
         break;
         default:
