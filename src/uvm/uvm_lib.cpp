@@ -56,7 +56,7 @@ namespace uvm
             static const char *globalvar_whitelist[] = {
                 "print", "pprint", "table", "string", "time", "math", "json", "type", "require", "Array", "Stream",
                 "import_contract_from_address", "import_contract", "emit", "is_valid_address", "is_valid_contract_address",
-				"get_prev_call_frame_contract_address", "get_prev_call_frame_api_name",
+				"get_prev_call_frame_contract_address", "get_prev_call_frame_api_name", "get_contract_call_frame_stack_size",
                 "uvm", "storage", "exit", "self", "debugger", "exit_debugger",
                 "caller", "caller_address",
                 "contract_transfer", "contract_transfer_to", "transfer_from_contract_to_address",
@@ -230,6 +230,14 @@ namespace uvm
 					return 1;
 				}
 				lua_pushstring(L, prev_api_name);
+				return 1;
+			}
+
+			static int get_contract_call_frame_stack_size(lua_State *L)
+			{
+				auto contract_id_stack = get_using_contract_id_stack(L, true);
+				auto count = contract_id_stack ? contract_id_stack->size() : 0;
+				lua_pushinteger(L, count);
 				return 1;
 			}
 
@@ -965,6 +973,7 @@ end
 					add_global_c_function(L, "is_valid_contract_address", is_valid_contract_address);
 					add_global_c_function(L, "get_prev_call_frame_contract_address", get_prev_call_frame_contract_address_lua_api);
 					add_global_c_function(L, "get_prev_call_frame_api_name", get_prev_call_frame_api_name_lua_api);
+					add_global_c_function(L, "get_contract_call_frame_stack_size", get_contract_call_frame_stack_size),
 					add_global_c_function(L, "get_system_asset_symbol", get_system_asset_symbol);
 					add_global_c_function(L, "get_system_asset_precision", get_system_asset_precision);
                 }
