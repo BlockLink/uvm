@@ -343,6 +343,12 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
     g->gcfinnum = 0;
     g->gcpause = LUAI_GCPAUSE;
     g->gcstepmul = LUAI_GCMUL;
+
+	L->evalstacksize = 100;
+	L->evalstack = luaM_newvector(L, L->evalstacksize, TValue);
+	L->evalstacktop = L->evalstack;
+
+
     for (i = 0; i < LUA_NUMTAGS; i++) g->mt[i] = nullptr;
     if (luaD_rawrunprotected(L, f_luaopen, nullptr) != LUA_OK) {
         /* memory allocation error: free partial state */
