@@ -1532,6 +1532,50 @@ newframe:  /* reentry point when frame changes (call/return) */
                 lua_assert(0);
                 vmbreak;
             }
+
+			vmcase(UOP_PUSH) {
+				if (L->evalstacktop - L->evalstack >= L->evalstacksize) {
+					//  ............
+					luaG_runerror(L, "evalstack exceed");
+					vmbreak;
+				}
+				setobj(L, L->evalstacktop, ra);
+				L->evalstacktop += 1;
+				vmbreak;
+			}
+			vmcase(UOP_POP) {
+				if (L->evalstacktop <= L->evalstack) {
+					luaG_runerror(L, "evalstack exceed when pop");
+					vmbreak;
+				}
+				setobj(L, ra, L->evalstacktop - 1);
+				L->evalstacktop -= 1;
+				vmbreak;
+			}
+			vmcase(UOP_GETTOP) {
+				if (L->evalstacktop <= L->evalstack) {
+					lua_pushnil(L);
+					vmbreak;
+				}
+				setobj(L, ra, L->evalstacktop-1);
+				vmbreak;
+			}
+			vmcase(UOP_CMP) {
+				TValue *rb = RKB(i);
+				TValue *rc = RKC(i);
+				Protect(
+					if (luaV_equalobj(L, rb, rc)) {
+						setivalue(ra, 0);
+					}
+					else if (!luaV_lessthan(L, rb, rc)) {
+						setivalue(ra, 1);
+					}
+					else {
+						setivalue(ra, -1);
+					}
+				)
+				vmbreak;
+			}
         }
     }
 }

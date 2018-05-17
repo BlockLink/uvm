@@ -228,11 +228,18 @@ typedef enum {
 
 	UOP_VARARG,/*	A B	R(A), R(A+1), ..., R(A+B-2) = vararg		*/
 
-	UOP_EXTRAARG/*	Ax	extra (larger) argument for previous opcode	*/
+	UOP_EXTRAARG,/*	Ax	extra (larger) argument for previous opcode	*/
+
+	UOP_PUSH,/* A   top++, evalstack(top) = R(A)  */
+	UOP_POP,/* A   R(A) := evalstack(top), top-- */
+	UOP_GETTOP,/* A   R(A) := evalstack(top) */
+	UOP_CMP, /* A B C   R(A) = 1 if RK(B) > RK(C), 0 if RK(B) == RK(C), -1 if RK(B) < RK(C) */
+
+	UOP_DUMMY_COUNT /* not used, just to count opcodes */
 } OpCode;
 
 
-#define UNUM_OPCODES	(lua_cast(int, UOP_EXTRAARG) + 1)
+#define UNUM_OPCODES	(lua_cast(int, UOP_DUMMY_COUNT))
 
 
 

@@ -214,6 +214,10 @@ struct lua_State {
     bool force_stopping;
 	int exit_code;
     UvmStatePreProcessorFunction *preprocessor;
+
+	StkId evalstack; //for calulate
+	StkId evalstacktop;//first free slot
+	int evalstacksize;
 };
 
 void *lua_malloc(lua_State *L, size_t size);
