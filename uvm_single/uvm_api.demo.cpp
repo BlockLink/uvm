@@ -19,6 +19,12 @@
 #include <uvm/uvm_lutil.h>
 #include <uvm/lobject.h>
 #include <uvm/lstate.h>
+#include <uvm/exceptions.h>
+#include <fc/crypto/sha1.hpp>
+#include <fc/crypto/sha256.hpp>
+#include <fc/crypto/ripemd160.hpp>
+#include <fc/crypto/hex.hpp>
+#include "Keccak.hpp"
 #include "uvm_api.demo.h"
 
 namespace uvm {
@@ -481,6 +487,48 @@ namespace uvm {
 			uint64_t DemoUvmChainApi::get_system_asset_precision(lua_State *L)
 			{
 				return 10000;
+			}
+
+			static std::vector<char> hex_to_chars(const std::string& hex_string) {
+				std::vector<char> chars(hex_string.size() / 2);
+				auto bytes_count = fc::from_hex(hex_string, chars.data(), chars.size());
+				if (bytes_count != chars.size()) {
+					throw uvm::core::UvmException("parse hex to bytes error");
+				}
+				return chars;
+			}
+
+			std::vector<unsigned char> DemoUvmChainApi::hex_to_bytes(const std::string& hex_string) {
+				const auto& chars = hex_to_chars(hex_string);
+				std::vector<unsigned char> bytes(chars.size());
+				memcpy(bytes.data(), chars.data(), chars.size());
+				return bytes;
+			}
+			std::string DemoUvmChainApi::bytes_to_hex(std::vector<unsigned char> bytes) {
+				std::vector<char> chars(bytes.size());
+				memcpy(chars.data(), bytes.data(), bytes.size());
+				return fc::to_hex(chars);
+			}
+			std::string DemoUvmChainApi::sha256_hex(const std::string& hex_string) {
+				const auto& chars = hex_to_chars(hex_string);
+				auto hash_result = fc::sha256::hash(chars.data(), chars.size());
+				return hash_result.str();
+			}
+			std::string DemoUvmChainApi::sha1_hex(const std::string& hex_string) {
+				const auto& chars = hex_to_chars(hex_string);
+				auto hash_result = fc::sha1::hash(chars.data(), chars.size());
+				return hash_result.str();
+			}
+			std::string DemoUvmChainApi::sha3_hex(const std::string& hex_string) {
+				Keccak keccak(Keccak::Keccak256);
+				const auto& chars = hex_to_chars(hex_string);
+				auto hash_result = keccak(chars.data(), chars.size());
+				return hash_result;
+			}
+			std::string DemoUvmChainApi::ripemd160_hex(const std::string& hex_string) {
+				const auto& chars = hex_to_chars(hex_string);
+				auto hash_result = fc::ripemd160::hash(chars.data(), chars.size());
+				return hash_result.str();
 			}
 
 		}

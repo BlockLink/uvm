@@ -10,6 +10,7 @@
 #include <string>
 #include <set>
 #include <map>
+#include <list>
 #include <unordered_map>
 #include <memory>
 #include <mutex>
@@ -67,7 +68,8 @@ namespace uvm
                 "pairs", "ipairs", "pairsByKeys", "collectgarbage", "error", "getmetatable", "_VERSION",
                 "tostring", "tojsonstring", "tonumber", "tointeger", "todouble", "totable", "toboolean",
                 "next", "rawequal", "rawlen", "rawget", "rawset", "select",
-                "setmetatable"
+                "setmetatable",
+				"hex_to_bytes", "bytes_to_hex", "sha256_hex", "sha1_hex", "sha3_hex", "ripemd160_hex"
             };
 
             typedef lua_State* L_Key1;
@@ -284,6 +286,148 @@ namespace uvm
                 lua_pushinteger(L, result);
                 return 1;
             }
+
+			static int hex_to_bytes(lua_State *L) {
+				if (lua_gettop(L) < 1 || !lua_isstring(L, 1)) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"hex_to_bytes need 1 hex string argument");
+					return 0;
+				}
+				auto hex_str = luaL_checkstring(L, 1);
+				try {
+					auto result = uvm::lua::api::global_uvm_chain_api->hex_to_bytes(hex_str);
+					lua_newtable(L);
+					for (size_t i = 0; i < result.size(); i++) {
+						lua_pushinteger(L, (lua_Integer)result[i]);
+						lua_seti(L, -2, i + 1);
+					}
+					return 1;
+				}
+				catch (const std::exception& e) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						e.what());
+					return 0;
+				}
+			}
+
+			static int bytes_to_hex(lua_State *L) {
+				if (lua_gettop(L) < 1 || !lua_istable(L, 1)) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"bytes_to_hex need 1 int array argument");
+					return 0;
+				}
+				try {
+					UvmTableMapP map = luaL_create_lua_table_map_in_memory_pool(L);
+					std::list<const void*> jsons;
+					luaL_traverse_table_with_nested(L, 1, lua_table_to_map_traverser_with_nested, map, jsons, 0);
+					std::vector<unsigned char> bytes;
+					size_t i = 1;
+					while (true) {
+						const auto& key = std::to_string(i);
+						if (map->find(key) != map->end()) {
+							const auto& value = map->at(key);
+							unsigned char byte_value;
+							if (value.type == uvm::blockchain::StorageValueTypes::storage_value_int) {
+								byte_value = (unsigned char)value.value.int_value;
+							}
+							else if (value.type == uvm::blockchain::StorageValueTypes::storage_value_number) {
+								byte_value = (unsigned char)value.value.number_value;
+							}
+							else {
+								uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+									"invalid byte int bytes_to_hex's argument");
+								return 0;
+							}
+							bytes.push_back(byte_value);
+						}
+						else {
+							break;
+						}
+						i++;
+					}
+					const auto& result = uvm::lua::api::global_uvm_chain_api->bytes_to_hex(bytes);
+					lua_pushstring(L, result.c_str());
+					return 1;
+				}
+				catch (const std::exception& e) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						e.what());
+					return 0;
+				}
+			}
+
+			static int sha256_hex(lua_State* L) {
+				if (lua_gettop(L) < 1 || !lua_isstring(L, 1)) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"sha256_hex need 1 string argument");
+					return 0;
+				}
+				try {
+					auto hex_str = luaL_checkstring(L, 1);
+					const auto& result = uvm::lua::api::global_uvm_chain_api->sha256_hex(hex_str);
+					lua_pushstring(L, result.c_str());
+					return 1;
+				}
+				catch (const std::exception& e) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						e.what());
+					return 0;
+				}
+			}
+			static int sha1_hex(lua_State* L) {
+				if (lua_gettop(L) < 1 || !lua_isstring(L, 1)) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"sha1_hex need 1 string argument");
+					return 0;
+				}
+				try {
+					auto hex_str = luaL_checkstring(L, 1);
+					const auto& result = uvm::lua::api::global_uvm_chain_api->sha1_hex(hex_str);
+					lua_pushstring(L, result.c_str());
+					return 1;
+				}
+				catch (const std::exception& e) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						e.what());
+					return 0;
+				}
+			}
+			static int sha3_hex(lua_State* L) {
+				if (lua_gettop(L) < 1 || !lua_isstring(L, 1)) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"sha3_hex need 1 string argument");
+					return 0;
+				}
+				try {
+					auto hex_str = luaL_checkstring(L, 1);
+					const auto& result = uvm::lua::api::global_uvm_chain_api->sha3_hex(hex_str);
+					lua_pushstring(L, result.c_str());
+					return 1;
+				}
+				catch (const std::exception& e) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						e.what());
+					return 0;
+				}
+			}
+			static int ripemd160_hex(lua_State* L) {
+				if (lua_gettop(L) < 1 || !lua_isstring(L, 1)) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"ripemd160_hex need 1 string argument");
+					return 0;
+				}
+				try {
+					auto hex_str = luaL_checkstring(L, 1);
+					const auto& result = uvm::lua::api::global_uvm_chain_api->ripemd160_hex(hex_str);
+					lua_pushstring(L, result.c_str());
+					return 1;
+				}
+				catch (const std::exception& e) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						e.what());
+					return 0;
+				}
+			}
 
             // pair: (value_string, is_upvalue)
             typedef std::unordered_map<std::string, std::pair<std::string, bool>> LuaDebuggerInfoList;
@@ -953,6 +1097,13 @@ end
 				lua_pushcfunction(L, &uvm_core_lib_pairs_by_keys);
 				lua_setglobal(L, "pairs");
 
+				add_global_c_function(L, "hex_to_bytes", hex_to_bytes);
+				add_global_c_function(L, "bytes_to_hex", bytes_to_hex);
+				add_global_c_function(L, "sha256_hex", sha256_hex);
+				add_global_c_function(L, "sha1_hex", sha1_hex);
+				add_global_c_function(L, "sha3_hex", sha3_hex);
+				add_global_c_function(L, "ripemd160_hex", ripemd160_hex);
+
 				reset_lvm_instructions_executed_count(L);
                 lua_atpanic(L, panic_message);
                 if (use_contract)
@@ -976,6 +1127,7 @@ end
 					add_global_c_function(L, "get_contract_call_frame_stack_size", get_contract_call_frame_stack_size),
 					add_global_c_function(L, "get_system_asset_symbol", get_system_asset_symbol);
 					add_global_c_function(L, "get_system_asset_precision", get_system_asset_precision);
+
                 }
                 return L;
             }
