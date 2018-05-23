@@ -66,10 +66,16 @@ LUAI_DDEF const char *const luaP_opnames[UNUM_OPCODES + 1] = {
     "VARARG",
     "EXTRAARG",
 
-	"UOP_PUSH",
-	"UOP_POP",
-	"UOP_GETTOP",
-	"UOP_CMP",
+	"PUSH",
+	"POP",
+	"GETTOP",
+	"CMP",
+
+	"CMP_EQ",
+	"CMP_NE",
+	"CMP_GT",
+	"CMP_LT",
+
     nullptr
 };
 
@@ -130,5 +136,10 @@ LUAI_DDEF const lu_byte luaP_opmodes[UNUM_OPCODES] = {
 	, opmode(0, 1, OpArgN, OpArgN, iABC)		/* UOP_POP */
 	, opmode(0, 1, OpArgN, OpArgN, iABC)		/* UOP_GETTOP */
 	, opmode(0, 1, OpArgK, OpArgK, iABC)       /* UOP_CMP */
+
+	, opmode(0, 1, OpArgK, OpArgK, iABC)       /* UOP_CMP_EQ */
+	, opmode(0, 1, OpArgK, OpArgK, iABC)       /* UOP_CMP_NE */
+	, opmode(0, 1, OpArgK, OpArgK, iABC)       /* UOP_CMP_GT */
+	, opmode(0, 1, OpArgK, OpArgK, iABC)       /* UOP_CMP_LT */
 };
 

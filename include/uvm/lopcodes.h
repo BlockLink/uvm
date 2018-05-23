@@ -235,6 +235,11 @@ typedef enum {
 	UOP_GETTOP,/* A   R(A) := evalstack(top) */
 	UOP_CMP, /* A B C   R(A) = 1 if RK(B) > RK(C), 0 if RK(B) == RK(C), -1 if RK(B) < RK(C) */
 
+	UOP_CMP_EQ, /* A B C R(A) = 1 if RK(B) == RK(C), else 0 */
+	UOP_CMP_NE, /* A B C R(A) = 1 if RK(B) != RK(C), else 0 */
+	UOP_CMP_GT, /* A B C R(A) = 1 if RK(B) > RK(C), else 0 */
+	UOP_CMP_LT, /* A B C R(A) = 1 if RK(B) < RK(C), else 0 */
+
 	UOP_DUMMY_COUNT /* not used, just to count opcodes */
 } OpCode;
 
