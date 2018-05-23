@@ -690,7 +690,8 @@ static void pushclosure(lua_State *L, Proto *p, UpVal **encup, int enc_nupvalues
 			if (idx >= enc_nupvalues || idx < 0)
 			{
 				L->force_stopping = true;
-				lua_set_run_error(L, "upvalue index out of parent closure's upvalues size");
+				auto upvalue_name = getstr(uv[i].name);
+				luaG_runerror(L, "upvalue %s index out of parent closure's upvalues size", upvalue_name ? upvalue_name : "");
 				return;
 			}
 			ncl->upvals[i] = encup[idx];
@@ -840,7 +841,7 @@ static int get_line_in_current_proto(CallInfo* ci, Proto *proto)
 #define lua_check_in_vm_error(cond, error_msg) {    \
 if (!(cond)) {      \
   L->force_stopping = true; \
-  global_uvm_chain_api->throw_exception(L, UVM_API_LVM_ERROR, (error_msg));       \
+  luaG_runerror(L, error_msg); \
   vmbreak;                                   \
      }                             \
 }
@@ -984,7 +985,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                 bool istable = ttistable(rb);
                 if (!istable)
                 {
-                    global_uvm_chain_api->throw_exception(L, UVM_API_LVM_ERROR, "getfield of nil, need table here");
+					luaG_runerror(L, "getfield of nil, need table here");
                     L->force_stopping = true;
                     vmbreak;
                 }
@@ -996,7 +997,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                 lua_check_in_vm_error(upval_index < cl->nupvalues && upval_index >=0, "upvalue error");
 				if(!cl->upvals[upval_index])
 				{
-					global_uvm_chain_api->throw_exception(L, UVM_API_LVM_ERROR, "set upvalue of nil, need table here");
+					luaG_runerror(L, "set upvalue of nil, need table here");
 					L->force_stopping = true;
 					vmbreak;
 				}
@@ -1057,7 +1058,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                     setfltvalue(ra, luai_numadd(L, nb, nc));
                 }
                 else {
-                    global_uvm_chain_api->throw_exception(L, UVM_API_LVM_ERROR, "+ can only accept numbers");
+					luaG_runerror(L, "+ can only accept numbers");
                     Protect(luaT_trybinTM(L, rb, rc, ra, TM_ADD));
                 }
                 vmbreak;
@@ -1074,7 +1075,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                     setfltvalue(ra, luai_numsub(L, nb, nc));
                 }
                 else {
-                  global_uvm_chain_api->throw_exception(L, UVM_API_LVM_ERROR, "- can only accept numbers");
+					luaG_runerror(L, "- can only accept numbers");
                     Protect(luaT_trybinTM(L, rb, rc, ra, TM_SUB));
                 }
                 vmbreak;
@@ -1091,7 +1092,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                     setfltvalue(ra, luai_nummul(L, nb, nc));
                 }
                 else {
-                    global_uvm_chain_api->throw_exception(L, UVM_API_LVM_ERROR, "* can only accept numbers");
+					luaG_runerror(L, "* can only accept numbers");
                     Protect(luaT_trybinTM(L, rb, rc, ra, TM_MUL));
                 }
                 vmbreak;
@@ -1104,7 +1105,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                     setfltvalue(ra, luai_numdiv(L, nb, nc));
                 }
                 else {
-                    global_uvm_chain_api->throw_exception(L, UVM_API_LVM_ERROR, "/ can only accept numbers");
+					luaG_runerror(L, "/ can only accept numbers");
                     Protect(luaT_trybinTM(L, rb, rc, ra, TM_DIV));
                 }
                 vmbreak;
@@ -1117,7 +1118,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                     setivalue(ra, intop(&, ib, ic));
                 }
                 else {
-                    global_uvm_chain_api->throw_exception(L, UVM_API_LVM_ERROR, "& can only accept integer");
+                    luaG_runerror(L, "& can only accept integer");
                     Protect(luaT_trybinTM(L, rb, rc, ra, TM_BAND));
                 }
                 vmbreak;
@@ -1130,7 +1131,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                     setivalue(ra, intop(| , ib, ic));
                 }
                 else {
-                    global_uvm_chain_api->throw_exception(L, UVM_API_LVM_ERROR, "| can only accept integer");
+					luaG_runerror(L, "| can only accept integer");
                     Protect(luaT_trybinTM(L, rb, rc, ra, TM_BOR));
                 }
                 vmbreak;
@@ -1143,7 +1144,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                     setivalue(ra, intop(^, ib, ic));
                 }
                 else {
-                    global_uvm_chain_api->throw_exception(L, UVM_API_LVM_ERROR, "~ can only accept integer");
+					luaG_runerror(L, "~ can only accept integer");
                     Protect(luaT_trybinTM(L, rb, rc, ra, TM_BXOR));
                 }
                 vmbreak;
@@ -1156,7 +1157,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                     setivalue(ra, luaV_shiftl(ib, ic));
                 }
                 else {
-                    global_uvm_chain_api->throw_exception(L, UVM_API_LVM_ERROR, "<< can only accept integer");
+					luaG_runerror(L, "<< can only accept integer");
                     Protect(luaT_trybinTM(L, rb, rc, ra, TM_SHL));
                 }
                 vmbreak;
@@ -1169,7 +1170,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                     setivalue(ra, luaV_shiftl(ib, -ic));
                 }
                 else {
-                    global_uvm_chain_api->throw_exception(L, UVM_API_LVM_ERROR, ">> can only accept integer");
+					luaG_runerror(L, ">> can only accept integer");
                     Protect(luaT_trybinTM(L, rb, rc, ra, TM_SHR));
                 }
                 vmbreak;
@@ -1188,7 +1189,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                     setfltvalue(ra, m);
                 }
                 else {
-                    global_uvm_chain_api->throw_exception(L, UVM_API_LVM_ERROR, "% can only accept numbers");
+					luaG_runerror(L, "% can only accept numbers");
                     Protect(luaT_trybinTM(L, rb, rc, ra, TM_MOD));
                 }
                 vmbreak;
@@ -1205,7 +1206,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                     setfltvalue(ra, luai_numidiv(L, nb, nc));
                 }
                 else {
-                    global_uvm_chain_api->throw_exception(L, UVM_API_LVM_ERROR, "// can only accept numbers");
+					luaG_runerror(L, "// can only accept numbers");
                     Protect(luaT_trybinTM(L, rb, rc, ra, TM_IDIV));
                 }
                 vmbreak;
@@ -1218,7 +1219,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                     setfltvalue(ra, luai_numpow(L, nb, nc));
                 }
                 else {
-                    global_uvm_chain_api->throw_exception(L, UVM_API_LVM_ERROR, "^ can only accept numbers");
+					luaG_runerror(L, "^ can only accept numbers");
                     Protect(luaT_trybinTM(L, rb, rc, ra, TM_POW));
                 }
                 vmbreak;
@@ -1234,7 +1235,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                     setfltvalue(ra, luai_numunm(L, nb));
                 }
                 else {
-                    global_uvm_chain_api->throw_exception(L, UVM_API_LVM_ERROR, "-<exp> can only accept numbers");
+					luaG_runerror(L, "-<exp> can only accept numbers");
                     Protect(luaT_trybinTM(L, rb, rb, ra, TM_UNM));
                 }
                 vmbreak;
@@ -1246,7 +1247,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                     setivalue(ra, intop(^, ~l_castS2U(0), ib));
                 }
                 else {
-                    global_uvm_chain_api->throw_exception(L, UVM_API_LVM_ERROR, "~<exp> can only accept numbers");
+					luaG_runerror(L, "~<exp> can only accept numbers");
                     Protect(luaT_trybinTM(L, rb, rb, ra, TM_BNOT));
                 }
                 vmbreak;
@@ -1575,6 +1576,58 @@ newframe:  /* reentry point when frame changes (call/return) */
 					}
 				)
 				vmbreak;
+			}
+			vmcase(UOP_CMP_EQ) {
+				TValue *rb = RKB(i);
+				TValue *rc = RKC(i);
+				Protect(
+					if (luaV_equalobj(L, rb, rc)) {
+						setivalue(ra, 1);
+					}
+					else {
+						setivalue(ra, 0);
+					}
+				)
+				vmbreak;
+			}
+			vmcase(UOP_CMP_NE) {
+				TValue *rb = RKB(i);
+				TValue *rc = RKC(i);
+				Protect(
+					if (luaV_equalobj(L, rb, rc)) {
+						setivalue(ra, 0);
+					}
+					else {
+						setivalue(ra, 1);
+					}
+				)
+					vmbreak;
+			}
+			vmcase(UOP_CMP_GT) {
+				TValue *rb = RKB(i);
+				TValue *rc = RKC(i);
+				Protect(
+					if (luaV_lessthan(L, rb, rc) || luaV_equalobj(L, rb, rc)) {
+						setivalue(ra, 0);
+					}
+					else {
+						setivalue(ra, 1);
+					}
+					)
+					vmbreak;
+			}
+			vmcase(UOP_CMP_LT) {
+				TValue *rb = RKB(i);
+				TValue *rc = RKC(i);
+				Protect(
+					if (luaV_lessthan(L, rb, rc)) {
+						setivalue(ra, 1);
+					}
+					else {
+						setivalue(ra, 0);
+					}
+					)
+					vmbreak;
 			}
         }
     }
