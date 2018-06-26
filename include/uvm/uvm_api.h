@@ -102,8 +102,6 @@ namespace uvm {
             storage_value_string_array = 104,
 			storage_value_stream_array = 105,
 
-			storage_value_fast_map_element = 110,
-
             storage_value_userdata = 201,
             storage_value_not_support = 202
         };
