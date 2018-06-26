@@ -32,8 +32,9 @@ static UvmStorageTableReadList *get_or_init_storage_table_read_list(lua_State *L
 }
 
 static struct UvmStorageValue get_last_storage_changed_value(lua_State *L, const char *contract_id,
-	UvmStorageChangeList *list, const std::string &key)
+	UvmStorageChangeList *list, const std::string &key, const std::string& fast_map_key, bool is_fast_map)
 {
+	// TODO: is_fast_map process
 	struct UvmStorageValue nil_value;
 	nil_value.type = uvm::blockchain::StorageValueTypes::storage_value_null;
 	auto post_when_read_table = [&](UvmStorageValue value) {
@@ -53,6 +54,8 @@ static struct UvmStorageValue get_last_storage_changed_value(lua_State *L, const
 				UvmStorageChangeItem change_item;
 				change_item.contract_id = contract_id;
 				change_item.key = key;
+				change_item.fast_map_key = is_fast_map ? fast_map_key : "";
+				change_item.is_fast_map = is_fast_map;
 				change_item.before = value;
 				table_read_list->push_back(change_item);
 			}
@@ -60,7 +63,7 @@ static struct UvmStorageValue get_last_storage_changed_value(lua_State *L, const
 	};
 	if (!list || list->size() < 1)
 	{
-		auto value = global_uvm_chain_api->get_storage_value_from_uvm_by_address(L, contract_id, key);
+		auto value = global_uvm_chain_api->get_storage_value_from_uvm_by_address(L, contract_id, key, fast_map_key, is_fast_map);
 		post_when_read_table(value);
 		// cache the value if it's the first time to read
 		if (!list) {
@@ -75,6 +78,8 @@ static struct UvmStorageValue get_last_storage_changed_value(lua_State *L, const
 		change_item.after = value;
 		change_item.contract_id = contract_id;
 		change_item.key = key;
+		change_item.fast_map_key = is_fast_map ? fast_map_key : "";
+		change_item.is_fast_map = is_fast_map;
 		list->push_back(change_item);
 
 		return value;
@@ -84,7 +89,7 @@ static struct UvmStorageValue get_last_storage_changed_value(lua_State *L, const
 		if (it->contract_id == std::string(contract_id) && it->key == key)
 			return it->after;
 	}
-	auto value = global_uvm_chain_api->get_storage_value_from_uvm_by_address(L, contract_id, key);
+	auto value = global_uvm_chain_api->get_storage_value_from_uvm_by_address(L, contract_id, key, fast_map_key, is_fast_map);
 	post_when_read_table(value);
 	return value;
 }
@@ -326,13 +331,17 @@ bool luaL_commit_storage_changes(lua_State *L)
 			{
 				is_in_starting_contract_init = true;
 				const auto &storage_properties_in_chain = stream->contract_storage_properties;
-				if (it->second->size() != storage_properties_in_chain.size())
+				/*if (it->second->size() != storage_properties_in_chain.size())
 				{
 					global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "some storage of this contract not init");
 					return false;
-				}
+				}*/
 				for (auto &p1 : *(it->second))
 				{
+					if (p1.second.is_fast_map)
+					{
+						continue;
+					}
 					if (storage_properties_in_chain.find(p1.first) == storage_properties_in_chain.end())
 					{
 						global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "Can't find storage %s", p1.first.c_str());
@@ -522,6 +531,7 @@ bool luaL_commit_storage_changes(lua_State *L)
 			++it2;
 		}
 	}
+
 	// commit changes to uvm
 	if (uvm::lua::lib::check_in_lua_sandbox(L))
 	{
@@ -542,7 +552,7 @@ namespace uvm {
 	namespace lib {
 
 		int uvmlib_get_storage_impl(lua_State *L,
-			const char *contract_id, const char *name)
+			const char *contract_id, const char *name, const char* fast_map_key, bool is_fast_map)
 		{
 			uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
 
@@ -566,7 +576,7 @@ namespace uvm {
 			int result;
 			if (state_value_node.type != LUA_STATE_VALUE_POINTER || !state_value_node.value.pointer_value)
 			{
-				const auto &value = get_last_storage_changed_value(L, contract_id, nullptr, std::string(name));
+				const auto &value = get_last_storage_changed_value(L, contract_id, nullptr, std::string(name), fast_map_key ? std::string(fast_map_key) : std::string(""), is_fast_map);
 				lua_push_storage_value(L, value);
 				if (lua_storage_is_table(value.type))
 				{
@@ -585,7 +595,7 @@ namespace uvm {
 			else
 			{
 				UvmStorageChangeList *list = (UvmStorageChangeList*)state_value_node.value.pointer_value;
-				const auto &value = get_last_storage_changed_value(L, contract_id, list, std::string(name));
+				const auto &value = get_last_storage_changed_value(L, contract_id, list, std::string(name), fast_map_key ? std::string(fast_map_key) : std::string(""), is_fast_map);
 				lua_push_storage_value(L, value);
 				if (lua_storage_is_table(value.type))
 				{
@@ -598,7 +608,7 @@ namespace uvm {
 		}
 
 		int uvmlib_set_storage_impl(lua_State *L,
-			const char *contract_id, const char *name, int value_index)
+			const char *contract_id, const char *name, const char* fast_map_key, bool is_fast_map, int value_index)
 		{
 			const auto &code_contract_id = get_contract_id_string_in_storage_operation(L);
 			if (code_contract_id != contract_id && code_contract_id != contract_id)
@@ -678,7 +688,7 @@ namespace uvm {
 				return 0;
 			}
 			std::string name_str(name);
-			auto before = get_last_storage_changed_value(L, contract_id, list, name_str);
+			auto before = get_last_storage_changed_value(L, contract_id, list, name_str, fast_map_key ? std::string(fast_map_key) : std::string(""), is_fast_map);
 			auto after = arg2;
 			if (after.type == uvm::blockchain::StorageValueTypes::storage_value_null)
 			{
@@ -698,10 +708,12 @@ namespace uvm {
 			if (!uvm::lua::lib::is_calling_contract_init_api(L)
 				&& before.type == uvm::blockchain::StorageValueTypes::storage_value_null)
 			{
-				// when not in init api
-				global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, (std::string(name) + "storage can't register storage after inited").c_str());
-				uvm::lua::lib::notify_lua_state_stop(L);
-				return 0;
+				if (!is_fast_map) {
+					// when not in init api
+					global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, (std::string(name) + "storage can't register storage after inited").c_str());
+					uvm::lua::lib::notify_lua_state_stop(L);
+					return 0;
+				}
 			}
 
 			// disable nested map
