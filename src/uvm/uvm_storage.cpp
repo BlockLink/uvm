@@ -491,12 +491,12 @@ bool luaL_commit_storage_changes(lua_State *L)
 					{
 						continue;
 					}
-					if (storage_properties_in_chain.find(p1.first) == storage_properties_in_chain.end())
+					if (storage_properties_in_chain.find(p1.second.key) == storage_properties_in_chain.end())
 					{
-						global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "Can't find storage %s", p1.first.c_str());
+						global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "Can't find storage %s", p1.second.key.c_str());
 						return false;
 					}
-					auto storage_info_in_chain = storage_properties_in_chain.at(p1.first);
+					auto storage_info_in_chain = storage_properties_in_chain.at(p1.second.key);
 					if (uvm::blockchain::is_any_table_storage_value_type(p1.second.after.type)
 						|| uvm::blockchain::is_any_array_storage_value_type(p1.second.after.type))
 					{
@@ -504,7 +504,7 @@ bool luaL_commit_storage_changes(lua_State *L)
 						if (!uvm::blockchain::is_any_table_storage_value_type(storage_info_in_chain)
 							&& !uvm::blockchain::is_any_array_storage_value_type(storage_info_in_chain))
 						{
-							global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "storage %s type not matched in chain", p1.first.c_str());
+							global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "storage %s type not matched in chain", p1.second.key.c_str());
 							return false;
 						}
 						if (p1.second.after.value.table_value->size()>0)
@@ -516,7 +516,7 @@ bool luaL_commit_storage_changes(lua_State *L)
 							auto item_after = p1.second.after.value.table_value->begin()->second;
 							if (item_after.type != uvm::blockchain::get_item_type_in_table_or_array(storage_info_in_chain))
 							{
-								global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "storage %s type not matched in chain", p1.first.c_str());
+								global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "storage %s type not matched in chain", p1.second.key.c_str());
 								return false;
 							}
 						}
