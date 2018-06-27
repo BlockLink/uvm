@@ -106,6 +106,11 @@ namespace uvm {
             storage_value_not_support = 202
         };
 
+		inline bool is_null_storage_value_type(StorageValueTypes type)
+		{
+			return type == StorageValueTypes::storage_value_null;
+		}
+
 
         inline bool is_any_base_storage_value_type(StorageValueTypes type)
         {
