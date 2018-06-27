@@ -412,7 +412,10 @@ typedef struct UvmStorageChangeItem
     struct UvmStorageValue after;
 
 	std::string full_key() const {
-		return key + "." + fast_map_key;
+		if (is_fast_map)
+			return key + "." + fast_map_key;
+		else
+			return key;
 	}
 
 } UvmStorageChangeItem;
