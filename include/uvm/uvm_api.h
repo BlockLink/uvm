@@ -404,6 +404,8 @@ typedef struct UvmStorageChangeItem
     std::string contract_id;
     std::string key;
 	jsondiff::DiffResult diff;
+	std::string fast_map_key;
+	bool is_fast_map = false;
     struct UvmStorageValue before;
     struct UvmStorageValue after;
 } UvmStorageChangeItem;
@@ -506,9 +508,11 @@ namespace uvm {
              */
             virtual bool register_storage(lua_State *L, const char *contract_name, const char *name) = 0;
 
-            virtual UvmStorageValue get_storage_value_from_uvm(lua_State *L, const char *contract_name, std::string name) = 0;
+            virtual UvmStorageValue get_storage_value_from_uvm(lua_State *L, const char *contract_name,
+				const std::string& name, const std::string& fast_map_key, bool is_fast_map) = 0;
 
-            virtual UvmStorageValue get_storage_value_from_uvm_by_address(lua_State *L, const char *contract_address, std::string name) = 0;
+            virtual UvmStorageValue get_storage_value_from_uvm_by_address(lua_State *L, const char *contract_address,
+				const std::string& name, const std::string& fast_map_key, bool is_fast_map) = 0;
 
             /**
              * after lua merge storage changes in lua_State, use the function to store the merged changes of storage to uvm
