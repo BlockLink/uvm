@@ -62,7 +62,7 @@ namespace uvm
                 "caller", "caller_address",
                 "contract_transfer", "contract_transfer_to", "transfer_from_contract_to_address",
 				"transfer_from_contract_to_public_account",
-                "get_chain_random", "get_transaction_fee",
+                "get_chain_random", "get_transaction_fee", "fast_map_get", "fast_map_set",
                 "get_transaction_id", "get_header_block_num", "wait_for_future_random", "get_waited",
                 "get_contract_balance_amount", "get_chain_now", "get_current_contract_address", "get_system_asset_symbol", "get_system_asset_precision",
                 "pairs", "ipairs", "pairsByKeys", "collectgarbage", "error", "getmetatable", "_VERSION",
@@ -922,7 +922,7 @@ namespace uvm
 				auto contract_id = luaL_checkstring(L, -1);
 				lua_pop(L, 1);
 				lua_pushvalue(L, 2); // top=4
-				auto ret_count = uvm::lib::uvmlib_get_storage_impl(L, contract_id, key); // top=ret_count + 4
+				auto ret_count = uvm::lib::uvmlib_get_storage_impl(L, contract_id, key, "", false); // top=ret_count + 4
 				if(ret_count>0)
 				{
 					auto tmp_global_key = "_uvm_core_lib_uvm_get_storage_tmp_value";
@@ -962,7 +962,7 @@ namespace uvm
                 lua_getfield(L, 4, "id"); // top=5, self, key, value, contract, contract_id
                 auto contract_id = luaL_checkstring(L, -1);
                 lua_pop(L, 2); // top=3, self, key, value
-                return uvm::lib::uvmlib_set_storage_impl(L, contract_id, key, 3);
+                return uvm::lib::uvmlib_set_storage_impl(L, contract_id, key, "", false, 3);
             }
 
 			static int uvm_core_lib_pairs_by_keys_func_loader(lua_State *L)
@@ -1022,6 +1022,38 @@ end
 				lua_call(L, 1, 1);
 				return 1;
             }
+
+			static int fast_map_get(lua_State *L)
+			{
+				// fast_map_get(storage_name, key)
+				if (lua_gettop(L) < 2 || !lua_isstring(L, 1) || !lua_isstring(L, 2)) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "invalid arguments of fast_map_get");
+					L->force_stopping = true;
+					lua_pushnil(L);
+					return 1;
+				}
+				auto cur_contract_id = get_current_using_contract_id(L);
+				auto storage_name = luaL_checkstring(L, 1);
+				auto fast_map_key = luaL_checkstring(L, 2);
+				return uvm::lib::uvmlib_get_storage_impl(L, cur_contract_id.c_str(), storage_name, fast_map_key, true);
+			}
+
+			static int fast_map_set(lua_State *L)
+			{
+				// fast_map_set(storage, key, value)
+				if (lua_gettop(L) < 3 || !lua_isstring(L, 1) || !lua_isstring(L, 2)) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "invalid arguments of fast_map_set");
+					L->force_stopping = true;
+					lua_pushnil(L);
+					return 1;
+				}
+				auto cur_contract_id = get_current_using_contract_id(L);
+				auto storage_name = luaL_checkstring(L, 1);
+				auto fast_map_key = luaL_checkstring(L, 2);
+				auto value_index = 3;
+				uvm::lib::uvmlib_set_storage_impl(L, cur_contract_id.c_str(), storage_name, fast_map_key, true, value_index);
+				return 0;
+			}
 
             lua_State *create_lua_state(bool use_contract)
             {
@@ -1086,6 +1118,9 @@ end
 				lua_pushcfunction(L, &uvm_core_lib_contract_metatable_newindex);
 				lua_setfield(L, -2, "__newindex");
 				lua_setglobal(L, "contract_mt");
+
+				add_global_c_function(L, "fast_map_get", &fast_map_get);
+				add_global_c_function(L, "fast_map_set", &fast_map_set);
 
 
 				/*
