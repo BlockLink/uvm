@@ -1023,10 +1023,18 @@ end
 				return 1;
             }
 
+			static int gas_penalty_threshold = 100000; // when over this gas threshold, some api like fast_map_get/fast_map_set will cost more gas
+
 			static int fast_map_get(lua_State *L)
 			{
 				// fast_map_get(storage_name, key)
-				uvm::lua::lib::increment_lvm_instructions_executed_count(L, 10000 - 1);
+				auto common_gas = 50;
+				if (uvm::lua::lib::get_lua_state_instructions_executed_count(L) > gas_penalty_threshold) {
+					uvm::lua::lib::increment_lvm_instructions_executed_count(L, 1000 * common_gas - 1);
+				}
+				else {
+					uvm::lua::lib::increment_lvm_instructions_executed_count(L, common_gas - 1);
+				}
 				if (lua_gettop(L) < 2 || !lua_isstring(L, 1) || !lua_isstring(L, 2)) {
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "invalid arguments of fast_map_get");
 					L->force_stopping = true;
@@ -1042,7 +1050,13 @@ end
 			static int fast_map_set(lua_State *L)
 			{
 				// fast_map_set(storage, key, value)
-				uvm::lua::lib::increment_lvm_instructions_executed_count(L, 20000 - 1);
+				auto common_gas = 100;
+				if (uvm::lua::lib::get_lua_state_instructions_executed_count(L) > gas_penalty_threshold) {
+					uvm::lua::lib::increment_lvm_instructions_executed_count(L, 1000 * common_gas - 1);
+				}
+				else {
+					uvm::lua::lib::increment_lvm_instructions_executed_count(L, common_gas - 1);
+				}
 				if (lua_gettop(L) < 3 || !lua_isstring(L, 1) || !lua_isstring(L, 2)) {
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "invalid arguments of fast_map_set");
 					L->force_stopping = true;
