@@ -21,6 +21,7 @@ set(SOURCES src/uvm/lapi.cpp
     src/uvm/ljsonrpclib.cpp
     src/uvm/llex.cpp
     src/uvm/lmathlib.cpp
+    src/uvm/lsafemathlib.cpp
     src/uvm/lmem.cpp
     src/uvm/lnetlib.cpp
     src/uvm/loadlib.cpp
