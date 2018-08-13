@@ -55,7 +55,7 @@ namespace uvm
 #define LUA_MAYBE_CHANGE_STORAGE_CONTRACT_IDS_STATE_KEY "maybe_change_storage_contract_ids_state"
 
             static const char *globalvar_whitelist[] = {
-                "print", "pprint", "table", "string", "time", "math", "json", "type", "require", "Array", "Stream",
+                "print", "pprint", "table", "string", "time", "math", "safemath", "json", "type", "require", "Array", "Stream",
                 "import_contract_from_address", "import_contract", "emit", "is_valid_address", "is_valid_contract_address",
 				"get_prev_call_frame_contract_address", "get_prev_call_frame_api_name", "get_contract_call_frame_stack_size",
                 "uvm", "storage", "exit", "self", "debugger", "exit_debugger",
