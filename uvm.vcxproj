@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\uvm\lsafemathlib.cpp" />
     <ClCompile Include="src\uvm\uvm_api_types.cpp" />
     <ClCompile Include="src\uvm\uvm_lib.cpp" />
     <ClCompile Include="src\uvm\uvm_lutil.cpp" />
