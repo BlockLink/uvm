@@ -343,6 +343,67 @@ static int safemath_pow(lua_State *L) {
 	return 1;
 }
 
+enum compare_type {
+	GT,
+	GE,
+	LT,
+	LE,
+	EQ,
+	NE
+};
+
+static int _safemath_compare(lua_State* L, compare_type type) {
+	if (lua_gettop(L) < 2) {
+		luaL_error(L, "pow need at least 2 argument");
+	}
+	std::string first_hex_str;
+	std::string second_hex_str;
+	if (!is_valid_bigint_obj(L, 1, first_hex_str)) {
+		luaL_argcheck(L, false, 1, "invalid bigint obj");
+	}
+	if (!is_valid_bigint_obj(L, 2, second_hex_str)) {
+		luaL_argcheck(L, false, 2, "invalid bigint obj");
+	}
+	auto first_int_str = boost::algorithm::unhex(first_hex_str);
+	sm_bigint first_int(first_int_str);
+	auto second_int_str = boost::algorithm::unhex(second_hex_str);
+	sm_bigint second_int(second_int_str);
+	bool result = false;
+	if ( (type==compare_type::GT && first_int > second_int)
+		|| (type == compare_type::GE && first_int >= second_int)
+		|| (type == compare_type::LT && first_int < second_int)
+		|| (type == compare_type::LE && first_int <= second_int)
+		|| (type == compare_type::EQ && first_int == second_int)
+		|| (type == compare_type::NE && first_int != second_int)
+		){
+		result = true;
+	}
+	else {
+		result = false;
+	}
+	lua_pushboolean(L, result);
+	return 1;
+}
+
+static int safemath_gt(lua_State* L) {
+	return _safemath_compare(L, compare_type::GT);
+}
+static int safemath_ge(lua_State* L) {
+	return _safemath_compare(L, compare_type::GE);
+}
+static int safemath_lt(lua_State* L) {
+	return _safemath_compare(L, compare_type::LT);
+}
+static int safemath_le(lua_State* L) {
+	return _safemath_compare(L, compare_type::LE);
+}
+static int safemath_eq(lua_State* L) {
+	return _safemath_compare(L, compare_type::EQ);
+}
+static int safemath_ne(lua_State* L) {
+	return _safemath_compare(L, compare_type::NE);
+}
+
 //static int safemath_pow(lua_State *L) {
 //	if (lua_gettop(L) < 2) {
 //		luaL_error(L, "pow need at least 2 argument");
@@ -709,6 +770,12 @@ static const luaL_Reg safemathlib[] = {
 	{ "div", safemath_div },
 	{ "rem", safemath_rem },
 	{ "pow", safemath_pow },
+	{ "gt", safemath_gt },
+	{ "ge", safemath_ge },
+	{ "lt", safemath_lt },
+	{ "le", safemath_le },
+	{ "eq", safemath_eq },
+	{ "ne", safemath_ne },
 	{ "toint", safemath_toint },
 	{ "tohex", safemath_tohex },
 	{ "tostring", safemath_tostring },
