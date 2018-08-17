@@ -17,6 +17,7 @@
 #include "uvm/ltm.h"
 #include "uvm/lzio.h"
 #include <uvm/uvm_api.h>
+#include <vmgc/vmgc.h>
 
 #define LUA_MALLOC_TOTAL_SIZE	(50*1024*1024)
 
@@ -205,7 +206,6 @@ struct lua_State {
     lu_byte allowhook;
     void *malloc_buffer; // malloc enough memory for the whole lua_state scope beforehand, and malloc/free in the buffer
     ptrdiff_t malloc_pos; // used buffer size in malloc_buffer
-    std::list<std::pair<ptrdiff_t, ptrdiff_t>> *malloced_buffers;
     char compile_error[LUA_COMPILE_ERROR_MAX_LENGTH];
 	char runerror[LUA_VM_EXCEPTION_STRNG_MAX_LENGTH];
     FILE *in;
@@ -214,6 +214,7 @@ struct lua_State {
     bool force_stopping;
 	int exit_code;
     UvmStatePreProcessorFunction *preprocessor;
+	vmgc::GcState *gc_state;
 
 	StkId evalstack; //for calulate
 	StkId evalstacktop;//first free slot

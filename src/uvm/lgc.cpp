@@ -24,6 +24,7 @@
 #include "uvm/lstring.h"
 #include "uvm/ltable.h"
 #include "uvm/ltm.h"
+#include <vmgc/vmgc.h>
 
 
 /*

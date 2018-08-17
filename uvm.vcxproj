@@ -66,6 +66,9 @@
     <ClCompile Include="src\uvm\lutf8lib.cpp" />
     <ClCompile Include="src\uvm\lvm.cpp" />
     <ClCompile Include="src\uvm\lzio.cpp" />
+    <ClCompile Include="vmgc\src\gcobject.cpp" />
+    <ClCompile Include="vmgc\src\gcstate.cpp" />
+    <ClCompile Include="vmgc\src\vmgc.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\uvm\exceptions.h" />
@@ -105,6 +108,10 @@
     <ClInclude Include="include\uvm\lundump.h" />
     <ClInclude Include="include\uvm\lvm.h" />
     <ClInclude Include="include\uvm\lzio.h" />
+    <ClInclude Include="vmgc\include\vmgc\exceptions.h" />
+    <ClInclude Include="vmgc\include\vmgc\gcobject.h" />
+    <ClInclude Include="vmgc\include\vmgc\gcstate.h" />
+    <ClInclude Include="vmgc\include\vmgc\vmgc.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
@@ -153,7 +160,7 @@
   <PropertyGroup />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>E:\projects\fc\include;E:\projects\boost_1.55.x64;..\uvm\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\projects\uvm\vmgc\include;E:\projects\fc\include;E:\projects\boost_1.55.x64;..\uvm\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>

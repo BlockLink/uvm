@@ -40,6 +40,7 @@
 #include <uvm/exceptions.h>
 #include <boost/variant.hpp>
 #include <boost/lexical_cast.hpp>
+#include <vmgc/vmgc.h>
 
 using uvm::lua::api::global_uvm_chain_api;
 
@@ -2862,15 +2863,16 @@ LUALIB_API const char *luaL_gsub(lua_State *L, const char *s, const char *p,
     return lua_tostring(L, -1);
 }
 
-
 static void *l_alloc(void *ud, void *ptr, size_t osize, size_t nsize) {
-    (void)ud; (void)osize;  /* not used */
+	auto gc_state = (vmgc::GcState*)ud;
+	if (!gc_state)
+		return nullptr;
     if (nsize == 0) {
-        free(ptr);
+        gc_state->gc_free(ptr);
         return nullptr;
     }
     else
-        return realloc(ptr, nsize);
+        return gc_state->gc_realloc(ptr, osize, nsize);
 }
 
 

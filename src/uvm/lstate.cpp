@@ -251,7 +251,11 @@ static void close_state(lua_State *L) {
     luaM_freearray(L, G(L)->strt.hash, G(L)->strt.size);
     freestack(L);
     lua_assert(gettotalbytes(g) == sizeof(LG));
-    (*g->frealloc)(g->ud, fromstate(L), sizeof(LG), 0);  /* free main block */
+	if (L->gc_state) {
+		delete L->gc_state;
+		// g->ud = nullptr;
+	}
+    // (*g->frealloc)(g->ud, fromstate(L), sizeof(LG), 0);  /* free main block */
 }
 
 
@@ -300,7 +304,9 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
     int i;
     lua_State *L;
     global_State *g;
-    LG *l = lua_cast(LG *, (*f)(ud, nullptr, LUA_TTHREAD, sizeof(LG)));
+	auto gc_state = new vmgc::GcState(LUA_MALLOC_TOTAL_SIZE);
+	if (!gc_state) return nullptr;
+    LG *l = lua_cast(LG *, (*f)(ud ? ud : gc_state, nullptr, LUA_TTHREAD, sizeof(LG)));
     if (l == nullptr) return nullptr;
     L = &l->l.l;
     g = &l->g;
@@ -308,9 +314,9 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
     L->tt = LUA_TTHREAD;
     g->currentwhite = bitmask(WHITE0BIT);
     L->marked = luaC_white(g);
-    L->malloc_buffer = malloc(LUA_MALLOC_TOTAL_SIZE);
+	L->malloc_buffer = nullptr;// malloc(LUA_MALLOC_TOTAL_SIZE);
     L->malloc_pos = 0;
-    L->malloced_buffers = new std::list<std::pair<ptrdiff_t, ptrdiff_t>>();
+	L->gc_state = gc_state;
     memset(L->compile_error, 0x0, LUA_COMPILE_ERROR_MAX_LENGTH);
 	memset(L->runerror, 0x0, LUA_VM_EXCEPTION_STRNG_MAX_LENGTH);
     L->in = stdin;
@@ -321,7 +327,7 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
     L->preprocessor = nullptr;
     preinit_thread(L, g);
     g->frealloc = f;
-    g->ud = ud;
+    g->ud = ud ? ud : gc_state;
     g->mainthread = L;
     g->seed = makeseed(L);
     g->gcrunning = 0;  /* no GC while building state */
@@ -362,8 +368,6 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
 LUA_API void lua_close(lua_State *L) {
     L = G(L)->mainthread;  /* only the main thread can be closed */
     uvm::lua::lib::close_lua_state_values(L);
-    delete L->malloced_buffers;
-    free(L->malloc_buffer);
     lua_lock(L);
     close_state(L);
 }
@@ -374,87 +378,23 @@ static size_t align8(size_t s) {
     return ((s >> 3) + 1) << 3;
 };
 
-// FIXME: use memory page, and use best fit malloc strategy
-// TODO: change to better strategy
 void *lua_malloc(lua_State *L, size_t size)
 {
-    size = align8(size);
-    if (size > LUA_MALLOC_TOTAL_SIZE)
-    {
-        uvm::lua::lib::notify_lua_state_stop(L);
-        return nullptr;
-    }
-    if (L->malloced_buffers->size() < 1)
-    {
-        auto offset = L->malloc_pos;
-        void *p = (void*)((intptr_t)(L->malloc_buffer) + offset);
-        L->malloc_pos += size;
-        L->malloced_buffers->push_back(std::make_pair(offset, size));
-        return p;
-    }
-    std::pair<ptrdiff_t, ptrdiff_t> last_pair;
-    auto begin = L->malloced_buffers->begin();
-    for (auto it = begin; it != L->malloced_buffers->end(); ++it)
-    {
-        if (it == begin)
-        {
-            if (it->first > (ptrdiff_t)size)
-            {
-                // can alloc memory before first block
-                ptrdiff_t offset = 0;
-                void *p = L->malloc_buffer;
-                L->malloced_buffers->insert(L->malloced_buffers->begin(), std::make_pair(offset, size));
-                return p;
-            }
-            last_pair = *it;
-            continue;
-        }
-        if (it->first >= last_pair.first + last_pair.second + (ptrdiff_t)size)
-        {
-            ptrdiff_t offset = last_pair.first + last_pair.second;
-            void *p = (void*)((intptr_t)(L->malloc_buffer) + offset);
-            L->malloced_buffers->insert(it, std::make_pair(offset, size));
-            return p;
-        }
-        last_pair = *it;
-    }
-    if (L->malloc_pos + size > LUA_MALLOC_TOTAL_SIZE)
-    {
-        L->force_stopping = true;
-		lua_set_run_error(L, "malloc too large memory in lvm");
-        // uvm::lua::lib::notify_lua_state_stop(L);
-        return nullptr;
-    }
-    ptrdiff_t offset = L->malloc_pos;
-    void *p = (void*)((intptr_t)(L->malloc_buffer) + offset);
-    L->malloced_buffers->push_back(std::make_pair(offset, size));
-    L->malloc_pos += size;
-    return p;
+	return L->gc_state->gc_malloc(size);
 }
 
 void *lua_calloc(lua_State *L, size_t element_count, size_t element_size)
 {
-    void *p = lua_malloc(L, element_count * element_size);
-    if (nullptr == p)
-        return nullptr;
-    memset(p, 0, element_count * element_size);
-    return p;
+	auto p = L->gc_state->gc_malloc(element_count * element_size);
+	if (!p)
+		return nullptr;
+	memset(p, 0, element_count * element_size);
+	return p;
 }
 
 void lua_free(lua_State *L, void *address)
 {
     if (nullptr == address || nullptr == L)
         return;
-    auto offset = (intptr_t)address - (intptr_t)L->malloc_buffer;
-    if (offset < 0 || offset > LUA_MALLOC_TOTAL_SIZE)
-        return;
-    size_t offset_size = (size_t)offset;
-    for (auto it = L->malloced_buffers->begin(); it != L->malloced_buffers->end(); ++it)
-    {
-        if (it->first == offset_size)
-        {
-            L->malloced_buffers->erase(it);
-            return;
-        }
-    }
+	L->gc_state->gc_free(address);
 }
