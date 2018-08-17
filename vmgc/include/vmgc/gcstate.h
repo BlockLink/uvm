@@ -38,6 +38,10 @@ namespace vmgc {
 		// @throws vmgc::GcException
 		void* gc_grow_vector(void *p, size_t nelements, size_t* size, size_t element_size, size_t limit);
 		size_t gc_objects_count() const;
+		std::shared_ptr<std::list<ptrdiff_t> > gc_objects() const;
+		void* pstart() const;
+		ptrdiff_t usedsize() const;
+		void gc_free_all();
 
 
 

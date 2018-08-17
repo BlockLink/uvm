@@ -2894,7 +2894,8 @@ LUALIB_API void luaL_checkversion_(lua_State *L, lua_Number ver, size_t sz) {
     const lua_Number *v = lua_version(L);
     if (sz != LUAL_NUMSIZES)  /* check numeric types */
         luaL_error(L, "core and library have incompatible numeric types");
-    if (v != lua_version(nullptr))
+	auto g_version = lua_version(nullptr);
+    if (*v != *g_version)
         luaL_error(L, "multiple Lua VMs detected");
     else if (*v != ver)
         luaL_error(L, "version mismatch: app. needs %f, Lua core provides %f",

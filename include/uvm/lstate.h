@@ -112,48 +112,6 @@ of luaV_execute */
 #define setoah(st,v)	((st) = ((st) & ~CIST_OAH) | (v))
 #define getoah(st)	((st) & CIST_OAH)
 
-
-/*
-** 'global state', shared by all threads of this state
-*/
-typedef struct global_State {
-    lua_Alloc frealloc;  /* function to reallocate memory */
-    void *ud;         /* auxiliary data to 'frealloc' */
-    l_mem totalbytes;  /* number of bytes currently allocated - GCdebt */
-    l_mem GCdebt;  /* bytes allocated not yet compensated by the collector */
-    lu_mem GCmemtrav;  /* memory traversed by the GC */
-    lu_mem GCestimate;  /* an estimate of the non-garbage memory in use */
-    stringtable strt;  /* hash table for strings */
-    TValue l_registry;
-    unsigned int seed;  /* randomized seed for hashes */
-    lu_byte currentwhite;
-    lu_byte gcstate;  /* state of garbage collector */
-    lu_byte gckind;  /* kind of GC running */
-    lu_byte gcrunning;  /* true if GC is running */
-    GCObject *allgc;  /* list of all collectable objects */
-    GCObject **sweepgc;  /* current position of sweep in list */
-    GCObject *finobj;  /* list of collectable objects with finalizers */
-    GCObject *gray;  /* list of gray objects */
-    GCObject *grayagain;  /* list of objects to be traversed atomically */
-    GCObject *weak;  /* list of tables with weak values */
-    GCObject *ephemeron;  /* list of ephemeron tables (weak keys) */
-    GCObject *allweak;  /* list of all-weak tables */
-    GCObject *tobefnz;  /* list of userdata to be GC */
-    GCObject *fixedgc;  /* list of objects not to be collected */
-    struct lua_State *twups;  /* list of threads with open upvalues */
-    unsigned int gcfinnum;  /* number of finalizers to call in each GC step */
-    int gcpause;  /* size of pause between successive GCs */
-    int gcstepmul;  /* GC 'granularity' */
-    lua_CFunction panic;  /* to be called in unprotected errors */
-    struct lua_State *mainthread;
-    const lua_Number *version;  /* pointer to version number */
-    TString *memerrmsg;  /* memory-error message */
-    TString *tmname[TM_N];  /* array with tag-method names */
-    struct Table *mt[LUA_NUMTAGS];  /* metatables for basic types */
-    TString *strcache[STRCACHE_N][STRCACHE_M];  /* cache for strings in API */
-} global_State;
-
-
 typedef struct UvmStatePreProcessorFunction
 {
     std::list<void*> args;
@@ -176,7 +134,7 @@ inline UvmStatePreProcessorFunction make_lua_state_preprocessor(std::list<void*>
 
 // typedef void(*LuaStatePreProcessor)(lua_State *L, void *ptr);
 
-
+struct lua_State;
 /*
 ** 'per thread' state
 */
@@ -185,7 +143,6 @@ struct lua_State {
     unsigned short nci;  /* number of items in 'ci' list */
     lu_byte status;
     StkId top;  /* first free slot in the stack */
-    global_State *l_G;
     CallInfo *ci;  /* call info for current function */
     const Instruction *oldpc;  /* last pc traced */
     StkId stack_last;  /* last free slot in the stack */
@@ -215,6 +172,18 @@ struct lua_State {
 	int exit_code;
     UvmStatePreProcessorFunction *preprocessor;
 	vmgc::GcState *gc_state;
+	lua_CFunction panic;  /* to be called in unprotected errors */
+	lua_Alloc frealloc;  /* function to reallocate memory */
+	void *ud;         /* auxiliary data to 'frealloc' */
+	TValue l_registry;
+	unsigned int seed;  /* randomized seed for hashes */
+	stringtable strt;  /* hash table for strings */
+
+	const lua_Number *version;  /* pointer to version number */
+	TString *memerrmsg;  /* memory-error message */
+	TString *tmname[TM_N];  /* array with tag-method names */
+	struct Table *mt[LUA_NUMTAGS];  /* metatables for basic types */
+	TString *strcache[STRCACHE_N][STRCACHE_M];  /* cache for strings in API */
 
 	StkId evalstack; //for calulate
 	StkId evalstacktop;//first free slot
@@ -268,7 +237,7 @@ union GCUnion {
 /* actual number of total bytes allocated */
 #define gettotalbytes(g)	lua_cast(lu_mem, (g)->totalbytes + (g)->GCdebt)
 
-LUAI_FUNC void luaE_setdebt(global_State *g, l_mem debt);
+LUAI_FUNC void luaE_setdebt(l_mem debt);
 LUAI_FUNC void luaE_freethread(lua_State *L, lua_State *L1);
 LUAI_FUNC CallInfo *luaE_extendCI(lua_State *L);
 LUAI_FUNC void luaE_freeCI(lua_State *L);

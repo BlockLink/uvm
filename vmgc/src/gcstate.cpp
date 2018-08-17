@@ -20,10 +20,7 @@ namespace vmgc {
 
 	GcState::~GcState() {
 		if (_pstart) {
-			for (const auto& offset : *_gc_objects) {
-				auto p = (GcObject*)((intptr_t) _pstart + offset);
-				p->~GcObject();
-			}
+			gc_free_all();
 			free(_pstart);
 			_pstart = nullptr;
 			_usedsize = 0;
@@ -227,6 +224,32 @@ namespace vmgc {
 	size_t GcState::gc_objects_count() const
 	{
 		return _gc_objects->size();
+	}
+
+	std::shared_ptr<std::list<ptrdiff_t> > GcState::gc_objects() const
+	{
+		return _gc_objects;
+	}
+
+	void* GcState::pstart() const {
+		return _pstart;
+	}
+
+	ptrdiff_t GcState::usedsize() const {
+		return _usedsize;
+	}
+
+	void GcState::gc_free_all()
+	{
+		if (_pstart) {
+			for (const auto& offset : *_gc_objects) {
+				auto p = (GcObject*)((intptr_t)_pstart + offset);
+				p->~GcObject();
+			}
+			_gc_objects->clear();
+			_usedsize = 0;
+			_lastfreepos = 0;
+		}
 	}
 
 }

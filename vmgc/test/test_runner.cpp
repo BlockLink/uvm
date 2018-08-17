@@ -74,7 +74,7 @@ BOOST_AUTO_TEST_CASE(gc_grow_vector)
 	}
 	BOOST_CHECK(p2[3] == 3);
 
-	// TODO: grow object vector test case
+	// grow object vector test case
 	size_t count3 = 0;
 	auto p3 = state.gc_grow_object_vector<GcString>(nullptr, 0, &count3, INT32_MAX);
 	BOOST_CHECK(count3 == GC_MINSIZEARRAY);

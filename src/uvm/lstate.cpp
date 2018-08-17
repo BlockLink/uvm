@@ -65,7 +65,6 @@ typedef struct LX {
 */
 typedef struct LG {
     LX l;
-    global_State g;
 } LG;
 
 
@@ -98,13 +97,8 @@ static unsigned int makeseed(lua_State *L) {
 ** set GCdebt to a new value keeping the value (totalbytes + GCdebt)
 ** invariant (and avoiding underflows in 'totalbytes')
 */
-void luaE_setdebt(global_State *g, l_mem debt) {
-    l_mem tb = gettotalbytes(g);
-    lua_assert(tb > 0);
-    if (debt < tb - MAX_LMEM)
-        debt = tb - MAX_LMEM;  /* will make 'totalbytes == MAX_LMEM' */
-    g->totalbytes = tb - debt;
-    g->GCdebt = debt;
+void luaE_setdebt(l_mem debt) {
+    
 }
 
 
@@ -184,11 +178,11 @@ static void freestack(lua_State *L) {
 /*
 ** Create registry table and its predefined values
 */
-static void init_registry(lua_State *L, global_State *g) {
+static void init_registry(lua_State *L) {
     TValue temp;
     /* create registry */
     Table *registry = luaH_new(L);
-    sethvalue(L, &g->l_registry, registry);
+    sethvalue(L, &L->l_registry, registry);
     luaH_resize(L, registry, LUA_RIDX_LAST, 0);
     /* registry[LUA_RIDX_MAINTHREAD] = L */
     setthvalue(L, &temp, L);  /* temp = L */
@@ -204,15 +198,12 @@ static void init_registry(lua_State *L, global_State *g) {
 ** ('g->version' != nullptr flags that the state was completely build)
 */
 static void f_luaopen(lua_State *L, void *ud) {
-    global_State *g = G(L);
     UNUSED(ud);
     stack_init(L, L);  /* init stack */
-    init_registry(L, g);
+    init_registry(L);
     luaS_init(L);
     luaT_init(L);
     luaX_init(L);
-    g->gcrunning = 1;  /* allow gc */
-    g->version = lua_version(nullptr);
     luai_userstateopen(L);
 }
 
@@ -221,8 +212,7 @@ static void f_luaopen(lua_State *L, void *ud) {
 ** preinitialize a thread with consistent values without allocating
 ** any memory (to avoid errors)
 */
-static void preinit_thread(lua_State *L, global_State *g) {
-    G(L) = g;
+static void preinit_thread(lua_State *L) {
     L->stack = nullptr;
     L->ci = nullptr;
     L->nci = 0;
@@ -243,46 +233,39 @@ static void preinit_thread(lua_State *L, global_State *g) {
 
 
 static void close_state(lua_State *L) {
-    global_State *g = G(L);
     luaF_close(L, L->stack);  /* close all upvalues for this thread */
     luaC_freeallobjects(L);  /* collect all objects */
-    if (g->version)  /* closing a fully built state? */
+    if (L->version)  /* closing a fully built state? */
         luai_userstateclose(L);
-    luaM_freearray(L, G(L)->strt.hash, G(L)->strt.size);
+    luaM_freearray(L, L->strt.hash, L->strt.size);
     freestack(L);
-    lua_assert(gettotalbytes(g) == sizeof(LG));
 	if (L->gc_state) {
 		delete L->gc_state;
-		// g->ud = nullptr;
+		// L->ud = nullptr;
 	}
-    // (*g->frealloc)(g->ud, fromstate(L), sizeof(LG), 0);  /* free main block */
+    // (*g->frealloc)(L->ud, fromstate(L), sizeof(LG), 0);  /* free main block */
 }
 
 
 // TODO: remove lua thread
 LUA_API lua_State *lua_newthread(lua_State *L) {
-    global_State *g = G(L);
     lua_State *L1;
     lua_lock(L);
     luaC_checkGC(L);
     /* create new thread */
     L1 = &lua_cast(LX *, luaM_newobject(L, LUA_TTHREAD, sizeof(LX)))->l;
-    L1->marked = luaC_white(g);
     L1->tt = LUA_TTHREAD;
-    /* link it on list 'allgc' */
-    L1->next = g->allgc;
-    g->allgc = obj2gco(L1);
     /* anchor it on L stack */
     setthvalue(L, L->top, L1);
     api_incr_top(L);
-    preinit_thread(L1, g);
+    preinit_thread(L1);
     L1->hookmask = L->hookmask;
     L1->basehookcount = L->basehookcount;
     L1->hook = L->hook;
     resethookcount(L1);
     /* initialize L1 extra space */
-    memcpy(lua_getextraspace(L1), lua_getextraspace(g->mainthread),
-        LUA_EXTRASPACE);
+    /*memcpy(lua_getextraspace(L1), lua_getextraspace(g->mainthread),
+        LUA_EXTRASPACE);*/
     luai_userstatethread(L, L1);
     stack_init(L1, L);  /* init stack */
     lua_unlock(L);
@@ -303,17 +286,13 @@ void luaE_freethread(lua_State *L, lua_State *L1) {
 LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
     int i;
     lua_State *L;
-    global_State *g;
 	auto gc_state = new vmgc::GcState(LUA_MALLOC_TOTAL_SIZE);
 	if (!gc_state) return nullptr;
     LG *l = lua_cast(LG *, (*f)(ud ? ud : gc_state, nullptr, LUA_TTHREAD, sizeof(LG)));
     if (l == nullptr) return nullptr;
     L = &l->l.l;
-    g = &l->g;
     L->next = nullptr;
     L->tt = LUA_TTHREAD;
-    g->currentwhite = bitmask(WHITE0BIT);
-    L->marked = luaC_white(g);
 	L->malloc_buffer = nullptr;// malloc(LUA_MALLOC_TOTAL_SIZE);
     L->malloc_pos = 0;
 	L->gc_state = gc_state;
@@ -325,37 +304,24 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
     L->force_stopping = false;
 	L->exit_code = 0;
     L->preprocessor = nullptr;
-    preinit_thread(L, g);
-    g->frealloc = f;
-    g->ud = ud ? ud : gc_state;
-    g->mainthread = L;
-    g->seed = makeseed(L);
-    g->gcrunning = 0;  /* no GC while building state */
-    g->GCestimate = 0;
-    g->strt.size = g->strt.nuse = 0;
-    g->strt.hash = nullptr;
-    setnilvalue(&g->l_registry);
-    g->panic = nullptr;
-    g->version = nullptr;
-    g->gcstate = GCSpause;
-    g->gckind = KGC_NORMAL;
-    g->allgc = g->finobj = g->tobefnz = g->fixedgc = nullptr;
-    g->sweepgc = nullptr;
-    g->gray = g->grayagain = nullptr;
-    g->weak = g->ephemeron = g->allweak = nullptr;
-    g->twups = nullptr;
-    g->totalbytes = sizeof(LG);
-    g->GCdebt = 0;
-    g->gcfinnum = 0;
-    g->gcpause = LUAI_GCPAUSE;
-    g->gcstepmul = LUAI_GCMUL;
+	static const lua_Number version = LUA_VERSION_NUM;
+	L->version = &version;
+	L->frealloc = f;
+	L->ud = ud ? ud : gc_state;
+	L->seed = makeseed(L);
+	setnilvalue(&L->l_registry);
+	L->strt.size = L->strt.nuse = 0;
+	L->strt.hash = nullptr;
+
+	L->panic = nullptr;
+    preinit_thread(L);
 
 	L->evalstacksize = 100;
 	L->evalstack = luaM_newvector(L, L->evalstacksize, TValue);
 	L->evalstacktop = L->evalstack;
 
 
-    for (i = 0; i < LUA_NUMTAGS; i++) g->mt[i] = nullptr;
+    for (i = 0; i < LUA_NUMTAGS; i++) L->mt[i] = nullptr;
     if (luaD_rawrunprotected(L, f_luaopen, nullptr) != LUA_OK) {
         /* memory allocation error: free partial state */
         close_state(L);
@@ -366,7 +332,6 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
 
 
 LUA_API void lua_close(lua_State *L) {
-    L = G(L)->mainthread;  /* only the main thread can be closed */
     uvm::lua::lib::close_lua_state_values(L);
     lua_lock(L);
     close_state(L);
