@@ -20,6 +20,8 @@
 #include <memory>
 
 #include <uvm/lua.h>
+#include <jsondiff/jsondiff.h>
+#include <jsondiff/exceptions.h>
 
 #define LOG_INFO(...)  fprintf(stderr, "[INFO] " ##__VA_ARGS__)
 
@@ -105,6 +107,11 @@ namespace uvm {
             storage_value_userdata = 201,
             storage_value_not_support = 202
         };
+
+		inline bool is_null_storage_value_type(StorageValueTypes type)
+		{
+			return type == StorageValueTypes::storage_value_null;
+		}
 
 
         inline bool is_any_base_storage_value_type(StorageValueTypes type)
@@ -401,8 +408,19 @@ typedef struct UvmStorageChangeItem
 {
     std::string contract_id;
     std::string key;
+	jsondiff::DiffResult diff;
+	std::string fast_map_key;
+	bool is_fast_map = false;
     struct UvmStorageValue before;
     struct UvmStorageValue after;
+
+	std::string full_key() const {
+		if (is_fast_map)
+			return key + "." + fast_map_key;
+		else
+			return key;
+	}
+
 } UvmStorageChangeItem;
 
 
@@ -416,6 +434,9 @@ struct UvmStorageValue lua_type_to_storage_value_type(lua_State *L, int index);
 bool luaL_commit_storage_changes(lua_State *L);
 
 bool lua_push_storage_value(lua_State *L, const UvmStorageValue &value);
+
+UvmStorageValue json_to_uvm_storage_value(lua_State *L, jsondiff::JsonValue json_value);
+jsondiff::JsonValue uvm_storage_value_to_json(UvmStorageValue value);
 
 typedef std::unordered_map<std::string, UvmStorageChangeItem> ContractChangesMap;
 
@@ -500,9 +521,11 @@ namespace uvm {
              */
             virtual bool register_storage(lua_State *L, const char *contract_name, const char *name) = 0;
 
-            virtual UvmStorageValue get_storage_value_from_uvm(lua_State *L, const char *contract_name, std::string name) = 0;
+            virtual UvmStorageValue get_storage_value_from_uvm(lua_State *L, const char *contract_name,
+				const std::string& name, const std::string& fast_map_key, bool is_fast_map) = 0;
 
-            virtual UvmStorageValue get_storage_value_from_uvm_by_address(lua_State *L, const char *contract_address, std::string name) = 0;
+            virtual UvmStorageValue get_storage_value_from_uvm_by_address(lua_State *L, const char *contract_address,
+				const std::string& name, const std::string& fast_map_key, bool is_fast_map) = 0;
 
             /**
              * after lua merge storage changes in lua_State, use the function to store the merged changes of storage to uvm
