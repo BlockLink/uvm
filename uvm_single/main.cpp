@@ -83,6 +83,10 @@ static void print_usage(const char *badoption) {
 		"  -E       ignore environment variables\n"
 		"  -d       decompile bytecode to source\n"
 		"  -s       disassemble bytecode to readable assemble\n"
+		"  -r       run bytecode file\n"
+		"  -t       run contract testcases\n"
+		"  -k       call contract api\n"
+		"  -x       run with debugger\n"
 		"  -c       compile source to bytecode\n"
 		"  --       stop handling options\n"
 		"  -        stop handling options and execute stdin\n"
@@ -303,6 +307,10 @@ static int handle_script(lua_State *L, char **argv, bool is_contract = false) {
 #define has_v		4	/* -v */
 #define has_e		8	/* -e */
 #define has_E		16	/* -E */
+#define has_run     32  /* -r */
+#define has_test    64  /* -t */
+#define has_call    128 /* -k */
+#define has_debug   256 /* -x */
 
 /*
 ** Traverses all arguments from 'argv', returning a mask with those
@@ -334,6 +342,26 @@ static int collectargs(char **argv, int *first) {
 			if (argv[i][2] != '\0')  /* extra characters after 1st? */
 				return has_error;  /* invalid option */
 			args |= has_v;
+			break;
+		case 'r':
+			if (argv[i][2] != '\0')  /* extra characters after 1st? */
+				return has_error;  /* invalid option */
+			args |= has_run;
+			break;
+		case 't':
+			if (argv[i][2] != '\0')  /* extra characters after 1st? */
+				return has_error;  /* invalid option */
+			args |= has_test;
+			break;
+		case 'k':
+			if (argv[i][2] != '\0')  /* extra characters after 1st? */
+				return has_error;  /* invalid option */
+			args |= has_call;
+			break;
+		case 'x':
+			if (argv[i][2] != '\0')  /* extra characters after 1st? */
+				return has_error;  /* invalid option */
+			args |= has_debug;
 			break;
 		case 'e':
 			args |= has_e;  /* FALLTHROUGH */
@@ -393,11 +421,94 @@ static int pmain(lua_State *L) {
 		if (handle_luainit(L) != LUA_OK)  /* run LUA_INIT */
 			return 0;  /* error running LUA_INIT */
 	}
+	// TODO: test/debugger
+	bool debugger_opened = args & has_debug;
+	if ((args & has_call) && (script >= argc - 2)) {
+		perror("-k need pass contract api and api argument after script path");
+		return 1;
+	}
+	std::string contract_api;
+	std::string contract_api_arg;
+	if (args & has_call) {
+		contract_api = argv[script + 1];
+		contract_api_arg = argv[script + 2];
+	}
+
 	//if (!runargs(L, argv, script))  /* execute arguments -e and -l */
 	//	return 0;  /* something failed */
-	if (script < argc &&
-		handle_script(L, argv + script) != LUA_OK) /* execute main script (if there is one) */
-		return 0;
+	if (script < argc) {
+		auto run_script_result = handle_script(L, argv + script); /* execute main script (if there is one) */
+		if (run_script_result != LUA_OK) {
+			return 1;
+		}
+		if (has_call) {
+			// call contract api
+			using uvm::lua::api::global_uvm_chain_api;
+
+			lua_fill_contract_info_for_use(L);
+
+			lua_pushstring(L, CURRENT_CONTRACT_NAME);
+			lua_setfield(L, -2, "name");
+			lua_pushstring(L, argv[script]);
+			lua_setfield(L, -2, "id");
+
+			for (const auto &special_api_name : uvm::lua::lib::contract_special_api_names)
+			{
+				if (special_api_name != contract_api)
+				{
+					lua_pushnil(L);
+					lua_setfield(L, -2, special_api_name.c_str());
+				}
+			}
+
+			lua_getfield(L, -1, contract_api.c_str());
+			if (lua_isfunction(L, -1))
+			{
+				lua_pushvalue(L, -2); // push self	
+				if (uvm::util::vector_contains(uvm::lua::lib::contract_int_argument_special_api_names, contract_api))
+				{
+					std::stringstream arg_ss;
+					arg_ss << contract_api_arg;
+					lua_Integer arg1_int = 0;
+					arg_ss >> arg1_int;
+					lua_pushinteger(L, arg1_int);
+				}
+				else
+				{
+					lua_pushstring(L, contract_api_arg.c_str());
+				}
+
+				int status = lua_pcall(L, 2, 1, 0);
+				if (status != LUA_OK)
+				{
+					global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "execute api %s contract error", contract_api.c_str());
+					return 1;
+				}
+				lua_pop(L, 1);
+				lua_pop(L, 1); // pop self
+			}
+			else
+			{
+				global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "Can't find api %s in this contract", contract_api.c_str());
+				lua_pop(L, 1);
+				return 1;
+			}
+			// print call contract api result
+			if (lua_gettop(L)>0)
+			{
+				// has result
+				lua_getglobal(L, "last_return");
+				auto last_return_value_json = luaL_tojsonstring(L, -1, nullptr);
+				auto last_return_value_json_string = std::string(last_return_value_json);
+				lua_pop(L, 1);
+				printf("result: %s\n", last_return_value_json_string.c_str());
+			}
+
+			lua_pop(L, 1);
+			lua_pushinteger(L, LUA_OK);
+			return 0;
+		}
+	}
 	if (script == argc && !(args & (has_e | has_v))) {  /* no arguments? */
 															 /*
 															 if (lua_stdin_is_tty()) {  // running in interactive mode?
