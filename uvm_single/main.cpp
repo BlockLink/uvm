@@ -452,6 +452,9 @@ static int pmain(lua_State *L) {
 			// run ***.test, whose content is a function accept a contract table
 			lua_setglobal(L, "_test_contract");
 			auto test_script_path = std::string(argv[script]) + ".test";
+			if (script < argc - 1) {
+				test_script_path = argv[script + 1];
+			}
 			char *path = (char*) malloc(test_script_path.size() + 1);
 			memcpy(path, test_script_path.c_str(), test_script_path.size());
 			path[test_script_path.size()] = '\0';
