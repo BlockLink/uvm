@@ -202,6 +202,14 @@ void luaV_finishget(lua_State *L, const TValue *t, TValue *key, StkId val,
 */
 void luaV_finishset(lua_State *L, const TValue *t, TValue *key,
     StkId val, const TValue *oldval) {
+	if (ttistable(t)) {
+		auto table_addr = (intptr_t)t->value_.gc;
+		if (!L->allow_contract_modify && L->contract_table_addresses
+			&& std::find(L->contract_table_addresses->begin(), L->contract_table_addresses->end(), table_addr) != L->contract_table_addresses->end()) {
+			luaG_runerror(L, "can't modify contract properties");
+			return;
+		}
+	}
     int loop;  /* counter to avoid infinite loops */
     for (loop = 0; loop < MAXTAGLOOP; loop++) {
         const TValue *tm;

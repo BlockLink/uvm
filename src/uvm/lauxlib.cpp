@@ -40,6 +40,7 @@
 #include <uvm/exceptions.h>
 #include <boost/variant.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/scope_exit.hpp>
 
 using uvm::lua::api::global_uvm_chain_api;
 
@@ -1538,6 +1539,11 @@ int luaL_import_contract_module_from_address(lua_State *L)
 				contract_apis[apis_count][strlen(key)] = '\0';
                 apis_count += 1;
             }
+			auto contract_addr = (intptr_t) lua_topointer(L, -1);
+			L->contract_table_addresses->push_back(contract_addr);
+			BOOST_SCOPE_EXIT_ALL(L) {
+				L->allow_contract_modify = false;
+			};
             // if the contract info stored in uvm before, fetch and check whether the apis are the same. if not the same, error
             auto clear_stored_contract_info = [&]() {
                 // global_uvm_chain_api->free_contract_info(L, unwrap_name.c_str(), stored_contract_apis, &stored_contract_apis_count);
@@ -1805,6 +1811,11 @@ int luaL_import_contract_module(lua_State *L)
 				contract_apis[apis_count][strlen(key)] = '\0';
                 apis_count += 1;
             }
+			auto contract_addr = (intptr_t)lua_topointer(L, -1);
+			L->contract_table_addresses->push_back(contract_addr);
+			BOOST_SCOPE_EXIT_ALL(L) {
+				L->allow_contract_modify = false;
+			};
             // if the contract info stored in uvm before, fetch and check whether the apis are the same. if not the same, error
 			auto stored_contract_info = std::make_shared<UvmContractInfo>();
             auto clear_stored_contract_info = [&]() {

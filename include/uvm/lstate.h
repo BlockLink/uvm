@@ -215,6 +215,9 @@ struct lua_State {
 	int exit_code;
     UvmStatePreProcessorFunction *preprocessor;
 
+	std::list<intptr_t> *contract_table_addresses;
+	bool allow_contract_modify;
+
 	StkId evalstack; //for calulate
 	StkId evalstacktop;//first free slot
 	int evalstacksize;
