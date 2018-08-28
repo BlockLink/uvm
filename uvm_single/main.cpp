@@ -83,6 +83,10 @@ static void print_usage(const char *badoption) {
 		"  -E       ignore environment variables\n"
 		"  -d       decompile bytecode to source\n"
 		"  -s       disassemble bytecode to readable assemble\n"
+		"  -r       run bytecode file\n"
+		"  -t       run contract testcases, load script_path + '.test' bytecode file(contains a function accept contract table) to run testcases\n"
+		"  -k       call contract api, -k script_path contract_api api_argument\n"
+		"  -x       run with debugger\n"
 		"  -c       compile source to bytecode\n"
 		"  --       stop handling options\n"
 		"  -        stop handling options and execute stdin\n"
@@ -303,6 +307,10 @@ static int handle_script(lua_State *L, char **argv, bool is_contract = false) {
 #define has_v		4	/* -v */
 #define has_e		8	/* -e */
 #define has_E		16	/* -E */
+#define has_run     32  /* -r */
+#define has_test    64  /* -t */
+#define has_call    128 /* -k */
+#define has_debug   256 /* -x */
 
 /*
 ** Traverses all arguments from 'argv', returning a mask with those
@@ -334,6 +342,26 @@ static int collectargs(char **argv, int *first) {
 			if (argv[i][2] != '\0')  /* extra characters after 1st? */
 				return has_error;  /* invalid option */
 			args |= has_v;
+			break;
+		case 'r':
+			if (argv[i][2] != '\0')  /* extra characters after 1st? */
+				return has_error;  /* invalid option */
+			args |= has_run;
+			break;
+		case 't':
+			if (argv[i][2] != '\0')  /* extra characters after 1st? */
+				return has_error;  /* invalid option */
+			args |= has_test;
+			break;
+		case 'k':
+			if (argv[i][2] != '\0')  /* extra characters after 1st? */
+				return has_error;  /* invalid option */
+			args |= has_call;
+			break;
+		case 'x':
+			if (argv[i][2] != '\0')  /* extra characters after 1st? */
+				return has_error;  /* invalid option */
+			args |= has_debug;
 			break;
 		case 'e':
 			args |= has_e;  /* FALLTHROUGH */
@@ -393,11 +421,62 @@ static int pmain(lua_State *L) {
 		if (handle_luainit(L) != LUA_OK)  /* run LUA_INIT */
 			return 0;  /* error running LUA_INIT */
 	}
+	if ((args & has_call) && (script >= argc - 2)) {
+		perror("-k need pass contract api and api argument after script path");
+		return 1;
+	}
+	std::string contract_api;
+	std::string contract_api_arg;
+	if (args & has_call) {
+		contract_api = argv[script + 1];
+		contract_api_arg = argv[script + 2];
+	}
+
 	//if (!runargs(L, argv, script))  /* execute arguments -e and -l */
 	//	return 0;  /* something failed */
-	if (script < argc &&
-		handle_script(L, argv + script) != LUA_OK) /* execute main script (if there is one) */
-		return 0;
+	if (script < argc) {
+		auto run_script_result = handle_script(L, argv + script); /* execute main script (if there is one) */
+		if (run_script_result != LUA_OK) {
+			return 1;
+		}
+		if (args & has_call) {
+			// call contract api
+			std::string result_string;
+			if (!uvm::lua::lib::call_last_contract_api(L, std::string(argv[script]), contract_api, contract_api_arg, &result_string)) {
+				return 1;
+			}
+			printf("result: %s\n", result_string.c_str());
+			return 0;
+		}
+		if (args & has_test) {
+			// run ***.test, whose content is a function accept a contract table
+			lua_setglobal(L, "_test_contract");
+			auto test_script_path = std::string(argv[script]) + ".test";
+			char *path = (char*) malloc(test_script_path.size() + 1);
+			memcpy(path, test_script_path.c_str(), test_script_path.size());
+			path[test_script_path.size()] = '\0';
+			char* paths[1];
+			paths[0] = path;
+			auto load_test_script_result = handle_script(L, paths);
+			if (load_test_script_result != LUA_OK) {
+				return 1;
+			}
+			if (!lua_isfunction(L, -1)) {
+				perror("test script must contains a function accept contract table");
+				return 1;
+			}
+			lua_getglobal(L, "_test_contract");
+			auto result = lua_pcall(L, 1, 1, 0);
+			if (result != LUA_OK) {
+				return 1;
+			}
+			printf("test done\n");
+			return 0;
+		}
+		if (args & has_debug) {
+			// TODO
+		}
+	}
 	if (script == argc && !(args & (has_e | has_v))) {  /* no arguments? */
 															 /*
 															 if (lua_stdin_is_tty()) {  // running in interactive mode?

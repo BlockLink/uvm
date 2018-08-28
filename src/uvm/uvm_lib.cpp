@@ -2029,6 +2029,72 @@ end
                 return execute_contract_api_by_stream(L, stream, "start", arg1, result_json_string) == LUA_OK;
             }
 
+			bool call_last_contract_api(lua_State* L, const std::string& contract_id, const std::string& api_name, const std::string& api_arg, std::string* result_json_string) {
+				using uvm::lua::api::global_uvm_chain_api;
+
+				lua_fill_contract_info_for_use(L);
+
+				lua_pushstring(L, CURRENT_CONTRACT_NAME);
+				lua_setfield(L, -2, "name");
+				lua_pushstring(L, contract_id.c_str());
+				lua_setfield(L, -2, "id");
+
+				for (const auto &special_api_name : uvm::lua::lib::contract_special_api_names)
+				{
+					if (special_api_name != api_name)
+					{
+						lua_pushnil(L);
+						lua_setfield(L, -2, special_api_name.c_str());
+					}
+				}
+
+				lua_getfield(L, -1, api_name.c_str());
+				if (lua_isfunction(L, -1))
+				{
+					lua_pushvalue(L, -2); // push self	
+					if (uvm::util::vector_contains(uvm::lua::lib::contract_int_argument_special_api_names, api_name))
+					{
+						std::stringstream arg_ss;
+						arg_ss << api_arg;
+						lua_Integer arg1_int = 0;
+						arg_ss >> arg1_int;
+						lua_pushinteger(L, arg1_int);
+					}
+					else
+					{
+						lua_pushstring(L, api_arg.c_str());
+					}
+
+					int status = lua_pcall(L, 2, 1, 0);
+					if (status != LUA_OK)
+					{
+						global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "execute api %s contract error", api_name.c_str());
+						return false;
+					}
+					lua_pop(L, 1);
+					lua_pop(L, 1); // pop self
+				}
+				else
+				{
+					global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "Can't find api %s in this contract", api_name.c_str());
+					lua_pop(L, 1);
+					return false;
+				}
+				// print call contract api result
+				if (lua_gettop(L)>0 && result_json_string)
+				{
+					// has result
+					lua_getglobal(L, "last_return");
+					auto last_return_value_json = luaL_tojsonstring(L, -1, nullptr);
+					auto last_return_value_json_string = std::string(last_return_value_json);
+					lua_pop(L, 1);
+					*result_json_string = last_return_value_json_string;
+				}
+
+				lua_pop(L, 1);
+				return true;
+			}
+
             std::string wrap_contract_name(const char *contract_name)
             {
                 if (uvm::util::starts_with(contract_name, STREAM_CONTRACT_PREFIX) || uvm::util::starts_with(contract_name, ADDRESS_CONTRACT_PREFIX))
