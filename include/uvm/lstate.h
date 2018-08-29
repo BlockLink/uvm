@@ -216,7 +216,7 @@ struct lua_State {
     UvmStatePreProcessorFunction *preprocessor;
 
 	std::list<intptr_t> *contract_table_addresses;
-	bool allow_contract_modify;
+	intptr_t allow_contract_modify; // contract table pointer whose properties can be modified now
 
 	StkId evalstack; //for calulate
 	StkId evalstacktop;//first free slot

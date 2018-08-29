@@ -745,7 +745,7 @@ LUA_API int lua_getuservalue(lua_State *L, int idx) {
 static void auxsetstr(lua_State *L, const TValue *t, const char *k) {
 	if (ttistable(t)) {
 		auto table_addr = (intptr_t)t->value_.gc;
-		if (!L->allow_contract_modify && L->contract_table_addresses
+		if (L->allow_contract_modify != table_addr && L->contract_table_addresses
 			&& std::find(L->contract_table_addresses->begin(), L->contract_table_addresses->end(), table_addr) != L->contract_table_addresses->end()) {
 			luaG_runerror(L, "can't modify contract properties");
 			return;
@@ -776,7 +776,7 @@ LUA_API void lua_setglobal(lua_State *L, const char *name) {
 LUA_API void lua_settable(lua_State *L, int idx) {
 	if (lua_istable(L, idx)) {
 		auto table_addr = (intptr_t)lua_topointer(L, idx);
-		if (!L->allow_contract_modify && L->contract_table_addresses 
+		if (L->allow_contract_modify != table_addr && L->contract_table_addresses 
 			&& std::find(L->contract_table_addresses->begin(), L->contract_table_addresses->end(), table_addr) != L->contract_table_addresses->end()) {
 			luaG_runerror(L, "can't modify contract properties");
 			return;
@@ -795,7 +795,7 @@ LUA_API void lua_settable(lua_State *L, int idx) {
 LUA_API void lua_setfield(lua_State *L, int idx, const char *k) {
 	if (lua_istable(L, idx)) {
 		auto table_addr = (intptr_t)lua_topointer(L, idx);
-		if (!L->allow_contract_modify && L->contract_table_addresses
+		if (L->allow_contract_modify != table_addr && L->contract_table_addresses
 			&& std::find(L->contract_table_addresses->begin(), L->contract_table_addresses->end(), table_addr) != L->contract_table_addresses->end()) {
 			luaG_runerror(L, "can't modify contract properties");
 			return;
