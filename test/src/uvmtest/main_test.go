@@ -85,5 +85,5 @@ func TestImportSimpleContract(t *testing.T) {
 func TestChangeOtherContractProperty(t *testing.T) {
 	out, _ := execCommand(uvmSinglePath, "../../change_other_contract_property.lua.out")
 	fmt.Println(out)
-	// TODO: change other contract's property should throw error
+	// change other contract's property should throw error
 }
