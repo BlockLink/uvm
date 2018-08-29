@@ -1735,7 +1735,7 @@ int luaL_import_contract_module(lua_State *L)
     }
     if (!exists)
     {
-        global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "this contract not found");
+        global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "contract %s not found", namestr.c_str());
         return 0;
     }
     if (!is_stream)

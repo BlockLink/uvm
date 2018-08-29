@@ -88,6 +88,7 @@ static void print_usage(const char *badoption) {
 		"  -k       call contract api, -k script_path contract_api api_argument\n"
 		"  -x       run with debugger\n"
 		"  -c       compile source to bytecode\n"
+		"  -h       show help info\n"
 		"  --       stop handling options\n"
 		"  -        stop handling options and execute stdin\n"
 		,
@@ -311,6 +312,7 @@ static int handle_script(lua_State *L, char **argv, bool is_contract = false) {
 #define has_test    64  /* -t */
 #define has_call    128 /* -k */
 #define has_debug   256 /* -x */
+#define has_help    512 /* -h */
 
 /*
 ** Traverses all arguments from 'argv', returning a mask with those
@@ -363,6 +365,11 @@ static int collectargs(char **argv, int *first) {
 				return has_error;  /* invalid option */
 			args |= has_debug;
 			break;
+		case 'h':
+			if (argv[i][2] != '\0')  /* extra characters after 1st? */
+				return has_error;  /* invalid option */
+			args |= has_help;
+			break;
 		case 'e':
 			args |= has_e;  /* FALLTHROUGH */
 		case 'l':  /* both options need an argument */
@@ -407,7 +414,11 @@ static int pmain(lua_State *L) {
 	if (argv[0] && argv[0][0]) progname = argv[0];
 	if (args == has_error) {  /* bad arg? */
 		print_usage(argv[script]);  /* 'script' has index of bad arg. */
-		return 0;
+		return LUA_OK;
+	}
+	if (args & has_help) {
+		print_usage("help");
+		return LUA_OK;
 	}
 	if (args & has_v)  /* option '-v'? */
 		print_version();
@@ -423,7 +434,7 @@ static int pmain(lua_State *L) {
 	}
 	if ((args & has_call) && (script >= argc - 2)) {
 		perror("-k need pass contract api and api argument after script path");
-		return 1;
+		return 0;
 	}
 	std::string contract_api;
 	std::string contract_api_arg;
@@ -437,16 +448,16 @@ static int pmain(lua_State *L) {
 	if (script < argc) {
 		auto run_script_result = handle_script(L, argv + script); /* execute main script (if there is one) */
 		if (run_script_result != LUA_OK) {
-			return 1;
+			return LUA_ERRERR;
 		}
 		if (args & has_call) {
 			// call contract api
 			std::string result_string;
 			if (!uvm::lua::lib::call_last_contract_api(L, std::string(argv[script]), contract_api, contract_api_arg, &result_string)) {
-				return 1;
+				return LUA_ERRERR;
 			}
 			printf("result: %s\n", result_string.c_str());
-			return 0;
+			return LUA_OK;
 		}
 		if (args & has_test) {
 			// run ***.test, whose content is a function accept a contract table

@@ -199,3 +199,4 @@ FakesAssemblies/
 /runner/test4.bytes.out
 
 /uvm_single/*.vcxproj.filters
+/*.log
