@@ -47,8 +47,26 @@ func findUvmCompilerPath() string {
 	}
 }
 
+func findUvmAssPath() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	dirAbs, err := filepath.Abs(dir)
+	if err != nil {
+		panic(err)
+	}
+	uvmDir := filepath.Dir(filepath.Dir(filepath.Dir(dirAbs)))
+	if runtime.GOOS == "windows" {
+		return filepath.Join(uvmDir, "test", "uvm_ass.exe")
+	} else {
+		return filepath.Join(uvmDir, "test", "uvm_ass")
+	}
+}
+
 var uvmSinglePath = findUvmSinglePath()
 var uvmCompilerPath = findUvmCompilerPath()
+var uvmAssPath = findUvmAssPath()
 
 func execCommand(program string, args ...string) (string, string) {
 	cmd := exec.Command(program, args...)
@@ -151,11 +169,24 @@ func TestTooManyLocalVars(t *testing.T) {
 }
 
 func TestStringOperators(t *testing.T) {
-
+	execCommand(uvmCompilerPath, "../../tests_lua/test_string_operators.lua")
+	out, err := execCommand(uvmSinglePath, "../../tests_lua/test_string_operators.lua.out")
+	fmt.Println(out)
+	assert.Equal(t, err, "")
+	assert.True(t, strings.Contains(out, `a1=	abc`))
+	assert.True(t, strings.Contains(out, `a2=	def`))
+	assert.True(t, strings.Contains(out, `a3=	abcdefghj`))
+	assert.True(t, strings.Contains(out, `a4=	9`))
+	assert.True(t, strings.Contains(out, `a5=	K`))
+	assert.True(t, strings.Contains(out, `a6=	9`))
 }
 
 func TestTableOperators(t *testing.T) {
-
+	execCommand(uvmCompilerPath, "../../tests_typed/test_table_module.glua")
+	out, err := execCommand(uvmSinglePath, "../../tests_typed/test_table_module.glua.out")
+	fmt.Println(out)
+	assert.True(t, strings.Contains(out, `a=	[1,2,3,{"name":"hi"}]`))
+	assert.True(t, strings.Contains(err, `invalid value (table) at index 4 in table for 'concat'`))
 }
 
 func TestContractImport(t *testing.T) {
@@ -163,37 +194,105 @@ func TestContractImport(t *testing.T) {
 }
 
 func TestSafeMath(t *testing.T) {
-
+	execCommand(uvmCompilerPath, "../../test_safemath.lua")
+	out, err := execCommand(uvmSinglePath, "../../test_safemath.lua.out")
+	fmt.Println(out)
+	assert.Equal(t, err, "")
+	assert.True(t, strings.Contains(out, `a=	{"hex":"313233","type":"bigint"}`))
+	assert.True(t, strings.Contains(out, `b=	{"hex":"343536","type":"bigint"}`))
+	assert.True(t, strings.Contains(out, `hex(a)=	313233`))
+	assert.True(t, strings.Contains(out, `int(a)=	123`))
+	assert.True(t, strings.Contains(out, `str(a)=	123`))
+	assert.True(t, strings.Contains(out, `c	579`))
+	assert.True(t, strings.Contains(out, `d	-333`))
+	assert.True(t, strings.Contains(out, `e	56088`))
+	assert.True(t, strings.Contains(out, `f	3`))
+	assert.True(t, strings.Contains(out, `g	792594609605189126649`))
+	assert.True(t, strings.Contains(out, `123 > 456=false`))
+	assert.True(t, strings.Contains(out, `123 >= 456=false`))
+	assert.True(t, strings.Contains(out, `123 < 456=true`))
+	assert.True(t, strings.Contains(out, `123 <= 456=true`))
+	assert.True(t, strings.Contains(out, `123 == 456=false`))
+	assert.True(t, strings.Contains(out, `123 != 456=true`))
+	assert.True(t, strings.Contains(out, `123 == 123=true`))
 }
 
 func TestJsonModule(t *testing.T) {
-
+	execCommand(uvmCompilerPath, "../../tests_lua/test_json.lua")
+	out, err := execCommand(uvmSinglePath, "../../tests_lua/test_json.lua.out")
+	fmt.Println(out)
+	assert.Equal(t, err, "")
+	assert.True(t, strings.Contains(out, `a1=	[1,2,3,{"name":"hi"}]`))
+	assert.True(t, strings.Contains(out, `a2=	[1,2,3,{"name":"hi"}]`))
+	assert.True(t, strings.Contains(out, `a3=	123`))
+	assert.True(t, strings.Contains(out, `a4=	123`))
+	assert.True(t, strings.Contains(out, `a5=	{"name":"hello"}`))
+	assert.True(t, strings.Contains(out, `a6=	{"name":"hello"}`))
 }
 
 func TestInvalidUpvalue(t *testing.T) {
-
+	_, assErr := execCommand(uvmAssPath, "../../tests_lua/test_invalid_upvalue.uvms")
+	fmt.Println(assErr)
+	out, err := execCommand(uvmSinglePath, "../../tests_lua/test_invalid_upvalue.out")
+	fmt.Println(out)
+	fmt.Println(err)
+	assert.True(t, strings.Contains(err, `upvalue error`))
 }
 
 func TestUndump(t *testing.T) {
-
+	// TODO
 }
 
 func TestStorage(t *testing.T) {
-
+	// TODO
 }
 
 func TestGlobalApis(t *testing.T) {
-
+	// TODO
 }
 
 func TestTimeModule(t *testing.T) {
+	execCommand(uvmCompilerPath, "../../tests_lua/test_time.lua")
+	out, err := execCommand(uvmSinglePath, "../../tests_lua/test_time.lua.out")
+	fmt.Println(out)
+	assert.Equal(t, err, "")
+	assert.True(t, strings.Contains(out, `a1=	1234567890`))
+	assert.True(t, strings.Contains(out, `a2=	1234654290`))
+	assert.True(t, strings.Contains(out, `a3=	-86400`))
+	assert.True(t, strings.Contains(out, `a4=	2009-02-14 07:31:30`))
+	assert.True(t, strings.Contains(out, `a5=	2009-02-15 07:31:30`))
+}
 
+func TestFastMap(t *testing.T) {
+	// TODO: add this test with fast_map feature
+	// execCommand(uvmCompilerPath, "../../tests_lua/test_fastmap.lua")
+	// out, err := execCommand(uvmSinglePath, "../../tests_lua/test_fastmap.lua.out")
+	// fmt.Println(out)
+	// assert.Equal(t, err, "")
 }
 
 func TestInvalidByteHeaders(t *testing.T) {
-
+	_, err := execCommand(uvmSinglePath, "../../tests_lua/test_invalid_bytecode_header.bytecode")
+	fmt.Println(err)
+	assert.True(t, strings.Contains(err, `endianness mismatch in precompiled chunk`))
 }
 
 func TestCryptoPrimitivesApis(t *testing.T) {
-
+	execCommand(uvmCompilerPath, "../../tests_lua/test_crypto_primitives.lua")
+	out, err := execCommand(uvmSinglePath, "../../tests_lua/test_crypto_primitives.lua.out")
+	fmt.Println(out)
+	assert.Equal(t, err, "")
+	assert.True(t, strings.Contains(out, `b tojson is 	{"1FNfecY7xnKmMQyUpc7hbgSHqD2pD8YDJ7":20000}`))
+	assert.True(t, strings.Contains(out, `sha256("")=	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`))
+	assert.True(t, strings.Contains(out, `sha3("")=	c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470`))
+	assert.True(t, strings.Contains(out, `sha1("")=	da39a3ee5e6b4b0d3255bfef95601890afd80709`))
+	assert.True(t, strings.Contains(out, `ripemd160("")=	9c1185a5c5e9fc54612808977ee8f548b2258d31`))
+	assert.True(t, strings.Contains(out, `sha256("a123")=	bcc7b3934d14f9e30c4c0981d5fb31a0685043f6adba6875e5d4cd1c6831b89e`))
+	assert.True(t, strings.Contains(out, `sha3("a123")=	367394ba9eec3410aadc8f80eebf0164ff6476cb466fe9d0a5539715e36b7230`))
+	assert.True(t, strings.Contains(out, `sha1("a123")=	160bce262c1c1cc1df9ff7c623d950f15861574b`))
+	assert.True(t, strings.Contains(out, `ripemd160("a123")=	3c3ce98a97977e4276548854074c4482507c640d`))
+	assert.True(t, strings.Contains(out, `hex_to_bytes("a123")=	[161,35]`))
+	assert.True(t, strings.Contains(out, `a123=	a123`))
 }
+
+// TODO: more tests
