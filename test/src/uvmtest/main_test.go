@@ -11,29 +11,46 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"rsc.io/quote"
 )
 
-func findUvmSinglePath() (string, error) {
+func findUvmSinglePath() string {
 	dir, err := os.Getwd()
 	if err != nil {
-		return "", err
+		panic(err)
 	}
-	dir_abs, err := filepath.Abs(dir)
+	dirAbs, err := filepath.Abs(dir)
 	if err != nil {
-		return "", err
+		panic(err)
 	}
-	uvm_dir := filepath.Dir(filepath.Dir(filepath.Dir(dir_abs)))
+	uvmDir := filepath.Dir(filepath.Dir(filepath.Dir(dirAbs)))
 	if runtime.GOOS == "windows" {
-		return filepath.Join(uvm_dir, "x64", "Debug", "uvm_single.exe"), nil
+		return filepath.Join(uvmDir, "x64", "Debug", "uvm_single.exe")
 	} else {
-		return filepath.Join(uvm_dir, "uvm"), nil
+		return filepath.Join(uvmDir, "uvm")
 	}
 }
 
-var uvmSinglePath, find_uvm_err = findUvmSinglePath()
+func findUvmCompilerPath() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	dirAbs, err := filepath.Abs(dir)
+	if err != nil {
+		panic(err)
+	}
+	uvmDir := filepath.Dir(filepath.Dir(filepath.Dir(dirAbs)))
+	if runtime.GOOS == "windows" {
+		return filepath.Join(uvmDir, "test", "uvm_compiler.exe")
+	} else {
+		return filepath.Join(uvmDir, "test", "uvm_compiler")
+	}
+}
 
-func execCommand(program string, args ...string) (exec_out string, exec_err string) {
+var uvmSinglePath = findUvmSinglePath()
+var uvmCompilerPath = findUvmCompilerPath()
+
+func execCommand(program string, args ...string) (string, string) {
 	cmd := exec.Command(program, args...)
 	var outb, errb bytes.Buffer
 	cmd.Stdin = os.Stdin
@@ -44,14 +61,6 @@ func execCommand(program string, args ...string) (exec_out string, exec_err stri
 		fmt.Printf("%v\n", err)
 	}
 	return outb.String(), errb.String()
-}
-
-func TestUvmPath(t *testing.T) {
-	fmt.Println(quote.Hello())
-	if find_uvm_err != nil {
-		panic(find_uvm_err)
-	}
-
 }
 
 func TestHelp(t *testing.T) {
@@ -86,4 +95,105 @@ func TestChangeOtherContractProperty(t *testing.T) {
 	out, _ := execCommand(uvmSinglePath, "../../change_other_contract_property.lua.out")
 	fmt.Println(out)
 	// change other contract's property should throw error
+}
+
+func TestManyStringOperations(t *testing.T) {
+	out, _ := execCommand(uvmSinglePath, "../../test_many_string_operations.lua.out")
+	fmt.Println(out)
+}
+
+func TestTypes(t *testing.T) {
+	execCommand(uvmCompilerPath, "../../tests_lua/test_types.lua")
+	out, _ := execCommand(uvmSinglePath, "../../tests_lua/test_types.lua.out")
+	fmt.Println(out)
+	assert.True(t, strings.Contains(out, "123	4.56	abc	true	[123,4.56,\"abc\",true]"))
+	assert.True(t, strings.Contains(out, `b=table: 0`))
+	assert.True(t, strings.Contains(out, `c={"b":"userdata","c":{"a":1,"b":"hi"},"name":1}`))
+}
+
+func TestThrowError(t *testing.T) {
+	_, compilerErr := execCommand(uvmCompilerPath, "../../tests_lua/test_error.lua")
+	assert.Equal(t, compilerErr, "")
+	_, err := execCommand(uvmSinglePath, "../../tests_lua/test_error.lua.out")
+	fmt.Println(err)
+	assert.True(t, strings.Contains(err, `dummpy error message`))
+}
+
+func TestMath(t *testing.T) {
+	execCommand(uvmCompilerPath, "../../tests_lua/test_math.lua")
+	out, err := execCommand(uvmSinglePath, "../../tests_lua/test_math.lua.out")
+	fmt.Println(out)
+	assert.Equal(t, err, "")
+	assert.True(t, strings.Contains(out, `a1=	123`))
+	assert.True(t, strings.Contains(out, `a2=	123.456000`))
+	assert.True(t, strings.Contains(out, `a3=	123`))
+	assert.True(t, strings.Contains(out, `a4=	nil`))
+	assert.True(t, strings.Contains(out, `a5=	nil`))
+	assert.True(t, strings.Contains(out, `a6=	123.456789`))
+	assert.True(t, strings.Contains(out, `a7=	123`))
+	assert.True(t, strings.Contains(out, `a8=	-124`))
+	assert.True(t, strings.Contains(out, `a9=	4`))
+	assert.True(t, strings.Contains(out, `a10=	2`))
+	assert.True(t, strings.Contains(out, `a11=	integer`))
+	assert.True(t, strings.Contains(out, `a12=	float`))
+	assert.True(t, strings.Contains(out, `a13=	nil`))
+	assert.True(t, strings.Contains(out, `a14=	3.141593`))
+	assert.True(t, strings.Contains(out, `a15=	9223372036854775807`))
+	assert.True(t, strings.Contains(out, `a16=	-9223372036854775808`))
+}
+
+func TestTooManyLocalVars(t *testing.T) {
+	_, compilerErr := execCommand(uvmCompilerPath, "../../tests_lua/test_too_many_localvars.lua")
+	fmt.Println(compilerErr)
+	assert.True(t, strings.Contains(compilerErr, "too many local variables(129 variables), but limit count is 128"))
+	_, compilerErr2 := execCommand(uvmCompilerPath, "../../tests_lua/test_max_amount_localvars.lua")
+	assert.Equal(t, compilerErr2, "")
+}
+
+func TestStringOperators(t *testing.T) {
+
+}
+
+func TestTableOperators(t *testing.T) {
+
+}
+
+func TestContractImport(t *testing.T) {
+
+}
+
+func TestSafeMath(t *testing.T) {
+
+}
+
+func TestJsonModule(t *testing.T) {
+
+}
+
+func TestInvalidUpvalue(t *testing.T) {
+
+}
+
+func TestUndump(t *testing.T) {
+
+}
+
+func TestStorage(t *testing.T) {
+
+}
+
+func TestGlobalApis(t *testing.T) {
+
+}
+
+func TestTimeModule(t *testing.T) {
+
+}
+
+func TestInvalidByteHeaders(t *testing.T) {
+
+}
+
+func TestCryptoPrimitivesApis(t *testing.T) {
+
 }
