@@ -10,6 +10,6 @@ print(demo2)
 -- demo2.name = "modified contract name"
 print('demo2 contract name: ', demo2.name)
 
--- TODO: after called contract and close lua_State, save storage to thinkyoung
+-- TODO: after called contract and close lua_State, save storage to uvm
 
 -- demo2.storage.rollback()

@@ -1,5 +1,8 @@
-e = {name="thinkyoung", age=25}
-
+e = {name="uvm", age=25}
+e["123"] = "test"
+s = ''
 for k in pairs(e) do
-	print(k, e[k])
+	s = s .. ';' .. k .. ':' .. tostring(e[k])
 end
+
+print(s)

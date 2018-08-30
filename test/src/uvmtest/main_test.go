@@ -248,7 +248,50 @@ func TestStorage(t *testing.T) {
 }
 
 func TestGlobalApis(t *testing.T) {
+	execCommand(uvmCompilerPath, "../../tests_lua/test_global_apis.lua")
+	out, err := execCommand(uvmSinglePath, "-k", "../../tests_lua/test_global_apis.lua.out", "start", "TEST_ADDRESS")
+	fmt.Println(out)
+	assert.Equal(t, err, "")
+	assert.True(t, strings.Contains(out, `now is 	0`))
+	assert.True(t, strings.Contains(out, `TEST_ADDRESS	 is valid address? 	true`))
+	assert.True(t, strings.Contains(out, `TEST_ADDRESS	 is valid contract address? 	true`))
+	assert.True(t, strings.Contains(out, `systemAssetSymbol: 	COIN`))
+	assert.True(t, strings.Contains(out, `blockNum: 	0`))
+	assert.True(t, strings.Contains(out, `precision: 	10000`))
+	assert.True(t, strings.Contains(out, `callFrameStackSize: 	0`))
+	assert.True(t, strings.Contains(out, `random: 	0`))
+	assert.True(t, strings.Contains(out, `prevContractAddr: 	nil`))
+	assert.True(t, strings.Contains(out, `prevContractApiName: 	nil`))
+	assert.True(t, strings.Contains(out, `result: {"_data":{"id":"../../tests_lua/test_global_apis.lua.out","name":"@self","storage":{"contract":"address"}},"start":"userdata"}`))
+}
+
+func TestImportNotFoundContract(t *testing.T) {
+	_, compileErr := execCommand(uvmCompilerPath, "../../tests_lua/test_import_not_found.lua")
+	assert.Equal(t, compileErr, "")
+	out, err := execCommand(uvmSinglePath, "-k", "../../tests_lua/test_import_not_found.lua.out", "start", "test")
+	fmt.Println(out)
+	assert.Equal(t, err, "")
+	assert.True(t, strings.Contains(out, `successfully import not found contract as nil`))
+}
+
+func TestInvalidUpvalueInContract(t *testing.T) {
+	_, compileErr := execCommand(uvmCompilerPath, "../../tests_lua/test_upval.lua")
+	fmt.Println(compileErr)
+	assert.True(t, strings.Contains(compileErr, `token c, type nil can't access property c`))
+}
+
+func TestContractWithoutInitApi(t *testing.T) {
 	// TODO
+}
+
+func TestExitContractByError(t *testing.T) {
+	execCommand(uvmCompilerPath, "../../tests_lua/test_exit_contract.lua")
+	out, err := execCommand(uvmSinglePath, "-k", "../../tests_lua/test_exit_contract.lua.out", "start", "test")
+	fmt.Println(out)
+	fmt.Println("error:")
+	fmt.Println(err)
+	assert.Equal(t, err, "")
+	assert.True(t, strings.Contains(out, `hello, exit message here`))
 }
 
 func TestTimeModule(t *testing.T) {
@@ -261,6 +304,15 @@ func TestTimeModule(t *testing.T) {
 	assert.True(t, strings.Contains(out, `a3=	-86400`))
 	assert.True(t, strings.Contains(out, `a4=	2009-02-14 07:31:30`))
 	assert.True(t, strings.Contains(out, `a5=	2009-02-15 07:31:30`))
+}
+
+func TestForLoop(t *testing.T) {
+	_, compileErr := execCommand(uvmCompilerPath, "../../tests_lua/test_for_loop_goto.lua")
+	assert.Equal(t, compileErr, "")
+	out, err := execCommand(uvmSinglePath, "../../tests_lua/test_for_loop_goto.lua.out")
+	fmt.Println(out)
+	assert.Equal(t, err, "")
+	assert.True(t, strings.Contains(out, `;123:test;age:25;name:uvm`))
 }
 
 func TestFastMap(t *testing.T) {

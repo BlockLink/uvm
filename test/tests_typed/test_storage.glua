@@ -28,11 +28,11 @@ function M:init() -- if use M:init, not need self param, if use M.init, need sel
 	-- storage.b = 'abc'
 	storage['c'] = storage.a
 
-	storage['d'] = {name="thinkyoung", age="100"}
+	storage['d'] = {name="uvm", age="100"}
 	storage.e = [ 1,2,3, 11, 10, 8, 7 ]
 	storage.d.name2 = "gop"
 	self.storage.a=1
-	self.storage.f = {name="thinkyoung", age="100"}
+	self.storage.f = {name="uvm", age="100"}
 	pprint(storage.e)
 	self.storage['int_array'] = [ 5,6,7,8 ]
 

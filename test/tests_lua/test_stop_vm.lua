@@ -1,6 +1,5 @@
 print('test stop vm case\n')
-local thinkyoung = require 'thinkyoung'
-thinkyoung.stop_vm()
+exit(0)
 
 local n = 0
 for i = 1, 10 do

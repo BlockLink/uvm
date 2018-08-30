@@ -10,8 +10,7 @@ function M:start()
 	pprint("test exit contract start")
 	-- local a = 1 > 'a'
 	exit('hello')
-	let thinkyoung = require 'thinkyoung'
-	thinkyoung.error("error")
+	error("error")
 	pprint("after exit")
 end
 

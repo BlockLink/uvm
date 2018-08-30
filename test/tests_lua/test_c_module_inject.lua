@@ -1,9 +1,8 @@
 print("Hi, this is test c module inject caes\n")
 
 local hello = require 'hello'
-local thinkyoung = require 'thinkyoung'
 
-hello.say_hello('thinkyoung')
+hello.say_hello('uvm')
 
 print(hello.test_error())
 

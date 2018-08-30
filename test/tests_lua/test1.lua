@@ -13,13 +13,13 @@ pprint({1,2,3,11,7})
 
 pprint('demo2 used in test1.lua', demo2.id)
 
-local p1 = {name="thinkyoung", age=1}
+local p1 = {name="uvm", age=1}
 p1.nested = {nested=p1, groups="groups members"}
 pprint("p1", p1)
 
 local hello = require 'hello'
 
-hello.say_hello('thinkyoung')
+hello.say_hello('uvm')
 
 print(hello.test_error())
 
