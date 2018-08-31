@@ -346,11 +346,16 @@ func TestForLoop(t *testing.T) {
 }
 
 func TestFastMap(t *testing.T) {
-	// TODO: add this test with fast_map feature
-	// execCommand(uvmCompilerPath, "../../tests_lua/test_fastmap.lua")
-	// out, err := execCommand(uvmSinglePath, "../../tests_lua/test_fastmap.lua.out")
-	// fmt.Println(out)
-	// assert.Equal(t, err, "")
+	execCommand(uvmCompilerPath, "../../tests_lua/test_fastmap.lua")
+	out, err := execCommand(uvmSinglePath, "../../tests_lua/test_fastmap.lua.out")
+	fmt.Println(out)
+	assert.Equal(t, err, "")
+	assert.True(t, strings.Contains(out, `a1: 	nil`))
+	assert.True(t, strings.Contains(out, `a2: 	123`))
+	assert.True(t, strings.Contains(out, `a3: 	234`))
+	assert.True(t, strings.Contains(out, `b1: 	world`))
+	assert.True(t, strings.Contains(out, `b3: 	nil`))
+	assert.True(t, strings.Contains(out, `a4: 	hello`))
 }
 
 func TestInvalidByteHeaders(t *testing.T) {
