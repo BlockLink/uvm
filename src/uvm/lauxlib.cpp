@@ -1494,7 +1494,7 @@ int luaL_import_contract_module_from_address(lua_State *L)
         }
     } exit_scope1(update_loaded_func);
 
-    lua_call(L, 2, 1);  /* run loader to load module */
+    lua_pcall(L, 2, 1, 0);  /* run loader to load module */
     if (!lua_isnil(L, -1))  /* non-nil return? */
     {
         if (lua_istable(L, -1)) {
@@ -1760,7 +1760,7 @@ int luaL_import_contract_module(lua_State *L)
         }
     } exit_scope1(update_loaded_func);
 
-    lua_call(L, 2, 1);  /* run loader to load module */
+    lua_pcall(L, 2, 1, 0);  /* run loader to load module */
     if (!lua_isnil(L, -1))  /* non-nil return? */
     {
         if (lua_istable(L, -1)) {

@@ -115,8 +115,23 @@ func TestChangeOtherContractProperty(t *testing.T) {
 	// change other contract's property should throw error
 }
 
+func TestDefineGlobalInContract(t *testing.T) {
+	_, compileErr := execCommand(uvmCompilerPath, "../../tests_typed/test_define_global_in_contract_loader.lua")
+	assert.Equal(t, compileErr, "")
+	out, _ := execCommand(uvmSinglePath, "../../tests_typed/test_define_global_in_contract_loader.lua.out")
+	fmt.Println(out)
+	assert.True(t, strings.Contains(out, `_ENV or _G set hello is forbidden`))
+}
+
 func TestManyStringOperations(t *testing.T) {
 	out, _ := execCommand(uvmSinglePath, "../../test_many_string_operations.lua.out")
+	fmt.Println(out)
+}
+
+func TestEmitEvents(t *testing.T) {
+	_, compileErr := execCommand(uvmCompilerPath, "../../tests_typed/test_emit_events_valid.glua")
+	assert.Equal(t, compileErr, "")
+	out, _ := execCommand(uvmSinglePath, "../../tests_typed/test_emit_events_valid.glua.out")
 	fmt.Println(out)
 }
 
@@ -189,8 +204,15 @@ func TestTableOperators(t *testing.T) {
 	assert.True(t, strings.Contains(err, `invalid value (table) at index 4 in table for 'concat'`))
 }
 
-func TestContractImport(t *testing.T) {
+func TestPairs(t *testing.T) {
+	execCommand(uvmCompilerPath, "../../tests_typed/test_pairs.glua")
+	out, _ := execCommand(uvmSinglePath, "../../tests_typed/test_pairs.glua.out")
+	fmt.Println(out)
+	assert.True(t, strings.Contains(out, `[[100,200],["a",1],["m",234],["n",123],["ab",1]]`))
+}
 
+func TestContractImport(t *testing.T) {
+	// TODO
 }
 
 func TestSafeMath(t *testing.T) {
@@ -263,6 +285,14 @@ func TestGlobalApis(t *testing.T) {
 	assert.True(t, strings.Contains(out, `prevContractAddr: 	nil`))
 	assert.True(t, strings.Contains(out, `prevContractApiName: 	nil`))
 	assert.True(t, strings.Contains(out, `result: {"_data":{"id":"../../tests_lua/test_global_apis.lua.out","name":"@self","storage":{"contract":"address"}},"start":"userdata"}`))
+}
+
+func TestCallContractItself(t *testing.T) {
+	_, compileErr := execCommand(uvmCompilerPath, "../../tests_typed/test_call_contract_it_self.glua")
+	assert.Equal(t, compileErr, "")
+	out, _ := execCommand(uvmSinglePath, "-k", "../../tests_typed/test_call_contract_it_self.glua.out", "start", "test_arg")
+	fmt.Println(out)
+	assert.True(t, strings.Contains(out, `attempt to call a nil value (field 'init')`))
 }
 
 func TestImportNotFoundContract(t *testing.T) {
@@ -346,5 +376,3 @@ func TestCryptoPrimitivesApis(t *testing.T) {
 	assert.True(t, strings.Contains(out, `hex_to_bytes("a123")=	[161,35]`))
 	assert.True(t, strings.Contains(out, `a123=	a123`))
 }
-
-// TODO: more tests
