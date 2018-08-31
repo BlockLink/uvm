@@ -1495,7 +1495,7 @@ int luaL_import_contract_module_from_address(lua_State *L)
         }
     } exit_scope1(update_loaded_func);
 
-    lua_call(L, 2, 1);  /* run loader to load module */
+    lua_pcall(L, 2, 1, 0);  /* run loader to load module */
 
 	BOOST_SCOPE_EXIT_ALL(L) {
 		L->allow_contract_modify = 0;
@@ -1769,7 +1769,7 @@ int luaL_import_contract_module(lua_State *L)
         }
     } exit_scope1(update_loaded_func);
 
-    lua_call(L, 2, 1);  /* run loader to load module */
+    lua_pcall(L, 2, 1, 0);  /* run loader to load module */
 
 	BOOST_SCOPE_EXIT_ALL(L) {
 		L->allow_contract_modify = 0;
