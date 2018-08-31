@@ -40,6 +40,7 @@
 #include <uvm/exceptions.h>
 #include <boost/variant.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/scope_exit.hpp>
 
 using uvm::lua::api::global_uvm_chain_api;
 
@@ -1495,6 +1496,10 @@ int luaL_import_contract_module_from_address(lua_State *L)
     } exit_scope1(update_loaded_func);
 
     lua_pcall(L, 2, 1, 0);  /* run loader to load module */
+
+	BOOST_SCOPE_EXIT_ALL(L) {
+		L->allow_contract_modify = 0;
+	};
     if (!lua_isnil(L, -1))  /* non-nil return? */
     {
         if (lua_istable(L, -1)) {
@@ -1634,6 +1639,10 @@ int luaL_import_contract_module_from_address(lua_State *L)
 
         lua_fill_contract_info_for_use(L);
 
+		auto contract_addr = (intptr_t)lua_topointer(L, -1);
+		L->contract_table_addresses->push_back(contract_addr);
+		L->allow_contract_modify = contract_addr;
+
         // set name of contract to contract module table
         lua_pushstring(L, get_contract_name_using_in_lua(namestr).c_str());
         lua_setfield(L, -2, "name");
@@ -1761,6 +1770,10 @@ int luaL_import_contract_module(lua_State *L)
     } exit_scope1(update_loaded_func);
 
     lua_pcall(L, 2, 1, 0);  /* run loader to load module */
+
+	BOOST_SCOPE_EXIT_ALL(L) {
+		L->allow_contract_modify = 0;
+	};
     if (!lua_isnil(L, -1))  /* non-nil return? */
     {
         if (lua_istable(L, -1)) {
@@ -1888,6 +1901,10 @@ int luaL_import_contract_module(lua_State *L)
         }
 
         lua_fill_contract_info_for_use(L);
+
+		auto contract_addr = (intptr_t)lua_topointer(L, -1);
+		L->contract_table_addresses->push_back(contract_addr);
+		L->allow_contract_modify = contract_addr;
 
         // set name of contract to contract module table
         lua_pushstring(L, get_contract_name_using_in_lua(namestr).c_str());
