@@ -18,7 +18,6 @@ namespace simplechain {
 		std::string event_arg;
 		std::string caller_addr;
 		uint64_t block_num;
-		uint32_t op_num;
 	};
 
 	struct comparator_for_contract_invoke_result_balance {
@@ -36,6 +35,8 @@ namespace simplechain {
 		}
 	};
 
+	class blockchain;
+
 
 	struct contract_invoke_result : public evaluate_result
 	{
@@ -52,6 +53,15 @@ namespace simplechain {
 		address invoker;
 		void reset();
 		void set_failed();
+
+		void apply_pendings(blockchain* chain, const std::string& tx_id);
+	};
+
+
+
+	struct transaction_receipt {
+		std::string tx_id;
+		std::vector<contract_event_notify_info> events;
 	};
 
 
@@ -97,6 +107,8 @@ namespace simplechain {
 	};
 
 }
+
+FC_REFLECT(simplechain::transaction_receipt, (tx_id)(events))
 
 FC_REFLECT(simplechain::contract_create_operation, (type)(caller_address)(contract_code)(gas_price)(gas_limit)(op_time))
 FC_REFLECT(simplechain::contract_invoke_operation, (type)(caller_address)(contract_address)(contract_api)(contract_args)(gas_price)(gas_limit)(op_time))

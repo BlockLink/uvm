@@ -57,28 +57,7 @@ namespace simplechain {
 	}
 	std::shared_ptr<contract_create_evaluator::operation_type::result_type> contract_create_evaluator::do_apply(const operation_type& op) {
 		auto result = do_evaluate(op);
-		// TODO: apply events
-		// update balances
-		for (const auto& p : result->deposit_contract) {
-			const auto& addr = p.first.first;
-			auto asset_id = p.first.second;
-			auto amount = p.second;
-			get_chain()->update_account_asset_balance(addr, asset_id, amount);
-		}
-		for (const auto& p : result->contract_withdraw) {
-			const auto& addr = p.first.first;
-			auto asset_id = p.first.second;
-			auto amount = p.second;
-			get_chain()->update_account_asset_balance(addr, asset_id, -int64_t(amount));
-		}
-		// TODO: withdraw from caller's balances
-		for (const auto& p : result->storage_changes) {
-			const auto& contract_address = p.first;
-			const auto& changes = p.second;
-			for (const auto& it : changes) {
-				get_chain()->set_storage(contract_address, it.first, it.second.after);
-			}
-		}
+		result->apply_pendings(get_chain(), get_current_tx()->tx_hash());
 		return result;
 	}
 
@@ -118,7 +97,6 @@ namespace simplechain {
 			FC_ASSERT(gas_used <= gas_limit && gas_used > 0, "costs of execution can be only between 0 and init_cost");
 
 			auto gas_count = gas_used;
-			// new_contract.registered_block = d.head_block_num() + 1;
 			invoke_contract_result.exec_succeed = true;
 		}
 		catch (const std::exception& e)
@@ -129,30 +107,8 @@ namespace simplechain {
 		return std::make_shared<contract_invoke_result>(invoke_contract_result);
 	}
 	std::shared_ptr<contract_invoke_evaluator::operation_type::result_type> contract_invoke_evaluator::do_apply(const operation_type& op) {
-		// TODO: duplicate code
 		auto result = do_evaluate(op);
-		// TODO: apply events
-		// update balances
-		for (const auto& p : result->deposit_contract) {
-			const auto& addr = p.first.first;
-			auto asset_id = p.first.second;
-			auto amount = p.second;
-			get_chain()->update_account_asset_balance(addr, asset_id, amount);
-		}
-		for (const auto& p : result->contract_withdraw) {
-			const auto& addr = p.first.first;
-			auto asset_id = p.first.second;
-			auto amount = p.second;
-			get_chain()->update_account_asset_balance(addr, asset_id, -int64_t(amount));
-		}
-		// TODO: withdraw from caller's balances
-		for (const auto& p : result->storage_changes) {
-			const auto& contract_address = p.first;
-			const auto& changes = p.second;
-			for (const auto& it : changes) {
-				get_chain()->set_storage(contract_address, it.first, it.second.after);
-			}
-		}
+		result->apply_pendings(get_chain(), get_current_tx()->tx_hash());
 		return result;
 	}
 

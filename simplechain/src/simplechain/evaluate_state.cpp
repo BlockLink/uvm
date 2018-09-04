@@ -22,8 +22,13 @@ namespace simplechain {
 	}
 
 	void evaluate_state::emit_event(const std::string& contract_address, const std::string& event_name, const std::string& event_arg) {
-		// TODO
-		std::cout << "emited event in contract " << contract_address << " event " << event_name << " arg " << event_arg << std::endl;
+		contract_event_notify_info event_notify_info;
+		event_notify_info.block_num = get_chain()->latest_block().block_number + 1;
+		event_notify_info.caller_addr = caller_address;
+		event_notify_info.contract_address = contract_address;
+		event_notify_info.event_name = event_name;
+		event_notify_info.event_arg = event_arg;
+		invoke_contract_result.events.push_back(event_notify_info);
 	}
 
 	void evaluate_state::store_contract(const std::string& contract_address, const contract_object& contract_obj) {

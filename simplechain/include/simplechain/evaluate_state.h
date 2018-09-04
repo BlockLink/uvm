@@ -31,5 +31,6 @@ namespace simplechain {
 		void store_contract(const std::string& contract_address,
 			const contract_object& contract_obj);
 		void set_contract_storage_changes(const std::string& contract_address, const contract_storage_changes_type& changes);
+
 	};
 }

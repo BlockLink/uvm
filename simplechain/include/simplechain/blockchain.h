@@ -22,6 +22,7 @@ namespace simplechain {
 	private:
 		std::vector<asset> assets;
 		std::vector<block> blocks;
+		std::map<std::string, transaction_receipt> tx_receipts; // txid => tx_receipt
 		std::map<std::string, std::map<asset_id_t, balance_t> > account_balances;
 		std::map<std::string, contract_object> contracts;
 		std::map<std::string, std::map<std::string, StorageDataType> > contract_storages;
@@ -43,10 +44,13 @@ namespace simplechain {
 		void add_asset(const asset& new_asset);
 		std::shared_ptr<asset> get_asset(asset_id_t asset_id);
 		std::shared_ptr<asset> get_asset_by_symbol(const std::string& symbol);
+		void set_tx_receipt(const std::string& tx_id, const transaction_receipt& tx_receipt);
+		std::shared_ptr<transaction_receipt> get_tx_receipt(const std::string& tx_id);
+
+		void generate_block(const std::vector<transaction>& txs);
 
 	private:
 		// @throws exception
 		std::shared_ptr<generic_evaluator> get_operation_evaluator(transaction* tx, const operation& op);
-		void generate_block(const std::vector<transaction>& txs);
 	};
 }

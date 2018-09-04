@@ -158,6 +158,20 @@ namespace simplechain {
 		return nullptr;
 	}
 
+	void blockchain::set_tx_receipt(const std::string& tx_id, const transaction_receipt& tx_receipt) {
+		tx_receipts[tx_id] = tx_receipt;
+	}
+
+	std::shared_ptr<transaction_receipt> blockchain::get_tx_receipt(const std::string& tx_id) {
+		auto it = tx_receipts.find(tx_id);
+		if (it == tx_receipts.end()) {
+			return nullptr;
+		}
+		else {
+			return std::make_shared<transaction_receipt>(it->second);
+		}
+	}
+
 	std::shared_ptr<generic_evaluator> blockchain::get_operation_evaluator(transaction* tx, const operation& op)
 	{
 		auto type = op.which();
@@ -175,8 +189,18 @@ namespace simplechain {
 		}
 	}
 	void blockchain::generate_block(const std::vector<transaction>& txs) {
+		std::vector<transaction> valid_txs;
+		for (const auto& tx : txs) {
+			try {
+				apply_transaction(std::make_shared<transaction>(tx));
+				valid_txs.push_back(tx);
+			}
+			catch (const std::exception& e) {
+				std::cout << "error of appling tx when generating block: " << e.what() << std::endl;
+			}
+		}
 		block blk;
-		blk.txs = txs;
+		blk.txs = valid_txs;
 		blk.block_time = fc::time_point_sec(fc::time_point::now());
 		blk.block_number = blocks.size();
 		blocks.push_back(blk);
