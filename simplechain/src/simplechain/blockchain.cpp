@@ -21,6 +21,7 @@ namespace simplechain {
 
 	void blockchain::evaluate_transaction(std::shared_ptr<transaction> tx) {
 		try {
+			// TODO: evaluate_state of block or tx(need nested evaluate state)
 			for (const auto& op : tx->operations) {
 				auto evaluator_instance = get_operation_evaluator(tx.get(), op);
 				auto op_result = evaluator_instance->evaluate(op);
@@ -32,11 +33,15 @@ namespace simplechain {
 	}
 	void blockchain::apply_transaction(std::shared_ptr<transaction> tx) {
 		try {
+			// TODO: evaluate_state of block or tx(need nested evaluate state)
+			for (const auto& op : tx->operations) {
+				auto evaluator_instance = get_operation_evaluator(tx.get(), op);
+				auto op_result = evaluator_instance->evaluate(op);
+			}
 			for (const auto& op : tx->operations) {
 				auto evaluator_instance = get_operation_evaluator(tx.get(), op);
 				auto op_result = evaluator_instance->apply(op);
 			}
-			// TODO: save evaluate state
 		}
 		catch (const std::exception& e) {
 			throw e;

@@ -3,6 +3,7 @@
 #include <simplechain/evaluate_result.h>
 #include <simplechain/contract_entry.h>
 #include <simplechain/storage.h>
+#include <simplechain/contract_object.h>
 
 namespace simplechain {
 
@@ -10,6 +11,7 @@ namespace simplechain {
 	typedef std::string address;
 	typedef uint32_t asset_id_type;
 	typedef uint64_t share_type;
+	typedef int64_t amount_change_type;
 
 	struct contract_event_notify_info
 	{
@@ -35,6 +37,21 @@ namespace simplechain {
 		}
 	};
 
+	struct comparator_for_contract_invoke_result_balance_change {
+		bool operator() (const std::pair<address, amount_change_type>& x, const std::pair<address, amount_change_type>& y) const
+		{
+			std::string x_addr_str = x.first;
+			std::string y_addr_str = y.first;
+			if (x_addr_str < y_addr_str) {
+				return true;
+			}
+			if (x_addr_str > y_addr_str) {
+				return false;
+			}
+			return x.second < y.second;
+		}
+	};
+
 	class blockchain;
 
 
@@ -42,6 +59,8 @@ namespace simplechain {
 	{
 		std::string api_result;
 		std::map<std::string, contract_storage_changes_type, std::less<std::string>> storage_changes;
+		// TODO: use account balance changes
+		std::map<std::pair<address, asset_id_type>, amount_change_type, comparator_for_contract_invoke_result_balance_change> account_balances_changes;
 
 		std::map<std::pair<contract_address_type, asset_id_type>, share_type, comparator_for_contract_invoke_result_balance> contract_withdraw;
 		std::map<std::pair<contract_address_type, asset_id_type>, share_type, comparator_for_contract_invoke_result_balance> contract_balances;
@@ -49,6 +68,7 @@ namespace simplechain {
 		std::map<std::pair<contract_address_type, asset_id_type>, share_type, comparator_for_contract_invoke_result_balance> deposit_contract;
 		std::map<asset_id_type, share_type, std::less<asset_id_type>> transfer_fees;
 		std::vector<contract_event_notify_info> events;
+		std::vector<std::pair<contract_address_type, contract_object> > new_contracts;
 		bool exec_succeed = true;
 		address invoker;
 		void reset();

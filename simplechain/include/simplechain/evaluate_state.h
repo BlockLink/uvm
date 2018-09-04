@@ -4,12 +4,14 @@
 #include <simplechain/storage.h>
 #include <simplechain/contract.h>
 #include <simplechain/contract_object.h>
+#include <simplechain/asset.h>
 
 namespace simplechain {
 	class blockchain;
 	struct transaction;
 
 	struct evaluate_state {
+		// TODO: parent evaluate_state
 		gas_count_type gas_limit = 0;
 		gas_count_type gas_used = 0;
 		std::string caller_address;
@@ -30,6 +32,10 @@ namespace simplechain {
 		void emit_event(const std::string& contract_address, const std::string& event_name, const std::string& event_arg);
 		void store_contract(const std::string& contract_address,
 			const contract_object& contract_obj);
+		std::shared_ptr<contract_object> get_contract_by_address(const std::string& contract_address) const;
+		std::shared_ptr<contract_object> get_contract_by_name(const std::string& name) const;
+		void update_account_asset_balance(const std::string& account_address, asset_id_t asset_id, int64_t balance_change);
+		share_type get_account_asset_balance(const std::string& account_address, asset_id_t asset_id) const;
 		void set_contract_storage_changes(const std::string& contract_address, const contract_storage_changes_type& changes);
 
 	};

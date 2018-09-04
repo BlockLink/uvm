@@ -77,6 +77,9 @@ namespace simplechain {
 			tx_receipt = std::make_shared<transaction_receipt>();
 			tx_receipt->tx_id = tx_id;
 		}
+		for (const auto& item : new_contracts) {
+			chain->store_contract(item.first, item.second);
+		}
 		for (const auto& p : events) {
 			tx_receipt->events.push_back(p);
 		}

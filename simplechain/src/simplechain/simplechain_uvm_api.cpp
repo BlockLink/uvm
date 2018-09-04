@@ -32,13 +32,6 @@ namespace simplechain {
 
 			static int has_error = 0;
 
-			static std::string get_file_name_str_from_contract_module_name(std::string name)
-			{
-				std::stringstream ss;
-				ss << "uvm_contract_" << name;
-				return ss.str();
-			}
-
 			/**
 			* whether exception happen in L
 			*/
@@ -64,25 +57,38 @@ namespace simplechain {
 			*/
 			void SimpleChainUvmChainApi::throw_exception(lua_State *L, int code, const char *error_format, ...)
 			{
-				has_error = 1;
-				char *msg = (char*)malloc(sizeof(char)*(LUA_VM_EXCEPTION_STRNG_MAX_LENGTH +1));
-				if(!msg)
-				{
-					perror("malloc error");
+				if (has_error)
 					return;
-				}
-				memset(msg, 0x0, LUA_VM_EXCEPTION_STRNG_MAX_LENGTH +1);
+				has_error = 1;
+				char *msg = (char*)lua_malloc(L, LUA_EXCEPTION_MULTILINE_STRNG_MAX_LENGTH);
+				memset(msg, 0x0, LUA_EXCEPTION_MULTILINE_STRNG_MAX_LENGTH);
 
 				va_list vap;
 				va_start(vap, error_format);
-				// printf(error_format, vap);
-				// const char *msg = luaO_pushfstring(L, error_format, vap);
-				vsnprintf(msg, LUA_VM_EXCEPTION_STRNG_MAX_LENGTH, error_format, vap);
+				vsnprintf(msg, LUA_EXCEPTION_MULTILINE_STRNG_MAX_LENGTH, error_format, vap);
 				va_end(vap);
+				if (strlen(msg) > LUA_EXCEPTION_MULTILINE_STRNG_MAX_LENGTH - 1)
+				{
+					msg[LUA_EXCEPTION_MULTILINE_STRNG_MAX_LENGTH - 1] = 0;
+				}
 				lua_set_compile_error(L, msg);
-				printf("%s\n", msg);
-				free(msg);
-				// luaL_error(L, error_format); // notify lua error
+
+				//如果上次的exception code为uvm_API_LVM_LIMIT_OVER_ERROR, 不能被其他异常覆盖
+				//只有调用clear清理后，才能继续记录异常
+				int last_code = uvm::lua::lib::get_lua_state_value(L, "exception_code").int_value;
+				if (last_code != code && last_code != 0)
+				{
+					return;
+				}
+
+				UvmStateValue val_code;
+				val_code.int_value = code;
+
+				UvmStateValue val_msg;
+				val_msg.string_value = msg;
+
+				uvm::lua::lib::set_lua_state_value(L, "exception_code", val_code, UvmStateValueType::LUA_STATE_VALUE_INT);
+				uvm::lua::lib::set_lua_state_value(L, "exception_msg", val_msg, UvmStateValueType::LUA_STATE_VALUE_STRING);
 			}
 
 			static contract_create_evaluator* get_register_contract_evaluator(lua_State *L) {
@@ -128,7 +134,7 @@ namespace simplechain {
 			static std::shared_ptr<uvm::blockchain::Code> get_contract_code_by_id(evaluate_state* evaluator, const std::string& contract_id) {
 				try {
 					if (evaluator) {
-						auto contract = evaluator->get_chain()->get_contract_by_address(contract_id);
+						auto contract = evaluator->get_contract_by_address(contract_id);
 						if (contract) {
 							return std::make_shared<uvm::blockchain::Code>(contract->code);
 						}
@@ -143,7 +149,7 @@ namespace simplechain {
 			static std::shared_ptr<uvm::blockchain::Code> get_contract_code_by_name(evaluate_state* evaluator, const std::string& contract_name) {
 				try {
 					if (evaluator) {
-						auto contract = evaluator->get_chain()->get_contract_by_name(contract_name);
+						auto contract = evaluator->get_contract_by_name(contract_name);
 						if (contract) {
 							return std::make_shared<uvm::blockchain::Code>(contract->code);
 						}
@@ -165,7 +171,7 @@ namespace simplechain {
 			static std::shared_ptr<UvmContractInfo> get_contract_info_by_id(evaluate_state* evaluator, const std::string& contract_id) {
 				try {
 					if (evaluator) {
-						auto contract = evaluator->get_chain()->get_contract_by_address(contract_id);
+						auto contract = evaluator->get_contract_by_address(contract_id);
 						if (contract) {
 							auto contract_info = std::make_shared<UvmContractInfo>();
 							for (const auto& api : contract->code.abi) {
@@ -184,7 +190,7 @@ namespace simplechain {
 			static std::shared_ptr<contract_object> get_contract_object_by_name(evaluate_state* evaluator, const std::string& contract_name) {
 				try {
 					if (evaluator) {
-						auto contract = evaluator->get_chain()->get_contract_by_name(contract_name);
+						auto contract = evaluator->get_contract_by_name(contract_name);
 						return contract;
 					}
 					return nullptr;
@@ -517,13 +523,12 @@ namespace simplechain {
 					if (!asset_item) {
 						return -5;
 					}
-					auto contract_balance = evaluator->get_chain()->get_account_asset_balance(contract_address, asset_item->asset_id);
+					auto contract_balance = evaluator->get_account_asset_balance(contract_address, asset_item->asset_id);
 					if (contract_balance < amount) {
 						return -1;
 					}
-					// TODO: put into evaluate_state, only update blockchain when do_apply
-					evaluator->get_chain()->update_account_asset_balance(contract_address, asset_item->asset_id, amount);
-					evaluator->get_chain()->update_account_asset_balance(to_address, asset_item->asset_id, -amount);
+					evaluator->update_account_asset_balance(contract_address, asset_item->asset_id, amount);
+					evaluator->update_account_asset_balance(to_address, asset_item->asset_id, -amount);
 				}
 				catch (const std::exception& e)
 				{
@@ -559,7 +564,7 @@ namespace simplechain {
 						if (!asset_item) {
 							return -3;
 						}
-						auto balance = evaluator->get_chain()->get_account_asset_balance(contract_address, asset_item->asset_id); // TODO: use evaluate_state cache
+						auto balance = evaluator->get_account_asset_balance(contract_address, asset_item->asset_id); // TODO: use evaluate_state cache
 						return balance;
 					}
 					catch (const std::exception& e)

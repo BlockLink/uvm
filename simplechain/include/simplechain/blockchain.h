@@ -18,7 +18,7 @@ namespace simplechain {
 	typedef uint32_t balance_t;
 
 	class blockchain {
-		// TODO: db
+		// TODO: local db and rollback
 	private:
 		std::vector<asset> assets;
 		std::vector<block> blocks;
