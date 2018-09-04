@@ -28,6 +28,8 @@ int main(int argc, char** argv) {
 			txs->push_back(*tx1);
 			chain->evaluate_transaction(tx1);
 		}
+		chain->generate_block(*txs);
+		txs->clear();
 		{
 			auto tx = std::make_shared<transaction>();
 			contract_invoke_operation op;
@@ -41,7 +43,7 @@ int main(int argc, char** argv) {
 			tx->operations.push_back(op);
 			tx->tx_time = fc::time_point_sec(fc::time_point::now());
 			txs->push_back(*tx);
-			// chain->apply_transaction(tx);
+			chain->evaluate_transaction(tx);
 		}
 		chain->generate_block(*txs);
 	}

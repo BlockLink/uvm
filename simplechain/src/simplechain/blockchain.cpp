@@ -9,8 +9,8 @@ namespace simplechain {
 
 		asset core_asset;
 		core_asset.asset_id = 0;
-		core_asset.precision = 5;
-		core_asset.symbol = "COIN";
+		core_asset.precision = SIMPLECHAIN_CORE_ASSET_PRECISION;
+		core_asset.symbol = SIMPLECHAIN_CORE_ASSET_SYMBOL;
 		assets.push_back(core_asset);
 
 		block genesis_block;

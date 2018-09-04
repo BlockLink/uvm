@@ -13,3 +13,6 @@
 #include <fc/io/enum_type.hpp>
 #include <fc/filesystem.hpp>
 #include <uvm/exceptions.h>
+
+#define SIMPLECHAIN_CORE_ASSET_SYMBOL "COIN"
+#define SIMPLECHAIN_CORE_ASSET_PRECISION 5

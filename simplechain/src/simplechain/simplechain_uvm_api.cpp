@@ -740,12 +740,13 @@ namespace simplechain {
 
 			const char * SimpleChainUvmChainApi::get_system_asset_symbol(lua_State *L)
 			{
-				return "COIN";
+				auto evaluator = get_contract_evaluator(L);
+				return SIMPLECHAIN_CORE_ASSET_SYMBOL;
 			}
 
 			uint64_t SimpleChainUvmChainApi::get_system_asset_precision(lua_State *L)
 			{
-				return 10000;
+				return std::pow(10, SIMPLECHAIN_CORE_ASSET_PRECISION);
 			}
 
 			static std::vector<char> hex_to_chars(const std::string& hex_string) {
