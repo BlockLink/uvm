@@ -4,13 +4,12 @@
 #include <simplechain/contract_entry.h>
 #include <simplechain/storage.h>
 #include <simplechain/contract_object.h>
+#include <simplechain/asset.h>
 
 namespace simplechain {
 
 	typedef std::string contract_address_type;
 	typedef std::string address;
-	typedef uint32_t asset_id_type;
-	typedef uint64_t share_type;
 	typedef int64_t amount_change_type;
 
 	struct contract_event_notify_info
@@ -23,7 +22,7 @@ namespace simplechain {
 	};
 
 	struct comparator_for_contract_invoke_result_balance {
-		bool operator() (const std::pair<contract_address_type, asset_id_type>& x, const std::pair<contract_address_type, asset_id_type>& y) const
+		bool operator() (const std::pair<contract_address_type, asset_id_t>& x, const std::pair<contract_address_type, asset_id_t>& y) const
 		{
 			std::string x_addr_str = x.first;
 			std::string y_addr_str = y.first;
@@ -59,14 +58,9 @@ namespace simplechain {
 	{
 		std::string api_result;
 		std::map<std::string, contract_storage_changes_type, std::less<std::string>> storage_changes;
-		// TODO: use account balance changes
-		std::map<std::pair<address, asset_id_type>, amount_change_type, comparator_for_contract_invoke_result_balance_change> account_balances_changes;
+		std::map<std::pair<address, asset_id_t>, amount_change_type, comparator_for_contract_invoke_result_balance_change> account_balances_changes;
 
-		std::map<std::pair<contract_address_type, asset_id_type>, share_type, comparator_for_contract_invoke_result_balance> contract_withdraw;
-		std::map<std::pair<contract_address_type, asset_id_type>, share_type, comparator_for_contract_invoke_result_balance> contract_balances;
-		std::map<std::pair<address, asset_id_type>, share_type, comparator_for_contract_invoke_result_balance> deposit_to_address;
-		std::map<std::pair<contract_address_type, asset_id_type>, share_type, comparator_for_contract_invoke_result_balance> deposit_contract;
-		std::map<asset_id_type, share_type, std::less<asset_id_type>> transfer_fees;
+		std::map<asset_id_t, share_type, std::less<asset_id_t>> transfer_fees;
 		std::vector<contract_event_notify_info> events;
 		std::vector<std::pair<contract_address_type, contract_object> > new_contracts;
 		bool exec_succeed = true;

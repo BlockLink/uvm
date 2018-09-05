@@ -9,8 +9,21 @@ int main(int argc, char** argv) {
 		auto chain = std::make_shared<simplechain::blockchain>();
 
 		std::string contract1_addr;
-		std::string caller_addr = "caller1";
-		auto txs = std::make_shared<std::vector<transaction> >();
+		std::string caller_addr = std::string(SIMPLECHAIN_ADDRESS_PREFIX) + "caller1";
+		// TODO: operation create helper
+		{
+			auto tx = std::make_shared<transaction>();
+			mint_operation op;
+			op.account_address = caller_addr;
+			op.amount = 123;
+			op.asset_id = 0;
+			op.op_time = fc::time_point_sec(fc::time_point::now());
+			tx->tx_time = fc::time_point_sec(fc::time_point::now());
+			tx->operations.push_back(op);
+			
+			chain->evaluate_transaction(tx);
+			chain->accept_transaction_to_mempool(*tx);
+		}
 		{
 			auto tx1 = std::make_shared<transaction>();
 			auto op1 = std::make_shared<contract_create_operation>();
@@ -25,11 +38,11 @@ int main(int argc, char** argv) {
 			tx1->operations.push_back(*op1);
 			tx1->tx_time = fc::time_point_sec(fc::time_point::now());
 			contract1_addr = op1->calculate_contract_id();
-			txs->push_back(*tx1);
+			
 			chain->evaluate_transaction(tx1);
+			chain->accept_transaction_to_mempool(*tx1);
 		}
-		chain->generate_block(*txs);
-		txs->clear();
+		chain->generate_block();
 		{
 			auto tx = std::make_shared<transaction>();
 			contract_invoke_operation op;
@@ -42,10 +55,11 @@ int main(int argc, char** argv) {
 			op.op_time = fc::time_point_sec(fc::time_point::now());
 			tx->operations.push_back(op);
 			tx->tx_time = fc::time_point_sec(fc::time_point::now());
-			txs->push_back(*tx);
+			
 			chain->evaluate_transaction(tx);
+			chain->accept_transaction_to_mempool(*tx);
 		}
-		chain->generate_block(*txs);
+		chain->generate_block();
 	}
 	catch (const std::exception& e) {
 		std::cerr << e.what() << std::endl;

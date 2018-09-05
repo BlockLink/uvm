@@ -137,6 +137,7 @@
     <ClCompile Include="src\simplechain\simplechain_uvm_api.cpp" />
     <ClCompile Include="src\simplechain\storage.cpp" />
     <ClCompile Include="src\simplechain\transaction.cpp" />
+    <ClCompile Include="src\simplechain\transfer_evaluate.cpp" />
     <ClCompile Include="src\simplechain\uvm_contract_engine.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -165,6 +166,8 @@
     <ClInclude Include="include\simplechain\simplechain_uvm_api.h" />
     <ClInclude Include="include\simplechain\storage.h" />
     <ClInclude Include="include\simplechain\transaction.h" />
+    <ClInclude Include="include\simplechain\transfer_evaluate.h" />
+    <ClInclude Include="include\simplechain\transfer_operation.h" />
     <ClInclude Include="include\simplechain\uvm_contract_engine.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -6,6 +6,8 @@ namespace simplechain {
 	enum operation_type_enum : int32_t {
 		TRANSFER = 0,
 
+		MINT = 10,
+
 		CONTRACT_CREATE = 101,
 		CONTRACT_INVOKE = 102
 	};

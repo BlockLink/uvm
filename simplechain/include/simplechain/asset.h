@@ -3,6 +3,7 @@
 
 namespace simplechain {
 	typedef uint32_t asset_id_t;
+	typedef uint64_t share_type;
 	struct asset {
 		asset_id_t asset_id;
 		std::string symbol;

@@ -1,5 +1,6 @@
 #include <simplechain/blockchain.h>
 #include <simplechain/operations.h>
+#include <simplechain/transfer_evaluate.h>
 #include <simplechain/simplechain_uvm_api.h>
 #include <iostream>
 
@@ -53,6 +54,10 @@ namespace simplechain {
 		return blocks[blocks.size() - 1];
 	}
 
+	uint64_t blockchain::head_block_number() const {
+		return blocks.size();
+	}
+
 	std::shared_ptr<block> blockchain::get_block_by_number(uint64_t num) const {
 		if (num >= blocks.size()) {
 			return nullptr;
@@ -80,6 +85,16 @@ namespace simplechain {
 		}
 		return balance_iter->second;
 	}
+
+	std::map<asset_id_t, balance_t> blockchain::get_account_balances(const std::string& account_address) const {
+		auto balances_iter = account_balances.find(account_address);
+		std::map<asset_id_t, balance_t> balances;
+		if (balances_iter != account_balances.end()) {
+			balances = balances_iter->second;
+		}
+		return balances;
+	}
+
 	void blockchain::update_account_asset_balance(const std::string& account_address, asset_id_t asset_id, int64_t balance_change) {
 		auto balances_iter = account_balances.find(account_address);
 		std::map<asset_id_t, balance_t> balances;
@@ -163,6 +178,10 @@ namespace simplechain {
 		return nullptr;
 	}
 
+	std::vector<asset> blockchain::get_assets() const {
+		return assets;
+	}
+
 	void blockchain::set_tx_receipt(const std::string& tx_id, const transaction_receipt& tx_receipt) {
 		tx_receipts[tx_id] = tx_receipt;
 	}
@@ -181,6 +200,9 @@ namespace simplechain {
 	{
 		auto type = op.which();
 		switch (type) {
+		case operation::tag<mint_operation>::value: {
+			return std::make_shared<min_operation_evaluator>(this, tx);
+		} break;
 		case operation::tag<contract_create_operation>::value: {
 			return std::make_shared<contract_create_evaluator>(this, tx);
 		} break;
@@ -193,15 +215,29 @@ namespace simplechain {
 		}
 		}
 	}
-	void blockchain::generate_block(const std::vector<transaction>& txs) {
+
+	void blockchain::accept_transaction_to_mempool(const transaction& tx) {
+		for (const auto& item : tx_mempool) {
+			FC_ASSERT(item.tx_hash() != tx.tx_hash());
+		}
+		tx_mempool.push_back(tx);
+	}
+	std::vector<transaction> blockchain::get_tx_mempool() const {
+		return tx_mempool;
+	}
+
+	void blockchain::generate_block() {
 		std::vector<transaction> valid_txs;
-		for (const auto& tx : txs) {
+		auto it = tx_mempool.begin();
+		while (it != tx_mempool.end()) {
 			try {
-				apply_transaction(std::make_shared<transaction>(tx));
-				valid_txs.push_back(tx);
+				apply_transaction(std::make_shared<transaction>(*it));
+				valid_txs.push_back(*it);
+				it = tx_mempool.erase(it);
 			}
 			catch (const std::exception& e) {
-				std::cout << "error of appling tx when generating block: " << e.what() << std::endl;
+				std::cout << "error of applying tx when generating block: " << e.what() << std::endl;
+				it++;
 			}
 		}
 		block blk;

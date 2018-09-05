@@ -33,6 +33,10 @@ namespace uvm
 				_code = UVM_API_SIMPLE_ERROR;
 				_error_msg = msg;
 			}
+			inline UvmException(const std::string& msg) {
+				_code = UVM_API_SIMPLE_ERROR;
+				_error_msg = msg;
+			}
 			inline UvmException& operator=(const UvmException& other) {
 				if (this != &other)
 				{

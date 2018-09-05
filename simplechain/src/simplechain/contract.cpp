@@ -23,15 +23,11 @@ namespace simplechain {
 		if (contract_code != uvm::blockchain::Code())
 		{
 			std::pair<uvm::blockchain::Code, fc::time_point_sec> info_to_digest(contract_code, op_time);
-			//fc::raw::pack(enc, info_to_digest);
-			int32_t a = 123;
-			auto sss = fc::raw::pack(a);
-			fc::raw::pack(enc, contract_code);
-			fc::raw::pack(enc, op_time);
+			fc::raw::pack(enc, info_to_digest);
 		}
 
 		id = fc::ripemd160::hash(enc.result()).str();
-		return id;
+		return std::string(SIMPLECHAIN_CONTRACT_ADDRESS_PREFIX) + id;
 	}
 
 	contract_invoke_operation::contract_invoke_operation()
@@ -48,12 +44,10 @@ namespace simplechain {
 	{
 		api_result.clear();
 		storage_changes.clear();
-		contract_withdraw.clear();
-		contract_balances.clear();
-		deposit_to_address.clear();
-		deposit_contract.clear();
+		account_balances_changes.clear();
 		transfer_fees.clear();
 		events.clear();
+		new_contracts.clear();
 		exec_succeed = true;
 	}
 
@@ -61,12 +55,10 @@ namespace simplechain {
 	{
 		api_result.clear();
 		storage_changes.clear();
-		contract_withdraw.clear();
-		contract_balances.clear();
-		deposit_to_address.clear();
-		deposit_contract.clear();
+		account_balances_changes.clear();
 		transfer_fees.clear();
 		events.clear();
+		new_contracts.clear();
 		exec_succeed = false;
 	}
 
@@ -83,19 +75,12 @@ namespace simplechain {
 		for (const auto& p : events) {
 			tx_receipt->events.push_back(p);
 		}
-		for (const auto& p : deposit_contract) {
-			const auto& addr = p.first.first;
+		for (const auto& p : account_balances_changes) {
+			auto& addr = p.first.first;
 			auto asset_id = p.first.second;
-			auto amount = p.second;
-			chain->update_account_asset_balance(addr, asset_id, amount);
+			auto amount_change = p.second;
+			chain->update_account_asset_balance(addr, asset_id, amount_change);
 		}
-		for (const auto& p : contract_withdraw) {
-			const auto& addr = p.first.first;
-			auto asset_id = p.first.second;
-			auto amount = p.second;
-			chain->update_account_asset_balance(addr, asset_id, -int64_t(amount));
-		}
-		// TODO: withdraw from caller's balances
 		for (const auto& p : storage_changes) {
 			const auto& contract_address = p.first;
 			const auto& changes = p.second;

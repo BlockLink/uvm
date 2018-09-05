@@ -9,6 +9,7 @@ namespace simplechain {
 		typedef contract_create_operation operation_type;
 	public:
 		contract_create_evaluator(blockchain* chain_, transaction* tx_): evaluate_state(chain_, tx_){}
+		virtual ~contract_create_evaluator() {}
 
 		virtual std::shared_ptr<operation_type::result_type> do_evaluate(const operation_type& op) final;
 		virtual std::shared_ptr<operation_type::result_type> do_apply(const operation_type& op) final;
@@ -22,6 +23,7 @@ namespace simplechain {
 		typedef contract_invoke_operation operation_type;
 	public:
 		contract_invoke_evaluator(blockchain* chain_, transaction* tx_) : evaluate_state(chain_, tx_) {}
+		virtual ~contract_invoke_evaluator() {}
 
 		virtual std::shared_ptr<operation_type::result_type> do_evaluate(const operation_type& op) final;
 		virtual std::shared_ptr<operation_type::result_type> do_apply(const operation_type& op) final;
