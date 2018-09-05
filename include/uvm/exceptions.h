@@ -1,5 +1,4 @@
-#ifndef exceptions_h
-#define exceptions_h
+#pragma once
 
 #include "uvm/lprefix.h"
 #include <uvm/uvm_api.h>
@@ -46,11 +45,15 @@ namespace uvm
 			}
 			inline virtual ~UvmException() {}
                 
-#ifdef WIN32
-            inline virtual const char* what() const
+#ifdef _WIN32
+	#ifndef UVM_NOEXCEPT
+		#define UVM_NOEXCEPT
+	#endif // !UVM_NOEXCEPT
 #else
-            inline virtual const char* what() const noexcept
-#endif 
+	#define UVM_NOEXCEPT noexcept
+#endif
+
+            inline virtual const char* what() const UVM_NOEXCEPT
             {
 				return _error_msg.c_str();
 			}
@@ -105,6 +108,3 @@ namespace uvm
 		}
 	}
 }
-
-
-#endif

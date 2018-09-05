@@ -1,5 +1,6 @@
 #include <simplechain/simplechain.h>
 #include <iostream>
+#include <simplechain/rpcserver.h>
 
 using namespace simplechain;
 
@@ -46,6 +47,9 @@ int main(int argc, char** argv) {
 		FC_ASSERT(chain->get_contract_by_address(contract1_addr));
 		auto state = chain->get_storage(contract1_addr, "state").as<std::string>();
 		FC_ASSERT(state == "\"COMMON\"");
+
+		RpcServer rpc_server(8080);
+		rpc_server.start();
 	}
 	catch (const std::exception& e) {
 		std::cerr << e.what() << std::endl;

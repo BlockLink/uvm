@@ -76,7 +76,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>E:\projects\OpenSSL.x64\include;include;..\include;E:\projects\fc\include;E:\projects\boost_1.55.x64;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>E:\projects\OpenSSL.x64\lib;E:\projects\jsondiff-cpp\x64\Debug;E:\projects\libs_release_3;E:\projects\libs_win_x64;E:\projects\libs_debug;E:\projects\boost_1.55.x64\stage\lib;..\..\uvm\x64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -112,7 +112,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>E:\projects\OpenSSL.x64\include;include;..\include;E:\projects\fc\include;E:\projects\boost_1.55.x64;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -125,6 +125,7 @@
     <ClCompile Include="src\Keccak.cpp" />
     <ClCompile Include="src\simplechain\block.cpp" />
     <ClCompile Include="src\simplechain\blockchain.cpp" />
+    <ClCompile Include="src\simplechain\chain_rpc.cpp" />
     <ClCompile Include="src\simplechain\contract.cpp" />
     <ClCompile Include="src\simplechain\contract_engine_builder.cpp" />
     <ClCompile Include="src\simplechain\contract_entry.cpp" />
@@ -134,6 +135,7 @@
     <ClCompile Include="src\simplechain\db.cpp" />
     <ClCompile Include="src\simplechain\evaluate_state.cpp" />
     <ClCompile Include="src\simplechain\operations_helper.cpp" />
+    <ClCompile Include="src\simplechain\rpcserver.cpp" />
     <ClCompile Include="src\simplechain\simplechain_program.cpp" />
     <ClCompile Include="src\simplechain\simplechain_uvm_api.cpp" />
     <ClCompile Include="src\simplechain\storage.cpp" />
@@ -142,11 +144,15 @@
     <ClCompile Include="src\simplechain\uvm_contract_engine.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\client_http.hpp" />
+    <ClInclude Include="include\crypto.hpp" />
     <ClInclude Include="include\Keccak.hpp" />
+    <ClInclude Include="include\server_http.hpp" />
     <ClInclude Include="include\simplechain\asset.h" />
     <ClInclude Include="include\simplechain\block.h" />
     <ClInclude Include="include\simplechain\blockchain.h" />
     <ClInclude Include="include\simplechain\chainparams.h" />
+    <ClInclude Include="include\simplechain\chain_rpc.h" />
     <ClInclude Include="include\simplechain\config.h" />
     <ClInclude Include="include\simplechain\contract.h" />
     <ClInclude Include="include\simplechain\contract_engine.h" />
@@ -163,6 +169,7 @@
     <ClInclude Include="include\simplechain\operations.h" />
     <ClInclude Include="include\simplechain\operations_helper.h" />
     <ClInclude Include="include\simplechain\repl.h" />
+    <ClInclude Include="include\simplechain\rpcserver.h" />
     <ClInclude Include="include\simplechain\service.h" />
     <ClInclude Include="include\simplechain\simplechain.h" />
     <ClInclude Include="include\simplechain\simplechain_uvm_api.h" />
@@ -171,6 +178,10 @@
     <ClInclude Include="include\simplechain\transfer_evaluate.h" />
     <ClInclude Include="include\simplechain\transfer_operation.h" />
     <ClInclude Include="include\simplechain\uvm_contract_engine.h" />
+    <ClInclude Include="include\status_code.hpp" />
+    <ClInclude Include="include\utility.hpp" />
+    <ClInclude Include="src\client_http.hpp" />
+    <ClInclude Include="src\server_http.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

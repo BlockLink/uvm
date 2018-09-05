@@ -69,6 +69,12 @@
     <ClCompile Include="src\simplechain\operations_helper.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="src\simplechain\rpcserver.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\simplechain\chain_rpc.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\simplechain\simplechain.h">
@@ -156,6 +162,33 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="include\simplechain\operations_helper.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\client_http.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\crypto.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\server_http.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\status_code.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\utility.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\client_http.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\server_http.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\simplechain\rpcserver.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\simplechain\chain_rpc.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
