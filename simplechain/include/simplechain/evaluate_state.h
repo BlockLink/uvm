@@ -26,8 +26,6 @@ namespace simplechain {
 		virtual void set_current_tx(transaction* tx);
 		virtual transaction* get_current_tx() const;
 
-		// TODO: get balance/state/storage from evaluate_state cache + blockchain storage
-
 		StorageDataType get_storage(const std::string& contract_address, const std::string& key) const;
 		void emit_event(const std::string& contract_address, const std::string& event_name, const std::string& event_arg);
 		void store_contract(const std::string& contract_address,

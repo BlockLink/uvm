@@ -66,6 +66,9 @@
     <ClCompile Include="src\simplechain\transfer_evaluate.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="src\simplechain\operations_helper.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\simplechain\simplechain.h">
@@ -150,6 +153,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="include\simplechain\transfer_evaluate.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\simplechain\operations_helper.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

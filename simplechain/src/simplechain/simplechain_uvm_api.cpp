@@ -564,7 +564,7 @@ namespace simplechain {
 						if (!asset_item) {
 							return -3;
 						}
-						auto balance = evaluator->get_account_asset_balance(contract_address, asset_item->asset_id); // TODO: use evaluate_state cache
+						auto balance = evaluator->get_account_asset_balance(contract_address, asset_item->asset_id);
 						return balance;
 					}
 					catch (const std::exception& e)

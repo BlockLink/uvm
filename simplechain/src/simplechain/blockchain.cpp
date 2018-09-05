@@ -3,6 +3,7 @@
 #include <simplechain/transfer_evaluate.h>
 #include <simplechain/simplechain_uvm_api.h>
 #include <iostream>
+#include <fc/io/json.hpp>
 
 namespace simplechain {
 	blockchain::blockchain() {
@@ -246,4 +247,5 @@ namespace simplechain {
 		blk.block_number = blocks.size();
 		blocks.push_back(blk);
 	}
+
 }

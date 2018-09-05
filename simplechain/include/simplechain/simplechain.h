@@ -6,3 +6,4 @@
 #include <simplechain/contract.h>
 #include <simplechain/operation.h>
 #include <simplechain/contract_helper.h>
+#include <simplechain/operations_helper.h>
