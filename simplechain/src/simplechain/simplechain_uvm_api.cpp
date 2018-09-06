@@ -320,7 +320,8 @@ namespace simplechain {
             // TODO: lua_closepost_callback，
             static std::map<lua_State *, std::shared_ptr<std::map<std::string, UvmStorageValue>>> _demo_chain_storage_buffer;
 
-			UvmStorageValue SimpleChainUvmChainApi::get_storage_value_from_uvm(lua_State *L, const char *contract_name, std::string name)
+			UvmStorageValue SimpleChainUvmChainApi::get_storage_value_from_uvm(lua_State *L, const char *contract_name, const std::string& name,
+				const std::string& fast_map_key, bool is_fast_map)
 			{
 				UvmStorageValue null_storage;
 				null_storage.type = uvm::blockchain::StorageValueTypes::storage_value_null;
@@ -334,14 +335,15 @@ namespace simplechain {
 				}
 				try
 				{
-					return get_storage_value_from_uvm_by_address(L, contract_id.c_str(), name /* , fast_map_key, is_fast_map */);
+					return get_storage_value_from_uvm_by_address(L, contract_id.c_str(), name , fast_map_key, is_fast_map );
 				}
 				catch (fc::exception &e) {
 					return null_storage;
 				}
 			}
 
-			UvmStorageValue SimpleChainUvmChainApi::get_storage_value_from_uvm_by_address(lua_State *L, const char *contract_address, std::string name)
+			UvmStorageValue SimpleChainUvmChainApi::get_storage_value_from_uvm_by_address(lua_State *L, const char *contract_address, const std::string& name
+				, const std::string& fast_map_key, bool is_fast_map)
 			{
 				UvmStorageValue null_storage;
 				null_storage.type = uvm::blockchain::StorageValueTypes::storage_value_null;
@@ -356,11 +358,11 @@ namespace simplechain {
 				try
 				{
 					std::string key = name;
-					/* TODO
+					
 					if (is_fast_map) {
 						key = name + "." + fast_map_key;
 					}
-					*/
+					
 					auto storage_data = evaluator->get_storage(contract_id, key);
 					return StorageDataType::create_lua_storage_from_storage_data(L, storage_data);
 				}
@@ -391,8 +393,8 @@ namespace simplechain {
 
 						StorageDataChangeType storage_change;
 						// storage_op存储的从before, after改成diff
-						auto json_storage_before = uvm_storage_value_to_json(con_chg_iter->second.before);
-						auto json_storage_after = uvm_storage_value_to_json(con_chg_iter->second.after);
+						auto json_storage_before = simplechain::uvm_storage_value_to_json(con_chg_iter->second.before);
+						auto json_storage_after = simplechain::uvm_storage_value_to_json(con_chg_iter->second.after);
 						auto storage_after = StorageDataType::get_storage_data_from_lua_storage(con_chg_iter->second.after);
 						storage_change.after = storage_after;
 						contract_storage_change[contract_name] = storage_change;

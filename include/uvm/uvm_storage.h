@@ -25,12 +25,12 @@ namespace uvm
 		// int uvmlib_get_storage(lua_State *L);
 		// implementation of uvm.get_storage in contract
 		int uvmlib_get_storage_impl(lua_State *L,
-			const char *contract_id, const char *name);
+			const char *contract_id, const char *name, const char* fast_map_key, bool is_fast_map);
 
 		// int uvmlib_set_storage(lua_State *L);
 
 		int uvmlib_set_storage_impl(lua_State *L,
-			const char *contract_id, const char *name, int value_index);
+			const char *contract_id, const char *name, const char* fast_map_key, bool is_fast_map, int value_index);
 	}
 }
 

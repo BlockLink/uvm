@@ -29,7 +29,7 @@ namespace simplechain {
 			fc::variants json_array;
 			for (const auto &p : *value.value.table_value)
 			{
-				json_array.push_back(uvm_storage_value_to_json(p.second));
+				json_array.push_back(simplechain::uvm_storage_value_to_json(p.second));
 			}
 			return json_array;
 		}
@@ -42,7 +42,7 @@ namespace simplechain {
 			fc::mutable_variant_object json_object;
 			for (const auto &p : *value.value.table_value)
 			{
-				json_object[p.first] = uvm_storage_value_to_json(p.second);
+				json_object[p.first] = simplechain::uvm_storage_value_to_json(p.second);
 			}
 			return json_object;
 		}
@@ -86,7 +86,7 @@ namespace simplechain {
 
 	StorageDataType StorageDataType::get_storage_data_from_lua_storage(const UvmStorageValue& lua_storage)
 	{
-		auto storage_json = uvm_storage_value_to_json(lua_storage);
+		auto storage_json = simplechain::uvm_storage_value_to_json(lua_storage);
 		StorageDataType storage_data(fc::json::to_string(storage_json));
 		return storage_data;
 	}

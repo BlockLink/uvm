@@ -230,7 +230,8 @@ namespace uvm {
             // TODO: lua_closepost_callback，
             static std::map<lua_State *, std::shared_ptr<std::map<std::string, UvmStorageValue>>> _demo_chain_storage_buffer;
 
-			UvmStorageValue DemoUvmChainApi::get_storage_value_from_uvm(lua_State *L, const char *contract_name, std::string name)
+			UvmStorageValue DemoUvmChainApi::get_storage_value_from_uvm(lua_State *L, const char *contract_name,
+				const std::string& name, const std::string& fast_map_key, bool is_fast_map)
 			{
               // fetch storage value from uvm
               if (_demo_chain_storage_buffer.find(L) == _demo_chain_storage_buffer.end()) {
@@ -243,6 +244,9 @@ namespace uvm {
               auto cache = _demo_chain_storage_buffer[L];
               // auto key = std::string(contract_address) + "$" + name;
               auto key = std::string("demo$") + name; // democontract_idid_+，
+			  if (is_fast_map) {
+				  key = std::string("demo$") + name + "$" + fast_map_key;
+			  }
               if (cache->find(key) != cache->end())
               {
                 return (*cache)[key];
@@ -254,7 +258,8 @@ namespace uvm {
               return value;
 			}
 
-			UvmStorageValue DemoUvmChainApi::get_storage_value_from_uvm_by_address(lua_State *L, const char *contract_address, std::string name)
+			UvmStorageValue DemoUvmChainApi::get_storage_value_from_uvm_by_address(lua_State *L, const char *contract_address,
+				const std::string& name, const std::string& fast_map_key, bool is_fast_map)
 			{
 				// fetch storage value from uvm
                 if (_demo_chain_storage_buffer.find(L) == _demo_chain_storage_buffer.end()) {
@@ -267,6 +272,9 @@ namespace uvm {
                 auto cache = _demo_chain_storage_buffer[L];
                 // auto key = std::string(contract_address) + "$" + name;
                 auto key = std::string("demo$") + name; // democontract_idid_+，
+				if (is_fast_map) {
+					key = std::string("demo$") + name + "$" + fast_map_key;
+				}
                 if (cache->find(key) != cache->end())
                 {
                   return (*cache)[key];
