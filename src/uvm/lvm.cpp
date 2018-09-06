@@ -20,6 +20,7 @@
 #include <memory>
 #include <thread>
 #include <chrono>
+#include <algorithm>
 
 #include <uvm/lua.h>
 
