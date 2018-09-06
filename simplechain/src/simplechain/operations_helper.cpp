@@ -10,7 +10,8 @@ namespace simplechain {
 		op.op_time = fc::time_point_sec(fc::time_point::now());
 		return op;
 	}
-	contract_create_operation operations_helper::create_contract(const std::string& caller_addr, const std::string& contract_filepath,
+
+	contract_create_operation operations_helper::create_contract_from_file(const std::string& caller_addr, const std::string& contract_filepath,
 		gas_count_type gas_limit, gas_price_type gas_price) {
 		contract_create_operation op;
 		op.caller_address = caller_addr;
@@ -21,6 +22,18 @@ namespace simplechain {
 		op.op_time = fc::time_point_sec(fc::time_point::now());
 		return op;
 	}
+
+	contract_create_operation operations_helper::create_contract(const std::string& caller_addr, const uvm::blockchain::Code& contract_code,
+		gas_count_type gas_limit, gas_price_type gas_price) {
+		contract_create_operation op;
+		op.caller_address = caller_addr;
+		op.contract_code = contract_code;
+		op.gas_limit = gas_limit;
+		op.gas_price = gas_price;
+		op.op_time = fc::time_point_sec(fc::time_point::now());
+		return op;
+	}
+
 	contract_invoke_operation operations_helper::invoke_contract(const std::string& caller_addr, const std::string& contract_address,
 		const std::string& contract_api_name, const std::vector<std::string>& api_args,
 		gas_count_type gas_limit, gas_price_type gas_price) {

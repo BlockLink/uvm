@@ -9,6 +9,7 @@ int main(int argc, char** argv) {
 	try {
 		auto chain = std::make_shared<simplechain::blockchain>();
 
+		// TODO: remove this demo code
 		std::string contract1_addr;
 		std::string caller_addr = std::string(SIMPLECHAIN_ADDRESS_PREFIX) + "caller1";
 		
@@ -24,7 +25,7 @@ int main(int argc, char** argv) {
 		{
 			auto tx1 = std::make_shared<transaction>();
 			std::string contract1_gpc_filepath("../test/test_contracts/token.gpc"); // TODO: load from command line arguments
-			auto op = operations_helper::create_contract(caller_addr, contract1_gpc_filepath);
+			auto op = operations_helper::create_contract_from_file(caller_addr, contract1_gpc_filepath);
 			tx1->operations.push_back(op);
 			tx1->tx_time = fc::time_point_sec(fc::time_point::now());
 			contract1_addr = op.calculate_contract_id();
@@ -48,7 +49,7 @@ int main(int argc, char** argv) {
 		auto state = chain->get_storage(contract1_addr, "state").as<std::string>();
 		FC_ASSERT(state == "\"COMMON\"");
 
-		RpcServer rpc_server(8080);
+		RpcServer rpc_server(chain.get(), 8080);
 		rpc_server.start();
 	}
 	catch (const std::exception& e) {

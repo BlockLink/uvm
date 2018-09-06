@@ -7,21 +7,45 @@
 namespace simplechain {
 	using namespace std;
 
-	int ContractHelper::common_fread_int(FILE* fp, int* dst_int)
+	size_t FileWrapper::common_read(void* buf, size_t element_size, size_t count) {
+		return fread(buf, element_size, count, fp);
+	}
+
+	size_t StreamFileWrapper::common_read(void* buf, size_t element_size, size_t count) {
+		return stream->readsome((char*)buf, element_size*count);
+	}
+
+	int FileWrapper::common_close() {
+		return fclose(fp);
+	}
+
+	int StreamFileWrapper::common_close() {
+		return 1;
+	}
+
+	long FileWrapper::common_tell() {
+		return ftell(fp);
+	}
+
+	long StreamFileWrapper::common_tell() {
+		return stream->tellg();
+	}
+
+	int ContractHelper::common_fread_int(LikeFile* fp, int* dst_int)
 	{
 		int ret;
 		unsigned char uc4, uc3, uc2, uc1;
 
-		ret = (int)fread(&uc4, sizeof(unsigned char), 1, fp);
+		ret = (int)fp->common_read(&uc4, sizeof(unsigned char), 1);
 		if (ret != 1)
 			return ret;
-		ret = (int)fread(&uc3, sizeof(unsigned char), 1, fp);
+		ret = (int)fp->common_read(&uc3, sizeof(unsigned char), 1);
 		if (ret != 1)
 			return ret;
-		ret = (int)fread(&uc2, sizeof(unsigned char), 1, fp);
+		ret = (int)fp->common_read(&uc2, sizeof(unsigned char), 1);
 		if (ret != 1)
 			return ret;
-		ret = (int)fread(&uc1, sizeof(unsigned char), 1, fp);
+		ret = (int)fp->common_read(&uc1, sizeof(unsigned char), 1);
 		if (ret != 1)
 			return ret;
 
@@ -60,9 +84,9 @@ namespace simplechain {
 		return (int)fwrite(src_stream, len, 1, fp);
 	}
 
-	int ContractHelper::common_fread_octets(FILE* fp, void* dst_stream, int len)
+	int ContractHelper::common_fread_octets(LikeFile* fp, void* dst_stream, int len)
 	{
-		return (int)fread(dst_stream, len, 1, fp);
+		return (int)fp->common_read(dst_stream, len, 1);
 	}
 
 
@@ -191,7 +215,7 @@ else \
 read_count = common_fread_int(f, &api_count); \
 if (read_count != 1)\
 {\
-fclose(f); \
+f->common_close(); \
 throw uvm::core::UvmException("Read verify code fail!"); \
 }\
 for (int i = 0; i < api_count; i++)\
@@ -200,19 +224,19 @@ int api_len = 0; \
 read_count = common_fread_int(f, &api_len); \
 if (read_count != 1)\
 {\
-fclose(f); \
+f->common_close(); \
 throw uvm::core::UvmException("Read verify code fail!"); \
 }\
 api_buf = (char*)malloc(api_len + 1); \
 if (api_buf == NULL) \
 { \
-fclose(f); \
+f->common_close(); \
 FC_ASSERT(api_buf == NULL, "malloc fail!"); \
 }\
 read_count = common_fread_octets(f, api_buf, api_len); \
 if (read_count != 1)\
 {\
-fclose(f); \
+f->common_close(); \
 free(api_buf); \
 throw uvm::core::UvmException("Read verify code fail!"); \
 }\
@@ -227,7 +251,7 @@ free(api_buf); \
 read_count = common_fread_int(f, &storage_count); \
 if (read_count != 1)\
 {\
-fclose(f); \
+f->common_close(); \
 throw uvm::core::UvmException("Read verify code fail!"); \
 }\
 for (int i = 0; i < storage_count; i++)\
@@ -236,19 +260,19 @@ int storage_name_len = 0; \
 read_count = common_fread_int(f, &storage_name_len); \
 if (read_count != 1)\
 {\
-fclose(f); \
+f->common_close(); \
 throw uvm::core::UvmException("Read verify code fail!"); \
 }\
 storage_buf = (char*)malloc(storage_name_len + 1); \
 if (storage_buf == NULL) \
 { \
-fclose(f); \
+f->common_close(); \
 FC_ASSERT(storage_buf == NULL, "malloc fail!"); \
 }\
 read_count = common_fread_octets(f, storage_buf, storage_name_len); \
 if (read_count != 1)\
 {\
-fclose(f); \
+f->common_close(); \
 free(storage_buf); \
 throw uvm::core::UvmException("Read verify code fail!"); \
 }\
@@ -256,7 +280,7 @@ storage_buf[storage_name_len] = '\0'; \
 read_count = common_fread_int(f, (int*)&storage_type); \
 if (read_count != 1)\
 {\
-fclose(f); \
+f->common_close(); \
 free(storage_buf); \
 throw uvm::core::UvmException("Read verify code fail!"); \
 }\
@@ -265,17 +289,8 @@ free(storage_buf); \
 }\
 }
 
-
-	uvm::blockchain::Code ContractHelper::load_contract_from_file(const fc::path &path)
-	{
-		if (!fc::exists(path))
-			FC_THROW_EXCEPTION(fc::file_not_found_exception, "Script file not found!");
+	uvm::blockchain::Code ContractHelper::load_contract_from_common_stream_and_close(LikeFile* f, int fsize) {
 		uvm::blockchain::Code code;
-		string file = path.string();
-		FILE* f = fopen(file.c_str(), "rb");
-		fseek(f, 0, SEEK_END);
-		int fsize = ftell(f);
-		fseek(f, 0, SEEK_SET);
 
 		unsigned int digest[5];
 		int read_count = 0;
@@ -284,16 +299,16 @@ free(storage_buf); \
 			read_count = common_fread_int(f, (int*)&digest[i]);
 			if (read_count != 1)
 			{
-				fclose(f);
+				f->common_close();
 				throw uvm::core::UvmException("Read verify code fail!");
 			}
 		}
 
 		int len = 0;
 		read_count = common_fread_int(f, &len);
-		if (read_count != 1 || len < 0 || (len >= (fsize - ftell(f))))
+		if (read_count != 1 || len < 0 || (len >= (fsize - f->common_tell())))
 		{
-			fclose(f);
+			f->common_close();
 			throw uvm::core::UvmException("Read verify code fail!");
 		}
 
@@ -301,7 +316,7 @@ free(storage_buf); \
 		read_count = common_fread_octets(f, code.code.data(), len);
 		if (read_count != 1)
 		{
-			fclose(f);
+			f->common_close();
 			throw uvm::core::UvmException("Read verify code fail!");
 		}
 
@@ -311,7 +326,7 @@ free(storage_buf); \
 		sha.get_digest(check_digest);
 		if (memcmp((void*)digest, (void*)check_digest, sizeof(unsigned int) * 5))
 		{
-			fclose(f);
+			f->common_close();
 			throw uvm::core::UvmException("Verify bytescode SHA1 fail!");
 		}
 
@@ -339,8 +354,23 @@ free(storage_buf); \
 
 		INIT_STORAGE_FROM_FILE(code.storage_properties);
 
-		fclose(f);
+		f->common_close();
 
 		return code;
+	}
+
+	uvm::blockchain::Code ContractHelper::load_contract_from_file(const fc::path &path)
+	{
+		if (!fc::exists(path))
+			FC_THROW_EXCEPTION(fc::file_not_found_exception, "Script file not found!");
+		string file = path.string();
+		FILE* f = fopen(file.c_str(), "rb");
+		fseek(f, 0, SEEK_END);
+		int fsize = ftell(f);
+		fseek(f, 0, SEEK_SET);
+
+		FileWrapper fw(f);
+
+		return load_contract_from_common_stream_and_close(&fw, fsize);
 	}
 }

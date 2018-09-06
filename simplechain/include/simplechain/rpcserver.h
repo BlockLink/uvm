@@ -6,16 +6,18 @@
 #include <simplechain/operation.h>
 #include <simplechain/contract_helper.h>
 #include <simplechain/operations_helper.h>
+#include <simplechain/chain_rpc.h>
 #include <server_http.hpp>
 
 namespace simplechain {
-	using HttpServer = SimpleWeb::Server<SimpleWeb::HTTP>;
 
 	class RpcServer final {
 	private:
+		blockchain* _chain;
 		int _port;
+		std::shared_ptr<HttpServer> _server;
 	public:
-		RpcServer(int port = 8080);
+		RpcServer(blockchain* chain, int port = 8080);
 		~RpcServer();
 
 		void start();
