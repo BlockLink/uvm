@@ -49,6 +49,8 @@ int main(int argc, char** argv) {
 		auto state = chain->get_storage(contract1_addr, "state").as<std::string>();
 		FC_ASSERT(state == "\"COMMON\"");
 
+		auto& chain_state = chain->get_state_json();
+
 		RpcServer rpc_server(chain.get(), 8080);
 		rpc_server.start();
 	}

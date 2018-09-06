@@ -75,6 +75,9 @@
     <ClCompile Include="src\simplechain\chain_rpc.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="src\simplechain\asset.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\simplechain\simplechain.h">

@@ -87,6 +87,7 @@ namespace simplechain {
 			invoke_contract_result.reset();
 			try
 			{
+				// TODO: disallow call contract's special apis directly
 				engine->execute_contract_api_by_address(o.contract_address, o.contract_api, o.contract_args.empty() ? "" : o.contract_args[0], nullptr);
 			}
 			catch (std::exception &e)

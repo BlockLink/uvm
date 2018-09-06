@@ -234,3 +234,10 @@ namespace simplechain {
 	}
 
 }
+
+namespace fc {
+	void to_variant(const simplechain::StorageDataType& var, variant& vo) {
+		fc::mutable_variant_object obj("storage_data", var.storage_data);
+		vo = std::move(obj);
+	}
+}

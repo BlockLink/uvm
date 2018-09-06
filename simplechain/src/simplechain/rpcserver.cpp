@@ -16,7 +16,15 @@ namespace simplechain {
 		{ "create_contract", &create_contract },
 		{ "invoke_contract", &invoke_contract },
 		{ "exit", &exit_chain },
-		{ "generate_block", &generate_block }
+		{ "generate_block", &generate_block },
+		{"get_chain_state", &get_chain_state },
+		{"list_accounts", &list_accounts },
+		{"list_assets", &list_assets },
+		{"list_contracts", &list_contracts },
+		{"get_contract_info", &get_contract_info },
+		{"get_account_balances", &get_account_balances },
+		{"get_contract_storages", &get_contract_storages },
+		{"get_storage", &get_storage }
 	};
 
 	RpcServer::RpcServer(blockchain* chain, int port)

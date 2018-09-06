@@ -47,7 +47,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v120</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
@@ -123,6 +123,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\Keccak.cpp" />
+    <ClCompile Include="src\simplechain\asset.cpp" />
     <ClCompile Include="src\simplechain\block.cpp" />
     <ClCompile Include="src\simplechain\blockchain.cpp" />
     <ClCompile Include="src\simplechain\chain_rpc.cpp" />
