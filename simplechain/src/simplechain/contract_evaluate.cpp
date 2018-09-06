@@ -27,7 +27,7 @@ namespace simplechain {
 			contract_object contract;
 			contract.code = o.contract_code;
 			contract.contract_address = contract_address;
-			contract.owner_address = caller_address;
+			contract.owner_address = o.caller_address;
 			contract.create_time = o.op_time;
 			contract.registered_block = get_chain()->latest_block().block_number + 1;
 			contract.type_of_contract = contract_type::normal_contract;
