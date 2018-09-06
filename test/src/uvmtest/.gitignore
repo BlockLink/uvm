@@ -1,3 +1,4 @@
 /uvmtest.exe
 /uvmtest
 /*.log
+/go.sum
