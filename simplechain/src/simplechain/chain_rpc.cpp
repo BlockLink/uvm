@@ -8,6 +8,7 @@
 #include <istream>
 #include <ostream>
 #include <boost/asio.hpp>
+#include <fc/io/json.hpp>
 
 namespace simplechain {
 	namespace rpc {
@@ -163,16 +164,17 @@ namespace simplechain {
 		RpcResultType get_contract_storages(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			auto& addr = params.at(0).as_string();
 			auto& storages = chain->get_contract_storages(addr);
-			fc::variant res;
-			fc::to_variant(storages, res);
-			return res;
+			fc::mutable_variant_object storages_json;
+			for (const auto& p : storages) {
+				storages_json[p.first] = fc::json::from_string(p.second.as<std::string>());
+			}
+			return storages_json;
 		}
 		RpcResultType get_storage(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			auto& addr = params.at(0).as_string();
 			auto& storage_name = params.at(1).as_string();
-			auto& storage = chain->get_storage(addr, storage_name);;
-			fc::variant res;
-			fc::to_variant(storage, res);
+			auto& storage = chain->get_storage(addr, storage_name);
+			fc::variant res = fc::json::from_string(storage.as<std::string>());
 			return res;
 		}
 
