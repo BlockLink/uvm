@@ -1,3 +1,9 @@
+cmake_minimum_required(VERSION 3.5)
+
+project(uvm)
+
+set(CMAKE_CXX_STANDARD 11)
+
 file(GLOB HEADERS "include/uvm/*.h" "../jsondiff/jsondiff-cpp/include/jsondiff/*.h")
 
 set(SOURCES src/uvm/lapi.cpp
@@ -49,13 +55,32 @@ set(SOURCES src/uvm/lapi.cpp
     src/uvm/uvm_tokenparser.cpp
 )
 
+find_package(OpenSSL REQUIRED)
+
 add_library( uvm ${SOURCES} ${HEADERS} )
 
 target_link_libraries( uvm 
-  PUBLIC fc jsondiff)
+  PUBLIC fc)
 target_include_directories( uvm 
   PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/../jsondiff/jsondiff-cpp/include"
 )
+
+aux_source_directory(./simplechain/src simplechain_src1)
+aux_source_directory(./simplechain/src/simplechain simplechain_src2)
+
+include_directories(simplechain/include)
+
+link_directories(../fc /usr/local/lib/boost/lib)
+link_libraries(fc boost_system boost_system boost_chrono boost_date_time boost_coroutine boost_context boost_thread boost_filesystem pthread)
+
+add_executable(simplechain_runner ${simplechain_src1} ${simplechain_src2})
+
+target_include_directories( simplechain_runner 
+  PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/simplechain/include" "${CMAKE_CURRENT_SOURCE_DIR}/../jsondiff/jsondiff-cpp/include"
+)
+
+target_link_libraries(simplechain_runner PUBLIC uvm fc OpenSSL::SSL ${CMAKE_SOURCE_DIR}/../jsondiff/libjsondiff_cpp.a)
+
 
 if (USE_PCH)
   set_target_properties(uvm PROPERTIES COTIRE_ADD_UNITY_BUILD FALSE)

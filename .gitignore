@@ -200,3 +200,10 @@ FakesAssemblies/
 
 /uvm_single/*.vcxproj.filters
 /*.log
+/CMakeCache.txt
+/CMakeFiles
+/Makefile
+/cmake_install.cmake
+/libuvm.a
+/simplechain_runner
+

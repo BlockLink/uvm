@@ -2,6 +2,7 @@
 #include <simplechain/contract_engine_builder.h>
 #include <simplechain/contract_object.h>
 #include <simplechain/blockchain.h>
+#include <iostream>
 
 namespace simplechain {
 	using namespace std;

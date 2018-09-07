@@ -122,24 +122,24 @@ namespace simplechain {
 		}
 
 		RpcResultType get_chain_state(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
-			auto& state = chain->get_state();
+			const auto& state = chain->get_state();
 			return state;
 		}
 		
 		RpcResultType list_accounts(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
-			auto& accounts = chain->get_account_addresses();
+			const auto& accounts = chain->get_account_addresses();
 			fc::variant account_addresses;
 			fc::to_variant(accounts, account_addresses);
 			return account_addresses;
 		}
 		RpcResultType list_assets(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
-			auto& assets = chain->get_assets();
+			const auto& assets = chain->get_assets();
 			fc::variant assets_obj;
 			fc::to_variant(assets, assets_obj);
 			return assets_obj;
 		}
 		RpcResultType list_contracts(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
-			auto& contracts = chain->get_contracts();
+			const auto& contracts = chain->get_contracts();
 			fc::variants contract_ids;
 			for (const auto& contract : contracts) {
 				contract_ids.push_back(contract.contract_address);
@@ -147,7 +147,7 @@ namespace simplechain {
 			return contract_ids;
 		}
 		RpcResultType get_contract_info(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
-			auto& contract_address = params.at(0).as_string();
+			const auto& contract_address = params.at(0).as_string();
 			auto contract = chain->get_contract_by_address(contract_address);
 			FC_ASSERT(contract);
 			fc::variant obj;
@@ -155,15 +155,15 @@ namespace simplechain {
 			return obj;
 		}
 		RpcResultType get_account_balances(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
-			auto& addr = params.at(0).as_string();
-			auto& balances = chain->get_account_balances(addr);
+			const auto& addr = params.at(0).as_string();
+			const auto& balances = chain->get_account_balances(addr);
 			fc::variant res;
 			fc::to_variant(balances, res);
 			return res;
 		}
 		RpcResultType get_contract_storages(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
-			auto& addr = params.at(0).as_string();
-			auto& storages = chain->get_contract_storages(addr);
+			const auto& addr = params.at(0).as_string();
+			const auto& storages = chain->get_contract_storages(addr);
 			fc::mutable_variant_object storages_json;
 			for (const auto& p : storages) {
 				storages_json[p.first] = fc::json::from_string(p.second.as<std::string>());
@@ -171,9 +171,9 @@ namespace simplechain {
 			return storages_json;
 		}
 		RpcResultType get_storage(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
-			auto& addr = params.at(0).as_string();
-			auto& storage_name = params.at(1).as_string();
-			auto& storage = chain->get_storage(addr, storage_name);
+			const auto& addr = params.at(0).as_string();
+			const auto& storage_name = params.at(1).as_string();
+			const auto& storage = chain->get_storage(addr, storage_name);
 			fc::variant res = fc::json::from_string(storage.as<std::string>());
 			return res;
 		}

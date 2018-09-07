@@ -153,7 +153,7 @@ namespace simplechain {
 				for (size_t i = 0; i < json_array.size(); i++)
 				{
 					const auto &json_item = json_array[i];
-					const auto &item_value = json_to_uvm_storage_value(L, json_item);
+					const auto &item_value = simplechain::json_to_uvm_storage_value(L, json_item);
 					item_values.push_back(item_value);
 					(*value.value.table_value)[std::to_string(i + 1)] = item_value;
 				}
@@ -193,7 +193,7 @@ namespace simplechain {
 				std::vector<UvmStorageValue> item_values;
 				for (const auto &p : json_map)
 				{
-					const auto &item_value = json_to_uvm_storage_value(L, p.value());
+					const auto &item_value = simplechain::json_to_uvm_storage_value(L, p.value());
 					item_values.push_back(item_value);
 					(*value.value.table_value)[p.key()] = item_value;
 				}
@@ -229,7 +229,7 @@ namespace simplechain {
 	UvmStorageValue StorageDataType::create_lua_storage_from_storage_data(lua_State *L, const StorageDataType& storage)
 	{
 		auto json_value = json_from_str(storage.as<std::string>());
-		auto value = json_to_uvm_storage_value(L, json_value);
+		auto value = simplechain::json_to_uvm_storage_value(L, json_value);
 		return value;
 	}
 
