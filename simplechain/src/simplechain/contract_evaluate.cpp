@@ -3,6 +3,7 @@
 #include <simplechain/contract_object.h>
 #include <simplechain/blockchain.h>
 #include <iostream>
+#include <uvm/uvm_lib.h>
 
 namespace simplechain {
 	using namespace std;
@@ -35,7 +36,9 @@ namespace simplechain {
 			store_contract(contract_address, contract);
 			try
 			{
-				engine->execute_contract_init_by_address(contract_address, "", nullptr);
+				std::string result_json_str;
+				engine->execute_contract_init_by_address(contract_address, "", &result_json_str);
+				invoke_contract_result.api_result = result_json_str;
 			}
 			catch (std::exception &e)
 			{
@@ -46,8 +49,8 @@ namespace simplechain {
 			FC_ASSERT(gas_used <= gas_limit && gas_used > 0, "costs of execution can be only between 0 and init_cost");
 
 			auto gas_count = gas_used;
-			contract_object new_contract;
 			invoke_contract_result.exec_succeed = true;
+			invoke_contract_result.gas_used = gas_count;
 		}
 		catch (const std::exception& e)
 		{
@@ -78,7 +81,7 @@ namespace simplechain {
 		try {
 			auto origin_op = o;
 			engine->set_caller(o.caller_address, o.caller_address);
-			engine->set_state_pointer_value("register_evaluate_state", this);
+			engine->set_state_pointer_value("invoke_evaluate_state", this);
 			engine->clear_exceptions();
 			auto limit = o.gas_limit;
 			if (limit < 0 || limit == 0)
@@ -88,8 +91,12 @@ namespace simplechain {
 			invoke_contract_result.reset();
 			try
 			{
-				// TODO: disallow call contract's special apis directly
-				engine->execute_contract_api_by_address(o.contract_address, o.contract_api, o.contract_args.empty() ? "" : o.contract_args[0], nullptr);
+				if (std::find(uvm::lua::lib::contract_special_api_names.begin(), uvm::lua::lib::contract_special_api_names.end(), o.contract_api) != uvm::lua::lib::contract_special_api_names.end()) {
+					throw uvm::core::UvmException(std::string("can't call ") + o.contract_api + " directly");
+				}
+				std::string result_json_str;
+				engine->execute_contract_api_by_address(o.contract_address, o.contract_api, o.contract_args.empty() ? "" : o.contract_args[0], &result_json_str);
+				invoke_contract_result.api_result = result_json_str;
 			}
 			catch (std::exception &e)
 			{
@@ -101,6 +108,7 @@ namespace simplechain {
 
 			auto gas_count = gas_used;
 			invoke_contract_result.exec_succeed = true;
+			invoke_contract_result.gas_used = gas_count;
 		}
 		catch (const std::exception& e)
 		{

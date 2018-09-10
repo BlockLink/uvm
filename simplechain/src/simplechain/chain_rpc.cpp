@@ -4,6 +4,7 @@
 #include <simplechain/transaction.h>
 #include <simplechain/block.h>
 #include <simplechain/blockchain.h>
+#include <simplechain/contract.h>
 #include <streambuf>
 #include <istream>
 #include <ostream>
@@ -12,6 +13,12 @@
 
 namespace simplechain {
 	namespace rpc {
+
+		static void params_assert(bool cond, const std::string& msg = "") {
+			if (!cond) {
+				throw uvm::core::UvmException(msg.empty() ? "params invalid" : msg);
+			}
+		}
 
 		RpcResultType mint(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			auto caller_addr = params.at(0).as_string();
@@ -83,6 +90,7 @@ namespace simplechain {
 			auto caller_addr = params.at(0).as_string();
 			auto contract_address = params.at(1).as_string();
 			auto api_name = params.at(2).as_string();
+			params_assert(params.at(3).is_array());
 			auto api_args_json = params.at(3).as<fc::variants>();
 			std::vector<std::string> api_args;
 			for (const auto& api_arg_json : api_args_json) {
@@ -93,20 +101,56 @@ namespace simplechain {
 			auto gas_price = params.at(5).as_uint64();
 
 			auto tx = std::make_shared<transaction>();
-			auto op = operations_helper::invoke_contract(caller_addr, contract_address, api_name, api_args);
+			auto op = operations_helper::invoke_contract(caller_addr, contract_address, api_name, api_args, gas_limit, gas_price);
 			tx->operations.push_back(op);
 			tx->tx_time = fc::time_point_sec(fc::time_point::now());
 
-			chain->evaluate_transaction(tx);
+			auto op_result = chain->evaluate_transaction(tx);
+			fc::mutable_variant_object res;
+			res["txid"] = tx->tx_hash();
+			if (op_result) {
+				contract_invoke_result* contract_result = (contract_invoke_result*)op_result.get();
+				res["api_result"] = contract_result->api_result;
+				res["exec_succeed"] = contract_result->exec_succeed;
+			}
 			chain->accept_transaction_to_mempool(*tx);
-			return tx->tx_hash();
+			return res;
+		}
+
+		RpcResultType invoke_contract_offline(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			auto caller_addr = params.at(0).as_string();
+			auto contract_address = params.at(1).as_string();
+			auto api_name = params.at(2).as_string();
+			params_assert(params.at(3).is_array());
+			auto api_args_json = params.at(3).as<fc::variants>();
+			std::vector<std::string> api_args;
+			for (const auto& api_arg_json : api_args_json) {
+				api_args.push_back(api_arg_json.as_string());
+			}
+
+			auto tx = std::make_shared<transaction>();
+			auto op = operations_helper::invoke_contract(caller_addr, contract_address, api_name, api_args, 10000000);
+			tx->operations.push_back(op);
+			tx->tx_time = fc::time_point_sec(fc::time_point::now());
+
+			auto op_result = chain->evaluate_transaction(tx);
+			fc::mutable_variant_object res;
+			res["txid"] = tx->tx_hash();
+			if (op_result) {
+				contract_invoke_result* contract_result = (contract_invoke_result*) op_result.get();
+				res["api_result"] = contract_result->api_result;
+				res["exec_succeed"] = contract_result->exec_succeed;
+			}
+			return res;
 		}
 
 		RpcResultType generate_block(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			int count = 1;
 			if (!params.empty()) {
 				count = params.at(0).as_int64();
-				FC_ASSERT(count > 0);
+				if (count <= 0) {
+					throw uvm::core::UvmException("need generate at least 1 block");
+				}
 			}
 			fc::variants block_ids;
 			for (int i = 0; i < count; i++) {
@@ -149,7 +193,9 @@ namespace simplechain {
 		RpcResultType get_contract_info(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			const auto& contract_address = params.at(0).as_string();
 			auto contract = chain->get_contract_by_address(contract_address);
-			FC_ASSERT(contract);
+			if (!contract) {
+				throw uvm::core::UvmException(std::string("Can't find contract ") + contract_address);
+			}
 			fc::variant obj;
 			fc::to_variant(*contract, obj);
 			return obj;

@@ -15,23 +15,24 @@ namespace simplechain {
 		{ "create_contract_from_file", &create_contract_from_file },
 		{ "create_contract", &create_contract },
 		{ "invoke_contract", &invoke_contract },
+		{ "invoke_contract_offline", &invoke_contract_offline },
 		{ "exit", &exit_chain },
 		{ "generate_block", &generate_block },
-		{"get_chain_state", &get_chain_state },
-		{"list_accounts", &list_accounts },
-		{"list_assets", &list_assets },
-		{"list_contracts", &list_contracts },
-		{"get_contract_info", &get_contract_info },
-		{"get_account_balances", &get_account_balances },
-		{"get_contract_storages", &get_contract_storages },
-		{"get_storage", &get_storage }
+		{ "get_chain_state", &get_chain_state },
+		{ "list_accounts", &list_accounts },
+		{ "list_assets", &list_assets },
+		{ "list_contracts", &list_contracts },
+		{ "get_contract_info", &get_contract_info },
+		{ "get_account_balances", &get_account_balances },
+		{ "get_contract_storages", &get_contract_storages },
+		{ "get_storage", &get_storage }
 	};
 
 	RpcServer::RpcServer(blockchain* chain, int port)
 		: _chain(chain), _port(port) {
 		_server = std::make_shared<HttpServer>();
 	}
-	RpcServer::~RpcServer(){
+	RpcServer::~RpcServer() {
 
 	}
 
@@ -46,14 +47,22 @@ namespace simplechain {
 		return fc::json::from_string(read_all_string_from_stream(stream));
 	}
 
+	static void params_assert(bool cond, const std::string& msg = "") {
+		if (!cond) {
+			throw uvm::core::UvmException(msg.empty() ? "params invalid" : msg);
+		}
+	}
+
 	static RpcRequest read_rpc_request_from_stream(const std::istream& stream) {
 		auto json_val = read_json_from_stream(stream);
-		FC_ASSERT(json_val.is_object());
+		params_assert(json_val.is_object());
 		auto json_obj = json_val.as<fc::mutable_variant_object>();
-		FC_ASSERT(json_obj.find("method") != json_obj.end());
+		params_assert(json_obj.find("method") != json_obj.end() && json_obj["method"].is_string());
 		auto method = json_obj["method"].as_string();
-		FC_ASSERT(json_obj.find("params") != json_obj.end());
-		auto params = json_obj["params"].as<fc::variants>();
+		fc::variants params;
+		if (json_obj.find("params") != json_obj.end() && json_obj["params"].is_array()) {
+			params = json_obj["params"].as<fc::variants>();
+		}
 		RpcRequest req;
 		req.method = method;
 		req.params = params;
@@ -83,7 +92,7 @@ namespace simplechain {
 				auto res_str = std::string("method: ") + rpc_req.method;
 				RpcResponse rpc_res;
 
-				FC_ASSERT(rpc_methods.find(rpc_req.method) != rpc_methods.end());
+				params_assert(rpc_methods.find(rpc_req.method) != rpc_methods.end());
 				auto handler = rpc_methods[rpc_req.method];
 				try {
 					auto result = handler(this->_chain, this->_server.get(), rpc_req.params);

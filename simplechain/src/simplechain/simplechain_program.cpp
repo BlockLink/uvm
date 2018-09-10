@@ -9,28 +9,30 @@ int main(int argc, char** argv) {
 	try {
 		auto chain = std::make_shared<simplechain::blockchain>();
 
-                if(argc==2 && strcmp(argv[1], "demo") == 0) {
+		if (argc == 2) {
 			// TODO: remove this demo code
 			std::string contract1_addr;
 			std::string caller_addr = std::string(SIMPLECHAIN_ADDRESS_PREFIX) + "caller1";
-			
+
 			{
 				auto tx = std::make_shared<transaction>();
 				auto op = operations_helper::mint(caller_addr, 0, 123);
 				tx->tx_time = fc::time_point_sec(fc::time_point::now());
 				tx->operations.push_back(op);
-				
+
 				chain->evaluate_transaction(tx);
 				chain->accept_transaction_to_mempool(*tx);
 			}
 			{
 				auto tx1 = std::make_shared<transaction>();
+				std::string arg1(argv[1]);
+
 				std::string contract1_gpc_filepath("../test/test_contracts/token.gpc"); // TODO: load from command line arguments
 				auto op = operations_helper::create_contract_from_file(caller_addr, contract1_gpc_filepath);
 				tx1->operations.push_back(op);
 				tx1->tx_time = fc::time_point_sec(fc::time_point::now());
 				contract1_addr = op.calculate_contract_id();
-				
+
 				chain->evaluate_transaction(tx1);
 				chain->accept_transaction_to_mempool(*tx1);
 			}
@@ -40,7 +42,7 @@ int main(int argc, char** argv) {
 				auto op = operations_helper::invoke_contract(caller_addr, contract1_addr, "init_token", { "test,TEST,10000,100" });
 				tx->operations.push_back(op);
 				tx->tx_time = fc::time_point_sec(fc::time_point::now());
-				
+
 				chain->evaluate_transaction(tx);
 				chain->accept_transaction_to_mempool(*tx);
 			}
@@ -51,7 +53,7 @@ int main(int argc, char** argv) {
 			FC_ASSERT(state == "\"COMMON\"");
 
 			const auto& chain_state = chain->get_state_json();
-                }
+		}
 
 		RpcServer rpc_server(chain.get(), 8080);
 		rpc_server.start();

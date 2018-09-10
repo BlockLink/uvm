@@ -30,7 +30,7 @@ namespace simplechain {
 	public:
 		blockchain();
 		// @throws exception
-		void evaluate_transaction(std::shared_ptr<transaction> tx);
+		std::shared_ptr<evaluate_result> evaluate_transaction(std::shared_ptr<transaction> tx);
 		void apply_transaction(std::shared_ptr<transaction> tx);
 		block latest_block() const;
 		uint64_t head_block_number() const;

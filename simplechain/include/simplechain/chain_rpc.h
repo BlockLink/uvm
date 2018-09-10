@@ -42,6 +42,7 @@ namespace simplechain {
 		RpcResultType create_contract(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		// invoke_contract(caller_address: string, contract_address: string, api_name: string, api_args: [string], gas_limit: int, gas_price: int)
 		RpcResultType invoke_contract(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType invoke_contract_offline(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		RpcResultType generate_block(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		RpcResultType exit_chain(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		RpcResultType get_chain_state(blockchain* chain, HttpServer* server, const RpcRequestParams& params);

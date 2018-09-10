@@ -22,13 +22,16 @@ namespace simplechain {
 		blocks.push_back(genesis_block);
 	}
 
-	void blockchain::evaluate_transaction(std::shared_ptr<transaction> tx) {
+	std::shared_ptr<evaluate_result> blockchain::evaluate_transaction(std::shared_ptr<transaction> tx) {
 		try {
 			// TODO: evaluate_state of block or tx(need nested evaluate state)
+			std::shared_ptr<evaluate_result> last_op_result;
 			for (const auto& op : tx->operations) {
 				auto evaluator_instance = get_operation_evaluator(tx.get(), op);
 				auto op_result = evaluator_instance->evaluate(op);
+				last_op_result = op_result;
 			}
+			return last_op_result;
 		}
 		catch (const std::exception& e) {
 			throw e;
