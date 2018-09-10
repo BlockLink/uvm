@@ -503,3 +503,61 @@ func TestSimpleChainTokenContract(t *testing.T) {
 	assert.True(t, res.Get("api_result").MustString() == "100")
 	fmt.Println("hi")
 }
+
+func TestSimpleChainContractCallContract(t *testing.T) {
+	cmd := execCommandBackground(simpleChainPath)
+	assert.True(t, cmd != nil)
+	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
+	defer func() {
+		kill(cmd)
+	}()
+
+	var res *simplejson.Json
+	var err error
+	caller1 := "SPLtest1"
+	caller2 := "SPLtest2"
+
+	// init token contract
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("token.gpc"), 50000, 10)
+	assert.True(t, err == nil)
+	tokenContractAddr := res.Get("contract_address").MustString()
+	fmt.Printf("contract address: %s\n", tokenContractAddr)
+	simpleChainRPC("generate_block")
+	simpleChainRPC("invoke_contract", caller1, tokenContractAddr, "init_token", []string{"test,TEST,10000,100"}, 50000, 10)
+	simpleChainRPC("generate_block")
+
+	_, compileErr := execCommand(uvmCompilerPath, "-g", "../../test_contracts/token_caller.lua")
+	assert.Equal(t, compileErr, "")
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("token_caller.lua.gpc"), 50000, 10)
+	assert.True(t, err == nil)
+	contract1Addr := res.Get("contract_address").MustString()
+	fmt.Printf("contract address: %s\n", contract1Addr)
+	simpleChainRPC("generate_block")
+
+	// transfer token from owner to contract
+	simpleChainRPC("invoke_contract", caller1, tokenContractAddr, "transfer", []string{contract1Addr + ",100"}, 50000, 10)
+	simpleChainRPC("generate_block")
+
+	// transfer token from contract to caller2
+	simpleChainRPC("invoke_contract", caller1, contract1Addr, "transfer", []string{tokenContractAddr + "," + caller2 + ",30"}, 50000, 10)
+	simpleChainRPC("generate_block")
+
+	// check caller1, caller2, and contract's balance of token
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, tokenContractAddr, "balanceOf", []string{caller1})
+	assert.True(t, err == nil)
+	caller1Balance := res.Get("api_result").MustString()
+	fmt.Printf("caller1 balance: %s\n", caller1Balance)
+	assert.True(t, caller1Balance == "9900")
+
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, tokenContractAddr, "balanceOf", []string{caller2})
+	assert.True(t, err == nil)
+	caller2Balance := res.Get("api_result").MustString()
+	fmt.Printf("caller2 balance: %s\n", caller2Balance)
+	assert.True(t, caller2Balance == "30")
+
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, tokenContractAddr, "balanceOf", []string{contract1Addr})
+	assert.True(t, err == nil)
+	contract1Balance := res.Get("api_result").MustString()
+	fmt.Printf("contract1 balance: %s\n", contract1Balance)
+	assert.True(t, contract1Balance == "70")
+}
