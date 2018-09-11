@@ -561,3 +561,37 @@ func TestSimpleChainContractCallContract(t *testing.T) {
 	fmt.Printf("contract1 balance: %s\n", contract1Balance)
 	assert.True(t, contract1Balance == "70")
 }
+
+func TestSimpleChainContractChangeOtherContractProperties(t *testing.T) {
+	// cmd := execCommandBackground(simpleChainPath)
+	// assert.True(t, cmd != nil)
+	// fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
+	// defer func() {
+	// 	kill(cmd)
+	// }()
+
+	var res *simplejson.Json
+	var err error
+	caller1 := "SPLtest1"
+
+	fmt.Printf("simple_contract_path: %s\n", testContractPath("simple_contract.lua"))
+	_, compile1Err := execCommand(uvmCompilerPath, "-g", testContractPath("simple_contract.lua"))
+	assert.Equal(t, compile1Err, "")
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("simple_contract.lua.gpc"), 50000, 10)
+	assert.True(t, err == nil)
+	simpleContractAddr := res.Get("contract_address").MustString()
+	fmt.Printf("simple_contract address: %s\n", simpleContractAddr)
+	simpleChainRPC("generate_block")
+
+	_, compile2Err := execCommand(uvmCompilerPath, "-g", testContractPath("change_other_contract_property_contract.lua"))
+	assert.Equal(t, compile2Err, "")
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("change_other_contract_property_contract.lua.gpc"), 50000, 10)
+	assert.True(t, err == nil)
+	contract2Addr := res.Get("contract_address").MustString()
+	fmt.Printf("contract address: %s\n", contract2Addr)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract2Addr, "start", []string{simpleContractAddr})
+	
+	fmt.Printf("%v\n", res) // TODO: should fail when merge security
+
+}
