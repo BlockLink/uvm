@@ -2,7 +2,7 @@
 
 namespace simplechain {
 	hash_t block::digest() const {
-		return hash_t::hash(this);
+		return hash_t::hash(*this);
 	}
 	std::string block::digest_str() const {
 		return digest().str();

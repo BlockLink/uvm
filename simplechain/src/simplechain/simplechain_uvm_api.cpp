@@ -731,13 +731,13 @@ namespace simplechain {
 			bool SimpleChainUvmChainApi::is_valid_address(lua_State *L, const char *address_str)
 			{
 				std::string addr(address_str);
-				return true; // TODO
+				return true;
 			}
 
 			bool SimpleChainUvmChainApi::is_valid_contract_address(lua_State *L, const char *address_str)
 			{
 				std::string addr(address_str);
-				return true; // TODO
+				return addr.find_first_of(SIMPLECHAIN_CONTRACT_ADDRESS_PREFIX) == 0 && addr.size() > strlen(SIMPLECHAIN_CONTRACT_ADDRESS_PREFIX);
 			}
 
 			const char * SimpleChainUvmChainApi::get_system_asset_symbol(lua_State *L)

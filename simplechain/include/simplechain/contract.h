@@ -64,6 +64,7 @@ namespace simplechain {
 		std::vector<contract_event_notify_info> events;
 		std::vector<std::pair<contract_address_type, contract_object> > new_contracts;
 		bool exec_succeed = true;
+		gas_count_type gas_used = 0;
 		address invoker;
 		void reset();
 		void set_failed();

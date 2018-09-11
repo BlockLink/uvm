@@ -5,6 +5,7 @@
 namespace simplechain {
 	struct block {
 		uint64_t block_number;
+		std::string prev_block_hash;
 		fc::time_point_sec block_time;
 		std::vector<transaction> txs;
 
@@ -15,4 +16,4 @@ namespace simplechain {
 	};
 }
 
-FC_REFLECT(simplechain::block, (block_number)(block_time)(txs))
+FC_REFLECT(simplechain::block, (block_number)(prev_block_hash)(block_time)(txs))

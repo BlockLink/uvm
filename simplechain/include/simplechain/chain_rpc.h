@@ -42,7 +42,17 @@ namespace simplechain {
 		RpcResultType create_contract(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		// invoke_contract(caller_address: string, contract_address: string, api_name: string, api_args: [string], gas_limit: int, gas_price: int)
 		RpcResultType invoke_contract(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType invoke_contract_offline(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		RpcResultType generate_block(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		RpcResultType exit_chain(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType get_chain_state(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType list_accounts(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType list_assets(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType list_contracts(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType get_contract_info(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType get_account_balances(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType get_contract_storages(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType get_storage(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		// TODO: deposit to contract
 	}
 }

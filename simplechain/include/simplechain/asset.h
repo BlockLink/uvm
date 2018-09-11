@@ -11,4 +11,9 @@ namespace simplechain {
 	};
 }
 
+namespace fc {
+	void to_variant(const simplechain::asset& var, variant& vo);
+	void from_variant(const variant& var, simplechain::asset& vo);
+}
+
 FC_REFLECT(simplechain::asset, (asset_id)(symbol)(precision))

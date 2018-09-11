@@ -2,14 +2,19 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/bitly/go-simplejson"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -26,7 +31,7 @@ func findUvmSinglePath() string {
 	if runtime.GOOS == "windows" {
 		return filepath.Join(uvmDir, "x64", "Debug", "uvm_single.exe")
 	} else {
-		return filepath.Join(uvmDir, "uvm")
+		return filepath.Join(uvmDir, "uvm_single")
 	}
 }
 
@@ -44,6 +49,23 @@ func findUvmCompilerPath() string {
 		return filepath.Join(uvmDir, "test", "uvm_compiler.exe")
 	} else {
 		return filepath.Join(uvmDir, "test", "uvm_compiler")
+	}
+}
+
+func findSimpleChainPath() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	dirAbs, err := filepath.Abs(dir)
+	if err != nil {
+		panic(err)
+	}
+	uvmDir := filepath.Dir(filepath.Dir(filepath.Dir(dirAbs)))
+	if runtime.GOOS == "windows" {
+		return filepath.Join(uvmDir, "x64", "Debug", "simplechain.exe")
+	} else {
+		return filepath.Join(uvmDir, "simplechain_runner")
 	}
 }
 
@@ -67,6 +89,8 @@ func findUvmAssPath() string {
 var uvmSinglePath = findUvmSinglePath()
 var uvmCompilerPath = findUvmCompilerPath()
 var uvmAssPath = findUvmAssPath()
+var simpleChainPath = findSimpleChainPath()
+var simpleChainDefaultPort = 8080
 
 func execCommand(program string, args ...string) (string, string) {
 	cmd := exec.Command(program, args...)
@@ -79,6 +103,15 @@ func execCommand(program string, args ...string) (string, string) {
 		fmt.Printf("%v\n", err)
 	}
 	return outb.String(), errb.String()
+}
+
+func execCommandBackground(program string, args ...string) *exec.Cmd {
+	cmd := exec.Command(program, args...)
+	err := cmd.Start()
+	if err != nil {
+		fmt.Printf("%v\n", err)
+	}
+	return cmd
 }
 
 func TestHelp(t *testing.T) {
@@ -380,4 +413,185 @@ func TestCryptoPrimitivesApis(t *testing.T) {
 	assert.True(t, strings.Contains(out, `ripemd160("a123")=	3c3ce98a97977e4276548854074c4482507c640d`))
 	assert.True(t, strings.Contains(out, `hex_to_bytes("a123")=	[161,35]`))
 	assert.True(t, strings.Contains(out, `a123=	a123`))
+}
+
+func kill(cmd *exec.Cmd) error {
+	return cmd.Process.Kill()
+	// kill := exec.Command("TASKKILL", "/T", "/F", "/PID", strconv.Itoa(cmd.Process.Pid)) // TODO: when in linux
+	// kill.Stderr = os.Stderr
+	// kill.Stdout = os.Stdout
+	// return kill.Run()
+}
+
+type rpcRequest struct {
+	Method string        `json:"method"`
+	Params []interface{} `json:"params"`
+}
+
+func simpleChainRPC(method string, params ...interface{}) (*simplejson.Json, error) {
+	reqObj := rpcRequest{Method: method, Params: params}
+	reqBytes, err := json.Marshal(reqObj)
+	if err != nil {
+		return nil, err
+	}
+	url := "http://localhost:8080/api"
+	fmt.Printf("req body: %s\n", string(reqBytes))
+	httpRes, err := http.Post(url, "application/json", bytes.NewReader(reqBytes))
+	if err != nil {
+		return nil, err
+	}
+	if httpRes.StatusCode != 200 {
+		return nil, errors.New("rpc error of " + httpRes.Status)
+	}
+	resJSON, err := simplejson.NewFromReader(httpRes.Body)
+	if err != nil {
+		return nil, err
+	}
+	return resJSON.Get("result"), nil
+}
+
+func testContractPath(contractPath string) string {
+	dir, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	dirAbs, err := filepath.Abs(dir)
+	if err != nil {
+		panic(err)
+	}
+	uvmDir := filepath.Dir(filepath.Dir(filepath.Dir(dirAbs)))
+	return filepath.Join(uvmDir, "test", "test_contracts", contractPath)
+}
+
+func TestSimpleChainTokenContract(t *testing.T) {
+	cmd := execCommandBackground(simpleChainPath)
+	assert.True(t, cmd != nil)
+	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
+	defer func() {
+		kill(cmd)
+	}()
+
+	var res *simplejson.Json
+	var err error
+	res, err = simpleChainRPC("get_chain_state")
+	assert.True(t, err == nil)
+	fmt.Printf("head_block_num: %d\n", res.Get("head_block_num").MustInt())
+	caller1 := "SPLtest1"
+	caller2 := "SPLtest2"
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("token.gpc"), 50000, 10)
+	assert.True(t, err == nil)
+	contract1Addr := res.Get("contract_address").MustString()
+	fmt.Printf("contract address: %s\n", contract1Addr)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("get_contract_info", contract1Addr)
+	assert.True(t, err == nil)
+	assert.True(t, res.Get("owner_address").MustString() == caller1 && res.Get("contract_address").MustString() == contract1Addr)
+	simpleChainRPC("invoke_contract", caller1, contract1Addr, "init_token", []string{"test,TEST,10000,100"}, 50000, 10)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("get_storage", contract1Addr, "state")
+	assert.True(t, res.MustString() == "COMMON")
+	fmt.Printf("state after init_token of contract1 is: %s\n", res.MustString())
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "balanceOf", []string{caller1})
+	assert.True(t, err == nil)
+	fmt.Printf("caller1 balance: %s\n", res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "10000")
+	simpleChainRPC("invoke_contract", caller1, contract1Addr, "transfer", []string{caller2 + "," + strconv.Itoa(100)}, 50000, 10)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "balanceOf", []string{caller2})
+	assert.True(t, err == nil)
+	fmt.Printf("caller2 balance: %s\n", res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "100")
+	fmt.Println("hi")
+}
+
+func TestSimpleChainContractCallContract(t *testing.T) {
+	cmd := execCommandBackground(simpleChainPath)
+	assert.True(t, cmd != nil)
+	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
+	defer func() {
+		kill(cmd)
+	}()
+
+	var res *simplejson.Json
+	var err error
+	caller1 := "SPLtest1"
+	caller2 := "SPLtest2"
+
+	// init token contract
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("token.gpc"), 50000, 10)
+	assert.True(t, err == nil)
+	tokenContractAddr := res.Get("contract_address").MustString()
+	fmt.Printf("contract address: %s\n", tokenContractAddr)
+	simpleChainRPC("generate_block")
+	simpleChainRPC("invoke_contract", caller1, tokenContractAddr, "init_token", []string{"test,TEST,10000,100"}, 50000, 10)
+	simpleChainRPC("generate_block")
+
+	_, compileErr := execCommand(uvmCompilerPath, "-g", "../../test_contracts/token_caller.lua")
+	assert.Equal(t, compileErr, "")
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("token_caller.lua.gpc"), 50000, 10)
+	assert.True(t, err == nil)
+	contract1Addr := res.Get("contract_address").MustString()
+	fmt.Printf("contract address: %s\n", contract1Addr)
+	simpleChainRPC("generate_block")
+
+	// transfer token from owner to contract
+	simpleChainRPC("invoke_contract", caller1, tokenContractAddr, "transfer", []string{contract1Addr + ",100"}, 50000, 10)
+	simpleChainRPC("generate_block")
+
+	// transfer token from contract to caller2
+	simpleChainRPC("invoke_contract", caller1, contract1Addr, "transfer", []string{tokenContractAddr + "," + caller2 + ",30"}, 50000, 10)
+	simpleChainRPC("generate_block")
+
+	// check caller1, caller2, and contract's balance of token
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, tokenContractAddr, "balanceOf", []string{caller1})
+	assert.True(t, err == nil)
+	caller1Balance := res.Get("api_result").MustString()
+	fmt.Printf("caller1 balance: %s\n", caller1Balance)
+	assert.True(t, caller1Balance == "9900")
+
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, tokenContractAddr, "balanceOf", []string{caller2})
+	assert.True(t, err == nil)
+	caller2Balance := res.Get("api_result").MustString()
+	fmt.Printf("caller2 balance: %s\n", caller2Balance)
+	assert.True(t, caller2Balance == "30")
+
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, tokenContractAddr, "balanceOf", []string{contract1Addr})
+	assert.True(t, err == nil)
+	contract1Balance := res.Get("api_result").MustString()
+	fmt.Printf("contract1 balance: %s\n", contract1Balance)
+	assert.True(t, contract1Balance == "70")
+}
+
+func TestSimpleChainContractChangeOtherContractProperties(t *testing.T) {
+	// cmd := execCommandBackground(simpleChainPath)
+	// assert.True(t, cmd != nil)
+	// fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
+	// defer func() {
+	// 	kill(cmd)
+	// }()
+
+	var res *simplejson.Json
+	var err error
+	caller1 := "SPLtest1"
+
+	fmt.Printf("simple_contract_path: %s\n", testContractPath("simple_contract.lua"))
+	_, compile1Err := execCommand(uvmCompilerPath, "-g", testContractPath("simple_contract.lua"))
+	assert.Equal(t, compile1Err, "")
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("simple_contract.lua.gpc"), 50000, 10)
+	assert.True(t, err == nil)
+	simpleContractAddr := res.Get("contract_address").MustString()
+	fmt.Printf("simple_contract address: %s\n", simpleContractAddr)
+	simpleChainRPC("generate_block")
+
+	_, compile2Err := execCommand(uvmCompilerPath, "-g", testContractPath("change_other_contract_property_contract.lua"))
+	assert.Equal(t, compile2Err, "")
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("change_other_contract_property_contract.lua.gpc"), 50000, 10)
+	assert.True(t, err == nil)
+	contract2Addr := res.Get("contract_address").MustString()
+	fmt.Printf("contract address: %s\n", contract2Addr)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract2Addr, "start", []string{simpleContractAddr})
+	
+	fmt.Printf("%v\n", res) // TODO: should fail when merge security
+
 }
