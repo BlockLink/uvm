@@ -591,7 +591,8 @@ func TestSimpleChainContractChangeOtherContractProperties(t *testing.T) {
 	fmt.Printf("contract address: %s\n", contract2Addr)
 	simpleChainRPC("generate_block")
 	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract2Addr, "start", []string{simpleContractAddr})
-	
-	fmt.Printf("%v\n", res) // TODO: should fail when merge security
+
+	fmt.Printf("%v\n", res)
+	assert.True(t, res.Get("exec_succeed").MustBool() == false)
 
 }
