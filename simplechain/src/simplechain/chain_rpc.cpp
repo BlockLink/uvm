@@ -20,8 +20,77 @@ namespace simplechain {
 			}
 		}
 
+		RpcResultType open_debugger(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			return chain->open_debugger();
+		}
+
+		RpcResultType close_debugger(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			params_assert(params.at(0).is_string());
+			const auto& session_id = params.at(0).as_string();
+			chain->close_debugger(session_id);
+			return true;
+		}
+
+		RpcResultType list_debugger_sessions(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			const auto& session_ids = chain->list_debugger_sessions();
+			fc::variants result;
+			for (const auto& item : session_ids) {
+				result.push_back(item);
+			}
+			return result;
+		}
+		// debugger_step_in(session_id: string)
+		RpcResultType debugger_step_in(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			// TODO
+			return "TODO";
+		}
+		// debugger_step_out(session_id: string)
+		RpcResultType debugger_step_out(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			// TODO
+			return "TODO";
+		}
+		// debugger_continue(session_id: string)
+		RpcResultType debugger_continue(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			// TODO
+			return "TODO";
+		}
+
+		RpcResultType debugger_add_breakpoint(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			params_assert(params.at(0).is_string() && params.at(1).is_uint64());
+			const auto& contract_address = params.at(0).as_string();
+			params_assert(!contract_address.empty());
+			auto line = (uint32_t)(params.at(1).as_uint64());
+			return chain->debugger_add_breakpoint(contract_address, line);
+		}
+
+		RpcResultType debugger_remove_breakpoint(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			params_assert(params.at(0).is_string() && params.at(1).is_uint64());
+			const auto& contract_address = params.at(0).as_string();
+			params_assert(!contract_address.empty());
+			auto line = (uint32_t)(params.at(1).as_uint64());
+			return chain->debugger_remove_breakpoint(contract_address, line);
+		}
+
+		RpcResultType list_breakpoints(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			const auto& debugger_breakpoints = chain->list_breakpoints();
+			fc::mutable_variant_object res;
+			for (const auto& p : debugger_breakpoints) {
+				fc::variants lines;
+				for (const auto& line : p.second) {
+					lines.push_back(line);
+				}
+				res[p.first] = lines;
+			}
+			return res;
+		}
+
+		RpcResultType clear_breakpoints(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			chain->clear_breakpoints();
+			return true;
+		}
+
 		RpcResultType mint(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
-			auto caller_addr = params.at(0).as_string();
+			const auto& caller_addr = params.at(0).as_string();
 			auto asset_id = params.at(1).as_uint64();
 			auto amount = params.at(2).as_int64();
 			auto tx = std::make_shared<transaction>();

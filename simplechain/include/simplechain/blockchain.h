@@ -9,6 +9,7 @@
 #include <simplechain/contract_object.h>
 #include <simplechain/storage.h>
 #include <simplechain/asset.h>
+#include <simplechain/contract_engine_builder.h>
 #include <memory>
 #include <vector>
 #include <map>
@@ -27,6 +28,10 @@ namespace simplechain {
 		std::map<std::string, contract_object> contracts;
 		std::map<std::string, std::map<std::string, StorageDataType> > contract_storages;
 		std::vector<transaction> tx_mempool;
+		std::map<std::string, std::vector<uint32_t>> debugger_breakpoints;
+		std::map<std::string, std::shared_ptr<ActiveContractEngine> > active_debugger_sessions; // session_id => contract_engine
+	public:
+		std::string debugger_session_id_for_next_evaluate; // new session id for debugger-open for next tx-evaluate
 	public:
 		blockchain();
 		// @throws exception
@@ -61,6 +66,16 @@ namespace simplechain {
 
 		fc::variant get_state() const;
 		std::string get_state_json() const;
+
+		bool debugger_add_breakpoint(const std::string& contract_address, uint32_t line);
+		bool debugger_remove_breakpoint(const std::string& contract_address, uint32_t line);
+		std::map<std::string, std::vector<uint32_t>> list_breakpoints();
+		void clear_breakpoints();
+
+		std::string open_debugger();
+		void add_debugger_session(const std::string& session_id, std::shared_ptr<ActiveContractEngine> contract_engine);
+		void close_debugger(const std::string& session_id);
+		std::vector<std::string> list_debugger_sessions() const;
 
 	private:
 		// @throws exception

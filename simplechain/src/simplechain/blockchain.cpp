@@ -301,4 +301,75 @@ namespace simplechain {
 		return result;
 	}
 
+	// TODO: lock when multithread use debugger_breakpoints
+
+	bool blockchain::debugger_add_breakpoint(const std::string& contract_address, uint32_t line) {
+		std::vector<uint32_t> lines;
+		if (debugger_breakpoints.find(contract_address) != debugger_breakpoints.end())
+			lines = debugger_breakpoints[contract_address];
+		if (std::find(lines.begin(), lines.end(), line) != lines.end()) {
+			return false;
+		}
+		lines.push_back(line);
+		debugger_breakpoints[contract_address] = lines;
+		return true;
+	}
+
+	bool blockchain::debugger_remove_breakpoint(const std::string& contract_address, uint32_t line) {
+		std::vector<uint32_t> lines;
+		if (debugger_breakpoints.find(contract_address) == debugger_breakpoints.end())
+			return false;
+		lines = debugger_breakpoints[contract_address];
+		if (std::find(lines.begin(), lines.end(), line) != lines.end()) {
+			lines.erase(std::find(lines.begin(), lines.end(), line));
+			if (lines.empty())
+				debugger_breakpoints.erase(contract_address);
+			else
+				debugger_breakpoints[contract_address] = lines;
+			return true;
+		}
+		return false;
+	}
+
+	std::map<std::string, std::vector<uint32_t>> blockchain::list_breakpoints() {
+		return debugger_breakpoints;
+	}
+	void blockchain::clear_breakpoints() {
+		debugger_breakpoints.clear();
+	}
+
+	static std::string uniqueName() {
+		auto randchar = []() -> char
+		{
+			const char charset[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+			const size_t max_index = (sizeof(charset) - 1);
+			return charset[rand() % max_index];
+		};
+		std::string str(4, 0);
+		std::generate_n(str.begin(), 4, randchar);
+		return str;
+	}
+
+	std::string blockchain::open_debugger() {
+		debugger_session_id_for_next_evaluate = uniqueName();
+		return debugger_session_id_for_next_evaluate;
+	}
+
+	void blockchain::add_debugger_session(const std::string& session_id, std::shared_ptr<ActiveContractEngine> contract_engine) {
+		active_debugger_sessions[session_id] = contract_engine;
+	}
+
+	void blockchain::close_debugger(const std::string& session_id) {
+		if (active_debugger_sessions.find(session_id) != active_debugger_sessions.end())
+			active_debugger_sessions.erase(session_id);
+	}
+
+	std::vector<std::string> blockchain::list_debugger_sessions() const {
+		std::vector<std::string> result;
+		for (const auto& p : active_debugger_sessions) {
+			result.push_back(p.first);
+		}
+		return result;
+	}
+
 }

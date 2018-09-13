@@ -14,11 +14,17 @@ namespace simplechain {
 		int exception_code = 0;
 		string exception_msg;
 		bool has_error = false;
+		std::string debugger_session_id;
 		try {
 			auto origin_op = o;
 			engine->set_caller(o.caller_address, o.caller_address);
 			engine->set_state_pointer_value("register_evaluate_state", this);
 			engine->clear_exceptions();
+			if (!get_chain()->debugger_session_id_for_next_evaluate.empty()) {
+				debugger_session_id = get_chain()->debugger_session_id_for_next_evaluate;
+				get_chain()->debugger_session_id_for_next_evaluate = "";
+				get_chain()->add_debugger_session(debugger_session_id, engine);
+			}
 			auto limit = o.gas_limit;
 			if (limit < 0 || limit == 0)
 				throw uvm::core::UvmException("invalid_contract_gas_limit");
@@ -37,6 +43,7 @@ namespace simplechain {
 			try
 			{
 				std::string result_json_str;
+				// TODO: execute with debugger
 				engine->execute_contract_init_by_address(contract_address, "", &result_json_str);
 				invoke_contract_result.api_result = result_json_str;
 			}
@@ -51,12 +58,18 @@ namespace simplechain {
 			auto gas_count = gas_used;
 			invoke_contract_result.exec_succeed = true;
 			invoke_contract_result.gas_used = gas_count;
+			if (!debugger_session_id.empty()) {
+				get_chain()->close_debugger(debugger_session_id);
+			}
 		}
 		catch (const std::exception& e)
 		{
 			has_error = true;
 			undo_contract_effected();
 			std::cerr << e.what() << std::endl;
+			if (!debugger_session_id.empty()) {
+				get_chain()->close_debugger(debugger_session_id);
+			}
 		}
 		return std::make_shared<contract_invoke_result>(invoke_contract_result);
 	}
