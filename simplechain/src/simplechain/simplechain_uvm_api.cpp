@@ -256,7 +256,7 @@ namespace simplechain {
 			{
 				auto evaluator = get_contract_evaluator(L);
 				std::string contract_name = uvm::lua::lib::unwrap_any_contract_name(name);
-				auto is_address = true; // TODO
+				auto is_address = is_valid_contract_address(L, name);
 				auto code = is_address ? get_contract_code_by_id(evaluator, contract_name) : get_contract_code_by_name(evaluator, contract_name);
 				auto contract_info_by_id = get_contract_info_by_id(evaluator, contract_name);
 				auto contract_info_by_name = get_contract_object_by_name(evaluator, contract_name);
@@ -267,6 +267,7 @@ namespace simplechain {
 					*address_size = address_str.length();
 					strncpy(address, address_str.c_str(), CONTRACT_ID_MAX_LENGTH - 1);
 					address[CONTRACT_ID_MAX_LENGTH - 1] = '\0';
+					*address_size = strlen(address);
 				}
 			}
             

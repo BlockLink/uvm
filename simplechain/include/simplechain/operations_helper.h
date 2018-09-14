@@ -14,6 +14,6 @@ namespace simplechain {
 			gas_count_type gas_limit = 50000, gas_price_type gas_price = 10);
 		static contract_invoke_operation invoke_contract(const std::string& caller_addr, const std::string& contract_address,
 			const std::string& contract_api_name, const std::vector<std::string>& api_args, 
-			gas_count_type gas_limit = 50000, gas_price_type gas_price = 10);
+			gas_count_type gas_limit = 50000, gas_price_type gas_price = 10, asset_id_t deposit_asset_id = 0, share_type deposit_amount=0);
 	};
 }

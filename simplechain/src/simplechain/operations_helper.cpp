@@ -36,7 +36,7 @@ namespace simplechain {
 
 	contract_invoke_operation operations_helper::invoke_contract(const std::string& caller_addr, const std::string& contract_address,
 		const std::string& contract_api_name, const std::vector<std::string>& api_args,
-		gas_count_type gas_limit, gas_price_type gas_price) {
+		gas_count_type gas_limit, gas_price_type gas_price, asset_id_t deposit_asset_id, share_type deposit_amount) {
 		contract_invoke_operation op;
 		op.caller_address = caller_addr;
 		op.contract_address = contract_address;
@@ -44,6 +44,8 @@ namespace simplechain {
 		op.contract_args = api_args;
 		op.gas_limit = gas_limit;
 		op.gas_price = gas_price;
+		op.deposit_asset_id = deposit_asset_id;
+		op.deposit_amount;
 		op.op_time = fc::time_point_sec(fc::time_point::now());
 		return op;
 	}

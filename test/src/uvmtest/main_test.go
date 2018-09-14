@@ -486,18 +486,18 @@ func TestSimpleChainTokenContract(t *testing.T) {
 	res, err = simpleChainRPC("get_contract_info", contract1Addr)
 	assert.True(t, err == nil)
 	assert.True(t, res.Get("owner_address").MustString() == caller1 && res.Get("contract_address").MustString() == contract1Addr)
-	simpleChainRPC("invoke_contract", caller1, contract1Addr, "init_token", []string{"test,TEST,10000,100"}, 50000, 10)
+	simpleChainRPC("invoke_contract", caller1, contract1Addr, "init_token", []string{"test,TEST,10000,100"}, 0, 0, 50000, 10)
 	simpleChainRPC("generate_block")
 	res, err = simpleChainRPC("get_storage", contract1Addr, "state")
 	assert.True(t, res.MustString() == "COMMON")
 	fmt.Printf("state after init_token of contract1 is: %s\n", res.MustString())
-	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "balanceOf", []string{caller1})
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "balanceOf", []string{caller1}, 0, 0)
 	assert.True(t, err == nil)
 	fmt.Printf("caller1 balance: %s\n", res.Get("api_result").MustString())
 	assert.True(t, res.Get("api_result").MustString() == "10000")
-	simpleChainRPC("invoke_contract", caller1, contract1Addr, "transfer", []string{caller2 + "," + strconv.Itoa(100)}, 50000, 10)
+	simpleChainRPC("invoke_contract", caller1, contract1Addr, "transfer", []string{caller2 + "," + strconv.Itoa(100)}, 0, 0, 50000, 10)
 	simpleChainRPC("generate_block")
-	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "balanceOf", []string{caller2})
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "balanceOf", []string{caller2}, 0, 0)
 	assert.True(t, err == nil)
 	fmt.Printf("caller2 balance: %s\n", res.Get("api_result").MustString())
 	assert.True(t, res.Get("api_result").MustString() == "100")
@@ -523,7 +523,7 @@ func TestSimpleChainContractCallContract(t *testing.T) {
 	tokenContractAddr := res.Get("contract_address").MustString()
 	fmt.Printf("contract address: %s\n", tokenContractAddr)
 	simpleChainRPC("generate_block")
-	simpleChainRPC("invoke_contract", caller1, tokenContractAddr, "init_token", []string{"test,TEST,10000,100"}, 50000, 10)
+	simpleChainRPC("invoke_contract", caller1, tokenContractAddr, "init_token", []string{"test,TEST,10000,100"}, 0, 0, 50000, 10)
 	simpleChainRPC("generate_block")
 
 	_, compileErr := execCommand(uvmCompilerPath, "-g", "../../test_contracts/token_caller.lua")
@@ -535,27 +535,27 @@ func TestSimpleChainContractCallContract(t *testing.T) {
 	simpleChainRPC("generate_block")
 
 	// transfer token from owner to contract
-	simpleChainRPC("invoke_contract", caller1, tokenContractAddr, "transfer", []string{contract1Addr + ",100"}, 50000, 10)
+	simpleChainRPC("invoke_contract", caller1, tokenContractAddr, "transfer", []string{contract1Addr + ",100"}, 0, 0, 50000, 10)
 	simpleChainRPC("generate_block")
 
 	// transfer token from contract to caller2
-	simpleChainRPC("invoke_contract", caller1, contract1Addr, "transfer", []string{tokenContractAddr + "," + caller2 + ",30"}, 50000, 10)
+	simpleChainRPC("invoke_contract", caller1, contract1Addr, "transfer", []string{tokenContractAddr + "," + caller2 + ",30"}, 0, 0, 50000, 10)
 	simpleChainRPC("generate_block")
 
 	// check caller1, caller2, and contract's balance of token
-	res, err = simpleChainRPC("invoke_contract_offline", caller1, tokenContractAddr, "balanceOf", []string{caller1})
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, tokenContractAddr, "balanceOf", []string{caller1}, 0, 0)
 	assert.True(t, err == nil)
 	caller1Balance := res.Get("api_result").MustString()
 	fmt.Printf("caller1 balance: %s\n", caller1Balance)
 	assert.True(t, caller1Balance == "9900")
 
-	res, err = simpleChainRPC("invoke_contract_offline", caller1, tokenContractAddr, "balanceOf", []string{caller2})
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, tokenContractAddr, "balanceOf", []string{caller2}, 0, 0)
 	assert.True(t, err == nil)
 	caller2Balance := res.Get("api_result").MustString()
 	fmt.Printf("caller2 balance: %s\n", caller2Balance)
 	assert.True(t, caller2Balance == "30")
 
-	res, err = simpleChainRPC("invoke_contract_offline", caller1, tokenContractAddr, "balanceOf", []string{contract1Addr})
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, tokenContractAddr, "balanceOf", []string{contract1Addr}, 0, 0)
 	assert.True(t, err == nil)
 	contract1Balance := res.Get("api_result").MustString()
 	fmt.Printf("contract1 balance: %s\n", contract1Balance)
@@ -590,7 +590,7 @@ func TestSimpleChainContractChangeOtherContractProperties(t *testing.T) {
 	contract2Addr := res.Get("contract_address").MustString()
 	fmt.Printf("contract address: %s\n", contract2Addr)
 	simpleChainRPC("generate_block")
-	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract2Addr, "start", []string{simpleContractAddr})
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract2Addr, "start", []string{simpleContractAddr}, 0, 0)
 
 	fmt.Printf("%v\n", res)
 	assert.True(t, res.Get("exec_succeed").MustBool() == false)

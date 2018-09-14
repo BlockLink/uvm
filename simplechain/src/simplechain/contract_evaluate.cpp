@@ -91,11 +91,25 @@ namespace simplechain {
 			invoke_contract_result.reset();
 			try
 			{
-				if (std::find(uvm::lua::lib::contract_special_api_names.begin(), uvm::lua::lib::contract_special_api_names.end(), o.contract_api) != uvm::lua::lib::contract_special_api_names.end()) {
-					throw uvm::core::UvmException(std::string("can't call ") + o.contract_api + " directly");
+				std::string first_contract_arg = o.contract_args.empty() ? "" : o.contract_args[0];
+				// only can call on_deposit_asset when deposit_amount > 0
+				if (o.deposit_amount > 0) {
+					if (o.contract_api != "on_deposit_asset") {
+						throw uvm::core::UvmException("only can deposit to contract by call api on_deposit_asset");
+					}
+					if(!chain->get_asset(o.deposit_asset_id)) {
+						throw uvm::core::UvmException(std::string("can't find asset #") + std::to_string(o.deposit_asset_id));
+					}
+					update_account_asset_balance(o.contract_address, o.deposit_asset_id, o.deposit_amount);
+					first_contract_arg = std::to_string(o.deposit_amount) + "," + std::to_string(o.deposit_asset_id);
+				}
+				else {
+					if (std::find(uvm::lua::lib::contract_special_api_names.begin(), uvm::lua::lib::contract_special_api_names.end(), o.contract_api) != uvm::lua::lib::contract_special_api_names.end()) {
+						throw uvm::core::UvmException(std::string("can't call ") + o.contract_api + " directly");
+					}
 				}
 				std::string result_json_str;
-				engine->execute_contract_api_by_address(o.contract_address, o.contract_api, o.contract_args.empty() ? "" : o.contract_args[0], &result_json_str);
+				engine->execute_contract_api_by_address(o.contract_address, o.contract_api, first_contract_arg, &result_json_str);
 				invoke_contract_result.api_result = result_json_str;
 			}
 			catch (std::exception &e)

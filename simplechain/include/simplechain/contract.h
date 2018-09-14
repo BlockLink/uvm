@@ -111,6 +111,8 @@ namespace simplechain {
 		std::vector<std::string> contract_args;
 		uint64_t gas_price;
 		uint64_t gas_limit;
+		share_type deposit_amount = 0;
+		asset_id_t deposit_asset_id = 0;
 		fc::time_point_sec op_time;
 
 		contract_invoke_operation();
@@ -126,4 +128,4 @@ namespace simplechain {
 FC_REFLECT(simplechain::transaction_receipt, (tx_id)(events))
 
 FC_REFLECT(simplechain::contract_create_operation, (type)(caller_address)(contract_code)(gas_price)(gas_limit)(op_time))
-FC_REFLECT(simplechain::contract_invoke_operation, (type)(caller_address)(contract_address)(contract_api)(contract_args)(gas_price)(gas_limit)(op_time))
+FC_REFLECT(simplechain::contract_invoke_operation, (type)(caller_address)(contract_address)(contract_api)(contract_args)(gas_price)(gas_limit)(deposit_amount)(deposit_asset_id)(op_time))

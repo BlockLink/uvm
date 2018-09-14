@@ -27,7 +27,7 @@ int main(int argc, char** argv) {
 				auto tx1 = std::make_shared<transaction>();
 				std::string arg1(argv[1]);
 
-				std::string contract1_gpc_filepath("../test/test_contracts/token.gpc"); // TODO: load from command line arguments
+				std::string contract1_gpc_filepath("../test/test_contracts/token.gpc");
 				auto op = operations_helper::create_contract_from_file(caller_addr, contract1_gpc_filepath);
 				tx1->operations.push_back(op);
 				tx1->tx_time = fc::time_point_sec(fc::time_point::now());
