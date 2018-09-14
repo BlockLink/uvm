@@ -2,6 +2,7 @@
 #include <simplechain/contract_engine_builder.h>
 #include <simplechain/contract_object.h>
 #include <simplechain/blockchain.h>
+#include <simplechain/address_helper.h>
 #include <iostream>
 #include <uvm/uvm_lib.h>
 
@@ -79,6 +80,7 @@ namespace simplechain {
 		string exception_msg;
 		bool has_error = false;
 		try {
+			FC_ASSERT(helper::is_valid_contract_address(o.contract_address));
 			auto origin_op = o;
 			engine->set_caller(o.caller_address, o.caller_address);
 			engine->set_state_pointer_value("invoke_evaluate_state", this);

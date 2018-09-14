@@ -463,6 +463,47 @@ func testContractPath(contractPath string) string {
 	return filepath.Join(uvmDir, "test", "test_contracts", contractPath)
 }
 
+func TestSimpleChainMintAndTransfer(t *testing.T) {
+	cmd := execCommandBackground(simpleChainPath)
+	assert.True(t, cmd != nil)
+	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
+	defer func() {
+		kill(cmd)
+	}()
+
+	var res *simplejson.Json
+	var err error
+	caller1 := "SPLtest1"
+	caller2 := "SPLtest2"
+	res, err = simpleChainRPC("mint", caller1, 0, 1000)
+	assert.True(t, err == nil)
+	res, err = simpleChainRPC("mint", caller2, 0, 100)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+
+	res, err = simpleChainRPC("get_account_balances", caller1)
+	assert.True(t, err == nil)
+	fmt.Printf("%v\n", res)
+	assert.True(t, res.GetIndex(0).GetIndex(1).MustInt() == 1000)
+	res, err = simpleChainRPC("get_account_balances", caller2)
+	assert.True(t, err == nil)
+	fmt.Printf("%v\n", res)
+	assert.True(t, res.GetIndex(0).GetIndex(1).MustInt() == 100)
+
+	res, err = simpleChainRPC("transfer", caller1, caller2, 0, 200)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+
+	res, err = simpleChainRPC("get_account_balances", caller1)
+	assert.True(t, err == nil)
+	fmt.Printf("%v\n", res)
+	assert.True(t, res.GetIndex(0).GetIndex(1).MustInt() == 800)
+	res, err = simpleChainRPC("get_account_balances", caller2)
+	assert.True(t, err == nil)
+	fmt.Printf("%v\n", res)
+	assert.True(t, res.GetIndex(0).GetIndex(1).MustInt() == 300)
+}
+
 func TestSimpleChainTokenContract(t *testing.T) {
 	cmd := execCommandBackground(simpleChainPath)
 	assert.True(t, cmd != nil)
@@ -501,7 +542,6 @@ func TestSimpleChainTokenContract(t *testing.T) {
 	assert.True(t, err == nil)
 	fmt.Printf("caller2 balance: %s\n", res.Get("api_result").MustString())
 	assert.True(t, res.Get("api_result").MustString() == "100")
-	fmt.Println("hi")
 }
 
 func TestSimpleChainContractCallContract(t *testing.T) {

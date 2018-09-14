@@ -26,6 +26,7 @@
 #include <simplechain/contract_evaluate.h>
 #include <simplechain/contract_object.h>
 #include <simplechain/blockchain.h>
+#include <simplechain/address_helper.h>
 
 namespace simplechain {
 	using namespace uvm::lua::api;
@@ -732,13 +733,13 @@ namespace simplechain {
 			bool SimpleChainUvmChainApi::is_valid_address(lua_State *L, const char *address_str)
 			{
 				std::string addr(address_str);
-				return true;
+				return helper::is_valid_address(addr);
 			}
 
 			bool SimpleChainUvmChainApi::is_valid_contract_address(lua_State *L, const char *address_str)
 			{
 				std::string addr(address_str);
-				return addr.find_first_of(SIMPLECHAIN_CONTRACT_ADDRESS_PREFIX) == 0 && addr.size() > strlen(SIMPLECHAIN_CONTRACT_ADDRESS_PREFIX);
+				return helper::is_valid_contract_address(addr);
 			}
 
 			const char * SimpleChainUvmChainApi::get_system_asset_symbol(lua_State *L)

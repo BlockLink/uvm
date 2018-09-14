@@ -11,6 +11,16 @@ namespace simplechain {
 		return op;
 	}
 
+	transfer_operation operations_helper::transfer(const std::string& from_address, const std::string& to_address, asset_id_t asset_id, share_type amount) {
+		transfer_operation op;
+		op.from_address = from_address;
+		op.to_address = to_address;;
+		op.amount = amount;
+		op.asset_id = asset_id;
+		op.op_time = fc::time_point_sec(fc::time_point::now());
+		return op;
+	}
+
 	contract_create_operation operations_helper::create_contract_from_file(const std::string& caller_addr, const std::string& contract_filepath,
 		gas_count_type gas_limit, gas_price_type gas_price) {
 		contract_create_operation op;

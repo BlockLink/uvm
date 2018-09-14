@@ -21,7 +21,7 @@ namespace simplechain {
 		}
 
 		RpcResultType mint(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
-			auto caller_addr = params.at(0).as_string();
+			const auto& caller_addr = params.at(0).as_string();
 			auto asset_id = params.at(1).as_uint64();
 			auto amount = params.at(2).as_int64();
 			auto tx = std::make_shared<transaction>();
@@ -34,6 +34,23 @@ namespace simplechain {
 			
 			return tx->tx_hash();
 		}
+
+		RpcResultType transfer(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			const auto& from_addr = params.at(0).as_string();
+			const auto& to_addr = params.at(1).as_string();
+			auto asset_id = params.at(2).as_uint64();
+			auto amount = params.at(3).as_int64();
+			auto tx = std::make_shared<transaction>();
+			auto op = operations_helper::transfer(from_addr, to_addr, asset_id, amount);
+			tx->tx_time = fc::time_point_sec(fc::time_point::now());
+			tx->operations.push_back(op);
+
+			chain->evaluate_transaction(tx);
+			chain->accept_transaction_to_mempool(*tx);
+
+			return tx->tx_hash();
+		}
+
 		RpcResultType create_contract_from_file(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			auto caller_addr = params.at(0).as_string();
 			auto contract_filepath = params.at(1).as_string();

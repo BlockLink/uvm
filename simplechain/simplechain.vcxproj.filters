@@ -78,6 +78,9 @@
     <ClCompile Include="src\simplechain\asset.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="src\simplechain\address_helper.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\simplechain\simplechain.h">
@@ -192,6 +195,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="include\simplechain\chain_rpc.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\simplechain\address_helper.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

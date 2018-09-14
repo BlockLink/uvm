@@ -10,6 +10,7 @@
 namespace simplechain {
 	typedef fc::static_variant<
 		mint_operation,
+		transfer_operation,
 		contract_create_operation,
 		contract_invoke_operation
 	> operation;
