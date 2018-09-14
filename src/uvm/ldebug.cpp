@@ -173,7 +173,8 @@ static const char *findlocal(lua_State *L, CallInfo *ci, int n,
         if (n < 0)  /* access to vararg values? */
             return findvararg(ci, -n, pos);
         else {
-            base = ci->u.l.base;
+            //base = ci->u.l.base; //zq 
+			base = ci->u.l.base + clLvalue(ci->func)->p->numparams;
             name = luaF_getlocalname(ci_func(ci)->p, n, currentpc(ci));
         }
     }

@@ -1488,7 +1488,8 @@ end
                     return false;
                 if (upvaldesc.instack > 0)
                 {
-                    if (upvaldesc.idx < parent->sizelocvars)
+                    //if (upvaldesc.idx < parent->sizelocvars)  //zq
+					if ((upvaldesc.idx>= parent->numparams)&& upvaldesc.idx < (parent->numparams + parent->sizelocvars))
                     {
                         return true;
                     }
@@ -1497,23 +1498,25 @@ end
                 }
                 else
                 {
-                    if (!all_protos || all_protos->size() < 1)
+                    if (!all_protos || all_protos->size() <= 1)
                         return false;
                     if (upvaldesc.idx < parent->sizeupvalues)
                     {
                         Upvaldesc parent_upvaldesc = parent->upvalues[upvaldesc.idx];
-                        for (const auto &pp : *all_protos)
-                        {
-                            std::list<Proto*> remaining;
-                            for (const auto &pp2 : *all_protos)
-                            {
-                                if (remaining.size() >= all_protos->size() - 1)
-                                    break;
-                                remaining.push_back(pp2);
-                            }
-                            return upval_defined_in_parent(L, pp, &remaining, parent_upvaldesc);
-                        }
-                        return false;
+
+						Proto *pp = NULL;
+
+						std::list<Proto*> remaining;
+						for (const auto &pp2 : *all_protos)
+						{
+							remaining.push_back(pp2);
+							if (remaining.size() >= all_protos->size() - 1) {
+								pp = pp2;
+								break;
+							}
+						}
+						return upval_defined_in_parent(L, pp, &remaining, parent_upvaldesc);
+						  
                     }
                     else
                         return false;
