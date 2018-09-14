@@ -136,6 +136,10 @@ namespace simplechain {
 
 }
 
+namespace fc {
+	void to_variant(const simplechain::StorageDataType& var, variant& vo);
+}
+
 FC_REFLECT(simplechain::StorageDataType,
 (storage_data)
 )

@@ -3,7 +3,7 @@
 
 namespace simplechain {
 	hash_t transaction::digest() const {
-		return hash_t::hash(this);
+		return hash_t::hash(*this);
 	}
 	std::string transaction::digest_str() const {
 		return digest().str();

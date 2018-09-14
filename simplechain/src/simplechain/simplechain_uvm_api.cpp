@@ -26,6 +26,7 @@
 #include <simplechain/contract_evaluate.h>
 #include <simplechain/contract_object.h>
 #include <simplechain/blockchain.h>
+#include <simplechain/address_helper.h>
 
 namespace simplechain {
 	using namespace uvm::lua::api;
@@ -256,7 +257,7 @@ namespace simplechain {
 			{
 				auto evaluator = get_contract_evaluator(L);
 				std::string contract_name = uvm::lua::lib::unwrap_any_contract_name(name);
-				auto is_address = true; // TODO
+				auto is_address = is_valid_contract_address(L, name);
 				auto code = is_address ? get_contract_code_by_id(evaluator, contract_name) : get_contract_code_by_name(evaluator, contract_name);
 				auto contract_info_by_id = get_contract_info_by_id(evaluator, contract_name);
 				auto contract_info_by_name = get_contract_object_by_name(evaluator, contract_name);
@@ -267,6 +268,7 @@ namespace simplechain {
 					*address_size = address_str.length();
 					strncpy(address, address_str.c_str(), CONTRACT_ID_MAX_LENGTH - 1);
 					address[CONTRACT_ID_MAX_LENGTH - 1] = '\0';
+					*address_size = strlen(address);
 				}
 			}
             
@@ -320,7 +322,8 @@ namespace simplechain {
             // TODO: lua_closepost_callback，
             static std::map<lua_State *, std::shared_ptr<std::map<std::string, UvmStorageValue>>> _demo_chain_storage_buffer;
 
-			UvmStorageValue SimpleChainUvmChainApi::get_storage_value_from_uvm(lua_State *L, const char *contract_name, std::string name)
+			UvmStorageValue SimpleChainUvmChainApi::get_storage_value_from_uvm(lua_State *L, const char *contract_name, const std::string& name,
+				const std::string& fast_map_key, bool is_fast_map)
 			{
 				UvmStorageValue null_storage;
 				null_storage.type = uvm::blockchain::StorageValueTypes::storage_value_null;
@@ -334,14 +337,15 @@ namespace simplechain {
 				}
 				try
 				{
-					return get_storage_value_from_uvm_by_address(L, contract_id.c_str(), name /* , fast_map_key, is_fast_map */);
+					return get_storage_value_from_uvm_by_address(L, contract_id.c_str(), name , fast_map_key, is_fast_map );
 				}
 				catch (fc::exception &e) {
 					return null_storage;
 				}
 			}
 
-			UvmStorageValue SimpleChainUvmChainApi::get_storage_value_from_uvm_by_address(lua_State *L, const char *contract_address, std::string name)
+			UvmStorageValue SimpleChainUvmChainApi::get_storage_value_from_uvm_by_address(lua_State *L, const char *contract_address, const std::string& name
+				, const std::string& fast_map_key, bool is_fast_map)
 			{
 				UvmStorageValue null_storage;
 				null_storage.type = uvm::blockchain::StorageValueTypes::storage_value_null;
@@ -356,11 +360,11 @@ namespace simplechain {
 				try
 				{
 					std::string key = name;
-					/* TODO
+					
 					if (is_fast_map) {
 						key = name + "." + fast_map_key;
 					}
-					*/
+					
 					auto storage_data = evaluator->get_storage(contract_id, key);
 					return StorageDataType::create_lua_storage_from_storage_data(L, storage_data);
 				}
@@ -391,8 +395,8 @@ namespace simplechain {
 
 						StorageDataChangeType storage_change;
 						// storage_op存储的从before, after改成diff
-						auto json_storage_before = uvm_storage_value_to_json(con_chg_iter->second.before);
-						auto json_storage_after = uvm_storage_value_to_json(con_chg_iter->second.after);
+						auto json_storage_before = simplechain::uvm_storage_value_to_json(con_chg_iter->second.before);
+						auto json_storage_after = simplechain::uvm_storage_value_to_json(con_chg_iter->second.after);
 						auto storage_after = StorageDataType::get_storage_data_from_lua_storage(con_chg_iter->second.after);
 						storage_change.after = storage_after;
 						contract_storage_change[contract_name] = storage_change;
@@ -729,13 +733,13 @@ namespace simplechain {
 			bool SimpleChainUvmChainApi::is_valid_address(lua_State *L, const char *address_str)
 			{
 				std::string addr(address_str);
-				return true; // TODO
+				return helper::is_valid_address(addr);
 			}
 
 			bool SimpleChainUvmChainApi::is_valid_contract_address(lua_State *L, const char *address_str)
 			{
 				std::string addr(address_str);
-				return true; // TODO
+				return helper::is_valid_contract_address(addr);
 			}
 
 			const char * SimpleChainUvmChainApi::get_system_asset_symbol(lua_State *L)

@@ -100,7 +100,7 @@
 ** same object.)
 */
 void luaC_barrier_(lua_State *L, GCObject *o, GCObject *v) {
-    
+
 }
 
 
@@ -109,7 +109,7 @@ void luaC_barrier_(lua_State *L, GCObject *o, GCObject *v) {
 ** pointing to a white object as gray again.
 */
 void luaC_barrierback_(lua_State *L, Table *t) {
-    
+
 }
 
 
@@ -120,12 +120,12 @@ void luaC_barrierback_(lua_State *L, Table *t) {
 ** must be marked.
 */
 void luaC_upvalbarrier_(lua_State *L, UpVal *uv) {
-    
+
 }
 
 
 void luaC_fix(lua_State *L, GCObject *o) {
-    
+
 }
 
 
@@ -190,7 +190,7 @@ void luaC_upvdeccount(lua_State *L, UpVal *uv) {
 ** search the list to find it) and link it in 'finobj' list.
 */
 void luaC_checkfinalizer(lua_State *L, GCObject *o, Table *mt) {
-    
+
 }
 
 /* }====================================================== */
@@ -205,6 +205,7 @@ void luaC_freeallobjects(lua_State *L) {
 ** performs a basic GC step when collector is running
 */
 void luaC_step(lua_State *L) {
+
 }
 
 
@@ -218,7 +219,7 @@ void luaC_step(lua_State *L) {
 ** changed, nothing will be collected).
 */
 void luaC_fullgc(lua_State *L, int isemergency) {
-    
+
 }
 
 /* }====================================================== */

@@ -29,7 +29,7 @@ namespace simplechain {
 			fc::variants json_array;
 			for (const auto &p : *value.value.table_value)
 			{
-				json_array.push_back(uvm_storage_value_to_json(p.second));
+				json_array.push_back(simplechain::uvm_storage_value_to_json(p.second));
 			}
 			return json_array;
 		}
@@ -42,7 +42,7 @@ namespace simplechain {
 			fc::mutable_variant_object json_object;
 			for (const auto &p : *value.value.table_value)
 			{
-				json_object[p.first] = uvm_storage_value_to_json(p.second);
+				json_object[p.first] = simplechain::uvm_storage_value_to_json(p.second);
 			}
 			return json_object;
 		}
@@ -86,7 +86,7 @@ namespace simplechain {
 
 	StorageDataType StorageDataType::get_storage_data_from_lua_storage(const UvmStorageValue& lua_storage)
 	{
-		auto storage_json = uvm_storage_value_to_json(lua_storage);
+		auto storage_json = simplechain::uvm_storage_value_to_json(lua_storage);
 		StorageDataType storage_data(fc::json::to_string(storage_json));
 		return storage_data;
 	}
@@ -153,7 +153,7 @@ namespace simplechain {
 				for (size_t i = 0; i < json_array.size(); i++)
 				{
 					const auto &json_item = json_array[i];
-					const auto &item_value = json_to_uvm_storage_value(L, json_item);
+					const auto &item_value = simplechain::json_to_uvm_storage_value(L, json_item);
 					item_values.push_back(item_value);
 					(*value.value.table_value)[std::to_string(i + 1)] = item_value;
 				}
@@ -193,7 +193,7 @@ namespace simplechain {
 				std::vector<UvmStorageValue> item_values;
 				for (const auto &p : json_map)
 				{
-					const auto &item_value = json_to_uvm_storage_value(L, p.value());
+					const auto &item_value = simplechain::json_to_uvm_storage_value(L, p.value());
 					item_values.push_back(item_value);
 					(*value.value.table_value)[p.key()] = item_value;
 				}
@@ -229,8 +229,15 @@ namespace simplechain {
 	UvmStorageValue StorageDataType::create_lua_storage_from_storage_data(lua_State *L, const StorageDataType& storage)
 	{
 		auto json_value = json_from_str(storage.as<std::string>());
-		auto value = json_to_uvm_storage_value(L, json_value);
+		auto value = simplechain::json_to_uvm_storage_value(L, json_value);
 		return value;
 	}
 
+}
+
+namespace fc {
+	void to_variant(const simplechain::StorageDataType& var, variant& vo) {
+		fc::mutable_variant_object obj("storage_data", var.storage_data);
+		vo = std::move(obj);
+	}
 }

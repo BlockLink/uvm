@@ -320,6 +320,8 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
 	L->evalstack = luaM_newvector(L, L->evalstacksize, TValue);
 	L->evalstacktop = L->evalstack;
 
+	L->allow_contract_modify = 0;
+	L->contract_table_addresses = new std::list<intptr_t>();
 
     for (i = 0; i < LUA_NUMTAGS; i++) L->mt[i] = nullptr;
     if (luaD_rawrunprotected(L, f_luaopen, nullptr) != LUA_OK) {
@@ -333,6 +335,9 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
 
 LUA_API void lua_close(lua_State *L) {
     uvm::lua::lib::close_lua_state_values(L);
+	delete L->contract_table_addresses;
+	L->contract_table_addresses = nullptr;
+    free(L->malloc_buffer);
     lua_lock(L);
     close_state(L);
 }

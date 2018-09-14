@@ -16,18 +16,22 @@ namespace simplechain {
 		assets.push_back(core_asset);
 
 		block genesis_block;
+		genesis_block.prev_block_hash = "";
 		genesis_block.block_number = 0;
 		genesis_block.block_time = fc::time_point(fc::microseconds(1536033055382L));
 		blocks.push_back(genesis_block);
 	}
 
-	void blockchain::evaluate_transaction(std::shared_ptr<transaction> tx) {
+	std::shared_ptr<evaluate_result> blockchain::evaluate_transaction(std::shared_ptr<transaction> tx) {
 		try {
 			// TODO: evaluate_state of block or tx(need nested evaluate state)
+			std::shared_ptr<evaluate_result> last_op_result;
 			for (const auto& op : tx->operations) {
 				auto evaluator_instance = get_operation_evaluator(tx.get(), op);
 				auto op_result = evaluator_instance->evaluate(op);
+				last_op_result = op_result;
 			}
+			return last_op_result;
 		}
 		catch (const std::exception& e) {
 			throw e;
@@ -57,6 +61,10 @@ namespace simplechain {
 
 	uint64_t blockchain::head_block_number() const {
 		return blocks.size();
+	}
+
+	std::string blockchain::head_block_hash() const {
+		return latest_block().block_hash();
 	}
 
 	std::shared_ptr<block> blockchain::get_block_by_number(uint64_t num) const {
@@ -147,6 +155,16 @@ namespace simplechain {
 		}
 		return it2->second;
 	}
+
+	std::map<std::string, StorageDataType> blockchain::get_contract_storages(const std::string& contract_address) const {
+		auto it1 = contract_storages.find(contract_address);
+		std::map<std::string, StorageDataType> storages;
+		if (it1 != contract_storages.end()) {
+			storages = it1->second;
+		}
+		return storages;
+	}
+
 	void blockchain::set_storage(const std::string& contract_address, const std::string& key, const StorageDataType& value) {
 		auto it1 = contract_storages.find(contract_address);
 		std::map<std::string, StorageDataType> storages;
@@ -204,6 +222,9 @@ namespace simplechain {
 		case operation::tag<mint_operation>::value: {
 			return std::make_shared<min_operation_evaluator>(this, tx);
 		} break;
+		case operation::tag<transfer_operation>::value: {
+			return std::make_shared<transfer_operation_evaluator>(this, tx);
+		} break;
 		case operation::tag<contract_create_operation>::value: {
 			return std::make_shared<contract_create_evaluator>(this, tx);
 		} break;
@@ -211,7 +232,7 @@ namespace simplechain {
 			return std::make_shared<contract_invoke_evaluator>(this, tx);
 		} break;
 		default: {
-			auto err = std::string("unknown operation type ") + std::to_string(type);
+			auto err = std::string("unknown operation type ") + std::to_string(type) + " in blockchain::get_operation_evaluator";
 			throw uvm::core::UvmException(err.c_str());
 		}
 		}
@@ -245,7 +266,42 @@ namespace simplechain {
 		blk.txs = valid_txs;
 		blk.block_time = fc::time_point_sec(fc::time_point::now());
 		blk.block_number = blocks.size();
+		blk.prev_block_hash = latest_block().block_hash();
 		blocks.push_back(blk);
+	}
+
+	fc::variant blockchain::get_state() const {
+		fc::mutable_variant_object chainstate_json;
+		fc::variant assets_obj;
+		fc::to_variant(assets, assets_obj);
+		chainstate_json["assets"] = assets_obj;
+		chainstate_json["contracts_count"] = contracts.size();
+		chainstate_json["head_block_num"] = head_block_number();
+		chainstate_json["head_block_hash"] = head_block_hash();
+		fc::variant accounts_obj;
+		fc::to_variant(account_balances, accounts_obj);
+		chainstate_json["accounts"] = accounts_obj;
+		return chainstate_json;
+	}
+
+	std::string blockchain::get_state_json() const {
+		return fc::json::to_string(get_state());
+	}
+
+	std::vector<contract_object> blockchain::get_contracts() const {
+		std::vector<contract_object> result;
+		for (const auto& p : contracts) {
+			result.push_back(p.second);
+		}
+		return result;
+	}
+
+	std::vector<std::string> blockchain::get_account_addresses() const {
+		std::vector<std::string> result;
+		for (const auto& p : account_balances) {
+			result.push_back(p.first);
+		}
+		return result;
 	}
 
 }

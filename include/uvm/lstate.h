@@ -185,6 +185,9 @@ struct lua_State {
 	struct Table *mt[LUA_NUMTAGS];  /* metatables for basic types */
 	TString *strcache[STRCACHE_N][STRCACHE_M];  /* cache for strings in API */
 
+	std::list<intptr_t> *contract_table_addresses;
+	intptr_t allow_contract_modify; // contract table pointer whose properties can be modified now
+
 	StkId evalstack; //for calulate
 	StkId evalstacktop;//first free slot
 	int evalstacksize;
@@ -197,7 +200,7 @@ void *lua_calloc(lua_State *L, size_t element_count, size_t element_size);
 void lua_free(lua_State *L, void *address);
 
 
-#define G(L)	(L->l_G)
+#define state_G(L)	(L->l_G)
 
 
 /*

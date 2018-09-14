@@ -23,3 +23,20 @@ namespace simplechain {
 		return printable;
 	}
 }
+
+namespace fc {
+	void to_variant(const simplechain::contract_object& var, variant& vo) {
+		fc::mutable_variant_object obj("registered_block", var.registered_block);
+		obj("owner_address", var.owner_address);
+		// TODO: code to varient
+		obj("create_time", var.create_time);
+		obj("contract_address", var.contract_address);
+		obj("contract_name", var.contract_name);
+		obj("contract_desc", var.contract_desc);
+		obj("type_of_contract", var.type_of_contract);
+		obj("native_contract_key", var.native_contract_key);
+		obj("derived", var.derived);
+		obj("inherit_from", var.inherit_from);
+		vo = std::move(obj);
+	}
+}

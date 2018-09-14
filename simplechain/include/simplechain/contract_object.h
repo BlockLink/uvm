@@ -22,3 +22,6 @@ namespace simplechain {
 	};
 }
 
+namespace fc {
+	void to_variant(const simplechain::contract_object& var, variant& vo);
+}
