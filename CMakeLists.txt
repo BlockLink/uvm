@@ -65,19 +65,19 @@ target_include_directories( uvm
   PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/../jsondiff/jsondiff-cpp/include"
 )
 
-aux_source_directory(./simplechain/src simplechain_src1)
-aux_source_directory(./simplechain/src/simplechain simplechain_src2)
-
-include_directories(simplechain/include)
-
-link_directories(../fc /usr/local/lib/boost/lib)
-link_libraries(fc boost_system boost_system boost_chrono boost_date_time boost_coroutine boost_context boost_thread boost_filesystem pthread)
-
-add_executable(simplechain_runner ${simplechain_src1} ${simplechain_src2})
-
-target_include_directories( simplechain_runner 
-  PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/simplechain/include" "${CMAKE_CURRENT_SOURCE_DIR}/../jsondiff/jsondiff-cpp/include"
-)
+#aux_source_directory(./simplechain/src simplechain_src1)
+#aux_source_directory(./simplechain/src/simplechain simplechain_src2)
+#
+#include_directories(simplechain/include)
+#
+#link_directories(../fc /usr/local/lib/boost/lib)
+#link_libraries(fc boost_system boost_system boost_chrono boost_date_time boost_coroutine boost_context boost_thread boost_filesystem pthread)
+#
+#add_executable(simplechain_runner ${simplechain_src1} ${simplechain_src2})
+#
+#target_include_directories( simplechain_runner 
+  #PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/simplechain/include" "${CMAKE_CURRENT_SOURCE_DIR}/../jsondiff/jsondiff-cpp/include"
+#)
 
 target_link_libraries(simplechain_runner PUBLIC uvm fc OpenSSL::SSL ${CMAKE_SOURCE_DIR}/../jsondiff/libjsondiff_cpp.a)
 
