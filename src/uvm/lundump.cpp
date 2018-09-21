@@ -89,7 +89,7 @@ static lua_Integer LoadInteger(LoadState *S) {
 }
 
 
-static TString *LoadString(LoadState *S) {
+static uvm_types::GcString *LoadString(LoadState *S) {
     uint64_t size = LoadByte(S);
     if (size == 0xFF)
         LoadVar(S, size);
@@ -101,7 +101,7 @@ static TString *LoadString(LoadState *S) {
         return luaS_newlstr(S->L, buff, size);
     }
     else {  /* long string */
-        TString *ts = luaS_createlngstrobj(S->L, size);
+        auto ts = luaS_createlngstrobj(S->L, size);
         LoadVector(S, getstr(ts), size);  /* load directly in final place */
         return ts;
     }
@@ -122,7 +122,7 @@ static bool LoadCode(LoadState *S, Proto *f) {
 }
 
 
-static void LoadFunction(LoadState *S, Proto *f, TString *psource);
+static void LoadFunction(LoadState *S, Proto *f, uvm_types::GcString *psource);
 
 // 500M
 const int g_constantslimit = 1024 * 1024 * 500;
@@ -234,7 +234,7 @@ static bool LoadDebug(LoadState *S, Proto *f) {
 }
 
 
-static void LoadFunction(LoadState *S, Proto *f, TString *psource) {
+static void LoadFunction(LoadState *S, Proto *f, uvm_types::GcString *psource) {
     f->source = LoadString(S);
     if (f->source == nullptr)  /* no source in dump? */
         f->source = psource;  /* reuse parent's source */

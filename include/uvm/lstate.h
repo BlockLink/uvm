@@ -180,10 +180,10 @@ struct lua_State {
 	stringtable strt;  /* hash table for strings */
 
 	const lua_Number *version;  /* pointer to version number */
-	TString *memerrmsg;  /* memory-error message */
-	TString *tmname[TM_N];  /* array with tag-method names */
+	uvm_types::GcString *memerrmsg;  /* memory-error message */
+	uvm_types::GcString *tmname[TM_N];  /* array with tag-method names */
 	struct Table *mt[LUA_NUMTAGS];  /* metatables for basic types */
-	TString *strcache[STRCACHE_N][STRCACHE_M];  /* cache for strings in API */
+	uvm_types::GcString *strcache[STRCACHE_N][STRCACHE_M];  /* cache for strings in API */
 
 	std::list<intptr_t> *contract_table_addresses;
 	intptr_t allow_contract_modify; // contract table pointer whose properties can be modified now
@@ -221,7 +221,7 @@ union GCUnion {
 
 /* macros to convert a GCObject into a specific value */
 #define gco2ts(o)  \
-	check_exp(novariant((o)->tt) == LUA_TSTRING, &((cast_u(o))->ts))
+	check_exp(novariant((o)->tt) == LUA_TSTRING, (((uvm_types::GcString*)(o))))
 #define gco2u(o)  check_exp((o)->tt == LUA_TUSERDATA, &((cast_u(o))->u))
 #define gco2lcl(o)  check_exp((o)->tt == LUA_TLCL, &((cast_u(o))->cl.l))
 #define gco2ccl(o)  check_exp((o)->tt == LUA_TCCL, &((cast_u(o))->cl.c))
@@ -235,6 +235,10 @@ union GCUnion {
 /* macro to convert a Lua object into a GCObject */
 #define obj2gco(v) \
 	check_exp(novariant((v)->tt) < LUA_TDEADKEY, (&(cast_u(v)->gc)))
+
+/* macro to convert a Lua object into a vmgc::GcObject */
+#define obj2vmgco(v) \
+	check_exp(novariant((v)->tt) < LUA_TDEADKEY, (&(v->gco)))
 
 
 /* actual number of total bytes allocated */

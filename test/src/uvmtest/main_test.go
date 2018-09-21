@@ -519,7 +519,7 @@ func TestSimpleChainTokenContract(t *testing.T) {
 	fmt.Printf("head_block_num: %d\n", res.Get("head_block_num").MustInt())
 	caller1 := "SPLtest1"
 	caller2 := "SPLtest2"
-	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("token.gpc"), 50000, 10)
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("newtoken.gpc"), 50000, 10)
 	assert.True(t, err == nil)
 	contract1Addr := res.Get("contract_address").MustString()
 	fmt.Printf("contract address: %s\n", contract1Addr)

@@ -134,8 +134,8 @@ static void check_match(LexState *ls, int what, int who, int where) {
 }
 
 
-static TString *str_checkname(LexState *ls) {
-    TString *ts;
+static uvm_types::GcString *str_checkname(LexState *ls) {
+	uvm_types::GcString *ts;
     check(ls, TK_NAME);
     ts = ls->t.seminfo.ts;
     luaX_next(ls);
@@ -150,7 +150,7 @@ static void init_exp(expdesc *e, expkind k, int i) {
 }
 
 
-static void codestring(LexState *ls, expdesc *e, TString *s) {
+static void codestring(LexState *ls, expdesc *e, uvm_types::GcString *s) {
     init_exp(e, VK, luaK_stringK(ls->fs, s));
 }
 
@@ -176,7 +176,7 @@ static int typename_to_int(const char *vartypename)
 }
 
 
-static int registerlocalvar(LexState *ls, TString *varname) {
+static int registerlocalvar(LexState *ls, uvm_types::GcString *varname) {
     FuncState *fs = ls->fs;
     Proto *f = fs->f;
     int oldsize = f->sizelocvars;
@@ -186,17 +186,16 @@ static int registerlocalvar(LexState *ls, TString *varname) {
     f->locvars[fs->nlocvars].varname = varname;
     if (testnext(ls, ':'))
     {
-        TString *vartype = str_checkname(ls);
+        uvm_types::GcString *vartype = str_checkname(ls);
         char *vartype_s = getstr(vartype);
         f->locvars[fs->nlocvars].vartype = typename_to_int(vartype_s);
         // TODO: store type info in bytecode, and check type when running
     }
-    luaC_objbarrier(ls->L, f, varname);
     return fs->nlocvars++;
 }
 
 
-static void new_localvar(LexState *ls, TString *name) {
+static void new_localvar(LexState *ls, uvm_types::GcString *name) {
     FuncState *fs = ls->fs;
     Dyndata *dyd = ls->dyd;
     int reg = registerlocalvar(ls, name);
@@ -239,7 +238,7 @@ static void removevars(FuncState *fs, int tolevel) {
 }
 
 
-static int searchupvalue(FuncState *fs, TString *name) {
+static int searchupvalue(FuncState *fs, uvm_types::GcString *name) {
     int i;
     Upvaldesc *up = fs->f->upvalues;
     for (i = 0; i < fs->nups; i++) {
@@ -249,7 +248,7 @@ static int searchupvalue(FuncState *fs, TString *name) {
 }
 
 
-static int newupvalue(FuncState *fs, TString *name, expdesc *v) {
+static int newupvalue(FuncState *fs, uvm_types::GcString *name, expdesc *v) {
     Proto *f = fs->f;
     int oldsize = f->sizeupvalues;
     checklimit(fs, fs->nups + 1, MAXUPVAL, "upvalues");
@@ -259,12 +258,11 @@ static int newupvalue(FuncState *fs, TString *name, expdesc *v) {
     f->upvalues[fs->nups].instack = (v->k == VLOCAL);
     f->upvalues[fs->nups].idx = cast_byte(v->u.info);
     f->upvalues[fs->nups].name = name;
-    luaC_objbarrier(fs->ls->L, f, name);
     return fs->nups++;
 }
 
 
-static int searchvar(FuncState *fs, TString *n) {
+static int searchvar(FuncState *fs, uvm_types::GcString *n) {
     int i;
     for (i = cast_int(fs->nactvar) - 1; i >= 0; i--) {
         if (eqstr(n, getlocvar(fs, i)->varname))
@@ -289,7 +287,7 @@ static void markupval(FuncState *fs, int level) {
   Find variable with given name 'n'. If it is an upvalue, add this
   upvalue into all intermediate functions.
   */
-static int singlevaraux(FuncState *fs, TString *n, expdesc *var, int base) {
+static int singlevaraux(FuncState *fs, uvm_types::GcString *n, expdesc *var, int base) {
     if (fs == nullptr)  /* no more levels? */
         return VVOID;  /* default is global */
     else {
@@ -316,7 +314,7 @@ static int singlevaraux(FuncState *fs, TString *n, expdesc *var, int base) {
 
 
 static void singlevar(LexState *ls, expdesc *var) {
-    TString *varname = str_checkname(ls);
+	uvm_types::GcString *varname = str_checkname(ls);
     FuncState *fs = ls->fs;
     if (singlevaraux(fs, varname, var, 1) == VVOID) {  /* global name? */
         expdesc key;
@@ -365,7 +363,7 @@ static void closegoto(LexState *ls, int g, Labeldesc *label) {
     Labeldesc *gt = &gl->arr[g];
     lua_assert(eqstr(gt->name, label->name));
     if (gt->nactvar < label->nactvar) {
-        TString *vname = getlocvar(fs, gt->nactvar)->varname;
+		uvm_types::GcString *vname = getlocvar(fs, gt->nactvar)->varname;
         const char *msg = luaO_pushfstring(ls->L,
             "<goto %s> at line %d jumps into the scope of local '%s'",
             getstr(gt->name), gt->line, getstr(vname));
@@ -402,7 +400,7 @@ static int findlabel(LexState *ls, int g) {
 }
 
 
-static int newlabelentry(LexState *ls, Labellist *l, TString *name,
+static int newlabelentry(LexState *ls, Labellist *l, uvm_types::GcString *name,
     int line, int pc) {
     int n = l->n;
     luaM_growvector(ls->L, l->arr, n, l->size,
@@ -472,7 +470,7 @@ static void enterblock(FuncState *fs, BlockCnt *bl, lu_byte isloop) {
 ** create a label named 'break' to resolve break statements
 */
 static void breaklabel(LexState *ls) {
-    TString *n = luaS_new(ls->L, "break");
+	uvm_types::GcString *n = luaS_new(ls->L, "break");
     int l = newlabelentry(ls, &ls->dyd->label, n, 0, ls->fs->pc);
     findgotos(ls, &ls->dyd->label.arr[l]);
 }
@@ -1242,7 +1240,7 @@ static void gotostat(LexState *ls, int pc) {
     //luaX_syntaxerror(ls, msg);
     // return;
     int line = ls->linenumber;
-    TString *label;
+	uvm_types::GcString *label;
     int g;
     if (testnext(ls, TK_GOTO))
         label = str_checkname(ls);
@@ -1256,7 +1254,7 @@ static void gotostat(LexState *ls, int pc) {
 
 
 /* check for repeated labels on the same block */
-static void checkrepeated(FuncState *fs, Labellist *ll, TString *label) {
+static void checkrepeated(FuncState *fs, Labellist *ll, uvm_types::GcString *label) {
     int i;
     for (i = fs->bl->firstlabel; i < ll->n; i++) {
         if (eqstr(label, ll->arr[i].name)) {
@@ -1276,7 +1274,7 @@ static void skipnoopstat(LexState *ls) {
 }
 
 
-static void labelstat(LexState *ls, TString *label, int line) {
+static void labelstat(LexState *ls, uvm_types::GcString *label, int line) {
     /* label -> '::' NAME '::' */
     FuncState *fs = ls->fs;
     Labellist *ll = &ls->dyd->label;
@@ -1371,7 +1369,7 @@ static void forbody(LexState *ls, int base, int line, int nvars, int isnum) {
 }
 
 
-static void fornum(LexState *ls, TString *varname, int line) {
+static void fornum(LexState *ls, uvm_types::GcString *varname, int line) {
     /* fornum -> NAME = exp1,exp1[,exp1] forbody */
     FuncState *fs = ls->fs;
     int base = fs->freereg;
@@ -1393,7 +1391,7 @@ static void fornum(LexState *ls, TString *varname, int line) {
 }
 
 
-static void forlist(LexState *ls, TString *indexname) {
+static void forlist(LexState *ls, uvm_types::GcString *indexname) {
     /* forlist -> NAME {,NAME} IN explist forbody */
     FuncState *fs = ls->fs;
     expdesc e;
@@ -1421,7 +1419,7 @@ static void forlist(LexState *ls, TString *indexname) {
 static void forstat(LexState *ls, int line) {
     /* forstat -> FOR (fornum | forlist) END */
     FuncState *fs = ls->fs;
-    TString *varname;
+	uvm_types::GcString *varname;
     BlockCnt bl;
     enterblock(fs, &bl, 1);  /* scope for loop and control variables */
     luaX_next(ls);  /* skip 'for' */
@@ -1705,7 +1703,7 @@ LClosure *luaY_parser(lua_State *L, ZIO *z, Mbuffer *buff,
     sethvalue(L, L->top, lexstate.h);  /* anchor it */
     luaD_inctop(L);
     funcstate.f = cl->p = luaF_newproto(L);
-    funcstate.f->source = luaS_new(L, name);  /* create and anchor TString */
+    funcstate.f->source = luaS_new(L, name);  /* create and anchor uvm_types::GcString */
     lua_assert(iswhite(funcstate.f));  /* do not need barrier here */
     lexstate.buff = buff;
     lexstate.dyd = dyd;

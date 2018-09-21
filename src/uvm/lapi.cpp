@@ -395,8 +395,8 @@ LUA_API const char *lua_tolstring(lua_State *L, int idx, size_t *len) {
 LUA_API size_t lua_rawlen(lua_State *L, int idx) {
     StkId o = index2addr(L, idx);
     switch (ttype(o)) {
-    case LUA_TSHRSTR: return tsvalue(o)->shrlen;
-    case LUA_TLNGSTR: return tsvalue(o)->u.lnglen;
+    case LUA_TSHRSTR: return tsvalue(o)->value.size();
+    case LUA_TLNGSTR: return tsvalue(o)->value.size();
     case LUA_TUSERDATA: return uvalue(o)->len;
     case LUA_TTABLE: return luaH_getn(hvalue(o));
     default: return 0;
@@ -480,7 +480,7 @@ LUA_API void lua_pushinteger(lua_State *L, lua_Integer n) {
 ** 'memcmp' and 'memcpy'.
 */
 LUA_API const char *lua_pushlstring(lua_State *L, const char *s, size_t len) {
-    TString *ts;
+    uvm_types::GcString *ts;
     lua_lock(L);
     luaC_checkGC(L);
     ts = (len == 0) ? luaS_new(L, "") : luaS_newlstr(L, s, len);
@@ -496,7 +496,7 @@ LUA_API const char *lua_pushstring(lua_State *L, const char *s) {
     if (s == nullptr)
         setnilvalue(L->top);
     else {
-        TString *ts;
+		uvm_types::GcString *ts;
         luaC_checkGC(L);
         ts = luaS_new(L, s);
         setsvalue2s(L, L->top, ts);
@@ -589,7 +589,7 @@ LUA_API int lua_pushthread(lua_State *L) {
 
 static int auxgetstr(lua_State *L, const TValue *t, const char *k) {
     const TValue *aux;
-    TString *str = luaS_new(L, k);
+	uvm_types::GcString *str = luaS_new(L, k);
     if (luaV_fastget(L, t, str, aux, luaH_getstr)) {
         setobj2s(L, L->top, aux);
         api_incr_top(L);
@@ -752,7 +752,7 @@ static void auxsetstr(lua_State *L, const TValue *t, const char *k) {
 		}
 	}
     const TValue *aux;
-    TString *str = luaS_new(L, k);
+	uvm_types::GcString *str = luaS_new(L, k);
     api_checknelems(L, 1);
     if (luaV_fastset(L, t, str, aux, luaH_getstr, L->top - 1))
         L->top--;  /* pop value */
@@ -1191,7 +1191,7 @@ static const char *aux_upvalue(StkId fi, int n, TValue **val,
     }
     case LUA_TLCL: {  /* Lua closure */
         LClosure *f = clLvalue(fi);
-        TString *name;
+		uvm_types::GcString *name;
         Proto *p = f->p;
         if (!(1 <= n && n <= p->sizeupvalues)) return nullptr;
         *val = f->upvals[n - 1]->v;

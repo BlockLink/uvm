@@ -62,7 +62,7 @@
 
 #define hashpow2(t,n)		(gnode(t, lmod((n), sizenode(t))))
 
-#define hashstr(t,str)		hashpow2(t, (str)->hash)
+#define hashstr(t,str)		hashpow2(t, (str)->hash())
 #define hashboolean(t,p)	hashpow2(t, p)
 #define hashint(t,i)		hashpow2(t, i)
 
@@ -651,7 +651,7 @@ const TValue *luaH_getint(Table *t, lua_Integer key) {
 /*
 ** search function for short strings
 */
-const TValue *luaH_getshortstr(Table *t, TString *key) {
+const TValue *luaH_getshortstr(Table *t, uvm_types::GcString *key) {
     Node *n = hashstr(t, key);
     lua_assert(key->tt == LUA_TSHRSTR);
     for (;;) {  /* check whether 'key' is somewhere in the chain */
@@ -687,9 +687,9 @@ static const TValue *getgeneric(Table *t, const TValue *key) {
 }
 
 
-const TValue *luaH_getstr(Table *t, TString *key) {
-    if (key->tt == LUA_TSHRSTR)
-        return luaH_getshortstr(t, key);
+const TValue *luaH_getstr(Table *t, uvm_types::GcString *key) {
+	if (key->tt == LUA_TSHRSTR)
+		return luaH_getshortstr(t, key);
     else {  /* for long strings, use generic case */
         TValue ko;
         setsvalue(lua_cast(lua_State *, nullptr), &ko, key);
@@ -704,6 +704,7 @@ const TValue *luaH_getstr(Table *t, TString *key) {
 const TValue *luaH_get(Table *t, const TValue *key) {
     switch (ttype(key)) {
     case LUA_TSHRSTR: return luaH_getshortstr(t, tsvalue(key));
+	case LUA_TLNGSTR: return luaH_getstr(t, tsvalue(key));
     case LUA_TNUMINT: return luaH_getint(t, ivalue(key));
     case LUA_TNIL: return luaO_nilobject;
     case LUA_TNUMFLT: {

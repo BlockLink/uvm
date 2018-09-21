@@ -10,10 +10,13 @@
 
 
 #include <stdarg.h>
+#include <map>
+#include <algorithm>
 
 
 #include "uvm/llimits.h"
 #include "uvm/lua.h"
+#include <vmgc/vmgc.h>
 
 
 /*
@@ -98,6 +101,7 @@ struct GCObject {
 ** Union of all Lua values
 */
 typedef union Value {
+	vmgc::GcObject* gco;
     GCObject *gc;    /* collectable objects */
     void *p;         /* light userdata */
     int b;           /* booleans */
@@ -166,7 +170,7 @@ typedef struct lua_TValue {
 	(ttisinteger(o) ? cast_num(ivalue(o)) : fltvalue(o)))
 #define gcvalue(o)	check_exp(iscollectable(o), val_(o).gc)
 #define pvalue(o)	check_exp(ttislightuserdata(o), val_(o).p)
-#define tsvalue(o)	check_exp(ttisstring(o), gco2ts(val_(o).gc))
+#define tsvalue(o)	check_exp(ttisstring(o), gco2ts(val_(o).gco))
 #define uvalue(o)	check_exp(ttisfulluserdata(o), gco2u(val_(o).gc))
 #define clvalue(o)	check_exp(ttisclosure(o), gco2cl(val_(o).gc))
 #define clLvalue(o)	check_exp(ttisLclosure(o), gco2lcl(val_(o).gc))
@@ -222,9 +226,14 @@ typedef struct lua_TValue {
   { TValue *io = (obj); GCObject *i_g=(x); \
     val_(io).gc = i_g; settt_(io, ctb(i_g->tt)); }
 
+//#define setsvalue(L,obj,x) \
+//  { TValue *io = (obj); TString *x_ = (x); \
+//    val_(io).gc = obj2gco(x_); settt_(io, ctb(x_->tt)); \
+//    checkliveness(L,io); }
+
 #define setsvalue(L,obj,x) \
-  { TValue *io = (obj); TString *x_ = (x); \
-    val_(io).gc = obj2gco(x_); settt_(io, ctb(x_->tt)); \
+  { TValue *io = (obj); uvm_types::GcString *x_ = (x); \
+    val_(io).gco = x_; settt_(io, ctb(x_->tt_)); \
     checkliveness(L,io); }
 
 #define setuvalue(L,obj,x) \
@@ -320,20 +329,23 @@ typedef union UTString {
     TString tsv;
 } UTString;
 
+namespace uvm_types {
+	struct GcString;
+}
 
 /*
 ** Get the actual string (array of bytes) from a 'TString'.
 ** (Access to 'extra' ensures that value is really a 'TString'.)
 */
 #define getstr(ts)  \
-  check_exp(sizeof((ts)->extra), lua_cast(char *, (ts)) + sizeof(UTString))
+  ((char*)((ts)->value.data()))
 
 
 /* get the actual string (array of bytes) from a Lua value */
 #define svalue(o)       getstr(tsvalue(o))
 
 /* get string length from 'TString *s' */
-#define tsslen(s)	((s)->tt == LUA_TSHRSTR ? (s)->shrlen : (s)->u.lnglen)
+#define tsslen(s)	((s)->tt == LUA_TSHRSTR ? (s)->value.size() : (s)->value.size())
 
 /* get string length from 'TValue *o' */
 #define vslen(o)	tsslen(tsvalue(o))
@@ -384,7 +396,7 @@ typedef union UUdata {
 ** Description of an upvalue for function prototypes
 */
 typedef struct Upvaldesc {
-    TString *name;  /* upvalue name (for debug information) */
+	uvm_types::GcString *name;  /* upvalue name (for debug information) */
     lu_byte instack;  /* whether it is in stack (register) */
     lu_byte idx;  /* index of upvalue (in stack or in outer function's list) */
 } Upvaldesc;
@@ -395,7 +407,7 @@ typedef struct Upvaldesc {
 ** (used for debug information)
 */
 typedef struct LocVar {
-    TString *varname;
+    uvm_types::GcString *varname;
     int startpc;  /* first point where variable is active */
     int endpc;    /* first point where variable is dead */
     int vartype;
@@ -425,7 +437,7 @@ typedef struct Proto {
     LocVar *locvars;  /* information about local variables (debug information) */
     Upvaldesc *upvalues;  /* upvalue information */
     struct LClosure *cache;  /* last-created closure with this prototype */
-    TString  *source;  /* used for debug information */
+    uvm_types::GcString  *source;  /* used for debug information */
     GCObject *gclist;
 } Proto;
 
@@ -544,6 +556,124 @@ LUAI_FUNC const char *luaO_pushvfstring(lua_State *L, const char *fmt,
     va_list argp);
 LUAI_FUNC const char *luaO_pushfstring(lua_State *L, const char *fmt, ...);
 LUAI_FUNC void luaO_chunkid(char *out, const char *source, size_t len);
+
+
+
+unsigned int luaS_hash(const char *str, size_t l, unsigned int seed);
+
+// vmgc object types
+namespace uvm_types {
+	struct GcString : vmgc::GcObject
+	{
+		const static vmgc::gc_type type = LUA_TLNGSTR;
+		int tt_ = LUA_TLNGSTR;
+		std::string value;
+		lu_byte extra = 0;
+
+		inline GcString() {
+			tt_ = LUA_TLNGSTR;
+		}
+
+		virtual ~GcString() {}
+
+		inline unsigned int hash() const {
+			return luaS_hash(value.data(), value.size(), 1);
+		}
+	};
+	struct GcInteger : vmgc::GcObject
+	{
+		const static vmgc::gc_type type = LUA_TNUMINT;
+		int tt_ = LUA_TNUMINT;
+		lua_Integer value = 0;
+
+		virtual ~GcInteger() {}
+	};
+	struct GcFloat : vmgc::GcObject
+	{
+		const static vmgc::gc_type type = LUA_TNUMFLT;
+		int tt_ = LUA_TNUMFLT;
+		lua_Number value = 0;
+
+		virtual ~GcFloat() {}
+	};
+	struct GcBool : vmgc::GcObject
+	{
+		const static vmgc::gc_type type = LUA_TBOOLEAN;
+		int tt_ = LUA_TBOOLEAN;
+		bool value = false;
+
+		virtual ~GcBool() {}
+	};
+	struct GcLightUserdata : vmgc::GcObject
+	{
+		const static vmgc::gc_type type = LUA_TLIGHTUSERDATA;
+		int tt_ = LUA_TLIGHTUSERDATA;
+		void* value = nullptr;
+
+		virtual ~GcLightUserdata() {}
+	};
+	struct GcUserdata : vmgc::GcObject
+	{
+		const static vmgc::gc_type type = LUA_TUSERDATA;
+		int tt_ = LUA_TUSERDATA;
+		void* value = nullptr;
+
+		virtual ~GcUserdata() {}
+	};
+	struct GcLClosure : vmgc::GcObject
+	{
+		const static vmgc::gc_type type = LUA_TLCL;
+		int tt_ = LUA_TLCL;
+		void* value = nullptr;
+
+		virtual ~GcLClosure() {}
+	};
+	struct GcLightCClosure : vmgc::GcObject
+	{
+		const static vmgc::gc_type type = LUA_TLCF;
+		int tt_ = LUA_TLCF;
+		void* value = nullptr;
+
+		virtual ~GcLightCClosure() {}
+	};
+	struct GcCClosure : vmgc::GcObject
+	{
+		const static vmgc::gc_type type = LUA_TCCL;
+		int tt_ = LUA_TCCL;
+		void* value = nullptr;
+
+		virtual ~GcCClosure() {}
+	};
+	struct table_sort_comparator
+	{
+	public:
+		bool operator()(const std::string x, const std::string y) const
+		{
+			return x.compare(y) == 0;
+		}
+	};
+	struct GcTable : vmgc::GcObject
+	{
+		const static vmgc::gc_type type = LUA_TTABLE;
+		int tt_ = LUA_TTABLE;
+		std::map<std::string, vmgc::GcObject*, table_sort_comparator> entries;
+		GcTable* metatable = nullptr;
+
+		virtual ~GcTable() {}
+	};
+	// TODO: upval, cclosure, lclosure, proto
+	// TODO: 先把string/int/boolean/number/table替换掉，其他分步来
+
+	/*struct GcArray : vmgc::GcObject
+	{
+		const static vmgc::gc_type type = LUA_TARRAY;
+		std::vector<vmgc::GcObject*> entries;
+
+		virtual ~GcArray() {}
+	};*/
+
+}
+
 
 
 #endif

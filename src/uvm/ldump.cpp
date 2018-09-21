@@ -70,7 +70,7 @@ static void DumpInteger(lua_Integer x, DumpState *D) {
 }
 
 
-static void DumpString(const TString *s, DumpState *D) {
+static void DumpString(const uvm_types::GcString *s, DumpState *D) {
     if (s == nullptr)
         DumpByte(0, D);
     else {
@@ -93,7 +93,7 @@ static void DumpCode(const Proto *f, DumpState *D) {
 }
 
 
-static void DumpFunction(const Proto *f, TString *psource, DumpState *D);
+static void DumpFunction(const Proto *f, uvm_types::GcString *psource, DumpState *D);
 
 static void DumpConstants(const Proto *f, DumpState *D) {
     int i;
@@ -163,7 +163,7 @@ static void DumpDebug(const Proto *f, DumpState *D) {
 }
 
 
-static void DumpFunction(const Proto *f, TString *psource, DumpState *D) {
+static void DumpFunction(const Proto *f, uvm_types::GcString *psource, DumpState *D) {
     if (D->strip || f->source == psource)
         DumpString(nullptr, D);  /* no debug info or same source as its parent */
 	else

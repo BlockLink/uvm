@@ -10,6 +10,7 @@
 
 #include "uvm/lobject.h"
 #include "uvm/lstate.h"
+#include <vmgc/vmgc.h>
 
 /*
 ** Collectable objects may have one of three colors: white, which

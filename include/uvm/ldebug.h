@@ -31,7 +31,7 @@ LUAI_FUNC void luaG_ordererror(lua_State *L, const TValue *p1,
     const TValue *p2);
 LUAI_FUNC void luaG_runerror(lua_State *L, const char *fmt, ...);
 LUAI_FUNC const char *luaG_addinfo(lua_State *L, const char *msg,
-    TString *src, int line);
+    uvm_types::GcString *src, int line);
 LUAI_FUNC void luaG_errormsg(lua_State *L, const char *msg=nullptr);
 LUAI_FUNC void luaG_traceexec(lua_State *L);
 

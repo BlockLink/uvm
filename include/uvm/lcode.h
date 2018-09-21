@@ -55,7 +55,7 @@ LUAI_FUNC void luaK_fixline(FuncState *fs, int line);
 LUAI_FUNC void luaK_nil(FuncState *fs, int from, int n);
 LUAI_FUNC void luaK_reserveregs(FuncState *fs, int n);
 LUAI_FUNC void luaK_checkstack(FuncState *fs, int n);
-LUAI_FUNC int luaK_stringK(FuncState *fs, TString *s);
+LUAI_FUNC int luaK_stringK(FuncState *fs, uvm_types::GcString *s);
 LUAI_FUNC int luaK_intK(FuncState *fs, lua_Integer n);
 LUAI_FUNC void luaK_dischargevars(FuncState *fs, expdesc *e);
 LUAI_FUNC int luaK_exp2anyreg(FuncState *fs, expdesc *e);

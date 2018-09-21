@@ -168,10 +168,10 @@ static void freeobj(lua_State *L, GCObject *o) {
     case LUA_TUSERDATA: luaM_freemem(L, o, sizeudata(gco2u(o))); break;
     case LUA_TSHRSTR:
         luaS_remove(L, gco2ts(o));  /* remove it from hash table */
-        luaM_freemem(L, o, sizelstring(gco2ts(o)->shrlen));
+        luaM_freemem(L, o, sizelstring(gco2ts(o)->value.size()));
         break;
     case LUA_TLNGSTR: {
-        luaM_freemem(L, o, sizelstring(gco2ts(o)->u.lnglen));
+        luaM_freemem(L, o, sizelstring(gco2ts(o)->value.size()));
         break;
     }
     default: lua_assert(0);

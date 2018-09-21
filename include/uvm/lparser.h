@@ -63,7 +63,7 @@ typedef struct Vardesc {
 
 /* description of pending goto statements and label statements */
 typedef struct Labeldesc {
-    TString *name;  /* label identifier */
+	uvm_types::GcString *name;  /* label identifier */
     int pc;  /* position in code */
     int line;  /* line where it appeared */
     lu_byte nactvar;  /* local level where it appears in current block */

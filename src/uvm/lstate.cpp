@@ -308,7 +308,7 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
 	L->version = &version;
 	L->frealloc = f;
 	L->ud = ud ? ud : gc_state;
-	L->seed = makeseed(L);
+	L->seed = 1; // makeseed(L);
 	setnilvalue(&L->l_registry);
 	L->strt.size = L->strt.nuse = 0;
 	L->strt.hash = nullptr;

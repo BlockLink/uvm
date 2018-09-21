@@ -264,11 +264,11 @@ void luaV_finishset(lua_State *L, const TValue *t, TValue *key,
 ** and it uses 'strcoll' (to respect locales) for each segments
 ** of the strings.
 */
-static int l_strcmp(const TString *ls, const TString *rs) {
+static int l_strcmp(const uvm_types::GcString *ls, const uvm_types::GcString *rs) {
     const char *l = getstr(ls);
-    size_t ll = tsslen(ls);
+	size_t ll = ls->value.size();
     const char *r = getstr(rs);
-    size_t lr = tsslen(rs);
+	size_t lr = rs->value.size();
 	if (ll != lr)
 		return (int)ll - (int) lr;
     for (;;) {  /* for each segment */
@@ -385,7 +385,6 @@ static int LEnum(const TValue *l, const TValue *r) {
             return !LTintfloat(ivalue(r), lf);  /* not (r < l) ? */
     }
 }
-
 
 /*
 ** Main operation less than; return 'l < r'.
@@ -507,7 +506,7 @@ int luaV_equalobj(lua_State *L, const TValue *t1, const TValue *t2) {
 #define tostring(L,o)  \
 	(ttisstring(o) || (cvt2str(o) && (luaO_tostring(L, o), 1)))
 
-#define isemptystr(o)	(ttisshrstring(o) && tsvalue(o)->shrlen == 0)
+#define isemptystr(o)	(ttisshrstring(o) && tsvalue(o)->value.size() == 0)
 
 /* copy strings in stack from top - n up to top - 1 to buffer */
 static void copy2buff(StkId top, int n, char *buff) {
@@ -539,7 +538,7 @@ void luaV_concat(lua_State *L, int total) {
         else {
             /* at least two non-empty string values; get as many as possible */
             size_t tl = vslen(top - 1);
-            TString *ts;
+            uvm_types::GcString *ts;
             /* collect total length and number of strings */
             for (n = 1; n < total && tostring(L, top - n - 1); n++) {
                 size_t l = vslen(top - n - 1);
@@ -578,11 +577,11 @@ void luaV_objlen(lua_State *L, StkId ra, const TValue *rb) {
         return;
     }
     case LUA_TSHRSTR: {
-        setivalue(ra, tsvalue(rb)->shrlen);
+        setivalue(ra, tsvalue(rb)->value.size());
         return;
     }
     case LUA_TLNGSTR: {
-        setivalue(ra, tsvalue(rb)->u.lnglen);
+        setivalue(ra, tsvalue(rb)->value.size());
         return;
     }
     default: {  /* try metamethod */
@@ -1052,7 +1051,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                 const TValue *aux;
                 StkId rb = RB(i);
                 TValue *rc = RKC(i);
-                TString *key = tsvalue(rc);  /* key must be a string */
+				uvm_types::GcString *key = tsvalue(rc);  /* key must be a string */
                 setobjs2s(L, ra + 1, rb);
                 if (luaV_fastget(L, rb, key, aux, luaH_getstr)) {
                     setobj2s(L, ra, aux);

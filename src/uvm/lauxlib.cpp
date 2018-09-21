@@ -1987,7 +1987,7 @@ static int lua_real_execute_contract_api(lua_State *L
     {
         global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "can't find this contract");
         lua_pushinteger(L, LUA_ERRRUN);
-        return 1;
+        return 0;
     }
     bool is_address = uvm::util::starts_with(contract_name, ADDRESS_CONTRACT_PREFIX);
     char address[CONTRACT_ID_MAX_LENGTH + 1] = "\0";
@@ -2028,12 +2028,12 @@ static int lua_real_execute_contract_api(lua_State *L
     {
         global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "need load contract before execute contract api");
         lua_pushinteger(L, LUA_ERRRUN);
-        return 1;
+        return 0;
     }
     if (!lua_istable(L, -1))
     {
         lua_pushinteger(L, LUA_ERRRUN);
-        return 1;
+        return 0;
     }
 
     bool is_self = uvm::util::starts_with(contract_name, STREAM_CONTRACT_PREFIX)

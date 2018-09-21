@@ -71,10 +71,10 @@ static void save(LexState *ls, int c) {
 
 void luaX_init(lua_State *L) {
     int i;
-    TString *e = luaS_newliteral(L, LUA_ENV);  /* create env name */
+	uvm_types::GcString *e = luaS_newliteral(L, LUA_ENV);  /* create env name */
     luaC_fix(L, obj2gco(e));  /* never collect this name */
     for (i = 0; i < NUM_RESERVED; i++) {
-        TString *ts = luaS_new(L, luaX_tokens[i]);
+		uvm_types::GcString *ts = luaS_new(L, luaX_tokens[i]);
         luaC_fix(L, obj2gco(ts));  /* reserved words are never collected */
         ts->extra = cast_byte(i + 1);  /* reserved word */
     }
@@ -127,10 +127,10 @@ void luaX_syntaxerror(LexState *ls, const char *msg) {
 ** it will not be collected until the end of the compilation
 ** (by that time it should be anchored somewhere)
 */
-TString *luaX_newstring(LexState *ls, const char *str, size_t l) {
+uvm_types::GcString *luaX_newstring(LexState *ls, const char *str, size_t l) {
     lua_State *L = ls->L;
     TValue *o;  /* entry for 'str' */
-    TString *ts = luaS_newlstr(L, str, l);  /* create new string */
+	uvm_types::GcString *ts = luaS_newlstr(L, str, l);  /* create new string */
     setsvalue2s(L, L->top++, ts);  /* temporarily anchor it in stack */
     o = luaH_set(L, ls->h, L->top - 1);
     if (ttisnil(o)) {  /* not in use yet? */
@@ -162,7 +162,7 @@ static void inclinenumber(LexState *ls) {
 }
 
 
-void luaX_setinput(lua_State *L, LexState *ls, ZIO *z, TString *source,
+void luaX_setinput(lua_State *L, LexState *ls, ZIO *z, uvm_types::GcString *source,
     int firstchar) {
     ls->t.token = 0;
     ls->decpoint = '.';
@@ -556,7 +556,7 @@ static int llex(LexState *ls, SemInfo *seminfo) {
         }
         default: {
             if (lislalpha(ls->current)) {  /* identifier or reserved word? */
-                TString *ts;
+				uvm_types::GcString *ts;
                 do {
                     save_and_next(ls);
                 } while (lislalnum(ls->current));
