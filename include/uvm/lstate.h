@@ -135,6 +135,12 @@ inline UvmStatePreProcessorFunction make_lua_state_preprocessor(std::list<void*>
 // typedef void(*LuaStatePreProcessor)(lua_State *L, void *ptr);
 
 struct lua_State;
+
+namespace uvm_types {
+	struct GcString;
+	struct GcTable;
+}
+
 /*
 ** 'per thread' state
 */
@@ -182,7 +188,7 @@ struct lua_State {
 	const lua_Number *version;  /* pointer to version number */
 	uvm_types::GcString *memerrmsg;  /* memory-error message */
 	uvm_types::GcString *tmname[TM_N];  /* array with tag-method names */
-	struct Table *mt[LUA_NUMTAGS];  /* metatables for basic types */
+	uvm_types::GcTable *mt[LUA_NUMTAGS];  /* metatables for basic types */
 	uvm_types::GcString *strcache[STRCACHE_N][STRCACHE_M];  /* cache for strings in API */
 
 	std::list<intptr_t> *contract_table_addresses;
@@ -227,7 +233,7 @@ union GCUnion {
 #define gco2ccl(o)  check_exp((o)->tt == LUA_TCCL, &((cast_u(o))->cl.c))
 #define gco2cl(o)  \
 	check_exp(novariant((o)->tt) == LUA_TFUNCTION, &((cast_u(o))->cl))
-#define gco2t(o)  check_exp((o)->tt == LUA_TTABLE, &((cast_u(o))->h))
+#define gco2t(o)  check_exp((o)->tt == LUA_TTABLE, (((uvm_types::GcTable*)(o))))
 #define gco2p(o)  check_exp((o)->tt == LUA_TPROTO, &((cast_u(o))->p))
 #define gco2th(o)  check_exp((o)->tt == LUA_TTHREAD, &((cast_u(o))->th))
 

@@ -605,7 +605,7 @@ static int auxgetstr(lua_State *L, const TValue *t, const char *k) {
 
 
 LUA_API int lua_getglobal(lua_State *L, const char *name) {
-    Table *reg = hvalue(&L->l_registry);
+    auto *reg = hvalue(&L->l_registry);
     lua_lock(L);
     return auxgetstr(L, luaH_getint(reg, LUA_RIDX_GLOBALS), name);
 }
@@ -684,7 +684,7 @@ LUA_API int lua_rawgetp(lua_State *L, int idx, const void *p) {
 
 
 LUA_API void lua_createtable(lua_State *L, int narray, int nrec) {
-    Table *t;
+    uvm_types::GcTable *t;
     lua_lock(L);
     luaC_checkGC(L);
     t = luaH_new(L);
@@ -698,7 +698,7 @@ LUA_API void lua_createtable(lua_State *L, int narray, int nrec) {
 
 LUA_API int lua_getmetatable(lua_State *L, int objindex) {
     const TValue *obj;
-    Table *mt;
+	uvm_types::GcTable *mt;
     int res = 0;
     lua_lock(L);
     obj = index2addr(L, objindex);
@@ -767,7 +767,7 @@ static void auxsetstr(lua_State *L, const TValue *t, const char *k) {
 
 
 LUA_API void lua_setglobal(lua_State *L, const char *name) {
-    Table *reg = hvalue(&L->l_registry);
+	uvm_types::GcTable *reg = hvalue(&L->l_registry);
     lua_lock(L);  /* unlock done in 'auxsetstr' */
     auxsetstr(L, luaH_getint(reg, LUA_RIDX_GLOBALS), name);
 }
@@ -833,8 +833,6 @@ LUA_API void lua_rawset(lua_State *L, int idx) {
     api_check(L, ttistable(o), "table expected");
     slot = luaH_set(L, hvalue(o), L->top - 2);
     setobj2t(L, slot, L->top - 1);
-    invalidateTMcache(hvalue(o));
-    luaC_barrierback(L, hvalue(o), L->top - 1);
     L->top -= 2;
     lua_unlock(L);
 }
@@ -847,7 +845,6 @@ LUA_API void lua_rawseti(lua_State *L, int idx, lua_Integer n) {
     o = index2addr(L, idx);
     api_check(L, ttistable(o), "table expected");
     luaH_setint(L, hvalue(o), n, L->top - 1);
-    luaC_barrierback(L, hvalue(o), L->top - 1);
     L->top--;
     lua_unlock(L);
 }
@@ -863,7 +860,6 @@ LUA_API void lua_rawsetp(lua_State *L, int idx, const void *p) {
     setpvalue(&k, lua_cast(void *, p));
     slot = luaH_set(L, hvalue(o), &k);
     setobj2t(L, slot, L->top - 1);
-    luaC_barrierback(L, hvalue(o), L->top - 1);
     L->top--;
     lua_unlock(L);
 }
@@ -871,7 +867,7 @@ LUA_API void lua_rawsetp(lua_State *L, int idx, const void *p) {
 
 LUA_API int lua_setmetatable(lua_State *L, int objindex) {
     TValue *obj;
-    Table *mt;
+	uvm_types::GcTable *mt;
     lua_lock(L);
     api_checknelems(L, 1);
     obj = index2addr(L, objindex);
@@ -885,7 +881,6 @@ LUA_API int lua_setmetatable(lua_State *L, int objindex) {
     case LUA_TTABLE: {
         hvalue(obj)->metatable = mt;
         if (mt) {
-            luaC_objbarrier(L, gcvalue(obj), mt);
             luaC_checkfinalizer(L, gcvalue(obj), mt);
         }
         break;
@@ -893,7 +888,6 @@ LUA_API int lua_setmetatable(lua_State *L, int objindex) {
     case LUA_TUSERDATA: {
         uvalue(obj)->metatable = mt;
         if (mt) {
-            luaC_objbarrier(L, uvalue(obj), mt);
             luaC_checkfinalizer(L, gcvalue(obj), mt);
         }
         break;
@@ -1027,7 +1021,7 @@ LUA_API int lua_load(lua_State *L, lua_Reader reader, void *data,
         LClosure *f = clLvalue(L->top - 1);  /* get newly created function */
         if (f->nupvalues >= 1) {  /* does it have an upvalue? */
             /* get global table from registry */
-            Table *reg = hvalue(&L->l_registry);
+			uvm_types::GcTable *reg = hvalue(&L->l_registry);
             const TValue *gt = luaH_getint(reg, LUA_RIDX_GLOBALS);
             /* set global table as 1st upvalue of 'f' (may be LUA_ENV) */
             setobj(L, f->upvals[0]->v, gt);
@@ -1050,7 +1044,7 @@ LUA_API int lua_load_with_check(lua_State *L, lua_Reader reader, void *data,
         LClosure *f = clLvalue(L->top - 1);  /* get newly created function */
         if (f->nupvalues >= 1) {  /* does it have an upvalue? */
             /* get global table from registry */
-            Table *reg = hvalue(&L->l_registry);
+			uvm_types::GcTable *reg = hvalue(&L->l_registry);
             const TValue *gt = luaH_getint(reg, LUA_RIDX_GLOBALS);
             /* set global table as 1st upvalue of 'f' (may be LUA_ENV) */
             setobj(L, f->upvals[0]->v, gt);

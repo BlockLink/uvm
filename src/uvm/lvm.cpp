@@ -216,7 +216,7 @@ void luaV_finishset(lua_State *L, const TValue *t, TValue *key,
         const TValue *tm;
         if (oldval != nullptr) {
             // lua_assert(ttistable(t) && ttisnil(oldval));
-            Table *h = hvalue(t); // save t table
+            uvm_types::GcTable *h = hvalue(t); // save t table
             lua_assert(ttisnil(oldval));
             /* must check the metamethod */
             // if ((tm = fasttm(L, hvalue(t)->metatable, TM_NEWINDEX)) == nullptr &&
@@ -229,10 +229,6 @@ void luaV_finishset(lua_State *L, const TValue *t, TValue *key,
                    (oldval = luaH_newkey(L, h, key), 1))) {
                 /* no metamethod and (now) there is an entry with given key */
                 setobj2t(L, lua_cast(TValue *, oldval), val);
-                // invalidateTMcache(hvalue(t));
-                // luaC_barrierback(L, hvalue(t), val);
-                invalidateTMcache(h);
-                luaC_barrierback(L, h, val);
                 return;
             }
             /* else will try the metamethod */
@@ -570,7 +566,7 @@ void luaV_objlen(lua_State *L, StkId ra, const TValue *rb) {
     const TValue *tm;
     switch (ttype(rb)) {
     case LUA_TTABLE: {
-        Table *h = hvalue(rb);
+		uvm_types::GcTable *h = hvalue(rb);
         tm = fasttm(L, h->metatable, TM_LEN);
         if (tm) break;  /* metamethod? break switch to call it */
         setivalue(ra, luaH_getn(h));  /* else primitive len */
@@ -1040,7 +1036,7 @@ newframe:  /* reentry point when frame changes (call/return) */
             vmcase(UOP_NEWTABLE) {
                 int b = GETARG_B(i);
                 int c = GETARG_C(i);
-                Table *t = luaH_new(L);
+                uvm_types::GcTable *t = luaH_new(L);
                 sethvalue(L, ra, t);
                 if (b != 0 || c != 0)
                     luaH_resize(L, t, luaO_fb2int(b), luaO_fb2int(c));
@@ -1497,7 +1493,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                 int n = GETARG_B(i);
                 int c = GETARG_C(i);
                 unsigned int last;
-                Table *h;
+				uvm_types::GcTable *h;
                 if (n == 0) n = cast_int(L->top - ra) - 1;
                 if (c == 0) {
                     lua_assert(GET_OPCODE(*ci->u.l.savedpc) == UOP_EXTRAARG);
@@ -1510,7 +1506,6 @@ newframe:  /* reentry point when frame changes (call/return) */
                 for (; n > 0; n--) {
                     TValue *val = ra + n;
                     luaH_setint(L, h, last--, val);
-                    luaC_barrierback(L, h, val);
                 }
                 L->top = ci->top;  /* correct top (in case of previous open call) */
                 vmbreak;

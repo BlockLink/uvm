@@ -258,7 +258,7 @@ static void collectvalidlines(lua_State *L, Closure *f) {
         int i;
         TValue v;
         int *lineinfo = f->l.p->lineinfo;
-        Table *t = luaH_new(L);  /* new table to store active lines */
+        uvm_types::GcTable *t = luaH_new(L);  /* new table to store active lines */
         sethvalue(L, L->top, t);  /* push it on stack */
         api_incr_top(L);
         setbvalue(&v, 1);  /* boolean 'true' to be the value of all indices */

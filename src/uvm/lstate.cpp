@@ -181,7 +181,7 @@ static void freestack(lua_State *L) {
 static void init_registry(lua_State *L) {
     TValue temp;
     /* create registry */
-    Table *registry = luaH_new(L);
+    auto *registry = luaH_new(L);
     sethvalue(L, &L->l_registry, registry);
     luaH_resize(L, registry, LUA_RIDX_LAST, 0);
     /* registry[LUA_RIDX_MAINTHREAD] = L */

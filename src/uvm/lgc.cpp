@@ -189,7 +189,7 @@ void luaC_upvdeccount(lua_State *L, UpVal *uv) {
 ** if object 'o' has a finalizer, remove it from 'allgc' list (must
 ** search the list to find it) and link it in 'finobj' list.
 */
-void luaC_checkfinalizer(lua_State *L, GCObject *o, Table *mt) {
+void luaC_checkfinalizer(lua_State *L, GCObject *o, uvm_types::GcTable *mt) {
 
 }
 

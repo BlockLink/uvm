@@ -294,6 +294,10 @@ func TestInvalidUpvalue(t *testing.T) {
 	assert.True(t, strings.Contains(err, `upvalue error`))
 }
 
+func TestArrayOp(t *testing.T) {
+	// TDO
+}
+
 func TestUndump(t *testing.T) {
 	// TODO
 }

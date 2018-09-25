@@ -65,7 +65,7 @@ typedef struct LexState {
     struct lua_State *L;
     ZIO *z;  /* input stream */
     Mbuffer *buff;  /* buffer for tokens */
-    Table *h;  /* to avoid collection/reuse strings */
+    uvm_types::GcTable *h;  /* to avoid collection/reuse strings */
     struct Dyndata *dyd;  /* dynamic structures used by the parser */
 	uvm_types::GcString *source;  /* current source name */
 	uvm_types::GcString *envn;  /* environment variable name */

@@ -90,6 +90,12 @@ struct GCObject {
 };
 
 
+namespace uvm_types {
+	struct GcString;
+	struct GcTable;
+}
+
+
 
 
 /*
@@ -176,7 +182,7 @@ typedef struct lua_TValue {
 #define clLvalue(o)	check_exp(ttisLclosure(o), gco2lcl(val_(o).gc))
 #define clCvalue(o)	check_exp(ttisCclosure(o), gco2ccl(val_(o).gc))
 #define fvalue(o)	check_exp(ttislcf(o), val_(o).f)
-#define hvalue(o)	check_exp(ttistable(o), gco2t(val_(o).gc))
+#define hvalue(o)	check_exp(ttistable(o), gco2t(val_(o).gco))
 #define bvalue(o)	check_exp(ttisboolean(o), val_(o).b)
 #define thvalue(o)	check_exp(ttisthread(o), gco2th(val_(o).gc))
 /* a dead value may get the 'gc' field, but cannot access its contents */
@@ -257,8 +263,8 @@ typedef struct lua_TValue {
     checkliveness(L,io); }
 
 #define sethvalue(L,obj,x) \
-  { TValue *io = (obj); Table *x_ = (x); \
-    val_(io).gc = obj2gco(x_); settt_(io, ctb(LUA_TTABLE)); \
+  { TValue *io = (obj); uvm_types::GcTable *x_ = (x); \
+    val_(io).gco = x_; settt_(io, ctb(LUA_TTABLE)); \
     checkliveness(L,io); }
 
 #define setdeadvalue(obj)	settt_(obj, LUA_TDEADKEY)
@@ -358,7 +364,7 @@ namespace uvm_types {
 typedef struct Udata {
     CommonHeader;
     lu_byte ttuv_;  /* user value's tag */
-    struct Table *metatable;
+    struct uvm_types::GcTable *metatable;
     size_t len;  /* number of bytes */
     union Value user_;  /* user value */
 } Udata;
@@ -647,18 +653,18 @@ namespace uvm_types {
 	struct table_sort_comparator
 	{
 	public:
-		bool operator()(const std::string x, const std::string y) const
-		{
-			return x.compare(y) == 0;
-		}
+		bool operator()(const TValue& x, const TValue& y) const;
 	};
 	struct GcTable : vmgc::GcObject
 	{
+		typedef TValue GcTableItemType;
 		const static vmgc::gc_type type = LUA_TTABLE;
 		int tt_ = LUA_TTABLE;
-		std::map<std::string, vmgc::GcObject*, table_sort_comparator> entries;
-		GcTable* metatable = nullptr;
-
+		std::map<TValue, GcTableItemType, table_sort_comparator> entries;
+		unsigned int sizearray;
+		std::vector<GcTableItemType> array;
+		GcTable* metatable;
+		inline GcTable() : sizearray(0), metatable(nullptr) { }
 		virtual ~GcTable() {}
 	};
 	// TODO: upval, cclosure, lclosure, proto
