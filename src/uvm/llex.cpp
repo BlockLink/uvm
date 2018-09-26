@@ -139,9 +139,9 @@ uvm_types::GcString *luaX_newstring(LexState *ls, const char *str, size_t l) {
         setbvalue(o, 1);  /* t[string] = true */
         luaC_checkGC(L);
     }
-    else {  /* string already present */
-        ts = tsvalue(keyfromval(o));  /* re-use value previously stored */
-    }
+    //else {  /* string already present */
+    //    ts = tsvalue(keyfromval(o));  /* re-use value previously stored */
+    //}
     L->top--;  /* remove string from stack */
     return ts;
 }

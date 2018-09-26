@@ -232,29 +232,29 @@ LUA_API const char *lua_setlocal(lua_State *L, const lua_Debug *ar, int n) {
 
 
 static void funcinfo(lua_Debug *ar, Closure *cl) {
-    if (noLuaClosure(cl)) {
+    /*if (noLuaClosure(cl)) {
         ar->source = "=[C]";
         ar->linedefined = -1;
         ar->lastlinedefined = -1;
         ar->what = "C";
     }
-    else {
+    else {*/
 		uvm_types::GcProto *p = cl->l.p;
         ar->source = p->source ? getstr(p->source) : "=?";
         ar->linedefined = p->linedefined;
         ar->lastlinedefined = p->lastlinedefined;
         ar->what = (ar->linedefined == 0) ? "main" : "Lua";
-    }
+    //}
     luaO_chunkid(ar->short_src, ar->source, LUA_IDSIZE);
 }
 
 
 static void collectvalidlines(lua_State *L, Closure *f) {
-    if (noLuaClosure(f)) {
+    /*if (noLuaClosure(f)) {
         setnilvalue(L->top);
         api_incr_top(L);
     }
-    else {
+    else {*/
         int i;
         TValue v;
         int *lineinfo = f->l.p->lineinfos.empty() ? nullptr : f->l.p->lineinfos.data();
@@ -264,7 +264,7 @@ static void collectvalidlines(lua_State *L, Closure *f) {
         setbvalue(&v, 1);  /* boolean 'true' to be the value of all indices */
         for (i = 0; i < f->l.p->lineinfos.size(); i++)  /* for all lines with code */
             luaH_setint(L, t, lineinfo[i], &v);  /* table[line] = true */
-    }
+    //}
 }
 
 
@@ -282,15 +282,15 @@ static int auxgetinfo(lua_State *L, const char *what, lua_Debug *ar,
             break;
         }
         case 'u': {
-            ar->nups = (f == nullptr) ? 0 : f->c.nupvalues;
-            if (noLuaClosure(f)) {
+			ar->nups = 0; //ar->nups = (f == nullptr) ? 0 : f->c.nupvalues;
+            /*if (noLuaClosure(f)) {
                 ar->isvararg = 1;
                 ar->nparams = 0;
             }
-            else {
+            else {*/
                 ar->isvararg = f->l.p->is_vararg;
                 ar->nparams = f->l.p->numparams;
-            }
+            //}
             break;
         }
         case 't': {

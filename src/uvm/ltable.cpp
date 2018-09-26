@@ -77,17 +77,6 @@
 #define hashpointer(t,p)	hashmod(t, point2uint(p))
 
 
-#define dummynode		(&dummynode_)
-
-#define isdummy(n)		((n) == dummynode)
-
-// һȫֵֻĿtable
-static const Node dummynode_ = {
-    { NILCONSTANT },  /* value */
-    { { NILCONSTANT, 0 } }  /* key */
-};
-
-
 /*
 ** Hash for floating-point numbers.
 ** The main computation should be just
@@ -117,34 +106,6 @@ static int l_hashfloat(lua_Number n) {
 }
 #endif
 
-
-/*
-** returns the 'main' position of an element in a table (that is, the index
-** of its hash value)
-*/
-static Node *mainposition(const Table *t, const TValue *key) {
-    switch (ttype(key)) {
-    case LUA_TNUMINT:
-        return hashint(t, ivalue(key));
-    case LUA_TNUMFLT:
-        return hashmod(t, l_hashfloat(fltvalue(key)));
-    case LUA_TSHRSTR:
-        return hashstr(t, tsvalue(key));
-    case LUA_TLNGSTR:
-        return hashpow2(t, luaS_hashlongstr(tsvalue(key)));
-    case LUA_TBOOLEAN:
-        return hashboolean(t, bvalue(key));
-    case LUA_TLIGHTUSERDATA:
-        return hashpointer(t, pvalue(key));
-    case LUA_TLCF:
-        return hashpointer(t, fvalue(key));
-    default:
-        lua_assert(!ttisdeadkey(key));
-        return hashpointer(t, gcvalue(key));
-    }
-}
-
-
 /*
 ** returns the index for 'key' if 'key' is an appropriate key to live in
 ** the array part of the table, 0 otherwise.
@@ -156,39 +117,6 @@ static unsigned int arrayindex(const TValue *key) {
             return lua_cast(unsigned int, k);  /* 'key' is an appropriate array index */
     }
     return 0;  /* 'key' did not match some condition */
-}
-
-
-/*
-** TODO keyȻٱ
-** returns the index of a 'key' for table traversals. First goes all
-** elements in the array part, then elements in the hash part. The
-** beginning of a traversal is signaled by 0.
-*/
-static unsigned int findindex(lua_State *L, Table *t, StkId key) {
-    unsigned int i;
-    if (ttisnil(key)) return 0;  /* first iteration */
-    i = arrayindex(key);
-    if (i != 0 && i <= t->sizearray)  /* is 'key' inside array part? */
-        return i;  /* yes; that's the index */
-    else {
-        int nx;
-        Node *n = mainposition(t, key);
-        for (;;) {  /* check whether 'key' is somewhere in the chain */
-            /* key may be dead already, but it is ok to use it in 'next' */
-            if (luaV_rawequalobj(gkey(n), key) ||
-                (ttisdeadkey(gkey(n)) && iscollectable(key) &&
-                deadvalue(gkey(n)) == gcvalue(key))) {
-                i = cast_int(n - gnode(t, 0));  /* key index in hash table */
-                /* hash elements are numbered after array ones */
-                return (i + 1) + t->sizearray;
-            }
-            nx = gnext(n);
-            if (nx == 0)
-                luaG_runerror(L, "invalid key to 'next'");  /* key not found */
-            else n += nx;
-        }
-    }
 }
 
 static std::string lua_value_to_str(const TValue *key)
@@ -208,20 +136,6 @@ static std::string lua_value_to_str(const TValue *key)
 	else
 		return "";
 }
-
-// ȡluaTable*еĹϣеkey=>indexӳ䣬index0ʼ
-static std::map<std::string, int, lua_table_less> lua_table_hash_part_and_index_part(lua_State *L, Table *t)
-{
-	std::map<std::string, int, lua_table_less> keys;
-	for (auto i =0; cast_int(i) < sizenode(t); i++) {  // hash part
-		auto keynode = gkey(gnode(t, i));
-		auto keystr = lua_value_to_str(keynode);
-		if (keystr.length() > 0)
-			keys[keystr] = i;
-	}
-	return keys;
-}
-
 
 
 static bool val_to_table_key(const TValue* key, std::string& out) {
@@ -353,62 +267,6 @@ static int countint(const TValue *key, unsigned int *nums) {
         return 0;
 }
 
-
-/*
-** Count keys in array part of table 't': Fill 'nums[i]' with
-** number of keys that will go into corresponding slice and return
-** total number of non-nil keys.
-*/
-static unsigned int numusearray(const Table *t, unsigned int *nums) {
-    int lg;
-    unsigned int ttlg;  /* 2^lg */
-    unsigned int ause = 0;  /* summation of 'nums' */
-    unsigned int i = 1;  /* count to traverse all array keys */
-    /* traverse each slice */
-    for (lg = 0, ttlg = 1; lg <= MAXABITS; lg++, ttlg *= 2) {
-        unsigned int lc = 0;  /* counter */
-        unsigned int lim = ttlg;
-        if (lim > t->sizearray) {
-            lim = t->sizearray;  /* adjust upper limit */
-            if (i > lim)
-                break;  /* no more elements to count */
-        }
-        /* count elements in range (2^(lg - 1), 2^lg] */
-        for (; i <= lim; i++) {
-            if (!ttisnil(&t->array[i - 1]))
-                lc++;
-        }
-        nums[lg] += lc;
-        ause += lc;
-    }
-    return ause;
-}
-
-
-static int numusehash(const Table *t, unsigned int *nums, unsigned int *pna) {
-    int totaluse = 0;  /* total number of elements */
-    int ause = 0;  /* elements added to 'nums' (can go to array part) */
-    int i = sizenode(t);
-    while (i--) {
-        Node *n = &t->node[i];
-        if (!ttisnil(gval(n))) {
-            ause += countint(gkey(n), nums);
-            totaluse++;
-        }
-    }
-    *pna += ause;
-    return totaluse;
-}
-
-
-static void setarrayvector(lua_State *L, Table *t, unsigned int size) {
-    unsigned int i;
-    luaM_reallocvector(L, t->array, t->sizearray, size, TValue);
-    for (i = t->sizearray; i < size; i++)
-        setnilvalue(&t->array[i]);
-    t->sizearray = size;
-}
-
 void luaH_resize(lua_State *L, uvm_types::GcTable *t, unsigned int nasize,
     unsigned int nhsize) {
     unsigned int i;
@@ -457,7 +315,6 @@ void luaH_free(lua_State *L, uvm_types::GcTable *t) {
 ** position), new key goes to an empty position.
 */
 TValue *luaH_newkey(lua_State *L, uvm_types::GcTable *t, const TValue *key) {
-    Node *mp;
     TValue aux;
     if (ttisnil(key)) luaG_runerror(L, "table index is nil");
     else if (ttisfloat(key)) {

@@ -56,13 +56,6 @@ struct lua_longjmp;  /* defined in ldo.c */
 #define KGC_EMERGENCY	1	/* gc was forced by an allocation failure */
 
 
-typedef struct stringtable {
-    TString **hash;
-    int nuse;  /* number of elements */
-    int size;
-} stringtable;
-
-
 /*
 ** Information about a call.
 ** When a thread yields, 'func' is adjusted to pretend that the
@@ -183,7 +176,7 @@ struct lua_State {
 	void *ud;         /* auxiliary data to 'frealloc' */
 	TValue l_registry;
 	unsigned int seed;  /* randomized seed for hashes */
-	stringtable strt;  /* hash table for strings */
+	//stringtable strt;  /* hash table for strings */
 
 	const lua_Number *version;  /* pointer to version number */
 	uvm_types::GcString *memerrmsg;  /* memory-error message */
@@ -214,10 +207,9 @@ void lua_free(lua_State *L, void *address);
 */
 union GCUnion {
     GCObject gc;  /* common header */
-    struct TString ts;
+    // struct TString ts;
     struct Udata u;
     union Closure cl;
-    struct Table h;
     struct Proto p;
     struct lua_State th;  /* thread */
 };

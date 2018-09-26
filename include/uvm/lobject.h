@@ -308,33 +308,6 @@ typedef struct lua_TValue {
 
 typedef TValue *StkId;  /* index to stack elements */
 
-
-
-
-/*
-** Header for string value; string bytes follow the end of this structure
-** (aligned according to 'UTString'; see next).
-*/
-typedef struct TString {
-    CommonHeader;
-    lu_byte extra;  /* reserved words for short strings; "has hash" for longs */
-    lu_byte shrlen;  /* length for short strings */
-    unsigned int hash;
-    union {
-        size_t lnglen;  /* length for long strings */
-        struct TString *hnext;  /* linked list for hash table */
-    } u;
-} TString;
-
-
-/*
-** Ensures that address after this type is always fully aligned.
-*/
-typedef union UTString {
-    L_Umaxalign dummy;  /* ensures maximum alignment for strings */
-    TString tsv;
-} UTString;
-
 namespace uvm_types {
 	struct GcString;
 	struct GcProto;
@@ -463,12 +436,6 @@ typedef struct UpVal UpVal;
 #define ClosureHeader \
 	CommonHeader; lu_byte nupvalues; GCObject *gclist
 
-typedef struct CClosure {
-    ClosureHeader;
-    lua_CFunction f;
-    TValue upvalue[1];  /* list of upvalues */
-} CClosure;
-
 typedef struct LClosure {
     ClosureHeader;
     uvm_types::GcProto *p;
@@ -477,7 +444,6 @@ typedef struct LClosure {
 
 
 typedef union Closure {
-    CClosure c;
     LClosure l;
 } Closure;
 
@@ -485,47 +451,6 @@ typedef union Closure {
 #define isLfunction(o)	ttisLclosure(o)
 
 #define getproto(o)	(clLvalue(o)->p)
-
-
-/*
-** Tables
-*/
-
-typedef union TKey {
-    struct {
-        TValuefields;
-        int next;  /* for chaining (offset for next node) */
-    } nk;
-    TValue tvk;
-} TKey;
-
-
-/* copy a value into a key without messing up field 'next' */
-#define setnodekey(L,key,obj) \
-	{ TKey *k_=(key); const TValue *io_=(obj); \
-	  k_->nk.value_ = io_->value_; k_->nk.tt_ = io_->tt_; \
-	  (void)L; checkliveness(L,io_); }
-
-
-typedef struct Node {
-    TValue i_val;
-    TKey i_key;
-} Node;
-
-
-typedef struct Table {
-    CommonHeader;
-    lu_byte flags;  /* 1<<p means tagmethod(p) is not present */
-    lu_byte lsizenode;  // log2 of size of 'node' arrayϣֵĴС2^lsizenode
-    unsigned int sizearray;  // size of 'array' arrayֵĴС
-    TValue *array;  // 
-    Node *node; // ϣ
-    Node *lastfree;  /* any free position is before this position */
-    struct Table *metatable;
-    GCObject *gclist;
-} Table;
-
-
 
 /*
 ** 'module' operation for hashing (size is always a power of 2)
@@ -681,8 +606,7 @@ namespace uvm_types {
 		{ }
 		virtual ~GcProto() {}
 	};
-	// TODO: upval, lclosure, Contract
-	// TODO: remove unused types, String, Key, Node, Table, CClosure, etc.
+	// TODO: lclosure, Contract
 
 }
 

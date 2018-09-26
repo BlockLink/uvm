@@ -108,7 +108,7 @@ void luaC_barrier_(lua_State *L, GCObject *o, GCObject *v) {
 ** barrier that moves collector backward, that is, mark the black object
 ** pointing to a white object as gray again.
 */
-void luaC_barrierback_(lua_State *L, Table *t) {
+void luaC_barrierback_(lua_State *L, uvm_types::GcTable *t) {
 
 }
 
@@ -158,21 +158,7 @@ static void freeobj(lua_State *L, GCObject *o) {
         freeLclosure(L, gco2lcl(o));
         break;
     }
-    case LUA_TCCL: {
-        luaM_freemem(L, o, sizeCclosure(gco2ccl(o)->nupvalues));
-        break;
-    }
-    case LUA_TTABLE: luaH_free(L, gco2t(o)); break;
     case LUA_TTHREAD: luaE_freethread(L, gco2th(o)); break;
-    case LUA_TUSERDATA: luaM_freemem(L, o, sizeudata(gco2u(o))); break;
-    case LUA_TSHRSTR:
-        luaS_remove(L, gco2ts(o));  /* remove it from hash table */
-        luaM_freemem(L, o, sizelstring(gco2ts(o)->value.size()));
-        break;
-    case LUA_TLNGSTR: {
-        luaM_freemem(L, o, sizelstring(gco2ts(o)->value.size()));
-        break;
-    }
     default: lua_assert(0);
     }
 }

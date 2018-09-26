@@ -61,37 +61,6 @@ unsigned int luaS_hashlongstr(uvm_types::GcString *ts) {
 
 
 /*
-** resizes the string table
-*/
-void luaS_resize(lua_State *L, int newsize) {
-    int i;
-    stringtable *tb = &L->strt;
-    if (newsize > tb->size) {  /* grow table if needed */
-        luaM_reallocvector(L, tb->hash, tb->size, newsize, TString *);
-        for (i = tb->size; i < newsize; i++)
-            tb->hash[i] = nullptr;
-    }
-    for (i = 0; i < tb->size; i++) {  /* rehash */
-        TString *p = tb->hash[i];
-        tb->hash[i] = nullptr;
-        while (p) {  /* for each node in the list */
-            TString *hnext = p->u.hnext;  /* save next */
-            unsigned int h = lmod(p->hash, newsize);  /* new position */
-            p->u.hnext = tb->hash[h];  /* chain it */
-            tb->hash[h] = p;
-            p = hnext;
-        }
-    }
-    if (newsize < tb->size) {  /* shrink table if needed */
-        /* vanishing slice should be empty */
-        lua_assert(tb->hash[newsize] == nullptr && tb->hash[tb->size - 1] == nullptr);
-        luaM_reallocvector(L, tb->hash, tb->size, newsize, TString *);
-    }
-    tb->size = newsize;
-}
-
-
-/*
 ** Clear API string cache. (Entries cannot be empty, so fill them with
 ** a non-collectable string.)
 */
@@ -105,7 +74,7 @@ void luaS_clearcache(lua_State *L) {
 */
 void luaS_init(lua_State *L) {
     int i, j;
-    luaS_resize(L, MINSTRTABSIZE);  /* initial size of string table */
+    // luaS_resize(L, MINSTRTABSIZE);  /* initial size of string table */
     /* pre-create memory-error message */
     L->memerrmsg = luaS_newliteral(L, MEMERRMSG);
     luaC_fix(L, obj2gco(L->memerrmsg));  /* it should never be collected */
@@ -121,8 +90,6 @@ void luaS_init(lua_State *L) {
 */
 static uvm_types::GcString *createstrobj(lua_State *L, size_t l, int tag, unsigned int h) {
 	uvm_types::GcString *ts;
-    size_t totalsize;  /* total size of TString object */
-    totalsize = sizelstring(l);
     auto o =  L->gc_state->gc_new_object<uvm_types::GcString>();
 	o->value.resize(l);
 	ts = o;

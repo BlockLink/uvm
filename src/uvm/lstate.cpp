@@ -237,7 +237,7 @@ static void close_state(lua_State *L) {
     luaC_freeallobjects(L);  /* collect all objects */
     if (L->version)  /* closing a fully built state? */
         luai_userstateclose(L);
-    luaM_freearray(L, L->strt.hash, L->strt.size);
+    //luaM_freearray(L, L->strt.hash, L->strt.size);
     freestack(L);
 	if (L->gc_state) {
 		delete L->gc_state;
@@ -310,8 +310,8 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
 	L->ud = ud ? ud : gc_state;
 	L->seed = 1; // makeseed(L);
 	setnilvalue(&L->l_registry);
-	L->strt.size = L->strt.nuse = 0;
-	L->strt.hash = nullptr;
+	//L->strt.size = L->strt.nuse = 0;
+	//L->strt.hash = nullptr;
 
 	L->panic = nullptr;
     preinit_thread(L);

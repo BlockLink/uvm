@@ -12,8 +12,6 @@
 #include "uvm/lstate.h"
 
 
-#define sizelstring(l)  (sizeof(union UTString) + ((l) + 1) * sizeof(char))
-
 #define sizeludata(l)	(sizeof(union UUdata) + (l))
 #define sizeudata(u)	sizeludata((u)->len)
 
@@ -36,7 +34,6 @@
 LUAI_FUNC unsigned int luaS_hash(const char *str, size_t l, unsigned int seed);
 LUAI_FUNC unsigned int luaS_hashlongstr(uvm_types::GcString *ts);
 LUAI_FUNC int luaS_eqlngstr(uvm_types::GcString *a, uvm_types::GcString *b);
-LUAI_FUNC void luaS_resize(lua_State *L, int newsize);
 LUAI_FUNC void luaS_clearcache(lua_State *L);
 LUAI_FUNC void luaS_init(lua_State *L);
 LUAI_FUNC void luaS_remove(lua_State *L, uvm_types::GcString *ts);
