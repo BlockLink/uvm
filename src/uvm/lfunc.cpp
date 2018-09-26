@@ -22,15 +22,16 @@
 
 
 
-CClosure *luaF_newCclosure(lua_State *L, int n) {
-    GCObject *o = luaC_newobj(L, LUA_TCCL, sizeCclosure(n));
-    CClosure *c = gco2ccl(o);
-    c->nupvalues = cast_byte(n);
-    return c;
+uvm_types::GcCClosure *luaF_newCclosure(lua_State *L, int n) {
+	uvm_types::GcCClosure* o = L->gc_state->gc_new_object<uvm_types::GcCClosure>();
+	o->nupvalues = n;
+	o->upvalue.resize(n);
+    return o;
 }
 
 
 LClosure *luaF_newLclosure(lua_State *L, int n) {
+	// TODO
     GCObject *o = luaC_newobj(L, LUA_TLCL, sizeLclosure(n));
     LClosure *c = gco2lcl(o);
     c->p = nullptr;

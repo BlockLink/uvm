@@ -180,7 +180,7 @@ typedef struct lua_TValue {
 #define uvalue(o)	check_exp(ttisfulluserdata(o), gco2u(val_(o).gco))
 #define clvalue(o)	check_exp(ttisclosure(o), gco2cl(val_(o).gc))
 #define clLvalue(o)	check_exp(ttisLclosure(o), gco2lcl(val_(o).gc))
-#define clCvalue(o)	check_exp(ttisCclosure(o), gco2ccl(val_(o).gc))
+#define clCvalue(o)	check_exp(ttisCclosure(o), gco2ccl(val_(o).gco))
 #define fvalue(o)	check_exp(ttislcf(o), val_(o).f)
 #define hvalue(o)	check_exp(ttistable(o), gco2t(val_(o).gco))
 #define bvalue(o)	check_exp(ttisboolean(o), val_(o).b)
@@ -258,8 +258,8 @@ typedef struct lua_TValue {
     checkliveness(L,io); }
 
 #define setclCvalue(L,obj,x) \
-  { TValue *io = (obj); CClosure *x_ = (x); \
-    val_(io).gc = obj2gco(x_); settt_(io, ctb(LUA_TCCL)); \
+  { TValue *io = (obj); uvm_types::GcCClosure *x_ = (x); \
+    val_(io).gco = (x_); settt_(io, ctb(LUA_TCCL)); \
     checkliveness(L,io); }
 
 #define sethvalue(L,obj,x) \
@@ -600,27 +600,39 @@ namespace uvm_types {
 
 		virtual ~GcUserdata() {}
 	};
-	struct GcLClosure : vmgc::GcObject
+	struct GcClosure : vmgc::GcObject 
 	{
+		virtual ~GcClosure() {}
+	};
+	struct GcLClosure : GcClosure
+	{   // TODO: use this
 		const static vmgc::gc_type type = LUA_TLCL;
+		lu_byte nupvalues;
 		int tt_ = LUA_TLCL;
-		void* value = nullptr;
+		struct Proto *p;
+		std::vector<UpVal*> upvals;
+
+		inline GcLClosure() : nupvalues(0), tt_(LUA_TLCL), p(nullptr) {}
 
 		virtual ~GcLClosure() {}
 	};
-	struct GcLightCClosure : vmgc::GcObject
-	{
+	struct GcLightCClosure : GcClosure
+	{   // TODO: use this
 		const static vmgc::gc_type type = LUA_TLCF;
 		int tt_ = LUA_TLCF;
 		void* value = nullptr;
 
 		virtual ~GcLightCClosure() {}
 	};
-	struct GcCClosure : vmgc::GcObject
+	struct GcCClosure : GcClosure
 	{
 		const static vmgc::gc_type type = LUA_TCCL;
+		lu_byte nupvalues;
 		int tt_ = LUA_TCCL;
-		void* value = nullptr;
+		lua_CFunction f;
+		std::vector<TValue> upvalue;
+
+		inline GcCClosure() : nupvalues(0), tt_(LUA_TCCL), f(nullptr) {}
 
 		virtual ~GcCClosure() {}
 	};
@@ -642,7 +654,7 @@ namespace uvm_types {
 		inline GcTable() : sizearray(0), metatable(nullptr), flag(0) { }
 		virtual ~GcTable() {}
 	};
-	// TODO: upval, cclosure, lclosure, proto, Contract
+	// TODO: upval, lclosure, proto, Contract
 
 }
 

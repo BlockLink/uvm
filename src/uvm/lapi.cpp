@@ -81,7 +81,7 @@ static TValue *index2addr(lua_State *L, int idx) {
         if (ttislcf(ci->func))  /* light C function? */
             return NONVALIDVALUE;  /* it has no upvalues */
         else {
-            CClosure *func = clCvalue(ci->func);
+            uvm_types::GcCClosure *func = clCvalue(ci->func);
             return (idx <= func->nupvalues) ? &func->upvalue[idx - 1] : NONVALIDVALUE;
         }
     }
@@ -229,8 +229,6 @@ LUA_API void lua_copy(lua_State *L, int fromidx, int toidx) {
     to = index2addr(L, toidx);
     api_checkvalidindex(L, to);
     setobj(L, to, fr);
-    if (isupvalue(toidx))  /* function upvalue? */
-        luaC_barrier(L, clCvalue(L->ci->func), fr);
     /* LUA_REGISTRYINDEX does not need gc barrier
        (collector revisits it before finishing collection) */
     lua_unlock(L);
@@ -538,7 +536,7 @@ LUA_API void lua_pushcclosure(lua_State *L, lua_CFunction fn, int n) {
         setfvalue(L->top, fn);
     }
     else {
-        CClosure *cl;
+        uvm_types::GcCClosure *cl;
         api_checknelems(L, n);
         api_check(L, n <= MAXUPVAL, "upvalue index too large");
         luaC_checkGC(L);
@@ -1174,10 +1172,10 @@ LUA_API void *lua_newuserdata(lua_State *L, size_t size) {
 
 
 static const char *aux_upvalue(StkId fi, int n, TValue **val,
-    CClosure **owner, UpVal **uv) {
+    uvm_types::GcCClosure **owner, UpVal **uv) {
     switch (ttype(fi)) {
     case LUA_TCCL: {  /* C closure */
-        CClosure *f = clCvalue(fi);
+        auto *f = clCvalue(fi);
         if (!(1 <= n && n <= f->nupvalues)) return nullptr;
         *val = &f->upvalue[n - 1];
         if (owner) *owner = f;
@@ -1215,7 +1213,7 @@ LUA_API const char *lua_getupvalue(lua_State *L, int funcindex, int n) {
 LUA_API const char *lua_setupvalue(lua_State *L, int funcindex, int n) {
     const char *name;
     TValue *val = nullptr;  /* to avoid warnings */
-    CClosure *owner = nullptr;
+    uvm_types::GcCClosure *owner = nullptr;
     UpVal *uv = nullptr;
     StkId fi;
     lua_lock(L);
@@ -1225,8 +1223,6 @@ LUA_API const char *lua_setupvalue(lua_State *L, int funcindex, int n) {
     if (name) {
         L->top--;
         setobj(L, val, L->top);
-        if (owner) { luaC_barrier(L, owner, L->top); }
-        else if (uv) { luaC_upvalbarrier(L, uv); }
     }
     lua_unlock(L);
     return name;
@@ -1251,7 +1247,7 @@ LUA_API void *lua_upvalueid(lua_State *L, int fidx, int n) {
         return *getupvalref(L, fidx, n, nullptr);
     }
     case LUA_TCCL: {  /* C closure */
-        CClosure *f = clCvalue(fi);
+        auto *f = clCvalue(fi);
         api_check(L, 1 <= n && n <= f->nupvalues, "invalid upvalue index");
         return &f->upvalue[n - 1];
     }
