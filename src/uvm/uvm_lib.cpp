@@ -469,7 +469,7 @@ namespace uvm
                 CallInfo *oci = ci->previous;
 				uvm_types::GcProto *np = getproto(ci->func);
 				uvm_types::GcProto *p = getproto(oci->func);
-                LClosure *ocl = clLvalue(oci->func);
+				uvm_types::GcLClosure *ocl = clLvalue(oci->func);
                 int real_localvars_count = (int)(ci->func - oci->func - 1);
                 int linedefined = p->linedefined;
                 L->ci = oci;
@@ -1423,7 +1423,7 @@ end
                 return stream->buff.data();
             }
 
-            LClosure* luaU_undump_from_file(lua_State *L, const char *binary_filename, const char* name)
+			uvm_types::GcLClosure* luaU_undump_from_file(lua_State *L, const char *binary_filename, const char* name)
             {
                 ZIO z;
                 FILE *f = fopen(binary_filename, "rb");
@@ -1442,7 +1442,7 @@ end
                 stream->is_bytes = true;
                 luaZ_init(L, &z, reader_of_stream, (void*)stream.get());
                 luaZ_fill(&z);
-                LClosure *closure = luaU_undump(L, &z, name);
+				uvm_types::GcLClosure *closure = luaU_undump(L, &z, name);
 				if (!closure)
 					return nullptr;
                 fclose(f);
@@ -1454,7 +1454,7 @@ end
 				delete stream;
             }
 
-            LClosure *luaU_undump_from_stream(lua_State *L, UvmModuleByteStream *stream, const char *name)
+			uvm_types::GcLClosure *luaU_undump_from_stream(lua_State *L, UvmModuleByteStream *stream, const char *name)
             {
                 ZIO z;
                 luaZ_init(L, &z, reader_of_stream, (void*) stream);
@@ -1782,7 +1782,7 @@ end
 
             bool check_contract_bytecode_file(lua_State *L, const char *binary_filename)
             {
-                LClosure *closure = luaU_undump_from_file(L, binary_filename, "check_contract");
+				uvm_types::GcLClosure *closure = luaU_undump_from_file(L, binary_filename, "check_contract");
                 if (!closure)
                     return false;
                 return check_contract_proto(L, closure->p);
@@ -1790,7 +1790,7 @@ end
 
             bool check_contract_bytecode_stream(lua_State *L, UvmModuleByteStream *stream, char *error)
             {
-                LClosure *closure = luaU_undump_from_stream(L, stream, "check_contract");
+				uvm_types::GcLClosure *closure = luaU_undump_from_stream(L, stream, "check_contract");
                 if (!closure)
                     return false;
                 return check_contract_proto(L, closure->p, error);

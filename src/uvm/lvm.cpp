@@ -655,8 +655,8 @@ lua_Integer luaV_shiftl(lua_Integer x, lua_Integer y) {
 ** whether there is a cached closure with the same upvalues needed by
 ** new closure to be created.
 */
-static LClosure *getcached(uvm_types::GcProto *p, UpVal **encup, StkId base) {
-    LClosure *c = p->cache;
+static uvm_types::GcLClosure *getcached(uvm_types::GcProto *p, UpVal **encup, StkId base) {
+	uvm_types::GcLClosure *c = p->cache;
     if (c != nullptr) {  /* is there a cached closure? */
         int nup = p->upvalues.size();
         Upvaldesc *uv = p->upvalues.empty() ? nullptr : p->upvalues.data();
@@ -682,7 +682,7 @@ static void pushclosure(lua_State *L, uvm_types::GcProto *p, UpVal **encup, int 
     int nup = p->upvalues.size();
     Upvaldesc *uv = p->upvalues.empty() ? nullptr : p->upvalues.data();
     int i;
-    LClosure *ncl = luaF_newLclosure(L, nup);
+	uvm_types::GcLClosure *ncl = luaF_newLclosure(L, nup);
     ncl->p = p;
     setclLvalue(L, ra, ncl);  /* anchor new closure in stack */
     for (i = 0; i < nup; i++) {  /* fill in its upvalues */
@@ -861,7 +861,7 @@ void luaV_execute(lua_State *L)
     if (L->force_stopping)
         return;
     CallInfo *ci = L->ci;
-    LClosure *cl;
+	uvm_types::GcLClosure *cl;
     TValue *k;
     StkId base;
     ci->callstatus |= CIST_FRESH;  /* fresh invocation of 'luaV_execute" */
@@ -1513,11 +1513,12 @@ newframe:  /* reentry point when frame changes (call/return) */
                 auto p_index = GETARG_Bx(i);
                 lua_check_in_vm_error(p_index < cl->p->ps.size(), "too large sub proto index");
 				uvm_types::GcProto *p = cl->p->ps[p_index];
-                LClosure *ncl = getcached(p, cl->upvals, base);  /* cached closure */
-                if (ncl == nullptr)  /* no match? */
-                    pushclosure(L, p, cl->upvals, cl->nupvalues, base, ra);  /* create a new one */
-                else
-                    setclLvalue(L, ra, ncl);  /* push cashed closure */
+				uvm_types::GcLClosure *ncl = getcached(p, cl->upvals.empty() ? nullptr : cl->upvals.data(), base);  /* cached closure */
+				if (ncl == nullptr) {  /* no match? */
+					pushclosure(L, p, cl->upvals.data(), cl->nupvalues, base, ra);  /* create a new one */
+				} else {
+					setclLvalue(L, ra, ncl);  /* push cashed closure */
+				}
                 checkGC(L, ra + 1);
                 vmbreak;
             }

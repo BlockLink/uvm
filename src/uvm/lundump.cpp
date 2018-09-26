@@ -314,9 +314,9 @@ static void checkHeader(LoadState *S) {
 /*
 ** load precompiled chunk
 */
-LClosure *luaU_undump(lua_State *L, ZIO *Z, const char *name) {
+uvm_types::GcLClosure *luaU_undump(lua_State *L, ZIO *Z, const char *name) {
     LoadState S;
-    LClosure *cl;
+    uvm_types::GcLClosure *cl;
     if (*name == '@' || *name == '=')
         S.name = name + 1;
     else if (*name == LUA_SIGNATURE[0])

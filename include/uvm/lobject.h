@@ -178,8 +178,8 @@ typedef struct lua_TValue {
 #define pvalue(o)	check_exp(ttislightuserdata(o), val_(o).p)
 #define tsvalue(o)	check_exp(ttisstring(o), gco2ts(val_(o).gco))
 #define uvalue(o)	check_exp(ttisfulluserdata(o), gco2u(val_(o).gco))
-#define clvalue(o)	check_exp(ttisclosure(o), gco2cl(val_(o).gc))
-#define clLvalue(o)	check_exp(ttisLclosure(o), gco2lcl(val_(o).gc))
+#define clvalue(o)	check_exp(ttisclosure(o), gco2cl(val_(o).gco))
+#define clLvalue(o)	check_exp(ttisLclosure(o), gco2lcl(val_(o).gco))
 #define clCvalue(o)	check_exp(ttisCclosure(o), gco2ccl(val_(o).gco))
 #define fvalue(o)	check_exp(ttislcf(o), val_(o).f)
 #define hvalue(o)	check_exp(ttistable(o), gco2t(val_(o).gco))
@@ -253,8 +253,8 @@ typedef struct lua_TValue {
     checkliveness(L,io); }
 
 #define setclLvalue(L,obj,x) \
-  { TValue *io = (obj); LClosure *x_ = (x); \
-    val_(io).gc = obj2gco(x_); settt_(io, ctb(LUA_TLCL)); \
+  { TValue *io = (obj); uvm_types::GcLClosure *x_ = (x); \
+    val_(io).gco = x_; settt_(io, ctb(LUA_TLCL)); \
     checkliveness(L,io); }
 
 #define setclCvalue(L,obj,x) \
@@ -386,17 +386,6 @@ typedef struct UpVal UpVal;
 #define ClosureHeader \
 	CommonHeader; lu_byte nupvalues; GCObject *gclist
 
-typedef struct LClosure {
-    ClosureHeader;
-    uvm_types::GcProto *p;
-    UpVal *upvals[1];  /* list of upvalues */
-} LClosure;
-
-
-typedef union Closure {
-    LClosure l;
-} Closure;
-
 
 #define isLfunction(o)	ttisLclosure(o)
 
@@ -478,11 +467,14 @@ namespace uvm_types {
 	struct GcClosure : vmgc::GcObject 
 	{
 		virtual ~GcClosure() {}
+
+		virtual vmgc::gc_type tt() const = 0;
+		virtual lu_byte nupvalues_count() const = 0;
 	};
 	struct GcProto;
 
 	struct GcLClosure : GcClosure
-	{   // TODO: use this
+	{
 		const static vmgc::gc_type type = LUA_TLCL;
 		lu_byte nupvalues;
 		int tt_ = LUA_TLCL;
@@ -492,14 +484,8 @@ namespace uvm_types {
 		inline GcLClosure() : nupvalues(0), tt_(LUA_TLCL), p(nullptr) {}
 
 		virtual ~GcLClosure() {}
-	};
-	struct GcLightCClosure : GcClosure
-	{   // TODO: use this
-		const static vmgc::gc_type type = LUA_TLCF;
-		int tt_ = LUA_TLCF;
-		void* value = nullptr;
-
-		virtual ~GcLightCClosure() {}
+		inline virtual vmgc::gc_type tt() const { return tt_; }
+		inline virtual lu_byte nupvalues_count() const { return nupvalues; }
 	};
 	struct GcCClosure : GcClosure
 	{
@@ -512,6 +498,8 @@ namespace uvm_types {
 		inline GcCClosure() : nupvalues(0), tt_(LUA_TCCL), f(nullptr) {}
 
 		virtual ~GcCClosure() {}
+		inline virtual vmgc::gc_type tt() const { return tt_; }
+		inline virtual lu_byte nupvalues_count() const { return nupvalues; }
 	};
 	struct table_sort_comparator
 	{
@@ -548,15 +536,15 @@ namespace uvm_types {
 		std::vector<int> lineinfos;  /* map from opcodes to source lines (debug information) */
 		std::vector<LocVar> locvars;  /* information about local variables (debug information) */
 		std::vector<Upvaldesc> upvalues;  /* upvalue information */
-		struct LClosure *cache;  /* last-created closure with this prototype */ // TODO: use GcLClosure
-		uvm_types::GcString  *source;  /* used for debug information */
+		struct GcLClosure *cache;  /* last-created closure with this prototype */
+		GcString  *source;  /* used for debug information */
 
 		inline GcProto() : numparams(0), is_vararg(0), maxstacksize(0), linedefined(0)
 			, cache(nullptr), source(nullptr)
 		{ }
 		virtual ~GcProto() {}
 	};
-	// TODO: lclosure, Contract
+	// TODO: Contract
 
 }
 

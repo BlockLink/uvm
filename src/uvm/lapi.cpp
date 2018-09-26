@@ -1016,7 +1016,7 @@ LUA_API int lua_load(lua_State *L, lua_Reader reader, void *data,
     luaZ_init(L, &z, reader, data);
     status = luaD_protectedparser(L, &z, chunkname, mode);
     if (status == LUA_OK) {  /* no errors? */
-        LClosure *f = clLvalue(L->top - 1);  /* get newly created function */
+		uvm_types::GcLClosure *f = clLvalue(L->top - 1);  /* get newly created function */
         if (f->nupvalues >= 1) {  /* does it have an upvalue? */
             /* get global table from registry */
 			uvm_types::GcTable *reg = hvalue(&L->l_registry);
@@ -1039,7 +1039,7 @@ LUA_API int lua_load_with_check(lua_State *L, lua_Reader reader, void *data,
     luaZ_init(L, &z, reader, data);
     status = luaD_protectedparser(L, &z, chunkname, mode);
     if (status == LUA_OK) {  /* no errors? */
-        LClosure *f = clLvalue(L->top - 1);  /* get newly created function */
+		uvm_types::GcLClosure *f = clLvalue(L->top - 1);  /* get newly created function */
         if (f->nupvalues >= 1) {  /* does it have an upvalue? */
             /* get global table from registry */
 			uvm_types::GcTable *reg = hvalue(&L->l_registry);
@@ -1182,7 +1182,7 @@ static const char *aux_upvalue(StkId fi, int n, TValue **val,
         return "";
     }
     case LUA_TLCL: {  /* Lua closure */
-        LClosure *f = clLvalue(fi);
+		uvm_types::GcLClosure *f = clLvalue(fi);
 		uvm_types::GcString *name;
         uvm_types::GcProto *p = f->p;
         if (!(1 <= n && n <= p->upvalues.size())) return nullptr;
@@ -1229,12 +1229,12 @@ LUA_API const char *lua_setupvalue(lua_State *L, int funcindex, int n) {
 }
 
 
-static UpVal **getupvalref(lua_State *L, int fidx, int n, LClosure **pf) {
-    LClosure *f;
+static UpVal **getupvalref(lua_State *L, int fidx, int n, uvm_types::GcLClosure **pf) {
+	uvm_types::GcLClosure *f;
     StkId fi = index2addr(L, fidx);
     api_check(L, ttisLclosure(fi), "Lua function expected");
     f = clLvalue(fi);
-    api_check(L, (1 <= n && n <= f->p->sizeupvalues), "invalid upvalue index");
+    api_check(L, (1 <= n && n <= f->p->upvalues.size()), "invalid upvalue index");
     if (pf) *pf = f;
     return &f->upvals[n - 1];  /* get its upvalue pointer */
 }
@@ -1261,7 +1261,7 @@ LUA_API void *lua_upvalueid(lua_State *L, int fidx, int n) {
 
 LUA_API void lua_upvaluejoin(lua_State *L, int fidx1, int n1,
     int fidx2, int n2) {
-    LClosure *f1;
+	uvm_types::GcLClosure *f1;
     UpVal **up1 = getupvalref(L, fidx1, n1, &f1);
     UpVal **up2 = getupvalref(L, fidx2, n2, nullptr);
     luaC_upvdeccount(L, *up1);

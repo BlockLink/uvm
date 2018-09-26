@@ -113,7 +113,7 @@ typedef struct FuncState {
 } FuncState;
 
 
-LUAI_FUNC LClosure *luaY_parser(lua_State *L, ZIO *z, Mbuffer *buff,
+LUAI_FUNC uvm_types::GcLClosure *luaY_parser(lua_State *L, ZIO *z, Mbuffer *buff,
     Dyndata *dyd, const char *name, int firstchar);
 
 

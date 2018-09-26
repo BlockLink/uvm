@@ -467,7 +467,7 @@ static int searcher_uvm(lua_State *L) {
             }
         }
     } stream_scope(L, name, stream.get());
-    LClosure *closure = uvm::lua::lib::luaU_undump_from_stream(L, stream.get(), uvm::lua::lib::unwrap_any_contract_name(origin_contract_name).c_str());
+    uvm_types::GcLClosure *closure = uvm::lua::lib::luaU_undump_from_stream(L, stream.get(), uvm::lua::lib::unwrap_any_contract_name(origin_contract_name).c_str());
 	if (!closure)
 	{
 		return 1;

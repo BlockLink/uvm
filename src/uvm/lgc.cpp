@@ -141,23 +141,18 @@ GCObject *luaC_newobj(lua_State *L, int tt, size_t sz) {
 
 /* }====================================================== */
 
-static void freeLclosure(lua_State *L, LClosure *cl) {
+static void freeLclosure(lua_State *L, uvm_types::GcLClosure *cl) {
     int i;
     for (i = 0; i < cl->nupvalues; i++) {
         UpVal *uv = cl->upvals[i];
         if (uv)
             luaC_upvdeccount(L, uv);
     }
-    luaM_freemem(L, cl, sizeLclosure(cl->nupvalues));
 }
 
 
 static void freeobj(lua_State *L, GCObject *o) {
     switch (o->tt) {
-    case LUA_TLCL: {
-        freeLclosure(L, gco2lcl(o));
-        break;
-    }
     default: lua_assert(0);
     }
 }

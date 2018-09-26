@@ -407,12 +407,12 @@ namespace uvm
             /**
             * load one chunk from lua bytecode file
             */
-            LClosure* luaU_undump_from_file(lua_State *L, const char *binary_filename, const char* name);
+			uvm_types::GcLClosure* luaU_undump_from_file(lua_State *L, const char *binary_filename, const char* name);
 
             /**
              * load one chunk from lua bytecode stream
              */
-            LClosure *luaU_undump_from_stream(lua_State *L, UvmModuleByteStreamP stream, const char *name);
+            uvm_types::GcLClosure *luaU_undump_from_stream(lua_State *L, UvmModuleByteStreamP stream, const char *name);
 
             /**
              * secure apis

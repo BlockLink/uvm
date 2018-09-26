@@ -34,7 +34,7 @@ using uvm::lua::api::global_uvm_chain_api;
 
 
 
-#define noLuaClosure(f)		((f) == nullptr || (f)->c.tt == LUA_TCCL)
+#define noLuaClosure(f)		((f) == nullptr || (f)->tt() == LUA_TCCL)
 
 
 /* Active Lua function (given call info) */
@@ -231,45 +231,45 @@ LUA_API const char *lua_setlocal(lua_State *L, const lua_Debug *ar, int n) {
 }
 
 
-static void funcinfo(lua_Debug *ar, Closure *cl) {
-    /*if (noLuaClosure(cl)) {
+static void funcinfo(lua_Debug *ar, uvm_types::GcClosure *cl) {
+    if (noLuaClosure(cl)) {
         ar->source = "=[C]";
         ar->linedefined = -1;
         ar->lastlinedefined = -1;
         ar->what = "C";
     }
-    else {*/
-		uvm_types::GcProto *p = cl->l.p;
+    else {
+		uvm_types::GcProto *p = static_cast<uvm_types::GcLClosure*>(cl)->p;
         ar->source = p->source ? getstr(p->source) : "=?";
         ar->linedefined = p->linedefined;
         ar->lastlinedefined = p->lastlinedefined;
         ar->what = (ar->linedefined == 0) ? "main" : "Lua";
-    //}
+    }
     luaO_chunkid(ar->short_src, ar->source, LUA_IDSIZE);
 }
 
 
-static void collectvalidlines(lua_State *L, Closure *f) {
-    /*if (noLuaClosure(f)) {
+static void collectvalidlines(lua_State *L, uvm_types::GcClosure *f) {
+    if (noLuaClosure(f)) {
         setnilvalue(L->top);
         api_incr_top(L);
     }
-    else {*/
+    else {
         int i;
         TValue v;
-        int *lineinfo = f->l.p->lineinfos.empty() ? nullptr : f->l.p->lineinfos.data();
+        int *lineinfo = static_cast<uvm_types::GcLClosure*>(f)->p->lineinfos.empty() ? nullptr : static_cast<uvm_types::GcLClosure*>(f)->p->lineinfos.data();
         uvm_types::GcTable *t = luaH_new(L);  /* new table to store active lines */
         sethvalue(L, L->top, t);  /* push it on stack */
         api_incr_top(L);
         setbvalue(&v, 1);  /* boolean 'true' to be the value of all indices */
-        for (i = 0; i < f->l.p->lineinfos.size(); i++)  /* for all lines with code */
+        for (i = 0; i < static_cast<uvm_types::GcLClosure*>(f)->p->lineinfos.size(); i++)  /* for all lines with code */
             luaH_setint(L, t, lineinfo[i], &v);  /* table[line] = true */
-    //}
+    }
 }
 
 
 static int auxgetinfo(lua_State *L, const char *what, lua_Debug *ar,
-    Closure *f, CallInfo *ci) {
+	uvm_types::GcClosure *f, CallInfo *ci) {
     int status = 1;
     for (; *what; what++) {
         switch (*what) {
@@ -282,15 +282,15 @@ static int auxgetinfo(lua_State *L, const char *what, lua_Debug *ar,
             break;
         }
         case 'u': {
-			ar->nups = 0; //ar->nups = (f == nullptr) ? 0 : f->c.nupvalues;
-            /*if (noLuaClosure(f)) {
+			ar->nups = (f == nullptr) ? 0 : f->nupvalues_count();
+            if (noLuaClosure(f)) {
                 ar->isvararg = 1;
                 ar->nparams = 0;
             }
-            else {*/
-                ar->isvararg = f->l.p->is_vararg;
-                ar->nparams = f->l.p->numparams;
-            //}
+            else {
+                ar->isvararg = static_cast<uvm_types::GcLClosure*>(f)->p->is_vararg;
+                ar->nparams = static_cast<uvm_types::GcLClosure*>(f)->p->numparams;
+            }
             break;
         }
         case 't': {
@@ -321,7 +321,7 @@ static int auxgetinfo(lua_State *L, const char *what, lua_Debug *ar,
 
 LUA_API int lua_getinfo(lua_State *L, const char *what, lua_Debug *ar) {
     int status;
-    Closure *cl;
+    uvm_types::GcClosure *cl;
     CallInfo *ci;
     StkId func;
     lua_lock(L);
@@ -561,7 +561,7 @@ static int isinstack(CallInfo *ci, const TValue *o) {
 */
 static const char *getupvalname(CallInfo *ci, const TValue *o,
     const char **name) {
-    LClosure *c = ci_func(ci);
+	uvm_types::GcLClosure *c = ci_func(ci);
     int i;
     for (i = 0; i < c->nupvalues; i++) {
 		if (!c->upvals[i])

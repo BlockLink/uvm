@@ -1710,11 +1710,11 @@ static void mainfunc(LexState *ls, FuncState *fs) {
 }
 
 
-LClosure *luaY_parser(lua_State *L, ZIO *z, Mbuffer *buff,
+uvm_types::GcLClosure *luaY_parser(lua_State *L, ZIO *z, Mbuffer *buff,
     Dyndata *dyd, const char *name, int firstchar) {
     LexState lexstate;
     FuncState funcstate;
-    LClosure *cl = luaF_newLclosure(L, 1);  /* create main closure */
+	uvm_types::GcLClosure *cl = luaF_newLclosure(L, 1);  /* create main closure */
     setclLvalue(L, L->top, cl);  /* anchor it (to avoid being collected) */
     luaD_inctop(L);
     lexstate.h = luaH_new(L);  /* create table for scanner */

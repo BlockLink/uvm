@@ -30,10 +30,11 @@ uvm_types::GcCClosure *luaF_newCclosure(lua_State *L, int n) {
 }
 
 
-LClosure *luaF_newLclosure(lua_State *L, int n) {
-	// TODO
-    GCObject *o = luaC_newobj(L, LUA_TLCL, sizeLclosure(n));
-    LClosure *c = gco2lcl(o);
+uvm_types::GcLClosure *luaF_newLclosure(lua_State *L, int n) {
+	auto o = L->gc_state->gc_new_object<uvm_types::GcLClosure>();
+	o->nupvalues = n;
+	o->upvals.resize(n);
+	uvm_types::GcLClosure *c = gco2lcl(o);
     c->p = nullptr;
     c->nupvalues = cast_byte(n);
     while (n--) c->upvals[n] = nullptr;
@@ -43,7 +44,7 @@ LClosure *luaF_newLclosure(lua_State *L, int n) {
 /*
 ** fill a closure with new closed upvalues
 */
-void luaF_initupvals(lua_State *L, LClosure *cl) {
+void luaF_initupvals(lua_State *L, uvm_types::GcLClosure *cl) {
     int i;
     for (i = 0; i < cl->nupvalues; i++) {
         UpVal *uv = luaM_new(L, UpVal);

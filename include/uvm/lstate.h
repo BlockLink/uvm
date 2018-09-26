@@ -139,6 +139,7 @@ namespace uvm_types {
 */
 struct lua_State : vmgc::GcObject {
 	const static vmgc::gc_type type = LUA_TTHREAD;
+	int tt_ = LUA_TTHREAD;
 
     unsigned short nci;  /* number of items in 'ci' list */
     lu_byte status;
@@ -192,6 +193,7 @@ struct lua_State : vmgc::GcObject {
 	StkId evalstacktop;//first free slot
 	int evalstacksize;
 
+	inline lua_State() :tt_(LUA_TTHREAD) {}
 	virtual ~lua_State() {}
 };
 
@@ -210,7 +212,6 @@ void lua_free(lua_State *L, void *address);
 */
 union GCUnion {
     GCObject gc;  /* common header */
-    union Closure cl;
 };
 
 
@@ -220,12 +221,12 @@ union GCUnion {
 #define gco2ts(o)  \
 	check_exp(novariant((o)->tt) == LUA_TSTRING, (((uvm_types::GcString*)(o))))
 #define gco2u(o)  check_exp((o)->tt == LUA_TUSERDATA, (((uvm_types::GcUserdata*)(o))))
-#define gco2lcl(o)  check_exp((o)->tt == LUA_TLCL, &((cast_u(o))->cl.l))
+#define gco2lcl(o)  check_exp((o)->tt == LUA_TLCL, ((uvm_types::GcLClosure*)(o)))
 #define gco2ccl(o)  check_exp((o)->tt == LUA_TCCL, ((uvm_types::GcCClosure*)(o)))
 #define gco2cl(o)  \
-	check_exp(novariant((o)->tt) == LUA_TFUNCTION, &((cast_u(o))->cl))
+	check_exp(novariant((o)->tt) == LUA_TFUNCTION, ((uvm_types::GcClosure*)(o)))
 #define gco2t(o)  check_exp((o)->tt == LUA_TTABLE, (((uvm_types::GcTable*)(o))))
-#define gco2p(o)  check_exp((o)->tt == LUA_TPROTO, &((cast_u(o))->p))
+#define gco2p(o)  check_exp((o)->tt == LUA_TPROTO, (((uvm_types::GcProto*)(o))))
 #define gco2th(o)  check_exp((o)->tt == LUA_TTHREAD, ((lua_State*)(o)))
 
 

@@ -784,7 +784,7 @@ static void checkmode(lua_State *L, const char *mode, const char *x) {
 
 
 static void f_parser(lua_State *L, void *ud) {
-    LClosure *cl;
+	uvm_types::GcLClosure *cl;
     struct SParser *p = lua_cast(struct SParser *, ud);
     int c = zgetc(p->z);  /* read first character */
     if (c == LUA_SIGNATURE[0]) {
