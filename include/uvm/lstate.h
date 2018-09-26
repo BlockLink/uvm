@@ -137,8 +137,9 @@ namespace uvm_types {
 /*
 ** 'per thread' state
 */
-struct lua_State {
-    CommonHeader;
+struct lua_State : vmgc::GcObject {
+	const static vmgc::gc_type type = LUA_TTHREAD;
+
     unsigned short nci;  /* number of items in 'ci' list */
     lu_byte status;
     StkId top;  /* first free slot in the stack */
@@ -190,6 +191,8 @@ struct lua_State {
 	StkId evalstack; //for calulate
 	StkId evalstacktop;//first free slot
 	int evalstacksize;
+
+	virtual ~lua_State() {}
 };
 
 void *lua_malloc(lua_State *L, size_t size);
@@ -207,9 +210,7 @@ void lua_free(lua_State *L, void *address);
 */
 union GCUnion {
     GCObject gc;  /* common header */
-    // struct TString ts;
     union Closure cl;
-    struct lua_State th;  /* thread */
 };
 
 
@@ -225,7 +226,7 @@ union GCUnion {
 	check_exp(novariant((o)->tt) == LUA_TFUNCTION, &((cast_u(o))->cl))
 #define gco2t(o)  check_exp((o)->tt == LUA_TTABLE, (((uvm_types::GcTable*)(o))))
 #define gco2p(o)  check_exp((o)->tt == LUA_TPROTO, &((cast_u(o))->p))
-#define gco2th(o)  check_exp((o)->tt == LUA_TTHREAD, &((cast_u(o))->th))
+#define gco2th(o)  check_exp((o)->tt == LUA_TTHREAD, ((lua_State*)(o)))
 
 
 /* macro to convert a Lua object into a GCObject */
@@ -241,7 +242,6 @@ union GCUnion {
 #define gettotalbytes(g)	lua_cast(lu_mem, (g)->totalbytes + (g)->GCdebt)
 
 LUAI_FUNC void luaE_setdebt(l_mem debt);
-LUAI_FUNC void luaE_freethread(lua_State *L, lua_State *L1);
 LUAI_FUNC CallInfo *luaE_extendCI(lua_State *L);
 LUAI_FUNC void luaE_freeCI(lua_State *L);
 LUAI_FUNC void luaE_shrinkCI(lua_State *L);

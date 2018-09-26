@@ -246,43 +246,6 @@ static void close_state(lua_State *L) {
     // (*g->frealloc)(L->ud, fromstate(L), sizeof(LG), 0);  /* free main block */
 }
 
-
-// TODO: remove lua thread
-LUA_API lua_State *lua_newthread(lua_State *L) {
-    lua_State *L1;
-    lua_lock(L);
-    luaC_checkGC(L);
-    /* create new thread */
-    L1 = &lua_cast(LX *, luaM_newobject(L, LUA_TTHREAD, sizeof(LX)))->l;
-    L1->tt = LUA_TTHREAD;
-    /* anchor it on L stack */
-    setthvalue(L, L->top, L1);
-    api_incr_top(L);
-    preinit_thread(L1);
-    L1->hookmask = L->hookmask;
-    L1->basehookcount = L->basehookcount;
-    L1->hook = L->hook;
-    resethookcount(L1);
-    /* initialize L1 extra space */
-    /*memcpy(lua_getextraspace(L1), lua_getextraspace(g->mainthread),
-        LUA_EXTRASPACE);*/
-    luai_userstatethread(L, L1);
-    stack_init(L1, L);  /* init stack */
-    lua_unlock(L);
-    return L1;
-}
-
-
-void luaE_freethread(lua_State *L, lua_State *L1) {
-    LX *l = fromstate(L1);
-    luaF_close(L1, L1->stack);  /* close all upvalues for this thread */
-    lua_assert(L1->openupval == nullptr);
-    luai_userstatefree(L, L1);
-    freestack(L1);
-    luaM_free(L, l);
-}
-
-
 LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
     int i;
     lua_State *L;
@@ -291,8 +254,6 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
     LG *l = lua_cast(LG *, (*f)(ud ? ud : gc_state, nullptr, LUA_TTHREAD, sizeof(LG)));
     if (l == nullptr) return nullptr;
     L = &l->l.l;
-    L->next = nullptr;
-    L->tt = LUA_TTHREAD;
 	L->malloc_buffer = nullptr;// malloc(LUA_MALLOC_TOTAL_SIZE);
     L->malloc_pos = 0;
 	L->gc_state = gc_state;

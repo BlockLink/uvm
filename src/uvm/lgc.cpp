@@ -158,7 +158,6 @@ static void freeobj(lua_State *L, GCObject *o) {
         freeLclosure(L, gco2lcl(o));
         break;
     }
-    case LUA_TTHREAD: luaE_freethread(L, gco2th(o)); break;
     default: lua_assert(0);
     }
 }

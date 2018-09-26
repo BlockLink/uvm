@@ -184,7 +184,7 @@ typedef struct lua_TValue {
 #define fvalue(o)	check_exp(ttislcf(o), val_(o).f)
 #define hvalue(o)	check_exp(ttistable(o), gco2t(val_(o).gco))
 #define bvalue(o)	check_exp(ttisboolean(o), val_(o).b)
-#define thvalue(o)	check_exp(ttisthread(o), gco2th(val_(o).gc))
+#define thvalue(o)	check_exp(ttisthread(o), gco2th(val_(o).gco))
 /* a dead value may get the 'gc' field, but cannot access its contents */
 #define deadvalue(o)	check_exp(ttisdeadkey(o), lua_cast(void *, val_(o).gc))
 

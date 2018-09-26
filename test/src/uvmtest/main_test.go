@@ -314,6 +314,10 @@ func TestUndump(t *testing.T) {
 	// TODO
 }
 
+func TestDebugModule(t *testing.T) {
+	// TODO
+}
+
 func TestStorage(t *testing.T) {
 	// TODO
 }
