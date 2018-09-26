@@ -86,7 +86,7 @@ namespace uvm_types {
 */
 typedef union Value {
 	vmgc::GcObject* gco;
-    void *p;         /* light userdata */ // TODO: remove
+    void *p;         /* light userdata */
     int b;           /* booleans */
     lua_CFunction f; /* light C functions */
     lua_Integer i;   /* integer numbers */
@@ -481,11 +481,10 @@ namespace uvm_types {
 		const static vmgc::gc_type type = LUA_TTABLE;
 		int tt_ = LUA_TTABLE;
 		std::map<TValue, GcTableItemType, table_sort_comparator> entries;
-		unsigned int sizearray;
 		std::vector<GcTableItemType> array;
 		GcTable* metatable;
-		lu_byte flag; // TODO: flag in gctable to mask meta methods
-		inline GcTable() : sizearray(0), metatable(nullptr), flag(0) { }
+		lu_byte flags; // flag to mask meta methods
+		inline GcTable() : metatable(nullptr), flags(0) { }
 		virtual ~GcTable() {}
 	};
 	struct GcProto : vmgc::GcObject

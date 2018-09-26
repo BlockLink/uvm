@@ -59,53 +59,6 @@
 */
 #define MAXHBITS	(MAXABITS - 1)
 
-
-#define hashpow2(t,n)		(gnode(t, lmod((n), sizenode(t))))
-
-#define hashstr(t,str)		hashpow2(t, (str)->hash())
-#define hashboolean(t,p)	hashpow2(t, p)
-#define hashint(t,i)		hashpow2(t, i)
-
-
-/*
-** for some types, it is better to avoid modulus by power of 2, as
-** they tend to have many 2 factors.
-*/
-#define hashmod(t,n)	(gnode(t, ((n) % ((sizenode(t)-1)|1))))
-
-
-#define hashpointer(t,p)	hashmod(t, point2uint(p))
-
-
-/*
-** Hash for floating-point numbers.
-** The main computation should be just
-**     n = frexp(n, &i); return (n * INT_MAX) + i
-** but there are some numerical subtleties.
-** In a two-complement representation, INT_MAX does not has an exact
-** representation as a float, but INT_MIN does; because the absolute
-** value of 'frexp' is smaller than 1 (unless 'n' is inf/NaN), the
-** absolute value of the product 'frexp * -INT_MIN' is smaller or equal
-** to INT_MAX. Next, the use of 'unsigned int' avoids overflows when
-** adding 'i'; the use of '~u' (instead of '-u') avoids problems with
-** INT_MIN.
-*/
-#if !defined(l_hashfloat)
-static int l_hashfloat(lua_Number n) {
-    int i;
-    lua_Integer ni;
-    n = l_mathop(frexp)(n, &i) * -cast_num(INT_MIN);
-    if (!lua_numbertointeger(n, &ni)) {  /* is 'n' inf/-inf/NaN? */
-        lua_assert(luai_numisnan(n) || l_mathop(fabs)(n) == cast_num(HUGE_VAL));
-        return 0;
-    }
-    else {  /* normal case */
-        unsigned int u = lua_cast(unsigned int, i) + lua_cast(unsigned int, ni);
-        return cast_int(u <= lua_cast(unsigned int, INT_MAX) ? u : ~u);
-    }
-}
-#endif
-
 /*
 ** returns the index for 'key' if 'key' is an appropriate key to live in
 ** the array part of the table, 0 otherwise.
@@ -174,7 +127,7 @@ static bool val_to_table_key(const TValue* key, std::string& out) {
 
 static unsigned int findindex_of_sorted_table(lua_State *L, uvm_types::GcTable *t, StkId key) {
 	unsigned int i = arrayindex(key);
-	if (i != 0 && i <= t->sizearray)  /* is 'key' inside array part? */
+	if (i != 0 && i <= t->array.size())  /* is 'key' inside array part? */
 		return i;  /* yes; that's the index */
 	else {
 		std::string key_str;
@@ -186,7 +139,7 @@ static unsigned int findindex_of_sorted_table(lua_State *L, uvm_types::GcTable *
 			k++;
 			std::string iter_key_str;
 			if(val_to_table_key(&iter->first, iter_key_str) && iter_key_str == key_str)
-				return k + t->sizearray;
+				return k + t->array.size();
 		}
 		return 0;
 	}
@@ -198,7 +151,7 @@ int luaH_next(lua_State *L, uvm_types::GcTable *t, StkId key) {
     if (nullptr == t)
         return 0;
 	
-    for (; i < t->sizearray; i++) {  /* try first array part */
+    for (; i < t->array.size(); i++) {  /* try first array part */
         if (!ttisnil(&t->array[i])) {  /* a non-nil value? */
             setivalue(key, i + 1);
             setobj2s(L, key + 1, &t->array[i]);
@@ -206,7 +159,7 @@ int luaH_next(lua_State *L, uvm_types::GcTable *t, StkId key) {
         }
     }
 
-	auto i_in_hash_part = i - t->sizearray;
+	auto i_in_hash_part = i - t->array.size();
 	int k = 0;
 	for (auto it = t->entries.begin(); it != t->entries.end(); it++) {
 		k++;
@@ -277,11 +230,9 @@ void luaH_resize(lua_State *L, uvm_types::GcTable *t, unsigned int nasize,
 		for (auto i = 0; i < nasize - oldasize; i++) {
 			t->array.push_back(*luaO_nilobject);
 		}
-		t->sizearray = nasize;
 	}
 	else {
 		t->array.resize(nasize);
-		t->sizearray = nasize;
 	}
 }
 
@@ -304,7 +255,7 @@ uvm_types::GcTable *luaH_new(lua_State *L) {
 
 
 void luaH_free(lua_State *L, uvm_types::GcTable *t) {
-    luaM_free(L, t);
+	L->gc_state->gc_free(t);
 }
 
 /*
@@ -344,9 +295,8 @@ TValue *luaH_newkey(lua_State *L, uvm_types::GcTable *t, const TValue *key) {
 ** search function for integers
 */
 const TValue *luaH_getint(uvm_types::GcTable *t, lua_Integer key) {
-    /* (1 <= key && key <= t->sizearray) */
-    if (l_castS2U(key) - 1 < t->sizearray)
-        return &t->array.at(key - 1);
+    if (l_castS2U(key) - 1 < t->array.size())
+        return &t->array[key - 1];
     else {
 		const auto& key_str = std::to_string(key);
 		for (const auto& p : t->entries) {
@@ -437,7 +387,6 @@ TValue *luaH_set(lua_State *L, uvm_types::GcTable *t, const TValue *key) {
 
 void luaH_setint(lua_State *L, uvm_types::GcTable *t, lua_Integer key, TValue *value) {
     const TValue *p = luaH_getint(t, key);
-	// TODO: sizearray change?
     TValue *cell;
     if (p != luaO_nilobject)
         cell = lua_cast(TValue *, p);
@@ -479,8 +428,8 @@ static int unbound_search(uvm_types::GcTable *t, unsigned int j) {
 ** such that t[i] is non-nil and t[i+1] is nil (and 0 if t[1] is nil).
 */
 int luaH_getn(uvm_types::GcTable *t) {
-    unsigned int j = t->sizearray;
-    if (j > 0 && ttisnil(&t->array.at(j - 1))) {
+    unsigned int j = t->array.size();
+    if (j > 0 && ttisnil(&t->array[j - 1])) {
         /* there is a boundary in the array part: (binary) search for it */
         unsigned int i = 0;
         while (j - i > 1) {

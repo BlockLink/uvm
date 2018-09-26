@@ -59,7 +59,7 @@ const TValue *luaT_gettm(uvm_types::GcTable *events, TMS event, uvm_types::GcStr
     const TValue *tm = luaH_getstr(events, ename);
     lua_assert(event <= TM_EQ);
     if (ttisnil(tm)) {  /* no tag method? */
-        /* TODO cache this fact */
+		events->flags |= cast_byte(1u << event);  /* cache this fact */
         return nullptr;
     }
     else return tm;

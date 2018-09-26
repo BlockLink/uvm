@@ -831,6 +831,7 @@ LUA_API void lua_rawset(lua_State *L, int idx) {
     api_check(L, ttistable(o), "table expected");
     slot = luaH_set(L, hvalue(o), L->top - 2);
     setobj2t(L, slot, L->top - 1);
+	invalidateTMcache(hvalue(o));
     L->top -= 2;
     lua_unlock(L);
 }

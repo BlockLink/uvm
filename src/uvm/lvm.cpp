@@ -219,16 +219,15 @@ void luaV_finishset(lua_State *L, const TValue *t, TValue *key,
             uvm_types::GcTable *h = hvalue(t); // save t table
             lua_assert(ttisnil(oldval));
             /* must check the metamethod */
-            // if ((tm = fasttm(L, hvalue(t)->metatable, TM_NEWINDEX)) == nullptr &&
             if ((tm = fasttm(L, h->metatable, TM_NEWINDEX)) == nullptr &&
                 /* no metamethod; is there a previous entry in the table? */
                 (oldval != luaO_nilobject ||
                 /* no previous entry; must create one. (The next test is
                    always true; we only need the assignment.) */
-                   // (oldval = luaH_newkey(L, hvalue(t), key), 1))) {
                    (oldval = luaH_newkey(L, h, key), 1))) {
                 /* no metamethod and (now) there is an entry with given key */
                 setobj2t(L, lua_cast(TValue *, oldval), val);
+				invalidateTMcache(h);
                 return;
             }
             /* else will try the metamethod */
@@ -856,6 +855,7 @@ if (!(cond)) {      \
   vmbreak;                                   \
      }                             \
 }
+
 void luaV_execute(lua_State *L)
 {
     if (L->force_stopping)
@@ -1500,7 +1500,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                 }
                 h = hvalue(ra);
                 last = ((c - 1)*LFIELDS_PER_FLUSH) + n;
-                if (last > h->sizearray)  /* needs more space? */
+                if (last > h->array.size())  /* needs more space? */
                     luaH_resizearray(L, h, last);  /* preallocate it at once */
                 for (; n > 0; n--) {
                     TValue *val = ra + n;
