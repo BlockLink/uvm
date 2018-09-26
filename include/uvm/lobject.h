@@ -332,28 +332,6 @@ namespace uvm_types {
 
 
 /*
-** Header for userdata; memory area follows the end of this structure
-** (aligned according to 'UUdata'; see next).
-*/
-typedef struct Udata {
-    CommonHeader;
-    lu_byte ttuv_;  /* user value's tag */
-    struct uvm_types::GcTable *metatable;
-    size_t len;  /* number of bytes */
-    union Value user_;  /* user value */
-} Udata;
-
-
-/*
-** Ensures that address after this type is always fully aligned.
-*/
-typedef union UUdata {
-    L_Umaxalign dummy;  /* ensures maximum alignment for 'local' udata */
-    Udata uv;
-} UUdata;
-
-
-/*
 **  Get the address of memory block inside 'Udata'.
 ** (Access to 'ttuv_' ensures that value is really a 'Udata'.)
 */

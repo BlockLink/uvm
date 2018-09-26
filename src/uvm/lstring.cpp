@@ -151,7 +151,7 @@ uvm_types::GcString *luaS_new(lua_State *L, const char *str) {
 
 
 uvm_types::GcUserdata *luaS_newudata(lua_State *L, size_t s) {
-    if (s > UVM_MAX_SIZE - sizeof(Udata))
+    if (s > UVM_MAX_SIZE - sizeof(uvm_types::GcUserdata))
         luaM_toobig(L);
 	auto o = L->gc_state->gc_new_object<uvm_types::GcUserdata>();
 	o->gc_value = L->gc_state->gc_malloc(s);

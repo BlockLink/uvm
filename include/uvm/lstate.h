@@ -208,7 +208,6 @@ void lua_free(lua_State *L, void *address);
 union GCUnion {
     GCObject gc;  /* common header */
     // struct TString ts;
-    struct Udata u;
     union Closure cl;
     struct Proto p;
     struct lua_State th;  /* thread */
