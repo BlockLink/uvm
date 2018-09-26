@@ -154,7 +154,6 @@ static void freeLclosure(lua_State *L, LClosure *cl) {
 
 static void freeobj(lua_State *L, GCObject *o) {
     switch (o->tt) {
-    case LUA_TPROTO: luaF_freeproto(L, gco2p(o)); break;
     case LUA_TLCL: {
         freeLclosure(L, gco2lcl(o));
         break;

@@ -147,7 +147,7 @@ LUA_API int lua_getstack(lua_State *L, int level, lua_Debug *ar) {
 }
 
 
-static const char *upvalname(Proto *p, int uv) {
+static const char *upvalname(uvm_types::GcProto *p, int uv) {
 	uvm_types::GcString *s = check_exp(uv < p->sizeupvalues, p->upvalues[uv].name);
     if (s == nullptr) return "?";
     else return getstr(s);
@@ -239,7 +239,7 @@ static void funcinfo(lua_Debug *ar, Closure *cl) {
         ar->what = "C";
     }
     else {
-        Proto *p = cl->l.p;
+		uvm_types::GcProto *p = cl->l.p;
         ar->source = p->source ? getstr(p->source) : "=?";
         ar->linedefined = p->linedefined;
         ar->lastlinedefined = p->lastlinedefined;
@@ -257,12 +257,12 @@ static void collectvalidlines(lua_State *L, Closure *f) {
     else {
         int i;
         TValue v;
-        int *lineinfo = f->l.p->lineinfo;
+        int *lineinfo = f->l.p->lineinfos.empty() ? nullptr : f->l.p->lineinfos.data();
         uvm_types::GcTable *t = luaH_new(L);  /* new table to store active lines */
         sethvalue(L, L->top, t);  /* push it on stack */
         api_incr_top(L);
         setbvalue(&v, 1);  /* boolean 'true' to be the value of all indices */
-        for (i = 0; i < f->l.p->sizelineinfo; i++)  /* for all lines with code */
+        for (i = 0; i < f->l.p->lineinfos.size(); i++)  /* for all lines with code */
             luaH_setint(L, t, lineinfo[i], &v);  /* table[line] = true */
     }
 }
@@ -358,16 +358,16 @@ LUA_API int lua_getinfo(lua_State *L, const char *what, lua_Debug *ar) {
 ** =======================================================
 */
 
-static const char *getobjname(Proto *p, int lastpc, int reg,
+static const char *getobjname(uvm_types::GcProto *p, int lastpc, int reg,
     const char **name);
 
 
 /*
 ** find a "name" for the RK value 'c'
 */
-static void kname(Proto *p, int pc, int c, const char **name) {
+static void kname(uvm_types::GcProto *p, int pc, int c, const char **name) {
     if (ISK(c)) {  /* is 'c' a constant? */
-        TValue *kvalue = &p->k[INDEXK(c)];
+        TValue *kvalue = &p->ks[INDEXK(c)];
         if (ttisstring(kvalue)) {  /* literal constant? */
             *name = svalue(kvalue);  /* it is its own name */
             return;
@@ -395,12 +395,12 @@ static int filterpc(int pc, int jmptarget) {
 /*
 ** try to find last instruction before 'lastpc' that modified register 'reg'
 */
-static int findsetreg(Proto *p, int lastpc, int reg) {
+static int findsetreg(uvm_types::GcProto *p, int lastpc, int reg) {
     int pc;
     int setreg = -1;  /* keep last instruction that changed 'reg' */
     int jmptarget = 0;  /* any code before this address is conditional */
     for (pc = 0; pc < lastpc; pc++) {
-        Instruction i = p->code[pc];
+        Instruction i = p->codes[pc];
         OpCode op = GET_OPCODE(i);
         int a = GETARG_A(i);
         switch (op) {
@@ -441,7 +441,7 @@ static int findsetreg(Proto *p, int lastpc, int reg) {
 }
 
 
-static const char *getobjname(Proto *p, int lastpc, int reg,
+static const char *getobjname(uvm_types::GcProto *p, int lastpc, int reg,
     const char **name) {
     int pc;
     *name = luaF_getlocalname(p, reg + 1, lastpc);
@@ -450,7 +450,7 @@ static const char *getobjname(Proto *p, int lastpc, int reg,
     /* else try symbolic execution */
     pc = findsetreg(p, lastpc, reg);
     if (pc != -1) {  /* could find instruction? */
-        Instruction i = p->code[pc];
+        Instruction i = p->codes[pc];
         OpCode op = GET_OPCODE(i);
         switch (op) {
         case UOP_MOVE: {
@@ -476,9 +476,9 @@ static const char *getobjname(Proto *p, int lastpc, int reg,
         case UOP_LOADK:
         case UOP_LOADKX: {
             int b = (op == UOP_LOADK) ? GETARG_Bx(i)
-                : GETARG_Ax(p->code[pc + 1]);
-            if (ttisstring(&p->k[b])) {
-                *name = svalue(&p->k[b]);
+                : GETARG_Ax(p->codes[pc + 1]);
+            if (ttisstring(&p->ks[b])) {
+                *name = svalue(&p->ks[b]);
                 return "constant";
             }
             break;
@@ -497,9 +497,9 @@ static const char *getobjname(Proto *p, int lastpc, int reg,
 
 static const char *getfuncname(lua_State *L, CallInfo *ci, const char **name) {
     TMS tm = (TMS)0;  /* to avoid warnings */
-    Proto *p = ci_func(ci)->p;  /* calling function */
+	uvm_types::GcProto *p = ci_func(ci)->p;  /* calling function */
     int pc = currentpc(ci);  /* calling instruction index */
-    Instruction i = p->code[pc];  /* calling instruction */
+    Instruction i = p->codes[pc];  /* calling instruction */
     if (ci->callstatus & CIST_HOOKED) {  /* was it called inside a hook? */
         *name = "?";
         return "hook";
@@ -691,7 +691,7 @@ void luaG_traceexec(lua_State *L) {
     if (counthook)
         luaD_hook(L, LUA_HOOKCOUNT, -1);  /* call count hook */
     if (mask & LUA_MASKLINE) {
-        Proto *p = ci_func(ci)->p;
+		uvm_types::GcProto *p = ci_func(ci)->p;
         int npc = pcRel(ci->u.l.savedpc, p);
         int newline = getfuncline(p, npc);
         if (npc == 0 ||  /* call linehook when enter a new function, */

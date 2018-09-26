@@ -87,20 +87,20 @@ static void DumpString(const uvm_types::GcString *s, DumpState *D) {
 }
 
 
-static void DumpCode(const Proto *f, DumpState *D) {
-    DumpInt(f->sizecode, D);
-    DumpVector(f->code, f->sizecode, D);
+static void DumpCode(const uvm_types::GcProto *f, DumpState *D) {
+    DumpInt(f->codes.size(), D);
+    DumpVector(f->codes.data(), f->codes.size(), D);
 }
 
 
-static void DumpFunction(const Proto *f, uvm_types::GcString *psource, DumpState *D);
+static void DumpFunction(const uvm_types::GcProto *f, uvm_types::GcString *psource, DumpState *D);
 
-static void DumpConstants(const Proto *f, DumpState *D) {
+static void DumpConstants(const uvm_types::GcProto *f, DumpState *D) {
     int i;
-    int n = f->sizek;
+    int n = f->ks.size();
     DumpInt(n, D);
     for (i = 0; i < n; i++) {
-        const TValue *o = &f->k[i];
+        const TValue *o = &f->ks[i];
         DumpByte(ttype(o), D);
         switch (ttype(o)) {
         case LUA_TNIL:
@@ -125,17 +125,17 @@ static void DumpConstants(const Proto *f, DumpState *D) {
 }
 
 
-static void DumpProtos(const Proto *f, DumpState *D) {
+static void DumpProtos(const uvm_types::GcProto *f, DumpState *D) {
     int i;
-    int n = f->sizep;
+    int n = f->ps.size();
     DumpInt(n, D);
     for (i = 0; i < n; i++)
-        DumpFunction(f->p[i], f->source, D);
+        DumpFunction(f->ps[i], f->source, D);
 }
 
 
-static void DumpUpvalues(const Proto *f, DumpState *D) {
-    int i, n = f->sizeupvalues;
+static void DumpUpvalues(const uvm_types::GcProto *f, DumpState *D) {
+    int i, n = f->upvalues.size();
     DumpInt(n, D);
     for (i = 0; i < n; i++) {
         DumpByte(f->upvalues[i].instack, D);
@@ -144,26 +144,26 @@ static void DumpUpvalues(const Proto *f, DumpState *D) {
 }
 
 
-static void DumpDebug(const Proto *f, DumpState *D) {
+static void DumpDebug(const uvm_types::GcProto *f, DumpState *D) {
     int i, n;
-    n = (D->strip) ? 0 : f->sizelineinfo;
+    n = (D->strip) ? 0 : f->lineinfos.size();
     DumpInt(n, D);
-    DumpVector(f->lineinfo, n, D);
-    n = (D->strip) ? 0 : f->sizelocvars;
+    DumpVector(f->lineinfos.data(), n, D);
+    n = (D->strip) ? 0 : f->locvars.size();
     DumpInt(n, D);
     for (i = 0; i < n; i++) {
         DumpString(f->locvars[i].varname, D);
         DumpInt(f->locvars[i].startpc, D);
         DumpInt(f->locvars[i].endpc, D);
     }
-    n = (D->strip) ? 0 : f->sizeupvalues;
+    n = (D->strip) ? 0 : f->upvalues.size();
     DumpInt(n, D);
     for (i = 0; i < n; i++)
         DumpString(f->upvalues[i].name, D);
 }
 
 
-static void DumpFunction(const Proto *f, uvm_types::GcString *psource, DumpState *D) {
+static void DumpFunction(const uvm_types::GcProto *f, uvm_types::GcString *psource, DumpState *D) {
     if (D->strip || f->source == psource)
         DumpString(nullptr, D);  /* no debug info or same source as its parent */
 	else
@@ -203,7 +203,7 @@ static void DumpHeader(DumpState *D) {
 /*
 ** dump Lua function as precompiled chunk
 */
-int luaU_dump(lua_State *L, const Proto *f, lua_Writer w, void *data,
+int luaU_dump(lua_State *L, const uvm_types::GcProto *f, lua_Writer w, void *data,
     int strip) {
     DumpState D;
     D.L = L;
@@ -212,7 +212,7 @@ int luaU_dump(lua_State *L, const Proto *f, lua_Writer w, void *data,
     D.strip = strip;
     D.status = 0;
     DumpHeader(&D);
-    DumpByte(f->sizeupvalues, &D);
+    DumpByte(f->upvalues.size(), &D);
     DumpFunction(f, nullptr, &D);
     return D.status;
 }

@@ -55,7 +55,7 @@ void luaK_nil(FuncState *fs, int from, int n) {
     Instruction *previous;
     int l = from + n - 1;  /* last register to set nil */
     if (fs->pc > fs->lasttarget) {  /* no jumps to current position? */
-        previous = &fs->f->code[fs->pc - 1];
+        previous = &fs->f->codes[fs->pc - 1];
         if (GET_OPCODE(*previous) == UOP_LOADNIL) {
             int pfrom = GETARG_A(*previous);
             int pl = pfrom + GETARG_B(*previous);
@@ -95,7 +95,7 @@ static int condjump(FuncState *fs, OpCode op, int A, int B, int C) {
 
 
 static void fixjump(FuncState *fs, int pc, int dest) {
-    Instruction *jmp = &fs->f->code[pc];
+    Instruction *jmp = &fs->f->codes[pc];
     int offset = dest - (pc + 1);
     lua_assert(dest != NO_JUMP);
     if (abs(offset) > MAXARG_sBx)
@@ -115,7 +115,7 @@ int luaK_getlabel(FuncState *fs) {
 
 
 static int getjump(FuncState *fs, int pc) {
-    int offset = GETARG_sBx(fs->f->code[pc]);
+    int offset = GETARG_sBx(fs->f->codes[pc]);
     if (offset == NO_JUMP)  /* point to itself represents end of list */
         return NO_JUMP;  /* end of list */
     else
@@ -124,7 +124,7 @@ static int getjump(FuncState *fs, int pc) {
 
 
 static Instruction *getjumpcontrol(FuncState *fs, int pc) {
-    Instruction *pi = &fs->f->code[pc];
+    Instruction *pi = &fs->f->codes[pc];
     if (pc >= 1 && testTMode(GET_OPCODE(*(pi - 1))))
         return pi - 1;
     else
@@ -200,7 +200,7 @@ void luaK_patchclose(FuncState *fs, int list, int level) {
         lua_assert(GET_OPCODE(fs->f->code[list]) == UOP_JMP &&
             (GETARG_A(fs->f->code[list]) == 0 ||
             GETARG_A(fs->f->code[list]) >= level));
-        SETARG_A(fs->f->code[list], level);
+        SETARG_A(fs->f->codes[list], level);
         list = next;
     }
 }
@@ -227,16 +227,22 @@ void luaK_concat(FuncState *fs, int *l1, int l2) {
 
 
 static int luaK_code(FuncState *fs, Instruction i) {
-    Proto *f = fs->f;
+	uvm_types::GcProto *f = fs->f;
     dischargejpc(fs);  /* 'pc' will change */
     /* put new instruction in code array */
-    luaM_growvector(fs->ls->L, f->code, fs->pc, f->sizecode, Instruction,
-        MAX_INT, "opcodes");
-    f->code[fs->pc] = i;
+	if (fs->pc > f->codes.size()) {
+		auto oldsize = f->codes.size();
+		f->codes.resize(fs->pc);
+		memset(f->codes.data() + oldsize, 0x0, sizeof(f->codes[0]) * (fs->pc-oldsize));
+	}
+    f->codes[fs->pc] = i;
     /* save corresponding line information */
-    luaM_growvector(fs->ls->L, f->lineinfo, fs->pc, f->sizelineinfo, int,
-        MAX_INT, "opcodes");
-    f->lineinfo[fs->pc] = fs->ls->lastline;
+	if (fs->pc > f->lineinfos.size()) {
+		auto oldsize = f->lineinfos.size();
+		f->lineinfos.resize(fs->pc);
+		memset(f->lineinfos.data() + oldsize, 0x0, sizeof(f->lineinfos[0]) * (fs->pc - oldsize));
+	}
+    f->lineinfos[fs->pc] = fs->ls->lastline;
     return fs->pc++;
 }
 
@@ -312,27 +318,30 @@ static void freeexp(FuncState *fs, expdesc *e) {
 */
 static int addk(FuncState *fs, TValue *key, TValue *v) {
     lua_State *L = fs->ls->L;
-    Proto *f = fs->f;
+	uvm_types::GcProto *f = fs->f;
     TValue *idx = luaH_set(L, fs->ls->h, key);  /* index scanner table */
     int k, oldsize;
     if (ttisinteger(idx)) {  /* is there an index there? */
         k = cast_int(ivalue(idx));
         /* correct value? (warning: must distinguish floats from integers!) */
-        if (k < fs->nk && ttype(&f->k[k]) == ttype(v) &&
-            luaV_rawequalobj(&f->k[k], v))
+        if (k < fs->nk && ttype(&f->ks[k]) == ttype(v) &&
+            luaV_rawequalobj(&f->ks[k], v))
             return k;  /* reuse index */
     }
     /* constant not found; create a new entry */
-    oldsize = f->sizek;
+    oldsize = f->ks.size();
     k = fs->nk;
     /* numerical value does not need GC barrier;
        table has no metatable, so it does not need to invalidate cache */
     setivalue(idx, k);
-    luaM_growvector(L, f->k, k, f->sizek, TValue, MAXARG_Ax, "constants");
-    while (oldsize < f->sizek) setnilvalue(&f->k[oldsize++]);
-    setobj(L, &f->k[k], v);
+	if (k > f->ks.size()) {
+		auto oldsize = f->ks.size();
+		f->ks.resize(k);
+		memset(f->ks.data() + oldsize, 0x0, sizeof(f->ks[0]) * (k - oldsize));
+	}
+    while (oldsize < f->ks.size()) setnilvalue(&f->ks[oldsize++]);
+    setobj(L, &f->ks[k], v);
     fs->nk++;
-    luaC_barrier(L, f, v);
     return k;
 }
 
@@ -934,7 +943,7 @@ void luaK_posfix(FuncState *fs, BinOpr op,
 
 
 void luaK_fixline(FuncState *fs, int line) {
-    fs->f->lineinfo[fs->pc - 1] = line;
+    fs->f->lineinfos[fs->pc - 1] = line;
 }
 
 

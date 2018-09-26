@@ -303,7 +303,7 @@ static void callhook(lua_State *L, CallInfo *ci) {
 }
 
 
-static StkId adjust_varargs(lua_State *L, Proto *p, int actual) {
+static StkId adjust_varargs(lua_State *L, uvm_types::GcProto *p, int actual) {
     int i;
     int nfixargs = p->numparams;
     StkId base, fixed;
@@ -391,7 +391,7 @@ int luaD_precall(lua_State *L, StkId func, int nresults) {
     }
     case LUA_TLCL: {  /* Lua function: prepare its call */
         StkId base;
-        Proto *p = clLvalue(func)->p;
+		uvm_types::GcProto *p = clLvalue(func)->p;
         int n = cast_int(L->top - func) - 1;  /* number of real arguments */
         int fsize = p->maxstacksize;  /* frame size */
         checkstackp(L, fsize, func);
@@ -408,7 +408,7 @@ int luaD_precall(lua_State *L, StkId func, int nresults) {
         ci->u.l.base = base;
         L->top = ci->top = base + fsize;
         lua_assert(ci->top <= L->stack_last);
-        ci->u.l.savedpc = p->code;  /* starting point */
+        ci->u.l.savedpc = p->codes.empty() ? nullptr : p->codes.data();  /* starting point */
         ci->callstatus = CIST_LUA;
         if (L->hookmask & LUA_MASKCALL)
             callhook(L, ci);

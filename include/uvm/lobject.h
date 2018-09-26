@@ -337,6 +337,7 @@ typedef union UTString {
 
 namespace uvm_types {
 	struct GcString;
+	struct GcProto;
 }
 
 /*
@@ -468,10 +469,9 @@ typedef struct CClosure {
     TValue upvalue[1];  /* list of upvalues */
 } CClosure;
 
-
 typedef struct LClosure {
     ClosureHeader;
-    struct Proto *p;
+    uvm_types::GcProto *p;
     UpVal *upvals[1];  /* list of upvalues */
 } LClosure;
 
@@ -604,12 +604,14 @@ namespace uvm_types {
 	{
 		virtual ~GcClosure() {}
 	};
+	struct GcProto;
+
 	struct GcLClosure : GcClosure
 	{   // TODO: use this
 		const static vmgc::gc_type type = LUA_TLCL;
 		lu_byte nupvalues;
 		int tt_ = LUA_TLCL;
-		struct Proto *p;
+		GcProto *p;
 		std::vector<UpVal*> upvals;
 
 		inline GcLClosure() : nupvalues(0), tt_(LUA_TLCL), p(nullptr) {}
@@ -654,7 +656,33 @@ namespace uvm_types {
 		inline GcTable() : sizearray(0), metatable(nullptr), flag(0) { }
 		virtual ~GcTable() {}
 	};
-	// TODO: upval, lclosure, proto, Contract
+	struct GcProto : vmgc::GcObject
+	{
+		typedef TValue GcTableItemType;
+		const static vmgc::gc_type type = LUA_TPROTO;
+		int tt_ = LUA_TPROTO;
+
+		lu_byte numparams;  /* number of fixed parameters */
+		lu_byte is_vararg;  /* 2: declared vararg; 1: uses vararg */
+		lu_byte maxstacksize;  /* number of registers needed by this function */
+		int linedefined;  /* debug information  */
+		int lastlinedefined;  /* debug information  */
+		std::vector<TValue> ks;  /* constants used by the function */
+		std::vector<Instruction> codes;  /* opcodes */
+		std::vector<GcProto*> ps;  /* functions defined inside the function */
+		std::vector<int> lineinfos;  /* map from opcodes to source lines (debug information) */
+		std::vector<LocVar> locvars;  /* information about local variables (debug information) */
+		std::vector<Upvaldesc> upvalues;  /* upvalue information */
+		struct LClosure *cache;  /* last-created closure with this prototype */ // TODO: use GcLClosure
+		uvm_types::GcString  *source;  /* used for debug information */
+
+		inline GcProto() : numparams(0), is_vararg(0), maxstacksize(0), linedefined(0)
+			, cache(nullptr), source(nullptr)
+		{ }
+		virtual ~GcProto() {}
+	};
+	// TODO: upval, lclosure, Contract
+	// TODO: remove unused types, String, Key, Node, Table, CClosure, etc.
 
 }
 

@@ -109,37 +109,41 @@ static uvm_types::GcString *LoadString(LoadState *S) {
 
 const int g_sizelimit = 1024 * 1024 * 500;
 
-static bool LoadCode(LoadState *S, Proto *f) {
+static bool LoadCode(LoadState *S, uvm_types::GcProto *f) {
     int n = LoadInt(S);
 	if (n > g_sizelimit)
 	{
 		return false;
 	}
-    f->code = luaM_newvector(S->L, n, Instruction);
-    f->sizecode = n;
-    LoadVector(S, f->code, n);
+	f->codes.resize(n);
+	for (auto i = 0; i < n; i++) {
+		f->codes[i] = 0;
+	}
+    LoadVector(S, f->codes.data(), n);
 	return true;
 }
 
 
-static void LoadFunction(LoadState *S, Proto *f, uvm_types::GcString *psource);
+static void LoadFunction(LoadState *S, uvm_types::GcProto *f, uvm_types::GcString *psource);
 
 // 500M
 const int g_constantslimit = 1024 * 1024 * 500;
 
-static bool LoadConstants(LoadState *S, Proto *f) {
+static bool LoadConstants(LoadState *S, uvm_types::GcProto *f) {
     int i;
     int n = LoadInt(S);
 	if (n > g_constantslimit)
 	{
 		return false;
 	}
-    f->k = luaM_newvector(S->L, n, TValue);
-    f->sizek = n;
+	f->ks.resize(n);
+	for (auto i = 0; i < n; i++) {
+		memset(&f->ks[i], 0x0, sizeof(f->ks[i]));
+	}
     for (i = 0; i < n; i++)
-        setnilvalue(&f->k[i]);
+        setnilvalue(&f->ks[i]);
     for (i = 0; i < n; i++) {
-        TValue *o = &f->k[i];
+        TValue *o = &f->ks[i];
         int t = LoadByte(S);
         switch (t) {
         case LUA_TNIL:
@@ -166,34 +170,38 @@ static bool LoadConstants(LoadState *S, Proto *f) {
 }
 
 
-static bool LoadProtos(LoadState *S, Proto *f) {
+static bool LoadProtos(LoadState *S, uvm_types::GcProto *f) {
     int i;
     int n = LoadInt(S);
 	if (n > g_sizelimit)
 	{
 		return false;
 	}
-    f->p = luaM_newvector(S->L, n, Proto *);
-    f->sizep = n;
+	f->ps.resize(n);
+	for (auto i = 0; i < n; i++) {
+		memset(&f->ps[i], 0x0, sizeof(f->ps[i]));
+	}
     for (i = 0; i < n; i++)
-        f->p[i] = nullptr;
+        f->ps[i] = nullptr;
     for (i = 0; i < n; i++) {
-        f->p[i] = luaF_newproto(S->L);
-        LoadFunction(S, f->p[i], f->source);
+        f->ps[i] = luaF_newproto(S->L);
+        LoadFunction(S, f->ps[i], f->source);
     }
 	return true;
 }
 
 
-static bool LoadUpvalues(LoadState *S, Proto *f) {
+static bool LoadUpvalues(LoadState *S, uvm_types::GcProto *f) {
     int i, n;
     n = LoadInt(S);
 	if (n > g_sizelimit)
 	{
 		return false;
 	}
-    f->upvalues = luaM_newvector(S->L, n, Upvaldesc);
-    f->sizeupvalues = n;
+	f->upvalues.resize(n);
+	for (auto i = 0; i < n; i++) {
+		memset(&f->upvalues[i], 0x0, sizeof(f->upvalues[i]));
+	}
     for (i = 0; i < n; i++)
         f->upvalues[i].name = nullptr;
     for (i = 0; i < n; i++) {
@@ -207,19 +215,23 @@ static bool LoadUpvalues(LoadState *S, Proto *f) {
 // 500M
 const int g_lineslimit = 1024 * 1024 * 500;
 
-static bool LoadDebug(LoadState *S, Proto *f) {
+static bool LoadDebug(LoadState *S, uvm_types::GcProto *f) {
     int i, n;
     n = LoadInt(S);
 	if (n > g_lineslimit)
 	{
 		return false;
 	}
-    f->lineinfo = luaM_newvector(S->L, n, int);
-    f->sizelineinfo = n;
-    LoadVector(S, f->lineinfo, n);
+	f->lineinfos.resize(n);
+	for (auto i = 0; i < n; i++) {
+		memset(&f->lineinfos[i], 0x0, sizeof(f->lineinfos[i]));
+	}
+    LoadVector(S, f->lineinfos.data(), n);
     n = LoadInt(S);
-    f->locvars = luaM_newvector(S->L, n, LocVar);
-    f->sizelocvars = n;
+	f->locvars.resize(n);
+	for (auto i = 0; i < n; i++) {
+		memset(&f->locvars[i], 0x0, sizeof(f->locvars[i]));
+	};
     for (i = 0; i < n; i++)
         f->locvars[i].varname = nullptr;
     for (i = 0; i < n; i++) {
@@ -234,7 +246,7 @@ static bool LoadDebug(LoadState *S, Proto *f) {
 }
 
 
-static void LoadFunction(LoadState *S, Proto *f, uvm_types::GcString *psource) {
+static void LoadFunction(LoadState *S, uvm_types::GcProto *f, uvm_types::GcString *psource) {
     f->source = LoadString(S);
     if (f->source == nullptr)  /* no source in dump? */
         f->source = psource;  /* reuse parent's source */

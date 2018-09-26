@@ -655,11 +655,11 @@ lua_Integer luaV_shiftl(lua_Integer x, lua_Integer y) {
 ** whether there is a cached closure with the same upvalues needed by
 ** new closure to be created.
 */
-static LClosure *getcached(Proto *p, UpVal **encup, StkId base) {
+static LClosure *getcached(uvm_types::GcProto *p, UpVal **encup, StkId base) {
     LClosure *c = p->cache;
     if (c != nullptr) {  /* is there a cached closure? */
-        int nup = p->sizeupvalues;
-        Upvaldesc *uv = p->upvalues;
+        int nup = p->upvalues.size();
+        Upvaldesc *uv = p->upvalues.empty() ? nullptr : p->upvalues.data();
         int i;
         for (i = 0; i < nup; i++) {  /* check whether it has right upvalues */
             TValue *v = uv[i].instack ? base + uv[i].idx : encup[uv[i].idx]->v;
@@ -677,10 +677,10 @@ static LClosure *getcached(Proto *p, UpVal **encup, StkId base) {
 ** already black (which means that 'cache' was already cleared by the
 ** GC).
 */
-static void pushclosure(lua_State *L, Proto *p, UpVal **encup, int enc_nupvalues, StkId base,
+static void pushclosure(lua_State *L, uvm_types::GcProto *p, UpVal **encup, int enc_nupvalues, StkId base,
     StkId ra) {
-    int nup = p->sizeupvalues;
-    Upvaldesc *uv = p->upvalues;
+    int nup = p->upvalues.size();
+    Upvaldesc *uv = p->upvalues.empty() ? nullptr : p->upvalues.data();
     int i;
     LClosure *ncl = luaF_newLclosure(L, nup);
     ncl->p = p;
@@ -704,8 +704,7 @@ static void pushclosure(lua_State *L, Proto *p, UpVal **encup, int enc_nupvalues
             ncl->upvals[i]->refcount++;
         /* new closure is white, so we do not need a barrier here */
     }
-    if (!isblack(p))  /* cache will not break GC invariant? */
-        p->cache = ncl;  /* save it on cache for reuse */
+    p->cache = ncl;  /* save it on cache for reuse */
 }
 
 /*
@@ -869,7 +868,7 @@ void luaV_execute(lua_State *L)
 newframe:  /* reentry point when frame changes (call/return) */
     lua_assert(ci == L->ci);
     cl = clLvalue(ci->func);  /* local reference to function's closure */
-    k = cl->p->k;  /* local reference to function's constant table */
+    k = cl->p->ks.empty() ? nullptr : cl->p->ks.data();  /* local reference to function's constant table */
     base = ci->u.l.base;  /* local copy of function's base */
 
     int insts_limit = uvm::lua::lib::get_lua_state_value(L, INSTRUCTIONS_LIMIT_LUA_STATE_MAP_KEY).int_value;
@@ -1373,7 +1372,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                     StkId lim = nci->u.l.base + getproto(nfunc)->numparams;
                     int aux;
                     /* close all upvalues from previous call */
-                    if (cl->p->sizep > 0) luaF_close(L, oci->u.l.base);
+                    if (cl->p->ps.size() > 0) luaF_close(L, oci->u.l.base);
                     /* move new frame into old one */
                     for (aux = 0; nfunc + aux < lim; aux++)
                         setobjs2s(L, ofunc + aux, nfunc + aux);
@@ -1401,7 +1400,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                     lua_setfield(L, -2, "last_return");
                     lua_pop(L, 1);
                 }
-                if (cl->p->sizep > 0) luaF_close(L, base);
+                if (cl->p->ps.size() > 0) luaF_close(L, base);
                 b = luaD_poscall(L, ci, ra, (b != 0 ? b - 1 : cast_int(L->top - ra)));
 
                 if (ci->callstatus & CIST_FRESH)  /* local 'ci' still from callee */
@@ -1512,8 +1511,8 @@ newframe:  /* reentry point when frame changes (call/return) */
             }
             vmcase(UOP_CLOSURE) {
                 auto p_index = GETARG_Bx(i);
-                lua_check_in_vm_error(p_index < cl->p->sizep, "too large sub proto index");
-                Proto *p = cl->p->p[p_index];
+                lua_check_in_vm_error(p_index < cl->p->ps.size(), "too large sub proto index");
+				uvm_types::GcProto *p = cl->p->ps[p_index];
                 LClosure *ncl = getcached(p, cl->upvals, base);  /* cached closure */
                 if (ncl == nullptr)  /* no match? */
                     pushclosure(L, p, cl->upvals, cl->nupvalues, base, ra);  /* create a new one */

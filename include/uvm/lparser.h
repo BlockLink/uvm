@@ -96,7 +96,7 @@ struct BlockCnt;  /* defined in lparser.c */
 
 /* state needed to generate code for a given function */
 typedef struct FuncState {
-    Proto *f;  /* current function header */
+    uvm_types::GcProto *f;  /* current function header */
     struct FuncState *prev;  /* enclosing function */
     struct LexState *ls;  /* lexical state */
     struct BlockCnt *bl;  /* chain of current blocks */

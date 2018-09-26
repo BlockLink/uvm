@@ -431,7 +431,7 @@ namespace uvm
             /**
              * check contract lua bytecode proto is right(whether safe)
              */
-            bool check_contract_proto(lua_State *L, Proto *proto, char *error = nullptr, std::list<Proto*> *parents = nullptr);
+            bool check_contract_proto(lua_State *L, uvm_types::GcProto *proto, char *error = nullptr, std::list<uvm_types::GcProto*> *parents = nullptr);
 
             std::string wrap_contract_name(const char *contract_name);
 

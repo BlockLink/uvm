@@ -467,8 +467,8 @@ namespace uvm
 
                 CallInfo *ci = L->ci;
                 CallInfo *oci = ci->previous;
-                Proto *np = getproto(ci->func);
-                Proto *p = getproto(oci->func);
+				uvm_types::GcProto *np = getproto(ci->func);
+				uvm_types::GcProto *p = getproto(oci->func);
                 LClosure *ocl = clLvalue(oci->func);
                 int real_localvars_count = (int)(ci->func - oci->func - 1);
                 int linedefined = p->linedefined;
@@ -485,7 +485,7 @@ namespace uvm
                     if (i >= real_localvars_count) // the localvars is after the debugger() call
                         break;
                     // get local var name
-                    if (i < p->sizelocvars)
+                    if (i < p->locvars.size())
                     {
                         LocVar localvar = p->locvars[i];
                         const char *varname = getstr(localvar.varname);
@@ -496,7 +496,7 @@ namespace uvm
                 }
                 // capture upvalues vars and values(need get upvalue name from whereelse)
                 L->ci = ci;
-                for (int i = 0; i < p->sizeupvalues; ++i)
+                for (int i = 0; i < p->upvalues.size(); ++i)
                 {
                     Upvaldesc upval = p->upvalues[i];
                     const char *upval_name = getstr(upval.name);
@@ -1481,14 +1481,14 @@ end
                 return TYPED_LUA_LIB_CODE;
             }
 
-            static bool upval_defined_in_parent(lua_State *L, Proto *parent, std::list<Proto*> *all_protos, Upvaldesc upvaldesc)
+            static bool upval_defined_in_parent(lua_State *L, uvm_types::GcProto *parent, std::list<uvm_types::GcProto*> *all_protos, Upvaldesc upvaldesc)
             {
                 // whether the upval defined in parent proto
                 if (!L || !parent)
                     return false;
                 if (upvaldesc.instack > 0)
                 {
-                    if (upvaldesc.idx < parent->sizelocvars)
+                    if (upvaldesc.idx < parent->locvars.size())
                     {
                         return true;
                     }
@@ -1499,12 +1499,12 @@ end
                 {
                     if (!all_protos || all_protos->size() < 1)
                         return false;
-                    if (upvaldesc.idx < parent->sizeupvalues)
+                    if (upvaldesc.idx < parent->upvalues.size())
                     {
                         Upvaldesc parent_upvaldesc = parent->upvalues[upvaldesc.idx];
                         for (const auto &pp : *all_protos)
                         {
-                            std::list<Proto*> remaining;
+                            std::list<uvm_types::GcProto*> remaining;
                             for (const auto &pp2 : *all_protos)
                             {
                                 if (remaining.size() >= all_protos->size() - 1)
@@ -1520,13 +1520,13 @@ end
                 }
             }
 
-            bool check_contract_proto(lua_State *L, Proto *proto, char *error, std::list<Proto*> *parents)
+            bool check_contract_proto(lua_State *L, uvm_types::GcProto *proto, char *error, std::list<uvm_types::GcProto*> *parents)
             {
                 // for all sub function in proto, check whether the contract bytecode meet our provision
-                int i, proto_size = proto->sizep;
+                int i, proto_size = proto->ps.size();
                 // int const_size = proto->sizek;
-                int localvar_size = proto->sizelocvars;
-                int upvalue_size = proto->sizeupvalues;
+                int localvar_size = proto->locvars.size();
+                int upvalue_size = proto->upvalues.size();
 
                 if (localvar_size > LUA_FUNCTION_MAX_LOCALVARS_COUNT)
                 {
@@ -1552,9 +1552,9 @@ end
                 }
 
 
-                const Instruction* code = proto->code;
+                const Instruction* code = proto->codes.empty() ? nullptr : proto->codes.data();
                 int pc;
-                int code_size = proto->sizecode;
+                int code_size = proto->codes.size();
 
 				bool is_importing_contract = false;
 				bool is_importing_contract_address = false;
@@ -1579,9 +1579,9 @@ end
 						{
 							int idx = MYK(INDEXK(bx));
 							int idx_in_kst = -idx - 1;
-							if (idx_in_kst >= 0 && idx_in_kst < proto->sizek)
+							if (idx_in_kst >= 0 && idx_in_kst < proto->ks.size())
 							{
-								const char *contract_name = getstr(tsvalue(&proto->k[idx_in_kst]));
+								const char *contract_name = getstr(tsvalue(&proto->ks[idx_in_kst]));
 								if (contract_name && !uvm::lua::api::global_uvm_chain_api->check_contract_exist(L, contract_name))
 								{
 									lcompile_error_set(L, error, "Can't find contract %s", contract_name);
@@ -1598,9 +1598,9 @@ end
 						{
 							int idx = MYK(INDEXK(bx));
 							int idx_in_kst = -idx - 1;
-							if (idx_in_kst >= 0 && idx_in_kst < proto->sizek)
+							if (idx_in_kst >= 0 && idx_in_kst < proto->ks.size())
 							{
-								const char *contract_address = getstr(tsvalue(&proto->k[idx_in_kst]));
+								const char *contract_address = getstr(tsvalue(&proto->ks[idx_in_kst]));
 								if (contract_address && !uvm::lua::api::global_uvm_chain_api->check_contract_exist_by_address(L, contract_address))
 								{
 									lcompile_error_set(L, error, "Can't find contract address %s", contract_address);
@@ -1628,14 +1628,14 @@ end
                         // when instack=1, find in parent localvars, when instack=0, find in parent upval pool
                         if (a == 0)
                             break;
-						if (b >= proto->sizeupvalues || b < 0)
+						if (b >= proto->upvalues.size() || b < 0)
 						{
 							lcompile_error_set(L, error, "upvalue error");
 							return false;
 						}
                         const char *upvalue_name = UPVALNAME_OF_PROTO(proto, b);
                         int cidx = MYK(INDEXK(b));
-                        if (nullptr == proto->k)
+                        if (proto->ks.empty())
                             break;
                         // const char *cname = getstr(tsvalue(&proto->k[-cidx-1]));
                         const char *cname = upvalue_name;
@@ -1668,7 +1668,7 @@ end
                     }	 break;
                     case UOP_SETUPVAL:
                     {
-						if (b >= proto->sizeupvalues || b < 0)
+						if (b >= proto->upvalues.size() || b < 0)
 						{
 							lcompile_error_set(L, error, "upvalue error");
 							return false;
@@ -1685,7 +1685,7 @@ end
                     }
                     case UOP_GETTABUP:
                     {
-						if (b >= proto->sizeupvalues || b < 0)
+						if (b >= proto->upvalues.size() || b < 0)
 						{
 							lcompile_error_set(L, error, "upvalue error");
 							return false;
@@ -1693,7 +1693,7 @@ end
                         const char *upvalue_name = UPVALNAME_OF_PROTO(proto, b);
                         if (ISK(c)){
                             int cidx = MYK(INDEXK(c));
-                            const char *cname = getstr(tsvalue(&proto->k[-cidx - 1]));
+                            const char *cname = getstr(tsvalue(&proto->ks.at(-cidx - 1)));
                             bool in_whitelist = false;
                             for (size_t i = 0; i < globalvar_whitelist_count; ++i)
                             {
@@ -1721,7 +1721,7 @@ end
                     break;
                     case UOP_SETTABUP:
                     {
-						if (a >= proto->sizeupvalues || a < 0)
+						if (a >= proto->upvalues.size() || a < 0)
 						{
 							lcompile_error_set(L, error, "upvalue error");
 							return false;
@@ -1733,7 +1733,7 @@ end
                         {
                             if (ISK(b)){
                                 int bidx = MYK(INDEXK(b));
-                                const char *bname = getstr(tsvalue(&proto->k[-bidx - 1]));
+                                const char *bname = getstr(tsvalue(&proto->ks.at(-bidx - 1)));
                                 lcompile_error_set(L, error, "_ENV or _G set %s is forbidden", bname);
                                 return false;
 
@@ -1763,7 +1763,7 @@ end
                 // check sub protos
                 for (i = 0; i < proto_size; i++)
                 {
-                    std::list<Proto*> sub_parents;
+                    std::list<uvm_types::GcProto*> sub_parents;
                     if (parents)
                     {
                         for (auto it = parents->begin(); it != parents->end(); ++it)
@@ -1772,7 +1772,7 @@ end
                         }
                     }
                     sub_parents.push_back(proto);
-                    if (!check_contract_proto(L, proto->p[i], error, &sub_parents)) {
+                    if (!check_contract_proto(L, proto->ps.at(i), error, &sub_parents)) {
                         return false;
                     }
                 }

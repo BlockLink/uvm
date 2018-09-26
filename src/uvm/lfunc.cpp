@@ -98,40 +98,13 @@ void luaF_close(lua_State *L, StkId level) {
 }
 
 
-Proto *luaF_newproto(lua_State *L) {
-    GCObject *o = luaC_newobj(L, LUA_TPROTO, sizeof(Proto));
-    Proto *f = gco2p(o);
-    f->k = nullptr;
-    f->sizek = 0;
-    f->p = nullptr;
-    f->sizep = 0;
-    f->code = nullptr;
-    f->cache = nullptr;
-    f->sizecode = 0;
-    f->lineinfo = nullptr;
-    f->sizelineinfo = 0;
-    f->upvalues = nullptr;
-    f->sizeupvalues = 0;
-    f->numparams = 0;
-    f->is_vararg = 0;
-    f->maxstacksize = 0;
-    f->locvars = nullptr;
-    f->sizelocvars = 0;
-    f->linedefined = 0;
-    f->lastlinedefined = 0;
-    f->source = nullptr;
+uvm_types::GcProto *luaF_newproto(lua_State *L) {
+	auto f = L->gc_state->gc_new_object<uvm_types::GcProto>();
     return f;
 }
 
 
-void luaF_freeproto(lua_State *L, Proto *f) {
-    luaM_freearray(L, f->code, f->sizecode);
-    luaM_freearray(L, f->p, f->sizep);
-    luaM_freearray(L, f->k, f->sizek);
-    luaM_freearray(L, f->lineinfo, f->sizelineinfo);
-    luaM_freearray(L, f->locvars, f->sizelocvars);
-    luaM_freearray(L, f->upvalues, f->sizeupvalues);
-    luaM_free(L, f);
+void luaF_freeproto(lua_State *L, uvm_types::GcProto *f) {
 }
 
 
@@ -139,9 +112,9 @@ void luaF_freeproto(lua_State *L, Proto *f) {
 ** Look for n-th local variable at line 'line' in function 'func'.
 ** Returns nullptr if not found.
 */
-const char *luaF_getlocalname(const Proto *f, int local_number, int pc) {
+const char *luaF_getlocalname(const uvm_types::GcProto *f, int local_number, int pc) {
     int i;
-    for (i = 0; i < f->sizelocvars && f->locvars[i].startpc <= pc; i++) {
+    for (i = 0; i < f->locvars.size() && f->locvars[i].startpc <= pc; i++) {
         if (pc < f->locvars[i].endpc) {  /* is variable active? */
             local_number--;
             if (local_number == 0)

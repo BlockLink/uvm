@@ -11,9 +11,9 @@
 #include "uvm/lstate.h"
 
 
-#define pcRel(pc, p)	(lua_cast(int, (pc) - (p)->code) - 1)
+#define pcRel(pc, p)	(lua_cast(int, (pc) - ((p)->codes.empty() ? nullptr : (p)->codes.data())) - 1)
 
-#define getfuncline(f,pc)	(((f)->lineinfo) ? (f)->lineinfo[pc] : -1)
+#define getfuncline(f,pc)	(((f)->lineinfos.size()>pc) ? (f)->lineinfos[pc] : -1)
 
 #define resethookcount(L)	(L->hookcount = L->basehookcount)
 

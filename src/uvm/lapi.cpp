@@ -1184,8 +1184,8 @@ static const char *aux_upvalue(StkId fi, int n, TValue **val,
     case LUA_TLCL: {  /* Lua closure */
         LClosure *f = clLvalue(fi);
 		uvm_types::GcString *name;
-        Proto *p = f->p;
-        if (!(1 <= n && n <= p->sizeupvalues)) return nullptr;
+        uvm_types::GcProto *p = f->p;
+        if (!(1 <= n && n <= p->upvalues.size())) return nullptr;
         *val = f->upvals[n - 1]->v;
         if (uv) *uv = f->upvals[n - 1];
         name = p->upvalues[n - 1].name;

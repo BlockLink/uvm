@@ -178,11 +178,14 @@ static int typename_to_int(const char *vartypename)
 
 static int registerlocalvar(LexState *ls, uvm_types::GcString *varname) {
     FuncState *fs = ls->fs;
-    Proto *f = fs->f;
-    int oldsize = f->sizelocvars;
-    luaM_growvector(ls->L, f->locvars, fs->nlocvars, f->sizelocvars,
-        LocVar, SHRT_MAX, "local variables");
-    while (oldsize < f->sizelocvars) f->locvars[oldsize++].varname = nullptr;
+    uvm_types::GcProto *f = fs->f;
+    int oldsize = f->locvars.size();
+	if (fs->nlocvars > oldsize) {
+		f->locvars.resize(fs->nlocvars);
+		memset(f->locvars.data() + oldsize, 0x0, sizeof(f->locvars[0])*(fs->nlocvars - oldsize));
+	}
+	int newsize = f->locvars.size();
+    while (oldsize < newsize) f->locvars[oldsize++].varname = nullptr;
     f->locvars[fs->nlocvars].varname = varname;
     if (testnext(ls, ':'))
     {
@@ -240,7 +243,7 @@ static void removevars(FuncState *fs, int tolevel) {
 
 static int searchupvalue(FuncState *fs, uvm_types::GcString *name) {
     int i;
-    Upvaldesc *up = fs->f->upvalues;
+    Upvaldesc *up = fs->f->upvalues.empty() ? nullptr : fs->f->upvalues.data();
     for (i = 0; i < fs->nups; i++) {
         if (eqstr(up[i].name, name)) return i;
     }
@@ -249,12 +252,15 @@ static int searchupvalue(FuncState *fs, uvm_types::GcString *name) {
 
 
 static int newupvalue(FuncState *fs, uvm_types::GcString *name, expdesc *v) {
-    Proto *f = fs->f;
-    int oldsize = f->sizeupvalues;
+	uvm_types::GcProto *f = fs->f;
+    int oldsize = f->upvalues.size();
     checklimit(fs, fs->nups + 1, MAXUPVAL, "upvalues");
-    luaM_growvector(fs->ls->L, f->upvalues, fs->nups, f->sizeupvalues,
-        Upvaldesc, MAXUPVAL, "upvalues");
-    while (oldsize < f->sizeupvalues) f->upvalues[oldsize++].name = nullptr;
+	if (fs->nups > oldsize) {
+		f->upvalues.resize(fs->nups);
+		memset(f->upvalues.data() + oldsize, 0x0, sizeof(f->upvalues[0])*(fs->nups-oldsize));
+	}
+	int newsize = f->upvalues.size();
+    while (oldsize < newsize) f->upvalues[oldsize++].name = nullptr;
     f->upvalues[fs->nups].instack = (v->k == VLOCAL);
     f->upvalues[fs->nups].idx = cast_byte(v->u.info);
     f->upvalues[fs->nups].name = name;
@@ -514,18 +520,24 @@ static void leaveblock(FuncState *fs) {
 /*
 ** adds a new prototype into list of prototypes
 */
-static Proto *addprototype(LexState *ls) {
-    Proto *clp;
+static uvm_types::GcProto *addprototype(LexState *ls) {
+	uvm_types::GcProto *clp;
     lua_State *L = ls->L;
     FuncState *fs = ls->fs;
-    Proto *f = fs->f;  /* prototype of current function */
-    if (fs->np >= f->sizep) {
-        int oldsize = f->sizep;
-        luaM_growvector(L, f->p, fs->np, f->sizep, Proto *, MAXARG_Bx, "functions");
-        while (oldsize < f->sizep) f->p[oldsize++] = nullptr;
+	uvm_types::GcProto *f = fs->f;  /* prototype of current function */
+    if (fs->np >= f->ps.size()) {
+        int oldsize = f->ps.size();
+		if (fs->np > oldsize) {
+			f->ps.resize(fs->np);
+			memset(f->ps.data() + oldsize, 0x0, sizeof(f->ps[0]) * (fs->np - oldsize));
+		}
+		int newsize = f->ps.size();
+        while (oldsize < newsize) f->ps[oldsize++] = nullptr;
     }
-    f->p[fs->np++] = clp = luaF_newproto(L);
-    luaC_objbarrier(L, f, clp);
+	if (fs->np >= (f->ps.size() - 1)) {
+		f->ps.resize(f->ps.size() + 1);
+	}
+    f->ps[fs->np++] = clp = luaF_newproto(L);
     return clp;
 }
 
@@ -544,7 +556,7 @@ static void codeclosure(LexState *ls, expdesc *v) {
 
 
 static void open_func(LexState *ls, FuncState *fs, BlockCnt *bl) {
-    Proto *f;
+	uvm_types::GcProto *f;
     fs->prev = ls->fs;  /* linked list of funcstates */
     fs->ls = ls;
     ls->fs = fs;
@@ -569,21 +581,27 @@ static void open_func(LexState *ls, FuncState *fs, BlockCnt *bl) {
 static void close_func(LexState *ls) {
     lua_State *L = ls->L;
     FuncState *fs = ls->fs;
-    Proto *f = fs->f;
+	uvm_types::GcProto *f = fs->f;
     luaK_ret(fs, 0, 0);  /* final return */
     leaveblock(fs);
-    luaM_reallocvector(L, f->code, f->sizecode, fs->pc, Instruction);
-    f->sizecode = fs->pc;
-    luaM_reallocvector(L, f->lineinfo, f->sizelineinfo, fs->pc, int);
-    f->sizelineinfo = fs->pc;
-    luaM_reallocvector(L, f->k, f->sizek, fs->nk, TValue);
-    f->sizek = fs->nk;
-    luaM_reallocvector(L, f->p, f->sizep, fs->np, Proto *);
-    f->sizep = fs->np;
-    luaM_reallocvector(L, f->locvars, f->sizelocvars, fs->nlocvars, LocVar);
-    f->sizelocvars = fs->nlocvars;
-    luaM_reallocvector(L, f->upvalues, f->sizeupvalues, fs->nups, Upvaldesc);
-    f->sizeupvalues = fs->nups;
+	if (fs->pc > f->codes.size()) {
+		f->codes.resize(fs->pc);
+	}
+	if (fs->pc > f->lineinfos.size()) {
+		f->lineinfos.resize(fs->pc);
+	}
+	if (fs->nk > f->ks.size()) {
+		f->ks.resize(fs->nk);
+	}
+	if (fs->np > f->ps.size()) {
+		f->ps.resize(fs->np);
+	}
+	if (fs->nlocvars > f->locvars.size()) {
+		f->locvars.resize(fs->nlocvars);
+	}
+	if (fs->nups > f->upvalues.size()) {
+		f->upvalues.resize(fs->nups);
+	}
     lua_assert(fs->bl == nullptr);
     ls->fs = fs->prev;
     luaC_checkGC(L);
@@ -768,8 +786,8 @@ static void constructor(LexState *ls, expdesc *t) {
     } while (testnext(ls, ',') || testnext(ls, ';'));
     check_match(ls, '}', '{', line);
     lastlistfield(fs, &cc);
-    SETARG_B(fs->f->code[pc], luaO_int2fb(cc.na)); /* set initial array size */
-    SETARG_C(fs->f->code[pc], luaO_int2fb(cc.nh));  /* set initial table size */
+    SETARG_B(fs->f->codes[pc], luaO_int2fb(cc.na)); /* set initial array size */
+    SETARG_C(fs->f->codes[pc], luaO_int2fb(cc.nh));  /* set initial table size */
 }
 
 /* }====================================================================== */
@@ -779,7 +797,7 @@ static void constructor(LexState *ls, expdesc *t) {
 static void parlist(LexState *ls) {
     /* parlist -> [ param { ',' param } ] */
     FuncState *fs = ls->fs;
-    Proto *f = fs->f;
+	uvm_types::GcProto *f = fs->f;
     int nparams = 0;
     f->is_vararg = 0;
     if (ls->t.token != ')') {  /* is 'parlist' not empty? */
