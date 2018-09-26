@@ -244,6 +244,18 @@ func TestPairs(t *testing.T) {
 	assert.True(t, strings.Contains(out, `[[100,200],["a",1],["m",234],["n",123],["ab",1]]`))
 }
 
+
+func TestStringGmatch(t *testing.T) {
+	execCommand(uvmCompilerPath, "../../tests_lua/test_gmatch.lua")
+	out, _ := execCommand(uvmSinglePath, "../../tests_lua/test_gmatch.lua.out")
+	fmt.Println(out)
+	assert.True(t, strings.Contains(out, `func_itor is	function: 0`))
+	assert.True(t, strings.Contains(out, `func_itor ret is 	12`))
+	assert.True(t, strings.Contains(out, `2	world`))
+	assert.True(t, strings.Contains(out, `to	Lua`))
+	assert.True(t, strings.Contains(out, `numret ret is	nil`))
+}
+
 func TestContractImport(t *testing.T) {
 	// TODO
 }
@@ -295,7 +307,7 @@ func TestInvalidUpvalue(t *testing.T) {
 }
 
 func TestArrayOp(t *testing.T) {
-	// TDO
+	// TODO
 }
 
 func TestUndump(t *testing.T) {

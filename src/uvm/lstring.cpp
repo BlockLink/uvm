@@ -183,16 +183,13 @@ uvm_types::GcString *luaS_new(lua_State *L, const char *str) {
 }
 
 
-Udata *luaS_newudata(lua_State *L, size_t s) {
-    Udata *u;
-    GCObject *o;
+uvm_types::GcUserdata *luaS_newudata(lua_State *L, size_t s) {
     if (s > UVM_MAX_SIZE - sizeof(Udata))
         luaM_toobig(L);
-    o = luaC_newobj(L, LUA_TUSERDATA, sizeludata(s));
-    u = gco2u(o);
-    u->len = s;
-    u->metatable = nullptr;
-    setuservalue(L, u, luaO_nilobject);
-    return u;
+	auto o = L->gc_state->gc_new_object<uvm_types::GcUserdata>();
+	o->gc_value = L->gc_state->gc_malloc(s);
+	o->len = s;
+    setuservalue(L, o, luaO_nilobject);
+    return o;
 }
 

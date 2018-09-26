@@ -177,7 +177,7 @@ typedef struct lua_TValue {
 #define gcvalue(o)	check_exp(iscollectable(o), val_(o).gc)
 #define pvalue(o)	check_exp(ttislightuserdata(o), val_(o).p)
 #define tsvalue(o)	check_exp(ttisstring(o), gco2ts(val_(o).gco))
-#define uvalue(o)	check_exp(ttisfulluserdata(o), gco2u(val_(o).gc))
+#define uvalue(o)	check_exp(ttisfulluserdata(o), gco2u(val_(o).gco))
 #define clvalue(o)	check_exp(ttisclosure(o), gco2cl(val_(o).gc))
 #define clLvalue(o)	check_exp(ttisLclosure(o), gco2lcl(val_(o).gc))
 #define clCvalue(o)	check_exp(ttisCclosure(o), gco2ccl(val_(o).gc))
@@ -243,8 +243,8 @@ typedef struct lua_TValue {
     checkliveness(L,io); }
 
 #define setuvalue(L,obj,x) \
-  { TValue *io = (obj); Udata *x_ = (x); \
-    val_(io).gc = obj2gco(x_); settt_(io, ctb(LUA_TUSERDATA)); \
+  { TValue *io = (obj); uvm_types::GcUserdata *x_ = (x); \
+    val_(io).gco = x_; settt_(io, ctb(LUA_TUSERDATA)); \
     checkliveness(L,io); }
 
 #define setthvalue(L,obj,x) \
@@ -384,17 +384,17 @@ typedef union UUdata {
 ** (Access to 'ttuv_' ensures that value is really a 'Udata'.)
 */
 #define getudatamem(u)  \
-  check_exp(sizeof((u)->ttuv_), (lua_cast(char*, (u)) + sizeof(UUdata)))
+  check_exp(sizeof((u)->ttuv_), (lua_cast(char*, (u)->gc_value)))
 
 #define setuservalue(L,u,o) \
-	{ const TValue *io=(o); Udata *iu = (u); \
+	{ const TValue *io=(o); uvm_types::GcUserdata *iu = (u); \
 	  iu->user_ = io->value_; iu->ttuv_ = rttype(io); \
 	  checkliveness(L,io); }
 
 
 #define getuservalue(L,u,o) \
-	{ TValue *io=(o); const Udata *iu = (u); \
-	  io->value_ = iu->user_; settt_(io, iu->ttuv_); \
+	{ TValue *io=(o); auto *iu = (u); \
+	  io->value_.gco = iu; settt_(io, iu->tt_); \
 	  checkliveness(L,io); }
 
 
@@ -576,9 +576,7 @@ namespace uvm_types {
 		std::string value;
 		lu_byte extra = 0;
 
-		inline GcString() {
-			tt_ = LUA_TLNGSTR;
-		}
+		inline GcString() : tt_(LUA_TLNGSTR){ }
 
 		virtual ~GcString() {}
 
@@ -586,43 +584,19 @@ namespace uvm_types {
 			return luaS_hash(value.data(), value.size(), 1);
 		}
 	};
-	struct GcInteger : vmgc::GcObject
-	{
-		const static vmgc::gc_type type = LUA_TNUMINT;
-		int tt_ = LUA_TNUMINT;
-		lua_Integer value = 0;
-
-		virtual ~GcInteger() {}
-	};
-	struct GcFloat : vmgc::GcObject
-	{
-		const static vmgc::gc_type type = LUA_TNUMFLT;
-		int tt_ = LUA_TNUMFLT;
-		lua_Number value = 0;
-
-		virtual ~GcFloat() {}
-	};
-	struct GcBool : vmgc::GcObject
-	{
-		const static vmgc::gc_type type = LUA_TBOOLEAN;
-		int tt_ = LUA_TBOOLEAN;
-		bool value = false;
-
-		virtual ~GcBool() {}
-	};
-	struct GcLightUserdata : vmgc::GcObject
-	{
-		const static vmgc::gc_type type = LUA_TLIGHTUSERDATA;
-		int tt_ = LUA_TLIGHTUSERDATA;
-		void* value = nullptr;
-
-		virtual ~GcLightUserdata() {}
-	};
 	struct GcUserdata : vmgc::GcObject
 	{
 		const static vmgc::gc_type type = LUA_TUSERDATA;
 		int tt_ = LUA_TUSERDATA;
-		void* value = nullptr;
+		void* gc_value = nullptr; // user value managed in vmgc
+		uvm_types::GcTable *metatable;
+		size_t len;  /* number of bytes */
+		int ttuv_;
+		Value user_;
+
+		inline GcUserdata() : tt_(LUA_TUSERDATA), gc_value(nullptr), metatable(0), len(0), ttuv_(LUA_TNIL) {
+			this->user_.gco = nullptr;
+		}
 
 		virtual ~GcUserdata() {}
 	};
@@ -664,19 +638,11 @@ namespace uvm_types {
 		unsigned int sizearray;
 		std::vector<GcTableItemType> array;
 		GcTable* metatable;
-		inline GcTable() : sizearray(0), metatable(nullptr) { }
+		lu_byte flag; // TODO: flag in gctable to mask meta methods
+		inline GcTable() : sizearray(0), metatable(nullptr), flag(0) { }
 		virtual ~GcTable() {}
 	};
-	// TODO: upval, cclosure, lclosure, proto
-	// TODO: 先把string/int/boolean/number/table替换掉，其他分步来
-
-	/*struct GcArray : vmgc::GcObject
-	{
-		const static vmgc::gc_type type = LUA_TARRAY;
-		std::vector<vmgc::GcObject*> entries;
-
-		virtual ~GcArray() {}
-	};*/
+	// TODO: upval, cclosure, lclosure, proto, Contract
 
 }
 
