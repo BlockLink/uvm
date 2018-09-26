@@ -77,7 +77,6 @@ void luaS_init(lua_State *L) {
     // luaS_resize(L, MINSTRTABSIZE);  /* initial size of string table */
     /* pre-create memory-error message */
     L->memerrmsg = luaS_newliteral(L, MEMERRMSG);
-    luaC_fix(L, obj2gco(L->memerrmsg));  /* it should never be collected */
     for (i = 0; i < STRCACHE_N; i++)  /* fill cache with valid strings */
         for (j = 0; j < STRCACHE_M; j++)
             L->strcache[i][j] = L->memerrmsg;

@@ -149,7 +149,6 @@ struct lua_State : vmgc::GcObject {
     StkId stack_last;  /* last free slot in the stack */
     StkId stack;  /* stack base */
     UpVal *openupval;  /* list of open upvalues in this stack */
-    GCObject *gclist;
     struct lua_State *twups;  /* list of threads with open upvalues */
     struct lua_longjmp *errorJmp;  /* current error recover point */
     CallInfo base_ci;  /* CallInfo for first level (C calling Lua) */
@@ -205,15 +204,6 @@ void lua_free(lua_State *L, void *address);
 
 
 #define state_G(L)	(L->l_G)
-
-
-/*
-** Union of all collectable objects (only for conversions)
-*/
-union GCUnion {
-    GCObject gc;  /* common header */
-};
-
 
 #define cast_u(o)	lua_cast(union GCUnion *, (o))
 

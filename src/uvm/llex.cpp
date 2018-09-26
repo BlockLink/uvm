@@ -72,10 +72,8 @@ static void save(LexState *ls, int c) {
 void luaX_init(lua_State *L) {
     int i;
 	uvm_types::GcString *e = luaS_newliteral(L, LUA_ENV);  /* create env name */
-    luaC_fix(L, obj2gco(e));  /* never collect this name */
     for (i = 0; i < NUM_RESERVED; i++) {
 		uvm_types::GcString *ts = luaS_new(L, luaX_tokens[i]);
-        luaC_fix(L, obj2gco(ts));  /* reserved words are never collected */
         ts->extra = cast_byte(i + 1);  /* reserved word */
     }
 }

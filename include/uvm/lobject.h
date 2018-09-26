@@ -68,28 +68,6 @@
 /* mark a tag as collectable */
 #define ctb(t)			((t) | BIT_ISCOLLECTABLE)
 
-
-/*
-** Common type for all collectable objects
-*/
-typedef struct GCObject GCObject;
-
-
-/*
-** Common Header for all collectable objects (in macro form, to be
-** included in other objects)
-*/
-#define CommonHeader	GCObject *next; lu_byte tt; lu_byte marked
-
-
-/*
-** Common type has only the common header
-*/
-struct GCObject {
-    CommonHeader;
-};
-
-
 namespace uvm_types {
 	struct GcString;
 	struct GcTable;
@@ -108,8 +86,7 @@ namespace uvm_types {
 */
 typedef union Value {
 	vmgc::GcObject* gco;
-    GCObject *gc;    /* collectable objects */
-    void *p;         /* light userdata */
+    void *p;         /* light userdata */ // TODO: remove
     int b;           /* booleans */
     lua_CFunction f; /* light C functions */
     lua_Integer i;   /* integer numbers */
@@ -174,7 +151,7 @@ typedef struct lua_TValue {
 #define fltvalue(o)	check_exp(ttisfloat(o), val_(o).n)
 #define nvalue(o)	check_exp(ttisnumber(o), \
 	(ttisinteger(o) ? cast_num(ivalue(o)) : fltvalue(o)))
-#define gcvalue(o)	check_exp(iscollectable(o), val_(o).gc)
+#define gcvalue(o)	check_exp(iscollectable(o), val_(o).gco)
 #define pvalue(o)	check_exp(ttislightuserdata(o), val_(o).p)
 #define tsvalue(o)	check_exp(ttisstring(o), gco2ts(val_(o).gco))
 #define uvalue(o)	check_exp(ttisfulluserdata(o), gco2u(val_(o).gco))
@@ -249,7 +226,7 @@ typedef struct lua_TValue {
 
 #define setthvalue(L,obj,x) \
   { TValue *io = (obj); lua_State *x_ = (x); \
-    val_(io).gc = obj2gco(x_); settt_(io, ctb(LUA_TTHREAD)); \
+    val_(io).gco = x_; settt_(io, ctb(LUA_TTHREAD)); \
     checkliveness(L,io); }
 
 #define setclLvalue(L,obj,x) \
@@ -377,14 +354,6 @@ typedef struct LocVar {
 ** Lua Upvalues
 */
 typedef struct UpVal UpVal;
-
-
-/*
-** Closures
-*/
-
-#define ClosureHeader \
-	CommonHeader; lu_byte nupvalues; GCObject *gclist
 
 
 #define isLfunction(o)	ttisLclosure(o)

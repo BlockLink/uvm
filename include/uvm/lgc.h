@@ -131,15 +131,11 @@
 	(iscollectable((uv)->v) && !upisopen(uv)) ? \
          luaC_upvalbarrier_(L,uv) : cast_void(0))
 
-LUAI_FUNC void luaC_fix(lua_State *L, GCObject *o);
 LUAI_FUNC void luaC_freeallobjects(lua_State *L);
 LUAI_FUNC void luaC_step(lua_State *L);
 LUAI_FUNC void luaC_fullgc(lua_State *L, int isemergency);
-LUAI_FUNC GCObject *luaC_newobj(lua_State *L, int tt, size_t sz);
-LUAI_FUNC void luaC_barrier_(lua_State *L, GCObject *o, GCObject *v);
 LUAI_FUNC void luaC_barrierback_(lua_State *L, uvm_types::GcTable *o);
 LUAI_FUNC void luaC_upvalbarrier_(lua_State *L, UpVal *uv);
-LUAI_FUNC void luaC_checkfinalizer(lua_State *L, GCObject *o, uvm_types::GcTable *mt);
 LUAI_FUNC void luaC_upvdeccount(lua_State *L, UpVal *uv);
 
 

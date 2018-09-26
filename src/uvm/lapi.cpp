@@ -742,7 +742,7 @@ LUA_API int lua_getuservalue(lua_State *L, int idx) {
 */
 static void auxsetstr(lua_State *L, const TValue *t, const char *k) {
 	if (ttistable(t)) {
-		auto table_addr = (intptr_t)t->value_.gc;
+		auto table_addr = (intptr_t)t->value_.gco;
 		if (L->allow_contract_modify != table_addr && L->contract_table_addresses
 			&& std::find(L->contract_table_addresses->begin(), L->contract_table_addresses->end(), table_addr) != L->contract_table_addresses->end()) {
 			luaG_runerror(L, "can't modify contract properties");
@@ -878,16 +878,10 @@ LUA_API int lua_setmetatable(lua_State *L, int objindex) {
     switch (ttnov(obj)) {
     case LUA_TTABLE: {
         hvalue(obj)->metatable = mt;
-        if (mt) {
-            luaC_checkfinalizer(L, gcvalue(obj), mt);
-        }
         break;
     }
     case LUA_TUSERDATA: {
         uvalue(obj)->metatable = mt;
-        if (mt) {
-            luaC_checkfinalizer(L, gcvalue(obj), mt);
-        }
         break;
     }
     default: {
@@ -908,7 +902,6 @@ LUA_API void lua_setuservalue(lua_State *L, int idx) {
     o = index2addr(L, idx);
     api_check(L, ttisfulluserdata(o), "full userdata expected");
     setuservalue(L, uvalue(o), L->top - 1);
-    luaC_barrier(L, gcvalue(o), L->top - 1);
     L->top--;
     lua_unlock(L);
 }
