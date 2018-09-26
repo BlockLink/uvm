@@ -837,12 +837,12 @@ void luaV_finishOp(lua_State *L) {
     Protect(luaV_finishset(L,t,k,v,slot)); }
 // FIXME: end duplicate code in uvm_lib.cpp
 
-static int get_line_in_current_proto(CallInfo* ci, Proto *proto)
+static int get_line_in_current_proto(CallInfo* ci, uvm_types::GcProto *proto)
 {
-	int idx = (int)(ci->u.l.savedpc - proto->code); // proto
-	if (idx < proto->sizecode)
+	int idx = (int)(ci->u.l.savedpc - proto->codes.data()); // proto
+	if (idx < proto->codes.size())
 	{
-		int line_in_proto = proto->lineinfo[idx];
+		int line_in_proto = proto->lineinfos[idx];
 		return line_in_proto;
 	}
 	else

@@ -209,7 +209,6 @@ union GCUnion {
     GCObject gc;  /* common header */
     // struct TString ts;
     union Closure cl;
-    struct Proto p;
     struct lua_State th;  /* thread */
 };
 
