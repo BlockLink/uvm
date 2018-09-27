@@ -278,6 +278,8 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
 	L->evalstack = static_cast<TValue*>(L->gc_state->gc_malloc_vector(L->evalstacksize, sizeof(TValue)));
 	L->evalstacktop = L->evalstack;
 
+	L->state = lua_VMState::LVM_STATE_BREAK;
+
 	L->allow_contract_modify = 0;
 	L->contract_table_addresses = new std::list<intptr_t>();
 

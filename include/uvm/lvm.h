@@ -104,10 +104,15 @@ namespace uvm {
 			TValue *k;
 			StkId base;
 
+			// TODO: put vm state in lua_State, add step_over
+
+			void step_out(lua_State *L);
+			void step_into(lua_State* L);
+			void step_over(lua_State* L);
 			// execute to next ci called, return whether has next ci to execute
 			bool executeToNextCi(lua_State* L);
-			void enter_newframe(lua_State *L);
-			void prepare_newframe(lua_State *L);
+			void enter_newframe(lua_State* L);
+			void prepare_newframe(lua_State* L);
 		};
 	}
 }

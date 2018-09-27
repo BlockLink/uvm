@@ -134,6 +134,14 @@ namespace uvm_types {
 	struct GcTable;
 }
 
+typedef enum lua_VMState {
+	LVM_STATE_NONE = 0,
+
+	LVM_STATE_HALT = 1 << 0,
+	LVM_STATE_FAULT = 1 << 1,
+	LVM_STATE_BREAK = 1 << 2,
+} lua_VMState;
+
 /*
 ** 'per thread' state
 */
@@ -189,6 +197,7 @@ struct lua_State : vmgc::GcObject {
 	StkId evalstack; //for calulate
 	StkId evalstacktop;//first free slot
 	int evalstacksize;
+	lua_VMState state;
 
 	inline lua_State() :tt_(LUA_TTHREAD) {}
 	virtual ~lua_State() {}
