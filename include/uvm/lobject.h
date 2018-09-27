@@ -174,10 +174,7 @@ typedef struct lua_TValue {
 /* Macros for internal tests */
 #define righttt(obj)		(ttype(obj) == gcvalue(obj)->tt)
 
-#define checkliveness(L,obj) \
-	lua_longassert(!iscollectable(obj) || \
-		(righttt(obj) && (L == nullptr || !isdead(state_G(L),gcvalue(obj)))))
-
+#define checkliveness(L,obj) (0)
 
 /* Macros to set values */
 #define settt_(o,t)	((o)->tt_=(t))
@@ -437,7 +434,7 @@ namespace uvm_types {
 	{
 		virtual ~GcClosure() {}
 
-		virtual vmgc::gc_type tt() const = 0;
+		virtual vmgc::gc_type tt_value() const = 0;
 		virtual lu_byte nupvalues_count() const = 0;
 	};
 	struct GcProto;
@@ -453,7 +450,7 @@ namespace uvm_types {
 		inline GcLClosure() : nupvalues(0), tt_(LUA_TLCL), p(nullptr) {}
 
 		virtual ~GcLClosure() {}
-		inline virtual vmgc::gc_type tt() const { return tt_; }
+		inline virtual vmgc::gc_type tt_value() const { return tt_; }
 		inline virtual lu_byte nupvalues_count() const { return nupvalues; }
 	};
 	struct GcCClosure : GcClosure
@@ -467,7 +464,7 @@ namespace uvm_types {
 		inline GcCClosure() : nupvalues(0), tt_(LUA_TCCL), f(nullptr) {}
 
 		virtual ~GcCClosure() {}
-		inline virtual vmgc::gc_type tt() const { return tt_; }
+		inline virtual vmgc::gc_type tt_value() const { return tt_; }
 		inline virtual lu_byte nupvalues_count() const { return nupvalues; }
 	};
 	struct table_sort_comparator

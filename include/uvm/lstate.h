@@ -224,7 +224,7 @@ void lua_free(lua_State *L, void *address);
 
 /* macro to convert a Lua object into a vmgc::GcObject */
 #define obj2vmgco(v) \
-	check_exp(novariant((v)->tt) < LUA_TDEADKEY, (&(v->gco)))
+	check_exp(novariant((v)->tt_) < LUA_TDEADKEY, (&(v->gco)))
 
 
 /* actual number of total bytes allocated */

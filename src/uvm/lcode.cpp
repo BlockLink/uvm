@@ -197,9 +197,9 @@ void luaK_patchclose(FuncState *fs, int list, int level) {
     level++;  /* argument is +1 to reserve 0 as non-op */
     while (list != NO_JUMP) {
         int next = getjump(fs, list);
-        lua_assert(GET_OPCODE(fs->f->code[list]) == UOP_JMP &&
-            (GETARG_A(fs->f->code[list]) == 0 ||
-            GETARG_A(fs->f->code[list]) >= level));
+        lua_assert(list < fs->f->codes.size() && GET_OPCODE(fs->f->codes[list]) == UOP_JMP &&
+            (GETARG_A(fs->f->codes[list]) == 0 ||
+            GETARG_A(fs->f->codes[list]) >= level));
         SETARG_A(fs->f->codes[list], level);
         list = next;
     }

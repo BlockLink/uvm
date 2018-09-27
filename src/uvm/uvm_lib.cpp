@@ -1359,7 +1359,7 @@ end
                 int *pointer = get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
                 if (nullptr == pointer)
                 {
-                    pointer = (int*)lua_malloc(L, sizeof(int));
+					pointer = static_cast<int*>(L->gc_state->gc_malloc(sizeof(int)));
                     *pointer = 1;
                     UvmStateValue value;
                     value.int_pointer_value = pointer;
@@ -1833,7 +1833,7 @@ end
 
             char *malloc_managed_string(lua_State *L, size_t size, const char *init_data)
             {
-                char *data = (char *)lua_malloc(L, size);
+				char *data = static_cast<char*>(L->gc_state->gc_malloc(size));
 				memset(data, 0x0, size);
 				if(nullptr != init_data)
 					memcpy(data, init_data, strlen(init_data));
@@ -1847,7 +1847,9 @@ end
 
             UvmModuleByteStream *malloc_managed_byte_stream(lua_State *L)
             {
-                return (UvmModuleByteStream*)lua_calloc(L, 1, sizeof(UvmModuleByteStream));
+				auto p = static_cast<UvmModuleByteStream*>(L->gc_state->gc_malloc(sizeof(UvmModuleByteStream)));
+				memset(p, 0x0, sizeof(UvmModuleByteStream));
+				return p;
             }
 
             bool run_compiledfile(lua_State *L, const char *filename)
@@ -2031,68 +2033,73 @@ end
 
 			bool call_last_contract_api(lua_State* L, const std::string& contract_id, const std::string& api_name, const std::string& api_arg, std::string* result_json_string) {
 				using uvm::lua::api::global_uvm_chain_api;
+				try {
+					lua_fill_contract_info_for_use(L);
 
-				lua_fill_contract_info_for_use(L);
+					lua_pushstring(L, CURRENT_CONTRACT_NAME);
+					lua_setfield(L, -2, "name");
+					lua_pushstring(L, contract_id.c_str());
+					lua_setfield(L, -2, "id");
 
-				lua_pushstring(L, CURRENT_CONTRACT_NAME);
-				lua_setfield(L, -2, "name");
-				lua_pushstring(L, contract_id.c_str());
-				lua_setfield(L, -2, "id");
-
-				for (const auto &special_api_name : uvm::lua::lib::contract_special_api_names)
-				{
-					if (special_api_name != api_name)
+					for (const auto &special_api_name : uvm::lua::lib::contract_special_api_names)
 					{
-						lua_pushnil(L);
-						lua_setfield(L, -2, special_api_name.c_str());
+						if (special_api_name != api_name)
+						{
+							lua_pushnil(L);
+							lua_setfield(L, -2, special_api_name.c_str());
+						}
 					}
-				}
 
-				lua_getfield(L, -1, api_name.c_str());
-				if (lua_isfunction(L, -1))
-				{
-					lua_pushvalue(L, -2); // push self	
-					if (uvm::util::vector_contains(uvm::lua::lib::contract_int_argument_special_api_names, api_name))
+					lua_getfield(L, -1, api_name.c_str());
+					if (lua_isfunction(L, -1))
 					{
-						std::stringstream arg_ss;
-						arg_ss << api_arg;
-						lua_Integer arg1_int = 0;
-						arg_ss >> arg1_int;
-						lua_pushinteger(L, arg1_int);
+						lua_pushvalue(L, -2); // push self	
+						if (uvm::util::vector_contains(uvm::lua::lib::contract_int_argument_special_api_names, api_name))
+						{
+							std::stringstream arg_ss;
+							arg_ss << api_arg;
+							lua_Integer arg1_int = 0;
+							arg_ss >> arg1_int;
+							lua_pushinteger(L, arg1_int);
+						}
+						else
+						{
+							lua_pushstring(L, api_arg.c_str());
+						}
+
+						int status = lua_pcall(L, 2, 1, 0);
+						if (status != LUA_OK)
+						{
+							global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "execute api %s contract error", api_name.c_str());
+							return false;
+						}
+						lua_pop(L, 1);
+						lua_pop(L, 1); // pop self
 					}
 					else
 					{
-						lua_pushstring(L, api_arg.c_str());
-					}
-
-					int status = lua_pcall(L, 2, 1, 0);
-					if (status != LUA_OK)
-					{
-						global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "execute api %s contract error", api_name.c_str());
+						global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "Can't find api %s in this contract", api_name.c_str());
+						lua_pop(L, 1);
 						return false;
 					}
+					// print call contract api result
+					if (lua_gettop(L) > 0 && result_json_string)
+					{
+						// has result
+						lua_getglobal(L, "last_return");
+						auto last_return_value_json = luaL_tojsonstring(L, -1, nullptr);
+						auto last_return_value_json_string = std::string(last_return_value_json);
+						lua_pop(L, 1);
+						*result_json_string = last_return_value_json_string;
+					}
+
 					lua_pop(L, 1);
-					lua_pop(L, 1); // pop self
+					return true;
 				}
-				else
-				{
-					global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "Can't find api %s in this contract", api_name.c_str());
-					lua_pop(L, 1);
+				catch (const std::exception& e) {
+					global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, e.what());
 					return false;
 				}
-				// print call contract api result
-				if (lua_gettop(L)>0 && result_json_string)
-				{
-					// has result
-					lua_getglobal(L, "last_return");
-					auto last_return_value_json = luaL_tojsonstring(L, -1, nullptr);
-					auto last_return_value_json_string = std::string(last_return_value_json);
-					lua_pop(L, 1);
-					*result_json_string = last_return_value_json_string;
-				}
-
-				lua_pop(L, 1);
-				return true;
 			}
 
             std::string wrap_contract_name(const char *contract_name)

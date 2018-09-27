@@ -799,7 +799,7 @@ static void f_parser(lua_State *L, void *ud) {
     }
 	if (!cl)
 		return;
-    lua_assert(cl->nupvalues == cl->p->sizeupvalues);
+    lua_assert(cl->nupvalues == cl->p->upvalues.size());
     luaF_initupvals(L, cl);
 }
 

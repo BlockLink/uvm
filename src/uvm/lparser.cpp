@@ -1722,7 +1722,6 @@ uvm_types::GcLClosure *luaY_parser(lua_State *L, ZIO *z, Mbuffer *buff,
     luaD_inctop(L);
     funcstate.f = cl->p = luaF_newproto(L);
     funcstate.f->source = luaS_new(L, name);  /* create and anchor uvm_types::GcString */
-    lua_assert(iswhite(funcstate.f));  /* do not need barrier here */
     lexstate.buff = buff;
     lexstate.dyd = dyd;
     dyd->actvar.n = dyd->gt.n = dyd->label.n = 0;

@@ -333,7 +333,7 @@ uvm_types::GcLClosure *luaU_undump(lua_State *L, ZIO *Z, const char *name) {
     luaD_inctop(L);
     cl->p = luaF_newproto(L);
     LoadFunction(&S, cl->p, nullptr);
-    lua_assert(cl->nupvalues == cl->p->sizeupvalues);
+    lua_assert(cl->nupvalues == cl->p->upvalues.size());
     luai_verifycode(L, buff, cl->p);
     return cl;
 }

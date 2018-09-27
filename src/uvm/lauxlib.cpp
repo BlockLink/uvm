@@ -2106,36 +2106,42 @@ static int lua_real_execute_contract_api(lua_State *L
 LUA_API int lua_execute_contract_api(lua_State *L, const char *contract_name,
 	const char *api_name, const char *arg1, std::string *result_json_string)
 {
-	auto contract_address = uvm::lua::lib::malloc_managed_string(L, CONTRACT_ID_MAX_LENGTH + 1);
-	memset(contract_address, 0x0, CONTRACT_ID_MAX_LENGTH + 1);
-	size_t address_size = 0;
-	global_uvm_chain_api->get_contract_address_by_name(L, contract_name, contract_address, &address_size);
-	if (address_size > 0)
-	{
-		UvmStateValue value;
-		value.string_value = contract_address;
-		uvm::lua::lib::set_lua_state_value(L, STARTING_CONTRACT_ADDRESS, value, LUA_STATE_VALUE_STRING);
+	try {
+		auto contract_address = uvm::lua::lib::malloc_managed_string(L, CONTRACT_ID_MAX_LENGTH + 1);
+		memset(contract_address, 0x0, CONTRACT_ID_MAX_LENGTH + 1);
+		size_t address_size = 0;
+		global_uvm_chain_api->get_contract_address_by_name(L, contract_name, contract_address, &address_size);
+		if (address_size > 0)
+		{
+			UvmStateValue value;
+			value.string_value = contract_address;
+			uvm::lua::lib::set_lua_state_value(L, STARTING_CONTRACT_ADDRESS, value, LUA_STATE_VALUE_STRING);
+		}
+
+		lua_createtable(L, 0, 0);
+		lua_setglobal(L, "last_return");
+
+		int status = lua_real_execute_contract_api(L, contract_name, api_name, arg1);
+
+		if (lua_gettop(L) < 1)
+			return LUA_ERRRUN;
+		int result = lua_toboolean(L, -1);
+		if (result > 0 && result_json_string)
+		{
+			lua_getglobal(L, "last_return");
+			auto last_return_value_json = luaL_tojsonstring(L, -1, nullptr);
+			auto last_return_value_json_string = std::string(last_return_value_json);
+			lua_pop(L, 1);
+			*result_json_string = last_return_value_json_string;
+		}
+		if (result)
+			result = luaL_commit_storage_changes(L);
+		return result > 0 ? LUA_OK : LUA_ERRRUN;
 	}
-
-	lua_createtable(L, 0, 0);
-	lua_setglobal(L, "last_return");
-
-    int status = lua_real_execute_contract_api(L, contract_name, api_name, arg1);
-
-    if (lua_gettop(L) < 1)
-        return LUA_ERRRUN;
-    int result = lua_toboolean(L, -1);
-	if (result>0 && result_json_string)
-	{
-		lua_getglobal(L, "last_return");
-		auto last_return_value_json = luaL_tojsonstring(L, -1, nullptr);
-		auto last_return_value_json_string = std::string(last_return_value_json);
-		lua_pop(L, 1);
-		*result_json_string = last_return_value_json_string;
+	catch (const std::exception& e) {
+		uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_LVM_ERROR, e.what());
+		return LUA_ERRRUN;
 	}
-	if(result)
-		result = luaL_commit_storage_changes(L);
-    return result > 0 ? LUA_OK : LUA_ERRRUN;
 }
 
 LUA_API int lua_execute_contract_api_by_address(lua_State *L, const char *address,

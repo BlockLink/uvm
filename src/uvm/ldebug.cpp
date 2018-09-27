@@ -34,7 +34,7 @@ using uvm::lua::api::global_uvm_chain_api;
 
 
 
-#define noLuaClosure(f)		((f) == nullptr || (f)->tt() == LUA_TCCL)
+#define noLuaClosure(f)		((f) == nullptr || (f)->tt_value() == LUA_TCCL)
 
 
 /* Active Lua function (given call info) */
@@ -148,7 +148,7 @@ LUA_API int lua_getstack(lua_State *L, int level, lua_Debug *ar) {
 
 
 static const char *upvalname(uvm_types::GcProto *p, int uv) {
-	uvm_types::GcString *s = check_exp(uv < p->sizeupvalues, p->upvalues[uv].name);
+	uvm_types::GcString *s = check_exp(uv < p->upvalues.size(), p->upvalues[uv].name);
     if (s == nullptr) return "?";
     else return getstr(s);
 }
