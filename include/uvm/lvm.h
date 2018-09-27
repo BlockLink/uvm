@@ -91,7 +91,26 @@
   if (!luaV_fastset(L,t,k,slot,luaH_get,v)) \
     luaV_finishset(L,t,k,v,slot); }
 
+namespace uvm {
+	namespace core {
+		struct ExecuteContext {
+			int* insts_executed_count;
+			int *stopped_pointer;
+			int insts_limit;
+			bool has_insts_limit;
+			bool use_last_return;
+			CallInfo *ci;
+			uvm_types::GcLClosure *cl;
+			TValue *k;
+			StkId base;
 
+			// execute to next ci called, return whether has next ci to execute
+			bool executeToNextCi(lua_State* L);
+			void enter_newframe(lua_State *L);
+			void prepare_newframe(lua_State *L);
+		};
+	}
+}
 
 LUAI_FUNC int luaV_equalobj(lua_State *L, const TValue *t1, const TValue *t2);
 LUAI_FUNC int luaV_lessthan(lua_State *L, const TValue *l, const TValue *r);
