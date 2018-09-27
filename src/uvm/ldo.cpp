@@ -199,7 +199,10 @@ void luaD_reallocstack(lua_State *L, int newsize) {
     int lim = L->stacksize;
     lua_assert(newsize <= LUAI_MAXSTACK || newsize == ERRORSTACKSIZE);
     lua_assert(L->stack_last - L->stack == L->stacksize - EXTRA_STACK);
-    luaM_reallocvector(L, L->stack, L->stacksize, newsize, TValue);
+
+	auto newstack = static_cast<TValue*>(L->gc_state->gc_malloc_vector(newsize, sizeof(TValue)));
+	memcpy(newstack, L->stack, sizeof(TValue) * L->stacksize);
+	L->stack = newstack;
     for (; lim < newsize; lim++)
         setnilvalue(L->stack + lim); /* erase new segment */
     L->stacksize = newsize;

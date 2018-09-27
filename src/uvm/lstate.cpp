@@ -103,7 +103,7 @@ void luaE_setdebt(l_mem debt) {
 
 
 CallInfo *luaE_extendCI(lua_State *L) {
-    CallInfo *ci = luaM_new(L, CallInfo);
+	CallInfo *ci = static_cast<CallInfo*>(L->gc_state->gc_malloc(sizeof(CallInfo)));
     lua_assert(L->ci->next == nullptr);
     L->ci->next = ci;
     ci->previous = L->ci;
@@ -122,7 +122,7 @@ void luaE_freeCI(lua_State *L) {
     ci->next = nullptr;
     while ((ci = next) != nullptr) {
         next = ci->next;
-        luaM_free(L, ci);
+		L->gc_state->gc_free(ci);
         L->nci--;
     }
 }
@@ -148,7 +148,7 @@ void luaE_shrinkCI(lua_State *L) {
 static void stack_init(lua_State *L1, lua_State *L) {
     int i; CallInfo *ci;
     /* initialize stack array */
-    L1->stack = luaM_newvector(L, BASIC_STACK_SIZE, TValue);
+	L1->stack = static_cast<TValue*>(L->gc_state->gc_malloc_vector(BASIC_STACK_SIZE, sizeof(TValue)));
     L1->stacksize = BASIC_STACK_SIZE;
     for (i = 0; i < BASIC_STACK_SIZE; i++)
         setnilvalue(L1->stack + i);  /* erase new stack */
@@ -171,7 +171,7 @@ static void freestack(lua_State *L) {
     L->ci = &L->base_ci;  /* free the entire 'ci' list */
     luaE_freeCI(L);
     lua_assert(L->nci == 0);
-    luaM_freearray(L, L->stack, L->stacksize);  /* free stack array */
+	L->gc_state->gc_free_array(L->stack, L->stacksize, sizeof(TValue)); /* free stack array */
 }
 
 
@@ -254,8 +254,6 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
     LG *l = lua_cast(LG *, (*f)(ud ? ud : gc_state, nullptr, LUA_TTHREAD, sizeof(LG)));
     if (l == nullptr) return nullptr;
     L = &l->l.l;
-	L->malloc_buffer = nullptr;// malloc(LUA_MALLOC_TOTAL_SIZE);
-    L->malloc_pos = 0;
 	L->gc_state = gc_state;
     memset(L->compile_error, 0x0, LUA_COMPILE_ERROR_MAX_LENGTH);
 	memset(L->runerror, 0x0, LUA_VM_EXCEPTION_STRNG_MAX_LENGTH);
@@ -278,7 +276,7 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
     preinit_thread(L);
 
 	L->evalstacksize = 100;
-	L->evalstack = luaM_newvector(L, L->evalstacksize, TValue);
+	L->evalstack = static_cast<TValue*>(L->gc_state->gc_malloc_vector(L->evalstacksize, sizeof(TValue)));
 	L->evalstacktop = L->evalstack;
 
 	L->allow_contract_modify = 0;
@@ -298,7 +296,6 @@ LUA_API void lua_close(lua_State *L) {
     uvm::lua::lib::close_lua_state_values(L);
 	delete L->contract_table_addresses;
 	L->contract_table_addresses = nullptr;
-    free(L->malloc_buffer);
     lua_lock(L);
     close_state(L);
 }

@@ -161,8 +161,6 @@ struct lua_State : vmgc::GcObject {
     unsigned short nCcalls;  /* number of nested C calls */
     lu_byte hookmask;
     lu_byte allowhook;
-    void *malloc_buffer; // malloc enough memory for the whole lua_state scope beforehand, and malloc/free in the buffer
-    ptrdiff_t malloc_pos; // used buffer size in malloc_buffer
     char compile_error[LUA_COMPILE_ERROR_MAX_LENGTH];
 	char runerror[LUA_VM_EXCEPTION_STRNG_MAX_LENGTH];
     FILE *in;
