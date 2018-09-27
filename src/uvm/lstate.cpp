@@ -136,7 +136,7 @@ void luaE_shrinkCI(lua_State *L) {
     CallInfo *next2;  /* next's next */
     /* while there are two nexts */
     while (ci->next != nullptr && (next2 = ci->next->next) != nullptr) {
-        luaM_free(L, ci->next);  /* free next */
+		L->gc_state->gc_free(ci->next); /* free next */
         L->nci--;
         ci->next = next2;  /* remove 'next' from the list */
         next2->previous = ci;
@@ -237,7 +237,6 @@ static void close_state(lua_State *L) {
     luaC_freeallobjects(L);  /* collect all objects */
     if (L->version)  /* closing a fully built state? */
         luai_userstateclose(L);
-    //luaM_freearray(L, L->strt.hash, L->strt.size);
     freestack(L);
 	if (L->gc_state) {
 		delete L->gc_state;

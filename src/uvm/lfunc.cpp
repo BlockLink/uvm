@@ -47,7 +47,7 @@ uvm_types::GcLClosure *luaF_newLclosure(lua_State *L, int n) {
 void luaF_initupvals(lua_State *L, uvm_types::GcLClosure *cl) {
     int i;
     for (i = 0; i < cl->nupvalues; i++) {
-        UpVal *uv = luaM_new(L, UpVal);
+		UpVal *uv = static_cast<UpVal*>(L->gc_state->gc_malloc(sizeof(UpVal)));
         uv->refcount = 1;
         uv->v = &uv->u.value;  /* make it closed */
         setnilvalue(uv->v);
@@ -68,7 +68,7 @@ UpVal *luaF_findupval(lua_State *L, StkId level) {
         pp = &p->u.open.next;
     }
     /* not found: create a new upvalue */
-    uv = luaM_new(L, UpVal);
+	uv = static_cast<UpVal*>(L->gc_state->gc_malloc(sizeof(UpVal)));
     uv->refcount = 0;
     uv->u.open.next = *pp;  /* link it to list of open upvalues */
     uv->u.open.touched = 1;
@@ -88,8 +88,8 @@ void luaF_close(lua_State *L, StkId level) {
     while (L->openupval != nullptr && (uv = L->openupval)->v >= level) {
         lua_assert(upisopen(uv));
         L->openupval = uv->u.open.next;  /* remove from 'open' list */
-        if (uv->refcount == 0)  /* no references? */
-            luaM_free(L, uv);  /* free upvalue */
+		if (uv->refcount == 0)  /* no references? */
+			L->gc_state->gc_free(uv);
         else {
             setobj(L, &uv->u.value, uv->v);  /* move value to upvalue slot */
             uv->v = &uv->u.value;  /* now current value lives here */

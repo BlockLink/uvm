@@ -127,7 +127,7 @@ void luaC_upvdeccount(lua_State *L, UpVal *uv) {
 	lua_assert(uv->refcount > 0);
 	uv->refcount--;
 	if (uv->refcount == 0 && !upisopen(uv))
-		luaM_free(L, uv);
+		L->gc_state->gc_free(uv);
 }
 
 /* }====================================================== */
