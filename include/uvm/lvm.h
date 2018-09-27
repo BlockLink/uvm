@@ -11,6 +11,7 @@
 #include "uvm/ldo.h"
 #include "uvm/lobject.h"
 #include "uvm/ltm.h"
+#include <memory>
 
 
 #if !defined(LUA_NOCVTN2S)
@@ -127,7 +128,9 @@ LUAI_FUNC void luaV_finishget(lua_State *L, const TValue *t, TValue *key,
 LUAI_FUNC void luaV_finishset(lua_State *L, const TValue *t, TValue *key,
     StkId val, const TValue *oldval);
 LUAI_FUNC void luaV_finishOp(lua_State *L);
-LUAI_FUNC void luaV_execute(lua_State *L);
+LUAI_FUNC std::shared_ptr<uvm::core::ExecuteContext> luaV_execute(lua_State *L);
+// if not sure, don't use result of get_last_execute_context()'s pointer fields
+std::shared_ptr<uvm::core::ExecuteContext> get_last_execute_context();
 LUAI_FUNC void luaV_concat(lua_State *L, int total);
 LUAI_FUNC lua_Integer luaV_div(lua_State *L, lua_Integer x, lua_Integer y);
 LUAI_FUNC lua_Integer luaV_mod(lua_State *L, lua_Integer x, lua_Integer y);

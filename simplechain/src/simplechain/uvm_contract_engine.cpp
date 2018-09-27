@@ -26,6 +26,14 @@ namespace simplechain
 	{
 		return _scope->get_instructions_executed_count();
 	}
+	int UvmContractEngine::vm_state() const {
+		return _scope->L()->state;
+	}
+
+	std::shared_ptr<uvm::lua::lib::UvmStateScope> UvmContractEngine::scope() const {
+		return _scope;
+	}
+
 	void UvmContractEngine::set_gas_limit(int64_t gas_limit)
 	{
 		_scope->set_instructions_limit(gas_limit);

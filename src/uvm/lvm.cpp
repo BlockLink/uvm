@@ -1730,20 +1730,26 @@ namespace uvm {
 	}
 }
 
-void luaV_execute(lua_State *L)
+static std::shared_ptr<uvm::core::ExecuteContext> last_execute_context;
+
+std::shared_ptr<uvm::core::ExecuteContext> luaV_execute(lua_State *L)
 {
     if (L->force_stopping)
-        return;
+        return nullptr;
 	L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
     CallInfo *ci = L->ci;
 	uvm_types::GcLClosure *cl;
     TValue *k;
     StkId base;
     ci->callstatus |= CIST_FRESH;  /* fresh invocation of 'luaV_execute" */
-	ExecuteContext execute_ctx;
-	execute_ctx.ci = ci;
-	execute_ctx.enter_newframe(L);
+	auto execute_ctx = std::make_shared<uvm::core::ExecuteContext>();
+	execute_ctx->ci = ci;
+	execute_ctx->enter_newframe(L);
+	last_execute_context = execute_ctx;
+	return execute_ctx;
 }
 
-/* }================================================================== */
+std::shared_ptr<uvm::core::ExecuteContext> get_last_execute_context() {
+	return last_execute_context;
+}
 

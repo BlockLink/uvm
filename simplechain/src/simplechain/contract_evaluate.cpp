@@ -8,8 +8,17 @@
 
 namespace simplechain {
 	using namespace std;
+
+	static std::shared_ptr<ContractEngine> last_contract_engine_for_debugger;
+
+	std::shared_ptr<ContractEngine> get_last_contract_engine_for_debugger() {
+		return last_contract_engine_for_debugger;
+	}
+
 	// contract_create_evaluator methods
 	std::shared_ptr<contract_create_evaluator::operation_type::result_type> contract_create_evaluator::do_evaluate(const operation_type& o) {
+		last_contract_engine_for_debugger = nullptr;
+
 		ContractEngineBuilder builder;
 		auto engine = builder.build();
 		int exception_code = 0;
@@ -52,6 +61,10 @@ namespace simplechain {
 			auto gas_count = gas_used;
 			invoke_contract_result.exec_succeed = true;
 			invoke_contract_result.gas_used = gas_count;
+
+			if (engine->vm_state() & lua_VMState::LVM_STATE_BREAK) {
+				last_contract_engine_for_debugger = engine;
+			}
 		}
 		catch (const std::exception& e)
 		{
@@ -74,6 +87,8 @@ namespace simplechain {
 
 	// contract_invoke_evaluator methods
 	std::shared_ptr<contract_invoke_evaluator::operation_type::result_type> contract_invoke_evaluator::do_evaluate(const operation_type& o) {
+		last_contract_engine_for_debugger = nullptr;
+
 		ContractEngineBuilder builder;
 		auto engine = builder.build();
 		int exception_code = 0;
@@ -125,6 +140,10 @@ namespace simplechain {
 			auto gas_count = gas_used;
 			invoke_contract_result.exec_succeed = true;
 			invoke_contract_result.gas_used = gas_count;
+
+			if (engine->vm_state() & lua_VMState::LVM_STATE_BREAK) {
+				last_contract_engine_for_debugger = engine;
+			}
 		}
 		catch (const std::exception& e)
 		{

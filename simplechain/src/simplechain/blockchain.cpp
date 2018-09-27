@@ -2,8 +2,10 @@
 #include <simplechain/operations.h>
 #include <simplechain/transfer_evaluate.h>
 #include <simplechain/simplechain_uvm_api.h>
+#include <simplechain/uvm_contract_engine.h>
 #include <iostream>
 #include <fc/io/json.hpp>
+#include <uvm/lvm.h>
 
 namespace simplechain {
 	blockchain::blockchain() {
@@ -302,6 +304,43 @@ namespace simplechain {
 			result.push_back(p.first);
 		}
 		return result;
+	}
+
+	bool blockchain::is_break_when_last_evaluate() const {
+		return get_last_contract_engine_for_debugger() ? true : false;
+	}
+	void blockchain::debugger_step_into() {
+		auto engine = get_last_contract_engine_for_debugger();
+		if (!engine)
+			return;
+		auto uvm_engine = (UvmContractEngine*)engine.get();
+		auto scope = uvm_engine->scope();
+		auto execute_ctx = get_last_execute_context();
+		if (!execute_ctx)
+			return;
+		execute_ctx->step_into(scope->L());
+	}
+	void blockchain::debugger_step_out() {
+		auto engine = get_last_contract_engine_for_debugger();
+		if (!engine)
+			return;
+		auto uvm_engine = (UvmContractEngine*)engine.get();
+		auto scope = uvm_engine->scope();
+		auto execute_ctx = get_last_execute_context();
+		if (!execute_ctx)
+			return;
+		execute_ctx->step_out(scope->L());
+	}
+	void blockchain::debugger_step_over() {
+		auto engine = get_last_contract_engine_for_debugger();
+		if (!engine)
+			return;
+		auto uvm_engine = (UvmContractEngine*)engine.get();
+		auto scope = uvm_engine->scope();
+		auto execute_ctx = get_last_execute_context();
+		if (!execute_ctx)
+			return;
+		execute_ctx->step_over(scope->L());
 	}
 
 }

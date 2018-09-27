@@ -62,6 +62,13 @@ namespace simplechain {
 		fc::variant get_state() const;
 		std::string get_state_json() const;
 
+		bool is_break_when_last_evaluate() const;
+		void debugger_step_into();
+		void debugger_step_out();
+		void debugger_step_over();
+
+		// TODO: apis to manage breakpoints, view debugger current state info
+
 	private:
 		// @throws exception
 		std::shared_ptr<generic_evaluator> get_operation_evaluator(transaction* tx, const operation& op);
