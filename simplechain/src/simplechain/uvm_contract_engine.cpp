@@ -9,6 +9,7 @@ namespace simplechain
 	UvmContractEngine::UvmContractEngine(bool use_contract)
 	{
 		_scope = std::make_shared<uvm::lua::lib::UvmStateScope>(use_contract);
+		_scope->L()->allow_debug = true;
 	}
 	UvmContractEngine::~UvmContractEngine()
 	{

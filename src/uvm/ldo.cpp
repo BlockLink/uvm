@@ -367,6 +367,7 @@ static void tryfuncTM(lua_State *L, StkId func) {
 int luaD_precall(lua_State *L, StkId func, int nresults) {
     lua_CFunction f;
     CallInfo *ci;
+	L->ci_depth++;
     switch (ttype(func)) {
     case LUA_TCCL:  /* C closure */
         f = clCvalue(func)->f;
@@ -488,6 +489,9 @@ int luaD_poscall(lua_State *L, CallInfo *ci, StkId firstResult, int nres) {
     }
     res = ci->func;  /* res == final position of 1st result */
     L->ci = ci->previous;  /* back to caller */
+	if (L->ci_depth > 0) {
+		L->ci_depth--;
+	}
     /* move results to proper place */
     return moveresults(L, firstResult, res, nres, wanted);
 }

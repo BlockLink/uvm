@@ -10,6 +10,9 @@
 #include <string.h>
 #include <string>
 #include <list>
+#include <vector>
+#include <map>
+#include <stack>
 
 #include "uvm/lua.h"
 
@@ -142,6 +145,11 @@ typedef enum lua_VMState {
 	LVM_STATE_BREAK = 1 << 2,
 } lua_VMState;
 
+struct contract_info_stack_entry {
+	std::string contract_id;
+	std::string api_name;
+};
+
 /*
 ** 'per thread' state
 */
@@ -197,7 +205,12 @@ struct lua_State : vmgc::GcObject {
 	StkId evalstack; //for calulate
 	StkId evalstacktop;//first free slot
 	int evalstacksize;
+
 	lua_VMState state;
+	bool allow_debug;
+	std::map<std::string, std::list<uint32_t> >* breakpoints; // contract_address => list of line_number
+	std::stack<contract_info_stack_entry>* using_contract_id_stack;
+	uint32_t ci_depth;
 
 	inline lua_State() :tt_(LUA_TTHREAD) {}
 	virtual ~lua_State() {}

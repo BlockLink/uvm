@@ -12,6 +12,7 @@
 #include <memory>
 #include <vector>
 #include <map>
+#include <list>
 #include <algorithm>
 
 namespace simplechain {
@@ -27,6 +28,8 @@ namespace simplechain {
 		std::map<std::string, contract_object> contracts;
 		std::map<std::string, std::map<std::string, StorageDataType> > contract_storages;
 		std::vector<transaction> tx_mempool;
+
+		std::map<std::string, std::list<uint32_t> > breakpoints;
 	public:
 		blockchain();
 		// @throws exception
@@ -67,7 +70,13 @@ namespace simplechain {
 		void debugger_step_out();
 		void debugger_step_over();
 
-		// TODO: apis to manage breakpoints, view debugger current state info
+		void add_breakpoint_in_last_debugger_state(const std::string& contract_address, uint32_t line);
+		void remove_breakpoint_in_last_debugger_state(const std::string& contract_address, uint32_t line);
+		void clear_breakpoints_in_last_debugger_state();
+		std::map<std::string, std::list<uint32_t> > get_breakpoints_in_last_debugger_state();
+		// TODO: get breakpoints
+
+		// TODO: apis to view debugger current state info
 
 	private:
 		// @throws exception

@@ -104,6 +104,7 @@ void luaE_setdebt(l_mem debt) {
 
 CallInfo *luaE_extendCI(lua_State *L) {
 	CallInfo *ci = static_cast<CallInfo*>(L->gc_state->gc_malloc(sizeof(CallInfo)));
+	memset(ci, 0x0, sizeof(CallInfo));
     lua_assert(L->ci->next == nullptr);
     L->ci->next = ci;
     ci->previous = L->ci;
@@ -238,6 +239,12 @@ static void close_state(lua_State *L) {
     if (L->version)  /* closing a fully built state? */
         luai_userstateclose(L);
     freestack(L);
+	if (L->breakpoints) {
+		delete L->breakpoints;
+	}
+	if (L->using_contract_id_stack) {
+		delete L->using_contract_id_stack;
+	}
 	if (L->gc_state) {
 		delete L->gc_state;
 		// L->ud = nullptr;
@@ -279,9 +286,13 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
 	L->evalstacktop = L->evalstack;
 
 	L->state = lua_VMState::LVM_STATE_BREAK;
+	L->allow_debug = false;
+	L->breakpoints = new std::map<std::string, std::list<uint32_t> >();
 
 	L->allow_contract_modify = 0;
 	L->contract_table_addresses = new std::list<intptr_t>();
+	L->using_contract_id_stack = new std::stack<contract_info_stack_entry>();
+	L->ci_depth = 0;
 
     for (i = 0; i < LUA_NUMTAGS; i++) L->mt[i] = nullptr;
     if (luaD_rawrunprotected(L, f_luaopen, nullptr) != LUA_OK) {

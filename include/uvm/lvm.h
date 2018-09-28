@@ -105,8 +105,6 @@ namespace uvm {
 			TValue *k;
 			StkId base;
 
-			// TODO: put vm state in lua_State, add step_over
-
 			void step_out(lua_State *L);
 			void step_into(lua_State* L);
 			void step_over(lua_State* L);

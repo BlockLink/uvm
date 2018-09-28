@@ -1118,7 +1118,7 @@ static int contract_api_wrapper_func(lua_State *L)
 	auto contract_info_stack = uvm::lua::lib::get_using_contract_id_stack(L, true);
 	if (!contract_info_stack)
 		return 0;
-	uvm::lua::lib::contract_info_stack_entry stack_entry;
+	contract_info_stack_entry stack_entry;
 	stack_entry.contract_id = contract_id;
 	stack_entry.api_name = api_name;
 	contract_info_stack->push(stack_entry);

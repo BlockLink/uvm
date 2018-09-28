@@ -1798,24 +1798,7 @@ end
 
 			std::stack<contract_info_stack_entry> *get_using_contract_id_stack(lua_State *L, bool init_if_not_exist)
             {
-				std::stack<contract_info_stack_entry> *contract_id_stack = nullptr;
-				auto contract_id_stack_value_in_state_map = uvm::lua::lib::get_lua_state_value(L, GLUA_CONTRACT_API_CALL_STACK_STATE_MAP_KEY);
-				if (!contract_id_stack_value_in_state_map.pointer_value)
-				{
-					if (!init_if_not_exist)
-						return nullptr;
-					contract_id_stack = new std::stack<contract_info_stack_entry>();
-					if (!contract_id_stack)
-					{
-						lua_set_run_error(L, "allocate contract id stack memory error");
-						return nullptr;
-					}
-					contract_id_stack_value_in_state_map.pointer_value = (void*)contract_id_stack;
-					uvm::lua::lib::set_lua_state_value(L, GLUA_CONTRACT_API_CALL_STACK_STATE_MAP_KEY, contract_id_stack_value_in_state_map, UvmStateValueType::LUA_STATE_VALUE_POINTER);
-				}
-				else
-					contract_id_stack = (std::stack<contract_info_stack_entry>*) (contract_id_stack_value_in_state_map.pointer_value);
-				return contract_id_stack;
+				return L->using_contract_id_stack;
             }
 
 			std::string get_current_using_contract_id(lua_State *L)

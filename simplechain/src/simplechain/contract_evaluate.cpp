@@ -21,6 +21,9 @@ namespace simplechain {
 
 		ContractEngineBuilder builder;
 		auto engine = builder.build();
+		if (engine->scope()->L()->breakpoints) {
+			*engine->scope()->L()->breakpoints = chain->get_breakpoints_in_last_debugger_state();
+		}
 		int exception_code = 0;
 		string exception_msg;
 		bool has_error = false;
@@ -91,6 +94,9 @@ namespace simplechain {
 
 		ContractEngineBuilder builder;
 		auto engine = builder.build();
+		if (engine->scope()->L()->breakpoints) {
+			*engine->scope()->L()->breakpoints = chain->get_breakpoints_in_last_debugger_state();
+		}
 		int exception_code = 0;
 		string exception_msg;
 		bool has_error = false;

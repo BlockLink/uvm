@@ -4,6 +4,7 @@
 #include <simplechain/simplechain_uvm_api.h>
 #include <simplechain/uvm_contract_engine.h>
 #include <iostream>
+#include <list>
 #include <fc/io/json.hpp>
 #include <uvm/lvm.h>
 
@@ -341,6 +342,87 @@ namespace simplechain {
 		if (!execute_ctx)
 			return;
 		execute_ctx->step_over(scope->L());
+	}
+
+	// TODO: add breakpoint to all evaluate
+	void blockchain::add_breakpoint_in_last_debugger_state(const std::string& contract_address, uint32_t line) {
+		auto engine = get_last_contract_engine_for_debugger();
+		std::map<std::string, std::list<uint32_t> > *breakpoints_pointer = nullptr;
+		if (!engine) {
+			breakpoints_pointer = &breakpoints;
+		}
+		else {
+			auto uvm_engine = (UvmContractEngine*)engine.get();
+			auto scope = uvm_engine->scope();
+			if (scope->L()->breakpoints) {
+				breakpoints_pointer = scope->L()->breakpoints;
+			}
+			else {
+				return;
+			}
+		}
+		std::list<uint32_t> lines;
+		if (breakpoints_pointer->find(contract_address) != breakpoints_pointer->end())
+			lines = breakpoints_pointer->at(contract_address);
+		if (std::find(lines.begin(), lines.end(), line) == lines.end())
+			lines.push_back(line);
+		(*breakpoints_pointer)[contract_address] = lines;
+	}
+	void blockchain::remove_breakpoint_in_last_debugger_state(const std::string& contract_address, uint32_t line) {
+		auto engine = get_last_contract_engine_for_debugger();
+		std::map<std::string, std::list<uint32_t> > *breakpoints_pointer = nullptr;
+		if (!engine) {
+			breakpoints_pointer = &breakpoints;
+		}
+		else {
+			auto uvm_engine = (UvmContractEngine*)engine.get();
+			auto scope = uvm_engine->scope();
+			if (scope->L()->breakpoints) {
+				breakpoints_pointer = scope->L()->breakpoints;
+			}
+			else {
+				return;
+			}
+		}
+		std::list<uint32_t> lines;
+		if (breakpoints_pointer->find(contract_address) != breakpoints_pointer->end())
+			lines = breakpoints_pointer->at(contract_address);
+		if (std::find(lines.begin(), lines.end(), line) != lines.end())
+			lines.erase(std::find(lines.begin(), lines.end(), line));
+		(*breakpoints_pointer)[contract_address] = lines;
+	}
+	void blockchain::clear_breakpoints_in_last_debugger_state() {
+		breakpoints.clear();
+		auto engine = get_last_contract_engine_for_debugger();
+		std::map<std::string, std::list<uint32_t> > *breakpoints_pointer = nullptr;
+		if (engine) {
+			breakpoints_pointer = &breakpoints;
+			auto uvm_engine = (UvmContractEngine*)engine.get();
+			auto scope = uvm_engine->scope();
+			if (scope->L()->breakpoints) {
+				scope->L()->breakpoints->clear();
+			}
+		}
+	}
+
+	std::map<std::string, std::list<uint32_t> > blockchain::get_breakpoints_in_last_debugger_state() {
+
+		auto engine = get_last_contract_engine_for_debugger();
+		std::map<std::string, std::list<uint32_t> > *breakpoints_pointer = nullptr;
+		if (!engine) {
+			breakpoints_pointer = &breakpoints;
+		}
+		else {
+			auto uvm_engine = (UvmContractEngine*)engine.get();
+			auto scope = uvm_engine->scope();
+			if (scope->L()->breakpoints) {
+				breakpoints_pointer = scope->L()->breakpoints;
+			}
+			else {
+				return std::map<std::string, std::list<uint32_t> >();
+			}
+		}
+		return *breakpoints_pointer;
 	}
 
 }
