@@ -874,11 +874,13 @@ namespace uvm {
 			if (enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
 				|| enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT))
 				return;
-			L->ci = ci; // ?
+			L->ci = ci;
+			*L->using_contract_id_stack = this->using_contract_id_stack;
 			try
 			{
 				auto has_next_ci = executeToNextCi(L);
-				if (!has_next_ci) {
+				if (!has_next_ci && !enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
+					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT)) {
 					union_change_state(L, lua_VMState::LVM_STATE_HALT);
 				}
 			}
@@ -892,6 +894,7 @@ namespace uvm {
 		void ExecuteContext::step_out(lua_State *L) {
 			L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
 			L->ci = ci;
+			*L->using_contract_id_stack = this->using_contract_id_stack;
 			int c = L->ci_depth;
 			try
 			{
@@ -900,7 +903,8 @@ namespace uvm {
 					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK) && L->ci_depth >= c)
 				{
 					auto has_next_ci = executeToNextCi(L);
-					if (!has_next_ci) {
+					if (!has_next_ci && !enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
+						&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT)) {
 						union_change_state(L, lua_VMState::LVM_STATE_HALT);
 					}
 				}
@@ -918,13 +922,15 @@ namespace uvm {
 				return;
 			L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
 			L->ci = ci;
+			*L->using_contract_id_stack = this->using_contract_id_stack;
 
 			int c = L->ci_depth;
 			try {
 				do
 				{
 					auto has_next_ci = executeToNextCi(L);
-					if (!has_next_ci) {
+					if (!has_next_ci && !enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
+						&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT)) {
 						union_change_state(L, lua_VMState::LVM_STATE_HALT);
 					}
 				} while (!enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
@@ -950,7 +956,7 @@ namespace uvm {
 				Instruction i = *(ci->u.l.savedpc++);
 
 #ifdef DEBUG
-				printf("%d\n", GET_OPCODE(i));
+				printf("%s\n", luaP_opnames[GET_OPCODE(i)]);
 #endif // DEBUG
 
 				StkId ra;
@@ -1710,6 +1716,8 @@ namespace uvm {
 							uint32_t line = cl->p->lineinfos[inst_index_in_proto];
 							if (std::find(contract_breakpoints.begin(), contract_breakpoints.end(), line) != contract_breakpoints.end()) {
 								union_change_state(L, lua_VMState::LVM_STATE_BREAK);
+								if(L->using_contract_id_stack)
+									this->using_contract_id_stack = *(L->using_contract_id_stack);
 
 								lua_assert(ci == L->ci);
 								cl = clLvalue(ci->func);  /* local reference to function's closure */

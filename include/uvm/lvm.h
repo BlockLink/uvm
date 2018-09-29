@@ -104,6 +104,7 @@ namespace uvm {
 			uvm_types::GcLClosure *cl;
 			TValue *k;
 			StkId base;
+			std::stack<contract_info_stack_entry> using_contract_id_stack;
 
 			void step_out(lua_State *L);
 			void step_into(lua_State* L);

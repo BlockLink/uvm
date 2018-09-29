@@ -30,6 +30,7 @@
 #include <uvm/lauxlib.h>
 #include <uvm/lualib.h>
 #include <uvm/lfunc.h>
+#include <uvm/ltable.h>
 #include <uvm/uvm_storage.h>
 
 namespace uvm

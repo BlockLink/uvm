@@ -48,10 +48,13 @@ int main(int argc, char** argv) {
 				auto localvars1 = chain->view_localvars_in_last_debugger_state();
 				auto stack1 = chain->view_current_contract_stack_item_in_last_debugger_state();
 				auto line1 = chain->view_current_line_number_in_last_debugger_state();
-				chain->debugger_step_out(); // FIXME: bug here, not run to valid position
+				chain->clear_breakpoints_in_last_debugger_state();
+
+				// TODO: evaluator等engine中指针没有保存好，需要保存下来evaluator指针指向的实例
+				chain->debugger_step_out();
 				auto localvars2 = chain->view_localvars_in_last_debugger_state();
 				// TODO: get debugger state, debug, test step in/step out/step over/view info
-				chain->clear_breakpoints_in_last_debugger_state();
+				
 				chain->evaluate_transaction(tx);
 				chain->accept_transaction_to_mempool(*tx);
 			}
