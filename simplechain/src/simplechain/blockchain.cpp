@@ -425,4 +425,69 @@ namespace simplechain {
 		return *breakpoints_pointer;
 	}
 
+	std::map<std::string, TValue> blockchain::view_localvars_in_last_debugger_state() const {
+		std::map<std::string, TValue> result;
+		auto engine = get_last_contract_engine_for_debugger();
+		if (!engine)
+			return result;
+		auto uvm_engine = (UvmContractEngine*)engine.get();
+		auto scope = uvm_engine->scope();
+		auto execute_ctx = get_last_execute_context();
+		if (!execute_ctx)
+			return result;
+		result = execute_ctx->view_localvars(scope->L());
+		return result;
+	}
+	std::map<std::string, TValue> blockchain::view_upvalues_in_last_debugger_state() const {
+		std::map<std::string, TValue> result;
+		auto engine = get_last_contract_engine_for_debugger();
+		if (!engine)
+			return result;
+		auto uvm_engine = (UvmContractEngine*)engine.get();
+		auto scope = uvm_engine->scope();
+		auto execute_ctx = get_last_execute_context();
+		if (!execute_ctx)
+			return result;
+		result = execute_ctx->view_upvalues(scope->L());
+		return result;
+	}
+
+	std::pair<std::string, std::string> blockchain::view_current_contract_stack_item_in_last_debugger_state() const {
+		std::pair<std::string, std::string> result;
+		auto engine = get_last_contract_engine_for_debugger();
+		if (!engine)
+			return result;
+		auto uvm_engine = (UvmContractEngine*)engine.get();
+		auto scope = uvm_engine->scope();
+		auto execute_ctx = get_last_execute_context();
+		if (!execute_ctx)
+			return result;
+		if (scope->L()->using_contract_id_stack->empty())
+			return result;
+		const auto& top = scope->L()->using_contract_id_stack->top();
+		result.first = top.contract_id;
+		result.second = top.api_name;
+		return result;
+	}
+	uint32_t blockchain::view_current_line_number_in_last_debugger_state() const {
+		auto engine = get_last_contract_engine_for_debugger();
+		if (!engine)
+			return 0;
+		auto uvm_engine = (UvmContractEngine*)engine.get();
+		auto scope = uvm_engine->scope();
+		auto execute_ctx = get_last_execute_context();
+		if (!execute_ctx)
+			return 0;
+		auto ci = execute_ctx->ci;
+		auto cl = execute_ctx->cl;
+		auto inst_index_in_proto = ci->u.l.savedpc - cl->p->codes.data();
+		if (cl->p->lineinfos.size() > inst_index_in_proto) {
+			uint32_t line = cl->p->lineinfos[inst_index_in_proto];
+			return line;
+		}
+		else {
+			return 0;
+		}
+	}
+
 }

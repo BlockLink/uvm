@@ -43,9 +43,13 @@ int main(int argc, char** argv) {
 				tx->operations.push_back(op);
 				tx->tx_time = fc::time_point_sec(fc::time_point::now());
 
-				chain->add_breakpoint_in_last_debugger_state(contract1_addr, 120);
+				chain->add_breakpoint_in_last_debugger_state(contract1_addr, 122);
 				chain->evaluate_transaction(tx);
+				auto localvars1 = chain->view_localvars_in_last_debugger_state();
+				auto stack1 = chain->view_current_contract_stack_item_in_last_debugger_state();
+				auto line1 = chain->view_current_line_number_in_last_debugger_state();
 				chain->debugger_step_out(); // FIXME: bug here, not run to valid position
+				auto localvars2 = chain->view_localvars_in_last_debugger_state();
 				// TODO: get debugger state, debug, test step in/step out/step over/view info
 				chain->clear_breakpoints_in_last_debugger_state();
 				chain->evaluate_transaction(tx);

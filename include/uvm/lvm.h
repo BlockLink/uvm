@@ -112,6 +112,9 @@ namespace uvm {
 			bool executeToNextCi(lua_State* L);
 			void enter_newframe(lua_State* L);
 			void prepare_newframe(lua_State* L);
+
+			std::map<std::string, TValue> view_localvars(lua_State* L) const;
+			std::map<std::string, TValue> view_upvalues(lua_State* L) const;
 		};
 	}
 }

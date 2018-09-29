@@ -14,6 +14,7 @@
 #include <map>
 #include <list>
 #include <algorithm>
+#include <uvm/lobject.h>
 
 namespace simplechain {
 	typedef uint32_t balance_t;
@@ -74,9 +75,12 @@ namespace simplechain {
 		void remove_breakpoint_in_last_debugger_state(const std::string& contract_address, uint32_t line);
 		void clear_breakpoints_in_last_debugger_state();
 		std::map<std::string, std::list<uint32_t> > get_breakpoints_in_last_debugger_state();
-		// TODO: get breakpoints
 
-		// TODO: apis to view debugger current state info
+		std::map<std::string, TValue> view_localvars_in_last_debugger_state() const;
+		std::map<std::string, TValue> view_upvalues_in_last_debugger_state() const;
+
+		std::pair<std::string, std::string> view_current_contract_stack_item_in_last_debugger_state() const; // return contract_address => api_name
+		uint32_t view_current_line_number_in_last_debugger_state() const;
 
 	private:
 		// @throws exception

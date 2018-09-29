@@ -1779,6 +1779,34 @@ namespace uvm {
 			this->cl = cl;
 		}
 
+		std::map<std::string, TValue> ExecuteContext::view_localvars(lua_State* L) const {
+			std::map<std::string, TValue> result;
+			if (!ci || !ttisLclosure(ci->func)) {
+				return result;
+			}
+			for (size_t i = 0; i < cl->p->locvars.size(); i++) {
+				const auto& locvar = cl->p->locvars[i];
+				std::string varname(locvar.varname->value);
+				TValue value = *(ci->u.l.base + i); // FIXME: invalid localvar value here
+				result[varname] = value;
+			}
+			return result;
+		}
+		std::map<std::string, TValue> ExecuteContext::view_upvalues(lua_State* L) const {
+			std::map<std::string, TValue> result;
+			if (!ci || !ttisLclosure(ci->func)) {
+				return result;
+			}
+			uint32_t level = 0;
+			for (size_t i = 0; i < cl->upvals.size(); i++) {
+				std::string upval_name = cl->p->upvalues[i].name->value;
+				const auto& upval = cl->upvals[i];
+				TValue value = *upval->v;
+				result[upval_name] = value;
+			}
+			return result;
+		}
+
 	}
 }
 
