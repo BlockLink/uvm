@@ -1792,9 +1792,15 @@ namespace uvm {
 			if (!ci || !ttisLclosure(ci->func)) {
 				return result;
 			}
+			int line = current_line();
 			for (size_t i = 0; i < cl->p->locvars.size(); i++) {
 				const auto& locvar = cl->p->locvars[i];
 				std::string varname(locvar.varname->value);
+				// ignore varname when current line outside varname scope
+				if (line > 0) {
+					if (cl->p->linedefined >= line || cl->p->lastlinedefined < line)
+						continue;
+				}
 				TValue value = *(ci->u.l.base + i); // FIXME: invalid localvar value here
 				result[varname] = value;
 			}
@@ -1813,6 +1819,18 @@ namespace uvm {
 				result[upval_name] = value;
 			}
 			return result;
+		}
+
+		uint32_t ExecuteContext::current_line() const {
+			if (!ci || !ttisLclosure(ci->func)) {
+				return 0;
+			}
+			auto inst_index_in_proto = ci->u.l.savedpc - cl->p->codes.data();
+			if (inst_index_in_proto < 0 || inst_index_in_proto >= cl->p->codes.size())
+				return 0;
+			if (inst_index_in_proto >= cl->p->lineinfos.size())
+				return 0;
+			return cl->p->lineinfos[inst_index_in_proto];
 		}
 
 	}

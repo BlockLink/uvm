@@ -135,6 +135,7 @@
     <ClCompile Include="src\simplechain\contract_helper.cpp" />
     <ClCompile Include="src\simplechain\contract_object.cpp" />
     <ClCompile Include="src\simplechain\db.cpp" />
+    <ClCompile Include="src\simplechain\debugger.cpp" />
     <ClCompile Include="src\simplechain\evaluate_state.cpp" />
     <ClCompile Include="src\simplechain\operations_helper.cpp" />
     <ClCompile Include="src\simplechain\rpcserver.cpp" />
@@ -165,6 +166,7 @@
     <ClInclude Include="include\simplechain\contract_helper.h" />
     <ClInclude Include="include\simplechain\contract_object.h" />
     <ClInclude Include="include\simplechain\db.h" />
+    <ClInclude Include="include\simplechain\debugger.h" />
     <ClInclude Include="include\simplechain\evaluate_result.h" />
     <ClInclude Include="include\simplechain\evaluate_state.h" />
     <ClInclude Include="include\simplechain\evaluator.h" />

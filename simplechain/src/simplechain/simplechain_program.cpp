@@ -50,9 +50,9 @@ int main(int argc, char** argv) {
 				auto line1 = chain->view_current_line_number_in_last_debugger_state();
 				chain->clear_breakpoints_in_last_debugger_state();
 
-				// TODO: evaluator等engine中指针没有保存好，需要保存下来evaluator指针指向的实例
 				chain->debugger_step_out();
 				auto localvars2 = chain->view_localvars_in_last_debugger_state();
+				auto line2 = chain->view_current_line_number_in_last_debugger_state();
 				// TODO: get debugger state, debug, test step in/step out/step over/view info
 				
 				chain->evaluate_transaction(tx);

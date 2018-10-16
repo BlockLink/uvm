@@ -9,6 +9,7 @@
 #include <simplechain/contract_object.h>
 #include <simplechain/storage.h>
 #include <simplechain/asset.h>
+#include <simplechain/debugger.h>
 #include <memory>
 #include <vector>
 #include <map>
@@ -31,10 +32,13 @@ namespace simplechain {
 		std::vector<transaction> tx_mempool;
 
 		std::map<std::string, std::list<uint32_t> > breakpoints;
+
+		std::shared_ptr<generic_evaluator> last_evaluator_when_debugger;
 	public:
 		blockchain();
 		// @throws exception
 		std::shared_ptr<evaluate_result> evaluate_transaction(std::shared_ptr<transaction> tx);
+		void clear_debugger_info();
 		void apply_transaction(std::shared_ptr<transaction> tx);
 		block latest_block() const;
 		uint64_t head_block_number() const;
@@ -78,6 +82,7 @@ namespace simplechain {
 
 		std::map<std::string, TValue> view_localvars_in_last_debugger_state() const;
 		std::map<std::string, TValue> view_upvalues_in_last_debugger_state() const;
+		debugger_state view_debugger_state() const;
 
 		std::pair<std::string, std::string> view_current_contract_stack_item_in_last_debugger_state() const; // return contract_address => api_name
 		uint32_t view_current_line_number_in_last_debugger_state() const;

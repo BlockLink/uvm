@@ -29,16 +29,21 @@ namespace simplechain {
 		try {
 			// TODO: evaluate_state of block or tx(need nested evaluate state)
 			std::shared_ptr<evaluate_result> last_op_result;
+			this->last_evaluator_when_debugger = nullptr;
 			for (const auto& op : tx->operations) {
 				auto evaluator_instance = get_operation_evaluator(tx.get(), op);
 				auto op_result = evaluator_instance->evaluate(op);
 				last_op_result = op_result;
+				this->last_evaluator_when_debugger = evaluator_instance; // TODO: only save it when break into debugger
 			}
 			return last_op_result;
 		}
 		catch (const std::exception& e) {
 			throw e;
 		}
+	}
+	void blockchain::clear_debugger_info() {
+		this->last_evaluator_when_debugger = nullptr;
 	}
 	void blockchain::apply_transaction(std::shared_ptr<transaction> tx) {
 		try {
@@ -478,16 +483,13 @@ namespace simplechain {
 		auto execute_ctx = get_last_execute_context();
 		if (!execute_ctx)
 			return 0;
-		auto ci = execute_ctx->ci;
-		auto cl = execute_ctx->cl;
-		auto inst_index_in_proto = ci->u.l.savedpc - cl->p->codes.data();
-		if (cl->p->lineinfos.size() > inst_index_in_proto) {
-			uint32_t line = cl->p->lineinfos[inst_index_in_proto];
-			return line;
-		}
-		else {
-			return 0;
-		}
+		return execute_ctx->current_line();
+	}
+
+	debugger_state blockchain::view_debugger_state() const {
+		debugger_state state;
+		state.current_line = view_current_line_number_in_last_debugger_state();
+		return state;
 	}
 
 }

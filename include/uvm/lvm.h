@@ -116,6 +116,7 @@ namespace uvm {
 
 			std::map<std::string, TValue> view_localvars(lua_State* L) const;
 			std::map<std::string, TValue> view_upvalues(lua_State* L) const;
+			uint32_t current_line() const;
 		};
 	}
 }
