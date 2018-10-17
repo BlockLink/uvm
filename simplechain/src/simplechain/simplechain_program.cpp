@@ -1,10 +1,47 @@
 #include <simplechain/simplechain.h>
 #include <iostream>
 #include <simplechain/rpcserver.h>
+#include <uvm/uvm_lutil.h>
+#include <fc/crypto/hex.hpp>
 
 using namespace simplechain;
 
+void test_rlp() {
+	using namespace uvm::util;
+	RlpEncoder encoder;
+	RlpDecoder decoder;
+	auto obj1 = RlpObject::from_string("dog");
+	const auto& encoded1 = encoder.encode(obj1);
+	auto obj2 = RlpObject::from_list({ RlpObject::from_string("cat") , RlpObject::from_string("dog") });
+	auto encoded2 = encoder.encode(obj2);
+	auto obj3 = RlpObject::from_string("");
+	auto encoded3 = encoder.encode(obj3);
+	auto obj4 = RlpObject::from_list({});
+	auto encoded4 = encoder.encode(obj4);
+	auto obj5 = RlpObject::from_int32(15);
+	auto encoded5 = encoder.encode(obj5);
+	auto obj6 = RlpObject::from_int32(1024);
+	auto encoded6 = encoder.encode(obj6);
+	auto obj7 = RlpObject::from_list({ RlpObject::from_list({}), RlpObject::from_list({ RlpObject::from_list({}) }),
+		RlpObject::from_list({ RlpObject::from_list({}), RlpObject::from_list({ RlpObject::from_list({}) }) }) } );
+	auto encoded7 = encoder.encode(obj7);
+	auto obj8 = RlpObject::from_string("Lorem ipsum dolor sit amet, consectetur adipisicing elit");
+	auto encoded8 = encoder.encode(obj8);
+	// test decoder
+	auto d1 = decoder.decode(encoded1)->to_string(); // "dog"
+	auto d2 = decoder.decode(encoded2); // ["cat", "dog"]
+	auto d3 = decoder.decode(encoded3)->to_string(); // ""
+	auto d4 = decoder.decode(encoded4); // []
+	auto d5 = decoder.decode(encoded5)->to_int32(); // 15
+	auto d6 = decoder.decode(encoded6)->to_int32(); // 1024
+	auto d7 = decoder.decode(encoded7); // [ [], [[]], [ [], [[]] ] ]
+	auto d8 = decoder.decode(encoded8)->to_string(); // "Lorem ipsum dolor sit amet, consectetur adipisicing elit"
+	
+	printf("");
+}
+
 int main(int argc, char** argv) {
+	test_rlp();
 	std::cout << "Hello, simplechain based on uvm" << std::endl;
 	try {
 		auto chain = std::make_shared<simplechain::blockchain>();
