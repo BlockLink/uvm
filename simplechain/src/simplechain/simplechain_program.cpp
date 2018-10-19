@@ -41,7 +41,6 @@ void test_rlp() {
 }
 
 int main(int argc, char** argv) {
-	test_rlp();
 	std::cout << "Hello, simplechain based on uvm" << std::endl;
 	try {
 		auto chain = std::make_shared<simplechain::blockchain>();

@@ -391,6 +391,27 @@ func TestFastMap(t *testing.T) {
 	assert.True(t, strings.Contains(out, `a4: 	hello`))
 }
 
+func TestCborEncodeDecode(t *testing.T) {
+	execCommand(uvmCompilerPath, "../../tests_lua/test_cbor.lua")
+	out, err := execCommand(uvmSinglePath, "../../tests_lua/test_cbor.lua.out")
+	fmt.Println(out)
+	assert.Equal(t, err, "")
+	assert.True(t, strings.Contains(out, `encoded1: 	8B187B6362617219014119014163666F6FF5F4F681187BA0A263616765126568656C6C6F65776F726C64`))
+	assert.True(t, strings.Contains(out, `encoded2: 	187B`))
+	assert.True(t, strings.Contains(out, `encoded3: 	6568656C6C6F`))
+	assert.True(t, strings.Contains(out, `encoded4: 	F5`))
+	assert.True(t, strings.Contains(out, `encoded5: 	1B000000174876E800`))
+	assert.True(t, strings.Contains(out, `encoded6: 	F6`))
+	assert.True(t, strings.Contains(out, `encoded7: 	80`))
+	assert.True(t, strings.Contains(out, `[123,"bar",321,321,"foo",true,false,null,[123],[],{"age":18,"hello":"world"}]	 = 	[123,"bar",321,321,"foo",true,false,null,[123],[],{"age":18,"hello":"world"}]`))
+	assert.True(t, strings.Contains(out, `123	 = 	123`))
+	assert.True(t, strings.Contains(out, `hello	 = 	hello`))
+	assert.True(t, strings.Contains(out, `true	 = 	true`))
+	assert.True(t, strings.Contains(out, `100000000000	 = 	100000000000`))
+	assert.True(t, strings.Contains(out, `nil	 = 	nil`))
+	assert.True(t, strings.Contains(out, `[]	 = 	[]`))
+}
+
 func TestInvalidByteHeaders(t *testing.T) {
 	_, err := execCommand(uvmSinglePath, "../../tests_lua/test_invalid_bytecode_header.bytecode")
 	fmt.Println(err)

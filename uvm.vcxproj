@@ -19,6 +19,13 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\cborcpp\cbor_object.cpp" />
+    <ClCompile Include="src\cborcpp\decoder.cpp" />
+    <ClCompile Include="src\cborcpp\encoder.cpp" />
+    <ClCompile Include="src\cborcpp\input.cpp" />
+    <ClCompile Include="src\cborcpp\output.cpp" />
+    <ClCompile Include="src\cborcpp\output_dynamic.cpp" />
+    <ClCompile Include="src\cborcpp\output_static.cpp" />
     <ClCompile Include="src\uvm\lsafemathlib.cpp" />
     <ClCompile Include="src\uvm\uvm_api_types.cpp" />
     <ClCompile Include="src\uvm\uvm_lib.cpp" />
@@ -68,6 +75,16 @@
     <ClCompile Include="src\uvm\lzio.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\cborcpp\cbor.h" />
+    <ClInclude Include="include\cborcpp\cbor_object.h" />
+    <ClInclude Include="include\cborcpp\decoder.h" />
+    <ClInclude Include="include\cborcpp\encoder.h" />
+    <ClInclude Include="include\cborcpp\exceptions.h" />
+    <ClInclude Include="include\cborcpp\input.h" />
+    <ClInclude Include="include\cborcpp\log.h" />
+    <ClInclude Include="include\cborcpp\output.h" />
+    <ClInclude Include="include\cborcpp\output_dynamic.h" />
+    <ClInclude Include="include\cborcpp\output_static.h" />
     <ClInclude Include="include\uvm\exceptions.h" />
     <ClInclude Include="include\uvm\uvm_api.h" />
     <ClInclude Include="include\uvm\uvm_api_types.h" />
