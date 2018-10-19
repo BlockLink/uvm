@@ -217,7 +217,7 @@ namespace uvm
 		Buffer RlpEncoder::encode_length(uint32_t length, int32_t offset) {
 			if (length < 56)
 			{
-				return byte_to_buffer(unsigned char(length + offset));
+				return byte_to_buffer((unsigned char)(int32_t(length) + offset));
 			}
 			else if (length < UINT32_MAX) {
 				const auto& length_buffer = int_to_buffer(length);
