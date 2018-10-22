@@ -20,7 +20,7 @@
 // bigint stores as { hex: hex string, type: 'bigint' }
 // bignumber stores as { value: base10 string, type: 'bignumber' }
 
-typedef boost::multiprecision::int256_t sm_bigint;
+typedef boost::multiprecision::int512_t sm_bigint;
 //typedef boost::multiprecision::mpf_float sm_bigdecimal;
 
 
@@ -180,12 +180,12 @@ static bool is_valid_bigint_obj(lua_State *L, int index, std::string& out)
 //	}
 //}
 
-static bool is_same_direction_int256(sm_bigint a, sm_bigint b)
+static bool is_same_direction_safe_int(sm_bigint a, sm_bigint b)
 {
 	return (a > 0 && b > 0) || (a < 0 && b < 0);
 }
 
-static bool is_same_direction_int512(boost::multiprecision::int512_t a, boost::multiprecision::int512_t b)
+static bool is_same_direction_int1024(boost::multiprecision::int1024_t a, boost::multiprecision::int1024_t b)
 {
 	return (a > 0 && b > 0) || (a < 0 && b < 0);
 }
@@ -208,9 +208,9 @@ static int safemath_add(lua_State *L) {
 	sm_bigint second_int(second_int_str);
 	auto result_int = first_int + second_int;
 	// overflow check
-	if (is_same_direction_int256(first_int, second_int)) {
+	if (is_same_direction_safe_int(first_int, second_int)) {
 		if ((first_int > 0 && result_int <= 0) || (first_int<0 && result_int >= 0)) {
-			luaL_error(L, "int256 overflow");
+			luaL_error(L, "int512 overflow");
 		}
 	}
 	push_bigint(L, result_int);
@@ -254,13 +254,13 @@ static int safemath_mul(lua_State *L) {
 	sm_bigint second_int(second_int_str);
 	auto result_int = boost::multiprecision::int512_t(first_int) * boost::multiprecision::int512_t(second_int);
 	// overflow check
-	sm_bigint int256_max("57896044618658097711785492504343953926634992332820282019728792003956564819968");
-	sm_bigint int256_min("-115792089237316195423570985008687907853269984665640564039457584007913129639935");
-	if (is_same_direction_int256(first_int, second_int) && result_int > int256_max) {
-		luaL_error(L, "int256 overflow");
+	sm_bigint int512_max("13407807929942597099574024998205846127479365820592393377723561443721764030073546976801874298166903427690031858186486050853753882811946569946433649006084095");
+	sm_bigint int512_min("-6703903964971298549787012499102923063739682910296196688861780721860882015036773488400937149083451713845015929093243025426876941405973284973216824503042048");
+	if (is_same_direction_safe_int(first_int, second_int) && result_int > int512_max) {
+		luaL_error(L, "int512 overflow");
 	}
-	else if (is_same_direction_int256(first_int, second_int) && result_int < int256_min) {
-		luaL_error(L, "int256 overflow");
+	else if (is_same_direction_safe_int(first_int, second_int) && result_int < int512_min) {
+		luaL_error(L, "int512 overflow");
 	}
 	push_bigint(L, result_int.convert_to<sm_bigint>());
 	return 1;
@@ -285,25 +285,25 @@ static int safemath_mul(lua_State *L) {
 //	return 1;
 //}
 
-static sm_bigint int256_pow(lua_State *L, sm_bigint value, sm_bigint n) {
+static sm_bigint int512_pow(lua_State *L, sm_bigint value, sm_bigint n) {
 	if (n > 100) {
 		luaL_error(L, "too large value in bigint pow");
 	}
-	boost::multiprecision::int512_t result(value);
-	boost::multiprecision::int256_t int256_max("57896044618658097711785492504343953926634992332820282019728792003956564819968");
-	boost::multiprecision::int256_t int256_min("-115792089237316195423570985008687907853269984665640564039457584007913129639935");
+	boost::multiprecision::int1024_t result(value);
+	sm_bigint int512_max("13407807929942597099574024998205846127479365820592393377723561443721764030073546976801874298166903427690031858186486050853753882811946569946433649006084095");
+	sm_bigint int512_min("-6703903964971298549787012499102923063739682910296196688861780721860882015036773488400937149083451713845015929093243025426876941405973284973216824503042048");
 	for (int i = 1; i < n; i++) {
 		auto mid_value = result * value;
 		// overflow check
-		if (is_same_direction_int512(result, value) && mid_value > int256_max) {
-			luaL_error(L, "int256 overflow");
+		if (is_same_direction_int1024(result, value) && mid_value > int512_max) {
+			luaL_error(L, "int512 overflow");
 		}
-		else if(!is_same_direction_int512(result, value) && mid_value < int256_min) {
-			luaL_error(L, "int256 overflow");
+		else if(!is_same_direction_int1024(result, value) && mid_value < int512_min) {
+			luaL_error(L, "int512 overflow");
 		}
 		result = mid_value;
 	}
-	return result.convert_to<boost::multiprecision::int256_t>();
+	return result.convert_to<boost::multiprecision::int512_t>();
 }
 
 //static sm_bigdecimal bignumber_pow(lua_State *L, sm_bigdecimal value, sm_bigdecimal n) {
@@ -334,10 +334,10 @@ static int safemath_pow(lua_State *L) {
 	sm_bigint first_int(first_int_str);
 	auto second_int_str = boost::algorithm::unhex(second_hex_str);
 	sm_bigint second_int(second_int_str);
-	auto result_int = int256_pow(L, first_int, second_int);
+	auto result_int = int512_pow(L, first_int, second_int);
 	// overflow check
 	if (result_int <= 0) {
-		luaL_error(L, "int256 overflow");
+		luaL_error(L, "int512 overflow");
 	}
 	push_bigint(L, result_int);
 	return 1;
@@ -450,9 +450,9 @@ static int safemath_div(lua_State *L) {
 		luaL_error(L, "bigint divide error");
 	}
 	// overflow check
-	if (is_same_direction_int256(first_int, second_int)) {
-		if ((first_int > 0 && result_int <= 0) || (first_int<0 && result_int >= 0)) {
-			luaL_error(L, "int256 overflow");
+	if (is_same_direction_safe_int(first_int, second_int)) {
+		if ((first_int > 0 && result_int < 0) || (first_int<0 && result_int > 0)) {
+			luaL_error(L, "int512 overflow");
 		}
 	}
 	push_bigint(L, result_int);
@@ -508,9 +508,9 @@ static int safemath_rem(lua_State *L) {
 	}
 	auto result_int = first_int % second_int;
 	// overflow check
-	if (is_same_direction_int256(first_int, second_int)) {
-		if ((first_int > 0 && result_int <= 0) || (first_int<0 && result_int >= 0)) {
-			luaL_error(L, "int256 overflow");
+	if (is_same_direction_safe_int(first_int, second_int)) {
+		if ((first_int > 0 && result_int < 0) || (first_int<0 && result_int > 0)) {
+			luaL_error(L, "int512 overflow");
 		}
 	}
 	push_bigint(L, result_int);
@@ -558,9 +558,9 @@ static int safemath_sub(lua_State *L) {
 	sm_bigint second_int(second_int_str);
 	auto result_int = first_int - second_int;
 	// overflow check
-	if (!is_same_direction_int256(first_int, second_int)) {
+	if (!is_same_direction_safe_int(first_int, second_int)) {
 		if ((first_int > 0 && result_int <= 0) || (first_int<0 && result_int >= 0)) {
-			luaL_error(L, "int256 overflow");
+			luaL_error(L, "int512 overflow");
 		}
 	}
 	push_bigint(L, result_int);

@@ -565,6 +565,42 @@ func TestSimpleChainTokenContract(t *testing.T) {
 	assert.True(t, res.Get("api_result").MustString() == "100")
 }
 
+func TestSparseMerkleTreeContract(t *testing.T) {
+	cmd := execCommandBackground(simpleChainPath)
+	assert.True(t, cmd != nil)
+	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
+	defer func() {
+		kill(cmd)
+	}()
+
+	var res *simplejson.Json
+	var err error
+	caller1 := "SPLtest1"
+
+	compileOut, compileErr := execCommand(uvmCompilerPath, "-g", testContractPath("sparse_merkle_tree.lua"))
+	fmt.Printf("compile out: %s\n", compileOut)
+	assert.True(t, compileErr == "")
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("sparse_merkle_tree.lua.gpc"), 50000, 10)
+	assert.True(t, err == nil)
+	contractAddr := res.Get("contract_address").MustString()
+	fmt.Printf("contract address: %s\n", contractAddr)
+	simpleChainRPC("generate_block")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contractAddr, "verify", []string{"303,747833,9da6c64db4a74efca5fe3c6979c992ece8fa88660f1bf8e273508612f77d9fc3,0000000000000190d10d96f5d5d50f79d299bff2c49827b594ff484c7ee4dd40f7b4c4cedefa23b4bf5021f0261bd1a5c13ed23d622799a91b86ac09b6180ebc4d550863813f1241474dd6e0117dd1ed3effe5e35105716ec9ea8c926489094c34417d04dd51b30b"}, 0, 0)
+	assert.True(t, err == nil)
+	verifyResult := res.Get("api_result").MustString()
+	fmt.Printf("verify result: %s\n", verifyResult)
+	assert.True(t, verifyResult == "true")
+
+	
+
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contractAddr, "verify", []string{"303,747833,9da6c64db4a74efca5fe3c6979c992ece8fa88660f1bf8e273508612f77d9fc3,aaaa"}, 0, 0)
+	assert.True(t, err == nil)
+	verifyResult2 := res.Get("api_result").MustString()
+	fmt.Printf("verify error result: %s\n", verifyResult2)
+	assert.True(t, verifyResult2 == "false")
+}
+
 func TestSimpleChainContractCallContract(t *testing.T) {
 	cmd := execCommandBackground(simpleChainPath)
 	assert.True(t, cmd != nil)
