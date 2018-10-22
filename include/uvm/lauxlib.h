@@ -15,6 +15,7 @@
 
 #include "uvm/lua.h"
 #include "uvm/uvm_api.h"
+#include <cborcpp/cbor.h>
 
 
 
@@ -52,6 +53,8 @@ struct UvmStorageValue(lua_type_to_storage_value_type_with_nested)(lua_State *L,
 bool (lua_table_to_map_traverser)(lua_State *L, void *ud);
 bool (lua_table_to_map_traverser_with_nested)(lua_State *L, void *ud, size_t len, std::list<const void*> &jsons, size_t recur_depth);
 LUALIB_API const char *(luaL_tojsonstring)(lua_State *L, int idx, size_t *len);
+LUALIB_API cbor::CborObjectP(luaL_to_cbor)(lua_State* L, int idx);
+LUALIB_API int (luaL_push_cbor_as_json)(lua_State* L, cbor::CborObjectP cbor_object);
 
 LUALIB_API int (luaL_argerror)(lua_State *L, int arg, const char *extramsg);
 LUALIB_API const char *(luaL_checklstring)(lua_State *L, int arg,

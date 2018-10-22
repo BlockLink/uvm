@@ -4,7 +4,7 @@ project(uvm)
 
 set(CMAKE_CXX_STANDARD 11)
 
-file(GLOB HEADERS "include/uvm/*.h" "../jsondiff/jsondiff-cpp/include/jsondiff/*.h")
+file(GLOB HEADERS "include/uvm/*.h" "include/cborcpp/*.h" "../jsondiff/jsondiff-cpp/include/jsondiff/*.h")
 
 set(SOURCES src/uvm/lapi.cpp
     src/uvm/lauxlib.cpp
@@ -53,6 +53,14 @@ set(SOURCES src/uvm/lapi.cpp
     src/uvm/uvm_state_scope.cpp
     src/uvm/uvm_storage.cpp
     src/uvm/uvm_tokenparser.cpp
+
+	src/cborcpp/cbor_object.cpp
+	src/cborcpp/decoder.cpp
+	src/cborcpp/encoder.cpp
+	src/cborcpp/input.cpp
+	src/cborcpp/output_dynamic.cpp
+	src/cborcpp/output_static.cpp
+	src/cborcpp/output.cpp
 )
 
 find_package(OpenSSL REQUIRED)

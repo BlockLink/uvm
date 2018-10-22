@@ -3,3 +3,4 @@
 /token_caller.lua.gpc
 /simple_contract.lua.gpc
 /change_other_contract_property_contract.lua.gpc
+/sparse_merkle_tree.lua.gpc

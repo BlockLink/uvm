@@ -42,6 +42,8 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/scope_exit.hpp>
 
+#include <fc/crypto/hex.hpp>
+
 using uvm::lua::api::global_uvm_chain_api;
 
 
@@ -2573,6 +2575,61 @@ bool lua_table_to_map_traverser_with_nested(lua_State *L, void *ud, size_t len, 
     return true;
 }
 
+static bool is_uvm_array_table(UvmTableMapP map) {
+	bool is_array = false;
+	std::vector<int> all_int_keys;
+	bool has_wrong_array_format = false;
+	for (const auto &p : *map)
+	{
+		std::string key(p.first);
+		if (key.length()<1)
+		{
+			has_wrong_array_format = true;
+			break;
+		}
+		int int_key = 0;
+		if (key == "0")
+		{
+			int_key = 0;
+		}
+		else
+		{
+			try
+			{
+				int_key = boost::lexical_cast<int>(key);
+				if (int_key == 0)
+				{
+					has_wrong_array_format = true;
+					break;
+				}
+			}
+			catch (std::exception e)
+			{
+				has_wrong_array_format = true;
+				break;
+			}
+		}
+		all_int_keys.push_back(int_key);
+	}
+	if (!has_wrong_array_format)
+	{
+		std::sort(all_int_keys.begin(), all_int_keys.end());
+		for (int i = 1; i <= all_int_keys.size(); ++i)
+		{
+			if (i != all_int_keys[i - 1])
+			{
+				has_wrong_array_format = true;
+				break;
+			}
+		}
+		if (!has_wrong_array_format)
+		{
+			is_array = true;
+		}
+	}
+	return is_array;
+}
+
 /**
  * parse map to json string
  * @param map
@@ -2584,55 +2641,7 @@ static void luatablemap_to_json_stream(UvmTableMapP map, std::stringstream &ss, 
 	if(!is_array)
 	{
 		// check whether is array
-		std::vector<int> all_int_keys;
-		bool has_wrong_array_format = false;
-		for(const auto &p : *map)
-		{
-			std::string key(p.first);
-			if(key.length()<1)
-			{
-				has_wrong_array_format = true;
-				break;
-			}
-			int int_key = 0;
-			if(key=="0")
-			{
-				int_key = 0;
-			}
-			else
-			{
-				try
-				{
-					int_key = boost::lexical_cast<int>(key);
-					if (int_key == 0)
-					{
-						has_wrong_array_format = true;
-						break;
-					}
-				}catch(std::exception e)
-				{
-					has_wrong_array_format = true;
-					break;
-				}
-			}
-			all_int_keys.push_back(int_key);
-		}
-		if(!has_wrong_array_format)
-		{
-			std::sort(all_int_keys.begin(), all_int_keys.end());
-			for (int i = 1; i <= all_int_keys.size(); ++i)
-			{
-				if (i != all_int_keys[i-1])
-				{
-					has_wrong_array_format = true;
-					break;
-				}
-			}
-			if (!has_wrong_array_format)
-			{
-				is_array = true;
-			}
-		}
+		is_array = is_uvm_array_table(map);
 	}
 
 	if (is_array)
@@ -2743,6 +2752,165 @@ LUALIB_API const char *(luaL_tojsonstring)(lua_State *L, int idx, size_t *len)
     return tojsonstring_with_nested(L, idx, len, jsons);
 }
 
+static cbor::CborObjectP uvm_json_item_to_cbor(const UvmStorageValue& value) {
+	switch (value.type) {
+	case uvm::blockchain::StorageValueTypes::storage_value_null:
+		return cbor::CborObject::create_null();
+	case uvm::blockchain::StorageValueTypes::storage_value_int:
+		return cbor::CborObject::from_int(value.value.int_value);
+	case uvm::blockchain::StorageValueTypes::storage_value_bool:
+		return cbor::CborObject::from_bool(value.value.bool_value);
+	case uvm::blockchain::StorageValueTypes::storage_value_number:
+	{
+		auto int_value = (lua_Integer)value.value.number_value;
+		return cbor::CborObject::from_int(int_value);
+	}
+	case uvm::blockchain::StorageValueTypes::storage_value_string:
+		return cbor::CborObject::from_string(value.value.string_value);
+	default: {
+		if (uvm::blockchain::is_any_array_storage_value_type(value.type)) {
+			auto table = value.value.table_value;
+			auto result = cbor::CborObject::create_array(table->size());
+			std::vector<cbor::CborObjectP> items;
+			for (size_t i = 0; i < table->size(); i++) {
+				std::string key = std::to_string(i + 1);
+				if (table->find(key) == table->end())
+					break;
+				auto item = uvm_json_item_to_cbor(table->at(key));
+				if (!item)
+					return nullptr;
+				items.push_back(item);
+			}
+			result->value = items;
+			return result;
+		}
+		else if (uvm::blockchain::is_any_table_storage_value_type(value.type)) {
+			auto table = value.value.table_value;
+			auto result = cbor::CborObject::create_map(table->size());
+			std::map<std::string, cbor::CborObjectP, std::less<std::string>> items;
+			for (const auto& p : *table) {
+				std::string key = p.first;
+				auto item = uvm_json_item_to_cbor(p.second);
+				if (!item)
+					return nullptr;
+				items[key] = item;
+			}
+			result->value = items;
+			return result;
+		}
+		else {
+			return nullptr;
+		}
+	}
+	}
+}
+
+LUALIB_API cbor::CborObjectP luaL_to_cbor(lua_State* L, int idx) {
+	switch (lua_type(L, idx)) {
+	case LUA_TNUMBER: {
+		if (lua_isinteger(L, idx))
+			return cbor::CborObject::from_int(luaL_checkinteger(L, idx));
+		else {
+			auto int_value = (lua_Integer)lua_tonumber(L, idx);
+			return cbor::CborObject::from_int(int_value);
+		}
+	}
+	case LUA_TSTRING:
+		return cbor::CborObject::from_string(luaL_checkstring(L, idx));
+	case LUA_TBOOLEAN:
+		return cbor::CborObject::from_bool(lua_toboolean(L, idx));
+	case LUA_TNIL:
+		return cbor::CborObject::create_null();
+	case LUA_TTABLE:
+	{
+		std::list<const void*> jsons;
+		UvmTableMapP map = luaL_create_lua_table_map_in_memory_pool(L);
+		luaL_traverse_table_with_nested(L, idx, lua_table_to_map_traverser_with_nested, map, jsons, 0);
+		UvmStorageValue map_value;
+		map_value.value.table_value = map;
+		if (is_uvm_array_table(map)) {
+			map_value.type = uvm::blockchain::StorageValueTypes::storage_value_unknown_array;
+			return uvm_json_item_to_cbor(map_value);
+		}
+		else {
+			map_value.type = uvm::blockchain::StorageValueTypes::storage_value_unknown_table;
+			return uvm_json_item_to_cbor(map_value);
+		}
+	}
+	break;
+	default:
+		return nullptr;
+	}
+}
+
+LUALIB_API int luaL_push_cbor_as_json(lua_State* L, cbor::CborObjectP cbor_object) {
+	if (!cbor_object)
+		return 0;
+	switch (cbor_object->object_type()) {
+	case cbor::CborObjectType::COT_NULL:
+		lua_pushnil(L);
+		return 1;
+	case cbor::CborObjectType::COT_UNDEFINED:
+		lua_pushnil(L);
+		return 1;
+	case cbor::CborObjectType::COT_BOOL:
+		lua_pushboolean(L, cbor_object->as_bool() ? 1 : 0);
+		return 1;
+	case cbor::CborObjectType::COT_INT:
+		lua_pushinteger(L, cbor_object->as_int());
+		return 1;
+	case cbor::CborObjectType::COT_EXTRA_INT:
+		lua_pushinteger(L, cbor_object->as<uint64_t>());
+		return 1;
+	case cbor::CborObjectType::COT_STRING: {
+		const auto& str = cbor_object->as_string();
+		lua_pushstring(L, str.c_str());
+		return 1;
+	}
+	case cbor::CborObjectType::COT_BYTES: {
+		const auto& bytes = cbor_object->as_bytes();
+		// bytes to hex
+		try {
+			const auto& hex_str = fc::to_hex(bytes);
+			lua_pushstring(L, hex_str.c_str());
+			return 1;
+		}
+		catch (const std::exception& e) {
+			return 0;
+		}
+	}
+	case cbor::CborObjectType::COT_ARRAY: {
+		const auto& array_value = cbor_object->as_array();
+		lua_createtable(L, array_value.size(), 0);
+		for (size_t i = 0; i < array_value.size(); i++) {
+			auto item = array_value[i];
+			if (!luaL_push_cbor_as_json(L, item)) {
+				lua_pop(L, 1);
+				return 0;
+			}
+			lua_seti(L, -2, i + 1);
+		}
+		return 1;
+	}
+	case cbor::CborObjectType::COT_MAP: {
+		lua_newtable(L);
+		const auto& map_value = cbor_object->as_map();
+		for (const auto& p : map_value) {
+			const auto& key = p.first;
+			const auto& item_value = p.second;
+			if (!luaL_push_cbor_as_json(L, item_value)) {
+				lua_pop(L, 1);
+				return 0;
+			}
+			lua_setfield(L, -2, key.c_str());
+		}
+		return 1;
+	}
+	default: {
+		return 0;
+	}
+	}
+}
 
 /*
 ** {======================================================
