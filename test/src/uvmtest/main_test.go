@@ -391,6 +391,14 @@ func TestFastMap(t *testing.T) {
 	assert.True(t, strings.Contains(out, `a4: 	hello`))
 }
 
+func TestSignatureRecover(t *testing.T) {
+	execCommand(uvmCompilerPath, "../../tests_lua/test_signature_recover.lua")
+	out, err := execCommand(uvmSinglePath, "../../tests_lua/test_signature_recover.lua.out")
+	fmt.Println(out)
+	assert.Equal(t, err, "")
+	assert.True(t, strings.Contains(out, `a1=	024a75f222e1e1bc39c9b47d826ca5518655563c506c1e19aa13603e4bc8dcc591`))
+}
+
 func TestCborEncodeDecode(t *testing.T) {
 	execCommand(uvmCompilerPath, "../../tests_lua/test_cbor.lua")
 	out, err := execCommand(uvmSinglePath, "../../tests_lua/test_cbor.lua.out")
@@ -585,14 +593,12 @@ func TestSparseMerkleTreeContract(t *testing.T) {
 	contractAddr := res.Get("contract_address").MustString()
 	fmt.Printf("contract address: %s\n", contractAddr)
 	simpleChainRPC("generate_block")
-	
+
 	res, err = simpleChainRPC("invoke_contract_offline", caller1, contractAddr, "verify", []string{"303,747833,9da6c64db4a74efca5fe3c6979c992ece8fa88660f1bf8e273508612f77d9fc3,0000000000000190d10d96f5d5d50f79d299bff2c49827b594ff484c7ee4dd40f7b4c4cedefa23b4bf5021f0261bd1a5c13ed23d622799a91b86ac09b6180ebc4d550863813f1241474dd6e0117dd1ed3effe5e35105716ec9ea8c926489094c34417d04dd51b30b"}, 0, 0)
 	assert.True(t, err == nil)
 	verifyResult := res.Get("api_result").MustString()
 	fmt.Printf("verify result: %s\n", verifyResult)
 	assert.True(t, verifyResult == "true")
-
-	
 
 	res, err = simpleChainRPC("invoke_contract_offline", caller1, contractAddr, "verify", []string{"303,747833,9da6c64db4a74efca5fe3c6979c992ece8fa88660f1bf8e273508612f77d9fc3,aaaa"}, 0, 0)
 	assert.True(t, err == nil)

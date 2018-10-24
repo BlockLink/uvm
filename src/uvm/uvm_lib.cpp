@@ -18,6 +18,8 @@
 #include <fstream>
 
 #include <fc/crypto/hex.hpp>
+#include <fc/crypto/base58.hpp>
+#include <fc/crypto/elliptic.hpp>
 
 #include <uvm/uvm_api.h>
 #include <uvm/uvm_lib.h>
@@ -291,6 +293,49 @@ namespace uvm
                 return 1;
             }
 
+			static int signature_recover(lua_State* L) {
+				// signature_recover(sig_hex, raw_hex): public_key_hex_string
+				if (lua_gettop(L) < 2 || !lua_isstring(L, 1) || !lua_isstring(L, 2)) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "signature_recover need accept 2 hex string arguments");
+					L->force_stopping = true;
+					return 0;
+				}
+				uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT * 10 - 1);
+				std::string sig_hex(luaL_checkstring(L, 1));
+				std::string raw_hex(luaL_checkstring(L, 2));
+				
+				try {
+					const auto& sig_bytes = uvm::lua::api::global_uvm_chain_api->hex_to_bytes(sig_hex);
+					const auto& raw_bytes = uvm::lua::api::global_uvm_chain_api->hex_to_bytes(raw_hex);
+					fc::ecc::compact_signature compact_sig;
+					if (sig_bytes.size() > compact_sig.size())
+						throw uvm::core::UvmException("invalid sig bytes size");
+					if (raw_bytes.size() != 32)
+						throw uvm::core::UvmException("raw bytes should be 32 bytes");
+					memcpy(compact_sig.data, sig_bytes.data(), sig_bytes.size());
+					fc::sha256 raw_bytes_as_digest((char*)raw_bytes.data(), raw_bytes.size());
+					auto recoved_public_key = fc::ecc::public_key(compact_sig, raw_bytes_as_digest, false);
+					if (!recoved_public_key.valid()) {
+						throw uvm::core::UvmException("invalid signature");
+					}
+					const auto& public_key_chars = recoved_public_key.serialize();
+					std::vector<unsigned char> public_key_bytes(public_key_chars.begin(), public_key_chars.end());
+					const auto& public_key_hex = uvm::lua::api::global_uvm_chain_api->bytes_to_hex(public_key_bytes);
+					lua_pushstring(L, public_key_hex.c_str());
+					return 1;
+				}
+				catch (const std::exception& e) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						e.what());
+					return 0;
+				}
+				catch (...) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"error when signature_recover");
+					return 0;
+				}
+			}
+
 			static int hex_to_bytes(lua_State *L) {
 				if (lua_gettop(L) < 1 || !lua_isstring(L, 1)) {
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
@@ -299,7 +344,7 @@ namespace uvm
 				}
 				auto hex_str = luaL_checkstring(L, 1);
 				try {
-					auto result = uvm::lua::api::global_uvm_chain_api->hex_to_bytes(hex_str);
+					const auto& result = uvm::lua::api::global_uvm_chain_api->hex_to_bytes(hex_str);
 					lua_newtable(L);
 					for (size_t i = 0; i < result.size(); i++) {
 						lua_pushinteger(L, (lua_Integer)result[i]);
@@ -310,6 +355,11 @@ namespace uvm
 				catch (const std::exception& e) {
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
 						e.what());
+					return 0;
+				}
+				catch (...) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"error when hex_to_bytes");
 					return 0;
 				}
 			}
@@ -358,6 +408,11 @@ namespace uvm
 						e.what());
 					return 0;
 				}
+				catch (...) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"error when bytes_to_hex");
+					return 0;
+				}
 			}
 
 			static int cbor_encode(lua_State* L) {
@@ -382,6 +437,11 @@ namespace uvm
 				catch (const std::exception& e) {
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
 						e.what());
+					return 0;
+				}
+				catch (...) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"error when ebor_encode");
 					return 0;
 				}
 			}
@@ -410,6 +470,11 @@ namespace uvm
 						e.what());
 					return 0;
 				}
+				catch (...) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"error when cbor_decode");
+					return 0;
+				}
 			}
 
 			static int sha256_hex(lua_State* L) {
@@ -427,6 +492,11 @@ namespace uvm
 				catch (const std::exception& e) {
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
 						e.what());
+					return 0;
+				}
+				catch (...) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"error when sha256_hex");
 					return 0;
 				}
 			}
@@ -447,6 +517,11 @@ namespace uvm
 						e.what());
 					return 0;
 				}
+				catch (...) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"error when sha1_hex");
+					return 0;
+				}
 			}
 			static int sha3_hex(lua_State* L) {
 				if (lua_gettop(L) < 1 || !lua_isstring(L, 1)) {
@@ -465,6 +540,11 @@ namespace uvm
 						e.what());
 					return 0;
 				}
+				catch (...) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"error when sha3_hex");
+					return 0;
+				}
 			}
 			static int ripemd160_hex(lua_State* L) {
 				if (lua_gettop(L) < 1 || !lua_isstring(L, 1)) {
@@ -481,6 +561,11 @@ namespace uvm
 				catch (const std::exception& e) {
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
 						e.what());
+					return 0;
+				}
+				catch (...) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"error when ripemd160_hex");
 					return 0;
 				}
 			}
@@ -1236,6 +1321,7 @@ end
 					add_global_c_function(L, "get_system_asset_precision", get_system_asset_precision);
 					add_global_c_function(L, "cbor_encode", &cbor_encode);
 					add_global_c_function(L, "cbor_decode", &cbor_decode);
+					add_global_c_function(L, "signature_recover", &signature_recover);
                 }
                 return L;
             }
