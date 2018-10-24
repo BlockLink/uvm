@@ -544,6 +544,9 @@ func TestSimpleChainTokenContract(t *testing.T) {
 	var res *simplejson.Json
 	var err error
 	res, err = simpleChainRPC("get_chain_state")
+	if err != nil {
+		fmt.Printf("error: %s\n", err.Error())
+	}
 	assert.True(t, err == nil)
 	fmt.Printf("head_block_num: %d\n", res.Get("head_block_num").MustInt())
 	caller1 := "SPLtest1"
@@ -622,6 +625,9 @@ func TestSimpleChainContractCallContract(t *testing.T) {
 
 	// init token contract
 	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("token.gpc"), 50000, 10)
+	if err != nil {
+		fmt.Printf("error: %s\n", err.Error())
+	}
 	assert.True(t, err == nil)
 	tokenContractAddr := res.Get("contract_address").MustString()
 	fmt.Printf("contract address: %s\n", tokenContractAddr)
