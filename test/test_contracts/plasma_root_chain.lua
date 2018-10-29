@@ -10,6 +10,7 @@ type Storage = {
 }
 
 let MATURITY_PERIOD = 604800 -- 7 days
+let CHALLENGE_WINDOW = 302400 -- 3.5 days
 let BOND_AMOUNT = 100000
 
 
@@ -295,7 +296,7 @@ function M:submitBlock(arg: string)
     childBlock.createdAt = get_chain_now()
     fast_map_set("childChain", tostring(self.storage.currentBlockNum), json.dumps(childBlock))
     let eventArg = {
-        'currentBlock': currentBlock,
+        'currentBlock': self.storage.currentBlockNum,
         'root': root,
         'timestamp': get_chain_now()
     }
@@ -304,7 +305,7 @@ end
 
 let function checkMembership(M:table, txHash: string, root: string, slot: string, proofHex: string)
     let smt = getSmt(M)
-    return smt:verify(slot .. "," .. txHash .. "," .. root .. "," .. proof)
+    return smt:verify(slot .. "," .. txHash .. "," .. root .. "," .. proofHex)
 end
 
 let function checkTxIncluded(M: table, slot: string, txHash: string, blockNumber: int, proofHex: string)
@@ -343,12 +344,12 @@ let function checkIncludedAndSigned(M: table, exitingTxHex: string, exitingTxInc
     checkTxIncluded(M, slot, txHash, blkNum, exitingTxInclusionProofHex)
 end
 
-let function checkBothIncludedAndSigned(M: table, prevTxHex: string, exstingTxHex: string, prevTxInclusionProofHex: string, exitingTxInclusionProofHex: string,
+let function checkBothIncludedAndSigned(M: table, prevTxHex: string, exitingTxHex: string, prevTxInclusionProofHex: string, exitingTxInclusionProofHex: string,
     signatureHex: string, block1Num: int, block2Num: int)
     if block1Num >= block2Num then
         return error("invalid blocks numbers")
     end
-    let exitingTxData = totable(cbor_decode(existingTxHex))
+    let exitingTxData = totable(cbor_decode(exitingTxHex))
     let prevTxData = totable(cbor_decode(prevTxHex))
     if (not exitingTxData) or (not prevTxData) then
         return error("decode tx data failed")
@@ -372,7 +373,7 @@ end
 
 let function doInclusionChecks(M: table, prevTxHex: string, exitingTxHex: string, prevTxInclusionProofHex: string, exitingTxInclusionProofHex: string,
      signatureHex: string, block1Num: int, block2Num: int)
-    if (block1Num % childBlockInterval ~= 0) then
+    if (block1Num % tointeger(M.storage.childBlockInterval) ~= 0) then
         checkIncludedAndSigned(M, 
             exitingTxHex,
             exitingTxInclusionProofHex,
@@ -423,7 +424,7 @@ function M:startExit(arg: string)
     let parsed = parse_at_least_args(arg, 8, "need arg format: slot,prevTxHex,existingTxHex,prevTxInclusionProofHex,exitingTxInclusionProofHex,signatureHex,block1Num,block2Num")
     let slot = tostring(parsed[1])
     let prevTxHex = tostring(parsed[2])
-    let existingTxHex = tostring(parsed[3])
+    let exitingTxHex = tostring(parsed[3])
     let prevTxInclusionProofHex = tostring(parsed[4])
     let exitingTxInclusionProofHex = tostring(parsed[5])
     let signatureHex = tostring(parsed[6])
@@ -433,7 +434,7 @@ function M:startExit(arg: string)
     let from_caller = get_from_address()
     let from_caller_pubkey = caller
 
-    let existingTx = totable(cbor_decode(existingTxHex))
+    let existingTx = totable(cbor_decode(exitingTxHex))
     if (not existingTx) or (not existingTx['owner']) then
         return error("invalid existing tx structure")
     end
@@ -610,6 +611,7 @@ end
 -- arg format: slot
 function M:withdraw(arg: string)
     let from_caller = get_from_address()
+    let slot = arg
     let coin: Coin = totable(json.loads(tostring(fast_map_get("coins", slot))))
     if (not coin) or (coin.owner ~= from_caller) then
         return error("You do not own that UTXO")
@@ -751,10 +753,10 @@ function M:respondChallengeBefore(arg: string)
 
     let from_caller = get_from_address()
 
-    -- Check that the transaction being challenged exists
+    -- Check that the transaction being challenged exits
     let slotChallenges: Array<Challenge> = totable(json.loads(tostring(fast_map_get("challenges", slot))))
     if (not slotChallenges) or (not arrayContains(slotChallenges, challengingTxHash)) then
-        return error("Responding to non existing challenge")
+        return error("Responding to non exiting challenge")
     end
 
     -- Get index of challenge in the challenges array
