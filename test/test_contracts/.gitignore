@@ -4,3 +4,5 @@
 /simple_contract.lua.gpc
 /change_other_contract_property_contract.lua.gpc
 /sparse_merkle_tree.lua.gpc
+/plasma_root_chain.lua.out
+/plasma_root_chain.lua.gpc
