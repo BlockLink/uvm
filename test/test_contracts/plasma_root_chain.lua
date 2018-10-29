@@ -162,11 +162,56 @@ let function checkIsValiator(M: table)
 end
 
 function M:init()
-    -- TODO
+    self.storage.operatorAuthority = caller_address
+    self.storage.vmcContractAddress = ""
+    self.storage.smtContractAddress = ""
+    self.storage.numCoins = 0
+    self.storage.currentBlockNum = 0
+    self.storage.childBlockInterval = 1000
 end
 
+function M:state(_: string)
+    if self.storage.vmcContractAddress == "" then
+        return "NOT_INITED"
+    else
+        return "COMMON"
+    end
+end
+
+-- arg format: operatorAuthority,vmcContractAddress,smtContractAddress,childBlockInterval
 function M:set_config(arg: string)
-    -- TODO
+    let from_caller = get_from_address()
+    if from_caller ~= self.storage.operatorAuthority then
+        return error("only operator can set config")
+    end
+    let args = parse_at_least_args(arg, 6, "need arg format: operatorAuthority,vmcContractAddress,smtContractAddress,childBlockInterval")
+    let operatorAuthority = tostring(args[1])
+    if not is_valid_address(operatorAuthority) then
+        return error("invalid operatorAuthority address arg")
+    end
+    let vmcContractAddress = tostring(args[2])
+    if not is_valid_contract_address(vmcContractAddress) then
+        return error("invalid vmcContractAddress arg")
+    end
+    let smtContractAddress = tostring(args[3])
+    if not is_valid_contract_address(smtContractAddress) then
+        return error("invalid smtContractAddress arg")
+    end
+    let childBlockInterval = tointeger(args[4])
+    if (not childBlockInterval) or (childBlockInterval <= 0) then
+        return error("invalid childBlockInterval arg")
+    end
+    self.storage.operatorAuthority = operatorAuthority
+    self.storage.vmcContractAddress = vmcContractAddress
+    self.storage.smtContractAddress = smtContractAddress
+    self.storage.childBlockInterval = childBlockInterval
+    let storageJson = json.dumps(self.storage)
+    emit ConfigSet(storageJson)
+end
+
+offline function M:get_config(_: string)
+    let storageJson = json.dumps(self.storage)
+    return storageJson
 end
 
 let function create_coin(M: table, from: string, uid: string, denomination: int)
@@ -482,6 +527,7 @@ let function checkPendingChallenges(slot: string)
     let length = #slotChallenges
     var slashed = false
     var i: int = 1
+    var hasChallenges = false
     for i = 1,length do
         let challenge = slotChallenges[i]
         if tostring(challenge["txHash"]) and (tostring(challenge["txHash"]) ~= "") then
@@ -500,6 +546,7 @@ let function checkPendingChallenges(slot: string)
             hasChallenges = true
         end
     end
+    return hasChallenges
 end
 
 -- Finalizes an exit, i.e. puts the exiting coin into the EXITED
