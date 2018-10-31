@@ -2192,6 +2192,19 @@ end
 					}
 				}
 
+				//wrap api (push contract api stack when called)
+				auto contract_table_index = lua_gettop(L);
+				luaL_wrap_contract_apis(L, contract_table_index,  &contract_table_index);
+				/*auto contract_info_stack = uvm::lua::lib::get_using_contract_id_stack(L, true);
+				if (!contract_info_stack) {
+					global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "execute api %s contract error", api_name.c_str());
+					return false;
+				}
+				contract_info_stack_entry stack_entry;
+				stack_entry.contract_id = contract_id;
+				stack_entry.api_name = api_name;
+				contract_info_stack->push(stack_entry);*/
+
 				lua_getfield(L, -1, api_name.c_str());
 				if (lua_isfunction(L, -1))
 				{
