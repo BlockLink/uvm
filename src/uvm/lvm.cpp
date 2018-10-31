@@ -38,8 +38,10 @@
 #include <uvm/lvm.h>
 #include <uvm/uvm_api.h>
 #include <uvm/uvm_lib.h>
+#include <uvm/uvm_storage.h>
 
 using uvm::lua::api::global_uvm_chain_api;
+
 
 
 /* limit for table tag-method chains (to avoid loops) */
@@ -942,6 +944,7 @@ namespace uvm {
 					auto has_next_op = executeToNextOp(L);
 					if (from_break && enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK) && current_line() == startline) { //skip last break ins
 							L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
+							has_next_op = true;
 							continue;
 						
 					}
@@ -981,23 +984,24 @@ namespace uvm {
 			bool has_next_op = false;
 			int c = L->ci_depth;
 			try {
-				do { //skip last break ins
+				do
+				{
 					has_next_op = executeToNextOp(L);
-				} while (from_break && enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK) && current_line() == startline);
 
-
-				while(!enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
-						&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT)
-						&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)
-						&& (L->ci_depth > c || startline == current_line())) {
-					has_next_op = executeToNextOp(L);
+					if (from_break && enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK) && current_line() == startline) { //skip last break ins
+						L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
+						has_next_op = true;
+					}
 					
 					if (!has_next_op && !enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
 						&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT)
 						&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)) {
 						union_change_state(L, lua_VMState::LVM_STATE_FAULT);
 					}
-				}
+				} while (!enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
+					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT)
+					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)
+					&& (L->ci_depth > c || startline == current_line()));
 			}
 			catch (std::exception &e)
 			{
@@ -1959,6 +1963,20 @@ namespace uvm {
 			}
 			return result;
 		}
+
+		TValue ExecuteContext::view_contract_storage_value(lua_State* L, const char *name, const char* fast_map_key, bool is_fast_map) const {
+			TValue result = *luaO_nilobject; //NILCONSTANT			
+			auto cur_contract_id = uvm::lua::lib::get_current_using_contract_id(L);
+			auto ret_count = uvm::lib::uvmlib_get_storage_impl(L, cur_contract_id.c_str(), name, fast_map_key, is_fast_map);
+			if (ret_count>0)
+			{			
+				lua_pop(L, 1); 
+				result = *(L->top);
+				lua_pop(L, ret_count-1); 
+			}			
+			return result;
+		}
+
 
 		uint32_t ExecuteContext::current_line() const {
 			if (!ci || !ttisLclosure(ci->func)) {

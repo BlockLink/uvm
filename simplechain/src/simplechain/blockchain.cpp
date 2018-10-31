@@ -528,4 +528,19 @@ namespace simplechain {
 		return state;
 	}
 
+
+	TValue blockchain::view_contract_storage_value(const char *name, const char* fast_map_key, bool is_fast_map) const {
+		TValue result = *luaO_nilobject;
+		auto engine = get_last_contract_engine_for_debugger();
+		if (!engine)
+			return result;
+		auto uvm_engine = (UvmContractEngine*)engine.get();
+		auto scope = uvm_engine->scope();
+		auto execute_ctx = get_last_execute_context();
+		if (!execute_ctx)
+			return result;
+		result = execute_ctx->view_contract_storage_value(scope->L(),name,fast_map_key,is_fast_map);
+		return result;
+	}
+
 }

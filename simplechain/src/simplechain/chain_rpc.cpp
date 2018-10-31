@@ -395,6 +395,20 @@ namespace simplechain {
 			return res;
 		}
 
-
+		RpcResultType view_current_contract_storage_value(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			fc::variant res;
+			auto storage_name = params.at(0).as_string();
+			auto fast_map_key = params.at(1).as_string();
+			auto is_fast_map = params.at(2).as_bool();
+			std::map<std::string, TValue> result;
+			auto value = chain->view_contract_storage_value(storage_name.c_str(), fast_map_key.c_str(), is_fast_map);
+			std::string storagekey = storage_name;
+			if (is_fast_map) {
+				storagekey = storagekey.append("[").append(fast_map_key).append("]");
+			}
+			result[storagekey] = value;
+			fc::to_variant(result, res);
+			return res;
+		}
 	}
 }

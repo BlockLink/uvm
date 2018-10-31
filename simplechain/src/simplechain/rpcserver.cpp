@@ -40,7 +40,8 @@ namespace simplechain {
 	{ "get_breakpoints_in_last_debugger_state", &get_breakpoints_in_last_debugger_state },
 	{ "remove_breakpoint_in_last_debugger_state", &remove_breakpoint_in_last_debugger_state },
 	{ "clear_breakpoints_in_last_debugger_state", &clear_breakpoints_in_last_debugger_state },
-	{ "debugger_invoke_contract", &debugger_invoke_contract }
+	{ "debugger_invoke_contract", &debugger_invoke_contract },
+	{ "view_current_contract_storage_value", &view_current_contract_storage_value }
 
 	};
 

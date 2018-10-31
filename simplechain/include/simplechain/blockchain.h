@@ -87,6 +87,8 @@ namespace simplechain {
 
 		std::pair<std::string, std::string> view_current_contract_stack_item_in_last_debugger_state() const; // return contract_address => api_name
 		uint32_t view_current_line_number_in_last_debugger_state() const;
+		TValue blockchain::view_contract_storage_value(const char *name, const char* fast_map_key, bool is_fast_map) const;
+
 
 	private:
 		// @throws exception
