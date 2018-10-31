@@ -3108,3 +3108,9 @@ LUALIB_API void luaL_checkversion_(lua_State *L, lua_Number ver, size_t sz) {
         ver, *v);
 }
 
+
+size_t luaL_wrap_contract_apis(lua_State *L, int index, void *ud)
+{
+	return luaL_traverse_table(L, index, contract_table_traverser_to_wrap_api, ud);
+}
+
