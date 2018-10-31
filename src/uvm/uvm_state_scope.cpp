@@ -43,7 +43,7 @@ namespace uvm
             }
             UvmStateScope::UvmStateScope(const UvmStateScope &other) : _L(other._L) {}
             UvmStateScope::~UvmStateScope() {
-                if (nullptr != _L)
+				if (nullptr != _L)
                     close_lua_state(_L);
             }
 

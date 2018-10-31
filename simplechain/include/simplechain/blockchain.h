@@ -71,6 +71,7 @@ namespace simplechain {
 		std::string get_state_json() const;
 
 		bool is_break_when_last_evaluate() const;
+		void debugger_go_resume();
 		void debugger_step_into();
 		void debugger_step_out();
 		void debugger_step_over();

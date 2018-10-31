@@ -995,6 +995,10 @@ LUA_API int lua_pcallk(lua_State *L, int nargs, int nresults, int errfunc,
         L->errfunc = ci->u.c.old_errfunc;
         status = LUA_OK;  /* if it is here, there were no errors */
     }
+	if (status == LUA_OK && (L->state & (lua_VMState::LVM_STATE_BREAK | lua_VMState::LVM_STATE_SUSPEND))) {
+		lua_unlock(L);
+		return status;
+	}
     adjustresults(L, nresults);
     lua_unlock(L);
     return status;
@@ -1307,6 +1311,9 @@ size_t luaL_traverse_table_with_nested(lua_State *L, int index, lua_table_traver
     lua_pop(L, 1);
     return keys_count;
 }
+
+
+
 
 size_t luaL_traverse_table(lua_State *L, int index, lua_table_traverser traverser, void *ud)
 {

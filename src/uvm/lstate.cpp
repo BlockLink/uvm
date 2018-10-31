@@ -285,7 +285,8 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
 	L->evalstack = static_cast<TValue*>(L->gc_state->gc_malloc_vector(L->evalstacksize, sizeof(TValue)));
 	L->evalstacktop = L->evalstack;
 
-	L->state = lua_VMState::LVM_STATE_BREAK;
+	//L->state = lua_VMState::LVM_STATE_BREAK;
+	L->state = lua_VMState::LVM_STATE_NONE;
 	L->allow_debug = false;
 	L->breakpoints = new std::map<std::string, std::list<uint32_t> >();
 

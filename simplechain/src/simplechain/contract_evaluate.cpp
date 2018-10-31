@@ -147,9 +147,13 @@ namespace simplechain {
 			invoke_contract_result.exec_succeed = true;
 			invoke_contract_result.gas_used = gas_count;
 
-			if (engine->vm_state() & lua_VMState::LVM_STATE_BREAK) {
+			if (engine->vm_state() & (lua_VMState::LVM_STATE_BREAK | lua_VMState::LVM_STATE_SUSPEND)) {
 				last_contract_engine_for_debugger = engine;
+				
 			}
+			//if (engine->vm_state() & lua_VMState::LVM_STATE_BREAK) {
+			//	last_contract_engine_for_debugger = engine;
+			//}
 		}
 		catch (const std::exception& e)
 		{

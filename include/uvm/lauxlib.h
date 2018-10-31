@@ -16,6 +16,10 @@
 #include "uvm/lua.h"
 #include "uvm/uvm_api.h"
 
+#include "lobject.h"
+//#include <fc/io/json.hpp>
+#include <fc/variant_object.hpp>
+
 
 
 /* extra error code for 'luaL_load' */
@@ -142,6 +146,10 @@ int luaL_import_contract_module_from_address(lua_State *L);
 std::shared_ptr<UvmModuleByteStream> lua_common_open_contract(lua_State *L, const char *name, char *error = nullptr);
 
 UvmTableMapP luaL_create_lua_table_map_in_memory_pool(lua_State *L);
+
+namespace fc {
+	void to_variant(std::map<std::string, TValue> m, variant& vo);
+}
 
 
 /************************************************************************/

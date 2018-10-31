@@ -27,7 +27,7 @@ int main(int argc, char** argv) {
 				auto tx1 = std::make_shared<transaction>();
 				std::string arg1(argv[1]);
 
-				std::string contract1_gpc_filepath("../test/test_contracts/token.gpc");
+				std::string contract1_gpc_filepath("../test/test_contracts/token2.lua.gpc");
 				auto op = operations_helper::create_contract_from_file(caller_addr, contract1_gpc_filepath);
 				tx1->operations.push_back(op);
 				tx1->tx_time = fc::time_point_sec(fc::time_point::now());
@@ -43,8 +43,10 @@ int main(int argc, char** argv) {
 				tx->operations.push_back(op);
 				tx->tx_time = fc::time_point_sec(fc::time_point::now());
 
-				chain->add_breakpoint_in_last_debugger_state(contract1_addr, 122);
+				chain->add_breakpoint_in_last_debugger_state(contract1_addr, 141);
 				chain->evaluate_transaction(tx);
+				auto storages = chain->get_contract_storages(contract1_addr);
+
 				auto localvars1 = chain->view_localvars_in_last_debugger_state();
 				auto stack1 = chain->view_current_contract_stack_item_in_last_debugger_state();
 				auto line1 = chain->view_current_line_number_in_last_debugger_state();

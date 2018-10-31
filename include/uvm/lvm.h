@@ -111,8 +111,11 @@ namespace uvm {
 			void step_over(lua_State* L);
 			// execute to next ci called, return whether has next ci to execute
 			bool executeToNextCi(lua_State* L);
+			bool executeToNextOp(lua_State* L);
 			void enter_newframe(lua_State* L);
 			void prepare_newframe(lua_State* L);
+
+			void go_resume(lua_State* L);
 
 			std::map<std::string, TValue> view_localvars(lua_State* L) const;
 			std::map<std::string, TValue> view_upvalues(lua_State* L) const;

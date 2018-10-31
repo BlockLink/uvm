@@ -55,6 +55,24 @@ namespace simplechain {
 		RpcResultType get_account_balances(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		RpcResultType get_contract_storages(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		RpcResultType get_storage(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+
+		//add debug rpc
+		RpcResultType set_breakpoint(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType get_breakpoints_in_last_debugger_state(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType view_localvars_in_last_debugger_state(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType view_debug_info(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType debugger_step_out(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType debugger_step_over(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType debugger_step_into(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType debugger_go_resume(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+
+		RpcResultType remove_breakpoint_in_last_debugger_state(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType clear_breakpoints_in_last_debugger_state(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType debugger_invoke_contract(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType view_upvalues_in_last_debugger_state(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+
 		// TODO: deposit to contract
+
+
 	}
 }

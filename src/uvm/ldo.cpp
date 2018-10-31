@@ -162,6 +162,9 @@ int luaD_rawrunprotected(lua_State *L, Pfunc f, void *ud) {
     LUAI_TRY(L, &lj,
         (*f)(L, ud);
     );
+	if (L->state & (lua_VMState::LVM_STATE_BREAK | lua_VMState::LVM_STATE_SUSPEND)) {
+		return lj.status;
+	}
     L->errorJmp = lj.previous;  /* restore old error handler */
     L->nCcalls = oldnCcalls;
     return lj.status;
@@ -388,8 +391,11 @@ int luaD_precall(lua_State *L, StkId func, int nresults) {
         lua_unlock(L);
         n = (*f)(L);  /* do the actual call */
         lua_lock(L);
-        api_checknelems(L, n);
-        luaD_poscall(L, ci, L->top - n, n);
+		if (L->state & (lua_VMState::LVM_STATE_BREAK | lua_VMState::LVM_STATE_SUSPEND)) {
+			return 1;
+		}
+		api_checknelems(L, n);
+		luaD_poscall(L, ci, L->top - n, n);
         return 1;
     }
     case LUA_TLCL: {  /* Lua function: prepare its call */
@@ -523,6 +529,9 @@ void luaD_call(lua_State *L, StkId func, int nResults) {
         stackerror(L);
     if (!luaD_precall(L, func, nResults))  /* is a Lua function? */
         luaV_execute(L);  /* call it */
+	if (L->state & (lua_VMState::LVM_STATE_BREAK | lua_VMState::LVM_STATE_SUSPEND)) {
+		return;
+	}
     L->nCcalls--;
 }
 
@@ -533,6 +542,9 @@ void luaD_call(lua_State *L, StkId func, int nResults) {
 void luaD_callnoyield(lua_State *L, StkId func, int nResults) {
     L->nny++;
     luaD_call(L, func, nResults);
+	if (L->state & (lua_VMState::LVM_STATE_BREAK| lua_VMState::LVM_STATE_SUSPEND)) {
+		return;
+	}
     L->nny--;
 }
 
@@ -582,6 +594,9 @@ static void unroll(lua_State *L, void *ud) {
         else {  /* Lua function */
             luaV_finishOp(L);  /* finish interrupted instruction */
             luaV_execute(L);  /* execute down to higher C 'boundary' */
+			if (L->state & (lua_VMState::LVM_STATE_BREAK | lua_VMState::LVM_STATE_SUSPEND)) {
+				return;
+			}
         }
     }
 }
@@ -762,6 +777,9 @@ int luaD_pcall(lua_State *L, Pfunc func, void *u,
         L->nny = old_nny;
         luaD_shrinkstack(L);
     }
+	if (status == LUA_OK && (L->state & (lua_VMState::LVM_STATE_BREAK | lua_VMState::LVM_STATE_SUSPEND))) {
+		return status;
+	}
     L->errfunc = old_errfunc;
     return status;
 }
@@ -826,5 +844,7 @@ int luaD_protectedparser(lua_State *L, ZIO *z, const char *name,
     L->nny--;
     return status;
 }
+
+
 
 

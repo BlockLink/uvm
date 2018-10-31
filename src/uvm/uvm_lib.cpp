@@ -1195,7 +1195,7 @@ end
 
             void close_lua_state(lua_State *L)
             {
-                luaL_commit_storage_changes(L);
+                //luaL_commit_storage_changes(L);
 				uvm::lua::api::global_uvm_chain_api->release_objects_in_pool(L);
                 LStatesMap *states_map = get_lua_states_value_hashmap();
                 if (nullptr != states_map)

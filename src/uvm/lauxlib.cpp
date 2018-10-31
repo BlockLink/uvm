@@ -43,6 +43,8 @@
 #include <vmgc/vmgc.h>
 #include <boost/scope_exit.hpp>
 
+
+
 using uvm::lua::api::global_uvm_chain_api;
 
 
@@ -1130,6 +1132,9 @@ static int contract_api_wrapper_func(lua_State *L)
 	}
     auto nresults = 1;
 	lua_call(L, args_count, nresults);
+	if (L->state & (lua_VMState::LVM_STATE_BREAK | lua_VMState::LVM_STATE_SUSPEND)) {
+		return 0;
+	}
 	// pop contract id from stack
 	if (contract_info_stack->size() > 0)
 		contract_info_stack->pop();
@@ -2090,6 +2095,10 @@ static int lua_real_execute_contract_api(lua_State *L
 			global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "execute api %s contract error", api_name_str.c_str());
 			return 0;
 		}
+		if (status == LUA_OK && (L->state & (lua_VMState::LVM_STATE_BREAK | lua_VMState::LVM_STATE_SUSPEND))) {
+			return status;
+		}
+
 		lua_pop(L, 1);
         lua_pop(L, 1); // pop self
     } else
@@ -2122,6 +2131,9 @@ LUA_API int lua_execute_contract_api(lua_State *L, const char *contract_name,
 		lua_setglobal(L, "last_return");
 
 		int status = lua_real_execute_contract_api(L, contract_name, api_name, arg1);
+		if (status == LUA_OK && (L->state & (lua_VMState::LVM_STATE_BREAK | lua_VMState::LVM_STATE_SUSPEND))) {
+			return status;
+		}
 
 		if (lua_gettop(L) < 1)
 			return LUA_ERRRUN;
@@ -2134,7 +2146,7 @@ LUA_API int lua_execute_contract_api(lua_State *L, const char *contract_name,
 			lua_pop(L, 1);
 			*result_json_string = last_return_value_json_string;
 		}
-		if (result)
+		if (result && !(L->state & (lua_VMState::LVM_STATE_BREAK| lua_VMState::LVM_STATE_SUSPEND)))
 			result = luaL_commit_storage_changes(L);
 		return result > 0 ? LUA_OK : LUA_ERRRUN;
 	}
@@ -2949,3 +2961,23 @@ LUALIB_API void luaL_checkversion_(lua_State *L, lua_Number ver, size_t sz) {
         ver, *v);
 }
 
+
+
+namespace fc {
+	void to_variant(std::map<std::string, TValue> m, variant& vo) {
+		std::map<std::string, TValue>::iterator it;
+		auto L = luaL_newstate();
+		fc::mutable_variant_object res;
+			for (it = m.begin(); it != m.end();it++) {
+				*(L->top) = it->second;
+				api_incr_top(L);
+				luaL_tojsonstring(L, -1, nullptr);
+				const char *value_str = luaL_checkstring(L, -1);
+				lua_pop(L, 2);
+				auto v = std::string(value_str);
+				res[it->first]=v;
+			}		
+		vo = std::move(res);
+		lua_close(L);	
+	}
+}

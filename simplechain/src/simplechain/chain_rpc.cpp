@@ -11,6 +11,8 @@
 #include <boost/asio.hpp>
 #include <fc/io/json.hpp>
 
+#include <uvm/lauxlib.h>
+
 namespace simplechain {
 	namespace rpc {
 
@@ -248,6 +250,151 @@ namespace simplechain {
 			fc::variant res = fc::json::from_string(storage.as<std::string>());
 			return res;
 		}
+
+
+		//---------------add debug rpc ----------------------------------------------------------
+		RpcResultType set_breakpoint(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {			
+			//fc::variant res;
+			fc::mutable_variant_object res;
+
+			auto contract_address = params.at(0).as_string();
+			auto line = params.at(1).as_uint64();
+			chain->add_breakpoint_in_last_debugger_state(contract_address,line);
+
+			res["result"] = true;
+
+			return res;
+		}
+
+		RpcResultType get_breakpoints_in_last_debugger_state(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			//fc::variant res;
+			fc::mutable_variant_object res;
+			auto breaks = chain->get_breakpoints_in_last_debugger_state();
+			std::map<std::string, std::list<uint32_t>>::iterator iter;
+
+			for (iter = breaks.begin(); iter != breaks.end(); iter++)
+			{
+				fc::variant temp;
+				auto li = iter->second;
+				std::vector<uint32_t> vc;
+				std::copy(li.begin(), li.end(), std::back_inserter(vc));
+				fc::to_variant(vc, temp);			
+				res[iter->first] = temp;	
+			}
+			
+			return res;
+		}
+
+		
+
+		RpcResultType remove_breakpoint_in_last_debugger_state(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			//fc::variant res;
+			fc::mutable_variant_object res;
+			auto contract_address = params.at(0).as_string();
+			auto line = params.at(1).as_uint64();
+			chain->remove_breakpoint_in_last_debugger_state(contract_address, line);
+			res["result"] = true;
+			return res;
+		}
+
+		RpcResultType clear_breakpoints_in_last_debugger_state(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			//fc::variant res;
+			fc::mutable_variant_object res;
+			chain->clear_breakpoints_in_last_debugger_state();
+			res["result"] = true;
+			return res;
+		}
+
+		RpcResultType debugger_invoke_contract(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			auto caller_addr = params.at(0).as_string();
+			auto contract_address = params.at(1).as_string();
+			auto api_name = params.at(2).as_string();
+			params_assert(params.at(3).is_array());
+			auto api_args_json = params.at(3).as<fc::variants>();
+			std::vector<std::string> api_args;
+			for (const auto& api_arg_json : api_args_json) {
+				api_args.push_back(api_arg_json.as_string());
+			}
+			auto deposit_asset_id = params.at(4).as_uint64();
+			auto deposit_amount = params.at(5).as_uint64();
+			auto gas_limit = params.at(6).as_uint64();
+			auto gas_price = params.at(7).as_uint64();
+
+			auto tx = std::make_shared<transaction>();
+			auto op = operations_helper::invoke_contract(caller_addr, contract_address, api_name, api_args, gas_limit, gas_price);
+			op.deposit_amount = deposit_amount;
+			op.deposit_asset_id = deposit_asset_id;
+			tx->operations.push_back(op);
+			tx->tx_time = fc::time_point_sec(fc::time_point::now());
+
+			auto op_result = chain->evaluate_transaction(tx);
+			fc::mutable_variant_object res;
+			res["txid"] = tx->tx_hash();
+			if (op_result) {
+				contract_invoke_result* contract_result = (contract_invoke_result*)op_result.get();
+				res["api_result"] = contract_result->api_result;
+				res["exec_succeed"] = contract_result->exec_succeed;
+			}
+			//chain->accept_transaction_to_mempool(*tx);
+			return res;
+		}
+
+
+		RpcResultType view_localvars_in_last_debugger_state(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			const auto& localvars = chain->view_localvars_in_last_debugger_state();
+			fc::variant locs;
+			fc::to_variant(localvars, locs);	
+			return locs;
+		}
+
+		RpcResultType view_upvalues_in_last_debugger_state(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			const auto& upvalues = chain->view_upvalues_in_last_debugger_state();
+			fc::variant res;
+			
+			fc::to_variant(upvalues, res);
+			return res;
+		}
+		
+
+		RpcResultType view_debug_info(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			fc::mutable_variant_object res;
+			auto line = chain->view_current_line_number_in_last_debugger_state();
+			res["line"] = line;
+			const auto stack = chain->view_current_contract_stack_item_in_last_debugger_state();
+			res["contractid"] = stack.first;
+			res["apiname"] = stack.second;
+			return res;
+		}
+		
+
+		RpcResultType debugger_step_out(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			fc::mutable_variant_object res;
+			 chain->debugger_step_out();
+			 res["result"] = true;
+			 return res;
+		}
+
+		RpcResultType debugger_step_over(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			fc::mutable_variant_object res;
+			chain->debugger_step_over();
+			res["result"] = true;
+			return res;
+		}
+
+		RpcResultType debugger_step_into(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			fc::mutable_variant_object res;
+			chain->debugger_step_into();
+			res["result"] = true;
+			return res;
+		}
+
+		RpcResultType debugger_go_resume(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			fc::mutable_variant_object res;
+			chain->debugger_go_resume();
+			res["result"] = true;
+			return res;
+		}
+
 
 	}
 }

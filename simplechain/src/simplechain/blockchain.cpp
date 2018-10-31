@@ -315,6 +315,20 @@ namespace simplechain {
 	bool blockchain::is_break_when_last_evaluate() const {
 		return get_last_contract_engine_for_debugger() ? true : false;
 	}
+
+	void blockchain::debugger_go_resume() {
+		auto engine = get_last_contract_engine_for_debugger();
+		if (!engine)
+			return;
+		auto uvm_engine = (UvmContractEngine*)engine.get();
+		auto scope = uvm_engine->scope();
+		auto execute_ctx = get_last_execute_context();
+		if (!execute_ctx)
+			return;
+		execute_ctx->go_resume(scope->L());
+	}
+
+
 	void blockchain::debugger_step_into() {
 		auto engine = get_last_contract_engine_for_debugger();
 		if (!engine)
@@ -445,6 +459,7 @@ namespace simplechain {
 	}
 	std::map<std::string, TValue> blockchain::view_upvalues_in_last_debugger_state() const {
 		std::map<std::string, TValue> result;
+		std::map<std::string, std::string> res;
 		auto engine = get_last_contract_engine_for_debugger();
 		if (!engine)
 			return result;
@@ -454,6 +469,27 @@ namespace simplechain {
 		if (!execute_ctx)
 			return result;
 		result = execute_ctx->view_upvalues(scope->L());
+
+		//auto L = scope->L();
+
+		//std::map<std::string, TValue>::iterator it;
+	
+		/*for (it = result.begin(); it != result.end();)
+		{
+			*(L->top) = it->second;
+			//setobj2s(L, L->top, &tvalue)
+			api_incr_top(L);
+			
+			luaL_tojsonstring(L, -1, nullptr);
+			const char *value_str = luaL_checkstring(L, -1);
+			lua_pop(L, 1);
+			//it->first
+			res[it->first] = luaL_
+		}*/
+
+		
+		
+
 		return result;
 	}
 

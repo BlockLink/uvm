@@ -26,7 +26,22 @@ namespace simplechain {
 		{ "get_contract_info", &get_contract_info },
 		{ "get_account_balances", &get_account_balances },
 		{ "get_contract_storages", &get_contract_storages },
-		{ "get_storage", &get_storage }
+		{ "get_storage", &get_storage },
+
+		//add debug rpc
+		{ "set_breakpoint", &set_breakpoint },
+		{ "view_debug_info", &view_debug_info },
+		{ "view_localvars_in_last_debugger_state", &view_localvars_in_last_debugger_state },
+		{ "view_upvalues_in_last_debugger_state", &view_upvalues_in_last_debugger_state },
+		{ "debugger_step_out", &debugger_step_out },
+	{ "debugger_step_into", &debugger_step_into },
+	{ "debugger_step_over", &debugger_step_over },
+	{ "debugger_go_resume", &debugger_go_resume },
+	{ "get_breakpoints_in_last_debugger_state", &get_breakpoints_in_last_debugger_state },
+	{ "remove_breakpoint_in_last_debugger_state", &remove_breakpoint_in_last_debugger_state },
+	{ "clear_breakpoints_in_last_debugger_state", &clear_breakpoints_in_last_debugger_state },
+	{ "debugger_invoke_contract", &debugger_invoke_contract }
+
 	};
 
 	RpcServer::RpcServer(blockchain* chain, int port)

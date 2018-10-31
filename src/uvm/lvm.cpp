@@ -75,7 +75,6 @@ using uvm::lua::api::global_uvm_chain_api;
 #endif
 
 
-
 /*
 ** Try to convert a value to a float. The float case is already handled
 ** by the macro 'tonumber'.
@@ -874,25 +873,15 @@ namespace uvm {
 			if (enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
 				|| enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT))
 				return;
-			L->ci = ci;
-			*L->using_contract_id_stack = this->using_contract_id_stack;
-			try
-			{
-				auto has_next_ci = executeToNextCi(L);
-				if (!has_next_ci && !enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
-					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT)) {
-					union_change_state(L, lua_VMState::LVM_STATE_HALT);
-				}
+			int startline = current_line();
+			bool from_break = false;
+			if (enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)) {
+				L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
+				from_break = true;
+				
 			}
-			catch (std::exception &e)
-			{
-				union_change_state(L, lua_VMState::LVM_STATE_FAULT);
-				throw e;
-			}
-		}
+			L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_SUSPEND);
 
-		void ExecuteContext::step_out(lua_State *L) {
-			L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
 			L->ci = ci;
 			*L->using_contract_id_stack = this->using_contract_id_stack;
 			int c = L->ci_depth;
@@ -900,12 +889,66 @@ namespace uvm {
 			{
 				while (!enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
 					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT)
-					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK) && L->ci_depth >= c)
+					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK) && L->ci_depth <= c && startline == current_line())
 				{
-					auto has_next_ci = executeToNextCi(L);
-					if (!has_next_ci && !enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
-						&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT)) {
-						union_change_state(L, lua_VMState::LVM_STATE_HALT);
+					auto has_next_op = executeToNextOp(L);
+
+					if (from_break && enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK) && current_line() == startline) {	//skip last break ins					
+							L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
+							continue;
+					}
+					if (!has_next_op && !enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
+						&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT)
+						&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)) {
+						union_change_state(L, lua_VMState::LVM_STATE_FAULT);
+					}
+				}
+				
+			}
+			catch (std::exception &e)
+			{
+				union_change_state(L, lua_VMState::LVM_STATE_FAULT);
+				throw e;
+			}
+
+			if (!enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT) && !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT) && !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)) {
+				union_change_state(L, lua_VMState::LVM_STATE_SUSPEND);
+			}
+		}
+
+
+		void ExecuteContext::step_out(lua_State *L) {
+			if (enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
+				|| enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT))
+				return;
+			int startline = startline = current_line();
+			bool from_break = false;
+			if (enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)) {
+				L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
+				from_break = true;
+				
+			}
+			L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_SUSPEND);
+			L->ci = ci;
+			*L->using_contract_id_stack = this->using_contract_id_stack;
+			int c = L->ci_depth;
+
+			try
+			{
+				while (!enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
+					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT)
+					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK) && L->ci_depth >= c )
+				{
+					auto has_next_op = executeToNextOp(L);
+					if (from_break && enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK) && current_line() == startline) { //skip last break ins
+							L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
+							continue;
+						
+					}
+					if (!has_next_op && !enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
+						&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT)
+						&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)) {
+						union_change_state(L, lua_VMState::LVM_STATE_FAULT);
 					}
 				}
 			}
@@ -914,65 +957,128 @@ namespace uvm {
 				union_change_state(L, lua_VMState::LVM_STATE_FAULT);
 				throw e;
 			}
+
+			if (!enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT) && !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT) && !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)) {
+				union_change_state(L, lua_VMState::LVM_STATE_SUSPEND);
+			}
+
 		}
+
 
 		void ExecuteContext::step_over(lua_State* L) {
 			if (enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
 				|| enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT))
 				return;
-			L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
+			int startline = current_line();
+			bool from_break = false;
+			if (enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)) {
+				L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
+				from_break = true;	
+			}
+			L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_SUSPEND);
 			L->ci = ci;
 			*L->using_contract_id_stack = this->using_contract_id_stack;
-
+			bool has_next_op = false;
 			int c = L->ci_depth;
 			try {
-				do
-				{
-					auto has_next_ci = executeToNextCi(L);
-					if (!has_next_ci && !enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
-						&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT)) {
-						union_change_state(L, lua_VMState::LVM_STATE_HALT);
+				do { //skip last break ins
+					has_next_op = executeToNextOp(L);
+				} while (from_break && enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK) && current_line() == startline);
+
+
+				while(!enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
+						&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT)
+						&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)
+						&& (L->ci_depth > c || startline == current_line())) {
+					has_next_op = executeToNextOp(L);
+					
+					if (!has_next_op && !enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
+						&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT)
+						&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)) {
+						union_change_state(L, lua_VMState::LVM_STATE_FAULT);
 					}
-				} while (!enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
-					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT)
-					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)
-					&& L->ci_depth > c);
+				}
 			}
 			catch (std::exception &e)
 			{
 				union_change_state(L, lua_VMState::LVM_STATE_FAULT);
 				throw e;
 			}
+
+			if (!enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT) && !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT) && !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)) {
+				union_change_state(L,lua_VMState::LVM_STATE_SUSPEND);
+			}
 		}
 
-		bool ExecuteContext::executeToNextCi(lua_State* L) {
+		void ExecuteContext::go_resume(lua_State *L) {
+			if (enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
+				|| enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT))
+				return;
 
+			lua_assert(L->state & lua_VMState::LVM_STATE_BREAK & lua_VMState::LVM_STATE_SUSPEND);
+
+			lua_assert(L->ci == ci);
+
+			if (!isLua(L->ci)) {
+				throw std::exception("not lua function to resume");
+			}
+			int startline = current_line();
+			bool from_break = false;
+			if (enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)) {
+				L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
+				from_break = true;
+				
+			}
+			L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_SUSPEND);
+			bool has_next_op = false;
+			do {
+				has_next_op = executeToNextOp(L);
+				if (from_break && enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK) && current_line() == startline) {				
+						L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
+						has_next_op = true;
+						continue;	
+				}
+			} while (has_next_op && !enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT) && !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK) && !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT));
+		}
+
+		//return has_next_op
+		bool ExecuteContext::executeToNextOp(lua_State *L) {
 			/* main loop of interpreter */
-			for (;;) {
+			//恢复state
+			if (L->state != lua_VMState::LVM_STATE_NONE) {
+				L->state = lua_VMState::LVM_STATE_NONE;
+			}
+			
 				if (!ci || ci->u.l.savedpc == nullptr) {
 					global_uvm_chain_api->throw_exception(L, UVM_API_LVM_LIMIT_OVER_ERROR, "wrong bytecode instruction, can't find savedpc");
-					vmbreak;
+					//vmbreak;
+					return false;
 				}
 				Instruction i = *(ci->u.l.savedpc++);
 
 #ifdef DEBUG
-				printf("%s\n", luaP_opnames[GET_OPCODE(i)]);
+				ci->u.l.savedpc--;
+				printf("%s\tline:%d\n", luaP_opnames[GET_OPCODE(i)],current_line());
+				ci->u.l.savedpc++;
 #endif // DEBUG
 
 				StkId ra;
 
 				*insts_executed_count += 1; // executed instructions count
 
-														  // limit instructions count, and executed instructions
+											// limit instructions count, and executed instructions
 				if (has_insts_limit && *insts_executed_count > insts_limit)
 				{
 					global_uvm_chain_api->throw_exception(L, UVM_API_LVM_LIMIT_OVER_ERROR, "over instructions limit");
-					vmbreak;
+					//vmbreak;
+					return false;
 				}
 				if (stopped_pointer && *stopped_pointer > 0)
-					vmbreak;
+					return false;
+					//vmbreak;
 				if (L->force_stopping)
-					vmbreak;
+					return false;
+					//vmbreak;
 
 
 				// when over contract api limit, also vmbreak
@@ -980,7 +1086,8 @@ namespace uvm {
 					&& global_uvm_chain_api->check_contract_api_instructions_over_limit(L))
 				{
 					global_uvm_chain_api->throw_exception(L, UVM_API_LVM_LIMIT_OVER_ERROR, "over instructions limit");
-					vmbreak;
+					//vmbreak;
+					return false;
 				}
 
 				if (L->hookmask & (LUA_MASKLINE | LUA_MASKCOUNT))
@@ -1405,7 +1512,7 @@ namespace uvm {
 							cl = clLvalue(ci->func);  /* local reference to function's closure */
 							k = cl->p->ks.empty() ? nullptr : cl->p->ks.data();  /* local reference to function's constant table */
 							base = ci->u.l.base;  /* local copy of function's base */
-							return true;; /* restart luaV_execute over new Lua function */
+							//return true; /* restart luaV_execute over new Lua function */
 						}
 						vmbreak;
 					}
@@ -1442,7 +1549,7 @@ namespace uvm {
 							cl = clLvalue(ci->func);  /* local reference to function's closure */
 							k = cl->p->ks.empty() ? nullptr : cl->p->ks.data();  /* local reference to function's constant table */
 							base = ci->u.l.base;  /* local copy of function's base */
-							return true; /* restart luaV_execute over new Lua function */
+							//return true; /* restart luaV_execute over new Lua function */
 						}
 						vmbreak;
 					}
@@ -1462,6 +1569,7 @@ namespace uvm {
 						b = luaD_poscall(L, ci, ra, (b != 0 ? b - 1 : cast_int(L->top - ra)));
 
 						if (ci->callstatus & CIST_FRESH) {  /* local 'ci' still from callee */
+							union_change_state(L, lua_VMState::LVM_STATE_HALT);
 							return false;  /* external invocation: return */
 						}
 						else {  /* invocation via reentry: continue execution */
@@ -1475,8 +1583,9 @@ namespace uvm {
 							cl = clLvalue(ci->func);  /* local reference to function's closure */
 							k = cl->p->ks.empty() ? nullptr : cl->p->ks.data();  /* local reference to function's constant table */
 							base = ci->u.l.base;  /* local copy of function's base */
-							return true; /* restart luaV_execute over new Lua function */
+							//return true; /* restart luaV_execute over new Lua function */
 						}
+						vmbreak;
 					}
 					vmcase(UOP_FORLOOP) {
 						if (ttisinteger(ra)) {  /* integer loop? */
@@ -1716,19 +1825,40 @@ namespace uvm {
 							uint32_t line = cl->p->lineinfos[inst_index_in_proto];
 							if (std::find(contract_breakpoints.begin(), contract_breakpoints.end(), line) != contract_breakpoints.end()) {
 								union_change_state(L, lua_VMState::LVM_STATE_BREAK);
-								if(L->using_contract_id_stack)
+								if (L->using_contract_id_stack)
 									this->using_contract_id_stack = *(L->using_contract_id_stack);
 
 								lua_assert(ci == L->ci);
 								cl = clLvalue(ci->func);  /* local reference to function's closure */
 								k = cl->p->ks.empty() ? nullptr : cl->p->ks.data();  /* local reference to function's constant table */
 								base = ci->u.l.base;  /* local copy of function's base */
-								return true;
+								//return true;
+								return false;
 							}
 						}
 					}
 				}
+			
+			//return false;
+			return true;
+		}
+
+		bool ExecuteContext::executeToNextCi(lua_State* L) {
+			if (L->state != lua_VMState::LVM_STATE_NONE) {
+				L->state = lua_VMState::LVM_STATE_NONE;
 			}
+			auto depth = L->ci_depth;
+			bool has_next_op = false;
+			for (;;) {
+				has_next_op = executeToNextOp(L);
+				if (!has_next_op ||enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT) || enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT) || enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)){
+					return false;
+				}
+				if (L->ci_depth != depth) {
+					return true;
+				}
+			}
+			
 			return false;
 		}
 
@@ -1793,16 +1923,25 @@ namespace uvm {
 				return result;
 			}
 			int line = current_line();
+			size_t numparas = (size_t)cl->p->numparams;
+			if (numparas > 0) {
+				printf("num paras = %d\n", numparas);
+			}
+			auto currentpc = ci->u.l.savedpc - cl->p->codes.data();
+			printf("currentpc = %d\n", currentpc);
+
 			for (size_t i = 0; i < cl->p->locvars.size(); i++) {
 				const auto& locvar = cl->p->locvars[i];
 				std::string varname(locvar.varname->value);
-				// ignore varname when current line outside varname scope
-				if (line > 0) {
-					if (cl->p->linedefined >= line || cl->p->lastlinedefined < line)
-						continue;
+				// ignore varname when current pc outside varname scope
+				if (currentpc<locvar.startpc || currentpc > locvar.endpc) {
+					continue;
 				}
+	
 				TValue value = *(ci->u.l.base + i); // FIXME: invalid localvar value here
+				//TValue value = *(ci->u.l.base + numparas + i); // FIXME: invalid localvar value here
 				result[varname] = value;
+								
 			}
 			return result;
 		}
@@ -1842,7 +1981,9 @@ std::shared_ptr<uvm::core::ExecuteContext> luaV_execute(lua_State *L)
 {
 	if (L->force_stopping)
 		return nullptr;
-	L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
+	
+	//L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
+	L->state = lua_VMState::LVM_STATE_NONE;
 	CallInfo *ci = L->ci;
 	uvm_types::GcLClosure *cl;
 	TValue *k;
@@ -1858,4 +1999,8 @@ std::shared_ptr<uvm::core::ExecuteContext> luaV_execute(lua_State *L)
 std::shared_ptr<uvm::core::ExecuteContext> get_last_execute_context() {
 	return last_execute_context;
 }
+
+
+
+
 

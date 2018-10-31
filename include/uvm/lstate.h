@@ -143,6 +143,7 @@ typedef enum lua_VMState {
 	LVM_STATE_HALT = 1 << 0,
 	LVM_STATE_FAULT = 1 << 1,
 	LVM_STATE_BREAK = 1 << 2,
+	LVM_STATE_SUSPEND = 1 << 3
 } lua_VMState;
 
 struct contract_info_stack_entry {
