@@ -206,4 +206,6 @@ FakesAssemblies/
 /cmake_install.cmake
 /libuvm.a
 /simplechain_runner
+/uvm_single_exec
+
 

@@ -6,7 +6,8 @@ type Storage = {
     smtContractAddress: string,
     numCoins: int,
     currentBlockNum: int,
-    childBlockInterval: int
+    childBlockInterval: int,
+    operatorDebt: int
 }
 
 let MATURITY_PERIOD = 604800 -- 7 days
@@ -127,6 +128,14 @@ let function get_from_address()
     return from_address
 end
 
+let function simpleJsonLoads(o: object)
+    if (o == nil) then
+        return nil
+    else
+        return json.loads(tostring(o))
+    end
+end
+
 var vmc: table = nil
 
 let function getVmc(M: table)
@@ -169,6 +178,7 @@ function M:init()
     self.storage.numCoins = 0
     self.storage.currentBlockNum = 0
     self.storage.childBlockInterval = 1000
+    self.storage.operatorDebt = 0
 end
 
 function M:state(_: string)
@@ -185,7 +195,7 @@ function M:set_config(arg: string)
     if from_caller ~= self.storage.operatorAuthority then
         return error("only operator can set config")
     end
-    let args = parse_at_least_args(arg, 6, "need arg format: operatorAuthority,vmcContractAddress,smtContractAddress,childBlockInterval")
+    let args = parse_at_least_args(arg, 4, "need arg format: operatorAuthority,vmcContractAddress,smtContractAddress,childBlockInterval")
     let operatorAuthority = tostring(args[1])
     if not is_valid_address(operatorAuthority) then
         return error("invalid operatorAuthority address arg")
@@ -206,27 +216,40 @@ function M:set_config(arg: string)
     self.storage.vmcContractAddress = vmcContractAddress
     self.storage.smtContractAddress = smtContractAddress
     self.storage.childBlockInterval = childBlockInterval
-    let storageJson = json.dumps(self.storage)
+    let storageJson = json.dumps({
+        operatorAuthority: self.storage.operatorAuthority,
+        vmcContractAddress: self.storage.vmcContractAddress,
+        smtContractAddress: self.storage.smtContractAddress,
+        numCoins: self.storage.numCoins,
+        currentBlockNum: self.storage.currentBlockNum,
+        childBlockInterval: self.storage.childBlockInterval,
+        operatorDebt: self.storage.operatorDebt
+    })
     emit ConfigSet(storageJson)
 end
 
 offline function M:get_config(_: string)
-    let storageJson = json.dumps(self.storage)
+    let storageJson = json.dumps({
+        operatorAuthority: self.storage.operatorAuthority,
+        vmcContractAddress: self.storage.vmcContractAddress,
+        smtContractAddress: self.storage.smtContractAddress,
+        numCoins: self.storage.numCoins,
+        currentBlockNum: self.storage.currentBlockNum,
+        childBlockInterval: self.storage.childBlockInterval,
+        operatorDebt: self.storage.operatorDebt
+    })
     return storageJson
 end
 
 let function create_coin(M: table, from: string, uid: string, denomination: int)
     let from_caller = get_from_address()
-    M.storage.currentBlock = tointeger(M.storage.currentBlock) + 1
+    M.storage.currentBlockNum = tointeger(M.storage.currentBlockNum) + 1
     let slotInfoToPack: Array<object> = [tointeger(M.storage.numCoins), from_caller, from]
     let slotInfoPackedHex = sha256_hex(cbor_encode(slotInfoToPack))
     let slot = string.sub(slotInfoPackedHex, 0, 16)
-    let coinStr = tostring(fast_map_get("coins", slot))
-    var coin: Coin
-    if not coinStr then
+    var coin: Coin = totable(simpleJsonLoads(fast_map_get("coins", slot)))
+    if not coin then
         coin = Coin()
-    else
-        coin = totable(json.loads(coinStr))
     end
     coin.uid = uid
     coin.contractAddress = ""
@@ -265,11 +288,11 @@ let function create_coin(M: table, from: string, uid: string, denomination: int)
     fast_map_set("coins", slot, json.dumps(coin))
 end
 
--- arg format: assetSymbol,amount
+-- arg format: amount,assetSymbol
 function M:on_deposit_asset(arg: string)
-    let parsed = parse_at_least_args(arg, 2, "arg need format assetSymbol,amount")
-    let uid = tostring(parsed[1])
-    let amount = tointeger(parsed[2])    
+    let parsed = parse_at_least_args(arg, 2, "arg need format amount,assetSymbol")
+    let amount = tointeger(parsed[1]) 
+    let uid = tostring(parsed[2])   
     let from_caller = get_from_address()
     let from = from_caller
     create_coin(self, from, uid, amount)
@@ -284,6 +307,43 @@ function M:create_empty_coin(arg: string)
     let from = from_caller
     create_coin(self, from, assetSymbol, 0)
 end
+
+offline function M:get_coin(slot: string)
+    let coin: Coin = totable(simpleJsonLoads(fast_map_get("coins", slot)))
+    return coin
+end
+
+-- Used by the operator to provide liquidity on a already existing
+-- coin, like channel rebalancing. By increasing the coin's denomination
+-- and keeping the coin's balance constant, the operator is able to
+-- participate in a channel with the counterparty without having to mint a
+-- new coin.
+-- arg format: slot,denomination
+function M:provide_liquidity (arg: string)
+    let parsed = parse_at_least_args(arg, 2, "need arg format: slot,denomination")
+    let slot = tostring(parsed[1])
+    let denomination = tointeger(parsed[2])
+    if (not denomination) or (denomination <= 0) then
+        return error("invalid denomination arg")
+    end
+    let coin: Coin = totable(simpleJsonLoads(fast_map_get("coins", slot)))
+    if (not coin) then
+        return error("can't find coin with this slot")
+    end
+    let from_caller = get_from_address()
+    if from_caller ~= self.storage.operatorAuthority then
+        return error("only operator authority can call this api")
+    end
+    if coin.depositBlock <= 0 then
+        return error("coin not exist yet")
+    end
+    -- now operator doesn't need to deposit real balance to the coin
+    coin.denomination = coin.denomination + denomination
+    fast_map_set("coins", slot, json.dumps(coin))
+    self.storage.operatorDebt = self.storage.operatorDebt + denomination
+    emit ProvidedLiquidity(arg)
+end
+
 
 -- called by a Validator to append a Plasma block to the Plasma chain
 -- arg format: block_txs_merkle_root
@@ -474,7 +534,6 @@ let function freeBond(from: string)
 end
 
 let function withdrawBonds()
-    -- Can only withdraw bond if the msg.sender
     let from_caller = get_from_address()
     let balanceStr = tostring(fast_map_get("balances", from_caller))
     if not balanceStr then
@@ -601,7 +660,7 @@ function M:finalizeExit(arg: string)
 end
 
 let function isState(slot: string, state: State)
-    let coin: Coin = totable(json.loads(tostring(fast_map_get("coins", slot))))
+    let coin: Coin = totable(simpleJsonLoads(fast_map_get("coins", slot)))
     if (not coin) or (coin.state ~= state) then
         return error("Wrong state")
     end
@@ -612,7 +671,7 @@ end
 function M:withdraw(arg: string)
     let from_caller = get_from_address()
     let slot = arg
-    let coin: Coin = totable(json.loads(tostring(fast_map_get("coins", slot))))
+    let coin: Coin = totable(simpleJsonLoads(fast_map_get("coins", slot)))
     if (not coin) or (coin.owner ~= from_caller) then
         return error("You do not own that UTXO")
     end
@@ -633,9 +692,16 @@ function M:withdraw(arg: string)
         end
     end
     if (toAuthority > 0) then
-        let res2 = transfer_from_contract_to_address(self.storage.operatorAuthority, get_system_asset_symbol(), toAuthority)
-        if res2 ~= 0 then
-            return error("error when transfer to address with error code " .. tostring(res2))
+        -- subtract operatorDebt first
+        if toAuthority <= self.storage.operatorDebt then
+            self.storage.operatorDebt = self.storage.operatorDebt - toAuthority
+        else
+            let remainingToAuthority = toAuthority - self.storage.operatorDebt
+            self.storage.operatorDebt = 0
+            let res2 = transfer_from_contract_to_address(self.storage.operatorAuthority, get_system_asset_symbol(), remainingToAuthority)
+            if res2 ~= 0 then
+                return error("error when transfer to address with error code " .. tostring(res2))
+            end
         end
     end
     let withdrawEventArg = {
@@ -653,11 +719,11 @@ end
 -- @param owner The user claimed to be the true ower of the coin
 let function setChallenged(slot: string, owner: string, challengingBlockNumber: int, txHash: string)
     -- Require that the challenge is in the first half of the challenge window
-    let coin: Coin = totable(json.loads(tostring(fast_map_get("coins", "slot"))))
+    let coin: Coin = totable(simpleJsonLoads(fast_map_get("coins", "slot")))
     if get_chain_now() > (coin.exit.createdAt + CHALLENGE_WINDOW) then
         return error("challenge window expired")
     end
-    let slotChallenges = totable(json.loads(tostring(fast_map_get("challenges", slot))))
+    let slotChallenges = totable(simpleJsonLoads(fast_map_get("challenges", slot)))
     if arrayContains(slotChallenges, txHash) then
         return error("Transaction used for challenge already")
     end
@@ -717,7 +783,7 @@ end
 let function checkResponse(M: table, slot: string, index: int, blockNumber: int, txHex: string, signatureHex: string, proofHex: string)
     let txData = totable(cbor_decode(txHex))
     let sigHash = tostring(txData["sigHash"])
-    let slotChallenges = totable(json.loads(tostring(fast_map_get("challenges", slot))))
+    let slotChallenges = totable(simpleJsonLoads(fast_map_get("challenges", slot)))
     if signature_recover(signatureHex, sigHash) ~= slotChallenges[index]["ownerPubKey"] then
         return error("invalid signature")
     end
@@ -754,7 +820,7 @@ function M:respondChallengeBefore(arg: string)
     let from_caller = get_from_address()
 
     -- Check that the transaction being challenged exits
-    let slotChallenges: Array<Challenge> = totable(json.loads(tostring(fast_map_get("challenges", slot))))
+    let slotChallenges: Array<Challenge> = totable(simpleJsonLoads(fast_map_get("challenges", slot)))
     if (not slotChallenges) or (not arrayContains(slotChallenges, challengingTxHash)) then
         return error("Responding to non exiting challenge")
     end
@@ -768,7 +834,7 @@ function M:respondChallengeBefore(arg: string)
     slashBond(slotChallenges[index].challenger, from_caller)
 
     --Put coin back to the exiting state
-    let coin: Coin = totable(json.loads(tostring(fast_map_get("coins", slot))))
+    let coin: Coin = totable(simpleJsonLoads(fast_map_get("coins", slot)))
     coin.state = "EXITING"
     table.remove(slotChallenges, index)
     fast_map_set("challenges", slot, json.dumps(slotChallenges))
@@ -779,7 +845,7 @@ function M:respondChallengeBefore(arg: string)
 end
 
 let function cleanupExit(slot: string)
-    let coin: Coin = totable(json.loads(tostring(fast_map_get("coins", slot))))
+    let coin: Coin = totable(simpleJsonLoads(fast_map_get("coins", slot)))
     coin.exit = nil
     fast_map_set("coins", slot, json.dumps(coin))
     fast_map_set("exitSlots", slot, nil)
@@ -790,7 +856,7 @@ end
 -- Check that the challenging transaction has been signed
 -- by the attested previous owner of the coin in the exit
 let function checkBetween(M: table, slot: string, txHex: string, blockNumber: int, signatureHex: string, proofHex: string)
-    let coin: Coin = totable(json.loads(tostring(fast_map_get("coins", slot))))
+    let coin: Coin = totable(simpleJsonLoads(fast_map_get("coins", slot)))
     if (not coin) or (coin.exit.exitBlock <= blockNumber) or (coin.exit.prevBlock >= blockNumber) then
         return error("Tx should be between the exit's blocks")
     end
@@ -806,7 +872,7 @@ end
 
 let function checkAfter(M: table, slot: string, txHex: string, blockNumber: int, signatureHex: string, proofHex: string)
     let txData = totable(cbor_decode(txHex))
-    let coin: Coin = totable(json.loads(tostring(fast_map_get("coins", slot))))
+    let coin: Coin = totable(simpleJsonLoads(fast_map_get("coins", slot)))
     if signature_recover(signatureHex, tostring(txData.sigHash)) ~= coin.exit.ownerPubKey then
         return error("Invalid signature")
     end
@@ -821,7 +887,7 @@ end
 
 let function applyPenalties(slot: string)
     -- Apply penalties and change state
-    let coin: Coin = totable(json.loads(tostring(fast_map_get("coins", slot))))
+    let coin: Coin = totable(simpleJsonLoads(fast_map_get("coins", slot)))
     let from_caller = get_from_address()
     slashBond(coin.exit.owner, from_caller)
     coin.state = "DEPOSITED"
@@ -874,14 +940,14 @@ end
 -- arg format: slot
 offline function M:getPlasmaCoin(arg: string)
     let slot = arg
-    let c: Coin = totable(json.loads(tostring(fast_map_get("coins", slot))))
+    let c: Coin = totable(simpleJsonLoads(fast_map_get("coins", slot)))
     return c
 end
 
 -- arg format: slot
 offline function M:getExit(arg: string)
     let slot = arg
-    let c: Coin = totable(json.loads(tostring(fast_map_get("coins", slot))))
+    let c: Coin = totable(simpleJsonLoads(fast_map_get("coins", slot)))
     let e = c.exit
     let info = {
         'owner': e.owner,
@@ -895,7 +961,7 @@ end
 -- arg format: blockNumber
 offline function M:getBlockRoot(arg: string)
     let blockNumber = tointeger(arg)
-    let childBlock: ChildBlock = totable(json.loads(tostring(fast_map_get("childChain", tostring(blockNumber)))))
+    let childBlock: ChildBlock = totable(simpleJsonLoads(fast_map_get("childChain", tostring(blockNumber))))
     if childBlock then
         return childBlock.root
     else

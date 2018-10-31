@@ -1,6 +1,8 @@
 #pragma once
 #include <simplechain/transaction.h>
 #include <vector>
+#include <fc/variant.hpp>
+#include <fc/variant_object.hpp>
 
 namespace simplechain {
 	struct block {
@@ -11,6 +13,8 @@ namespace simplechain {
 
 		hash_t digest() const;
 		std::string digest_str() const;
+
+		fc::mutable_variant_object to_json() const;
 
 		std::string block_hash() const;
 	};

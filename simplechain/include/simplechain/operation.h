@@ -1,5 +1,7 @@
 #pragma once
 #include <simplechain/config.h>
+#include <fc/variant.hpp>
+#include <fc/variant_object.hpp>
 
 namespace simplechain {
 
@@ -16,6 +18,7 @@ namespace simplechain {
 		virtual ~generic_operation() {};
 
 		virtual operation_type_enum get_type() const = 0;
+		virtual fc::mutable_variant_object to_json() const = 0;
 	};
 }
 

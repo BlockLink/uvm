@@ -91,4 +91,25 @@ namespace simplechain {
 		chain->set_tx_receipt(tx_id, *tx_receipt);
 	}
 
+	fc::mutable_variant_object contract_event_notify_info::to_json() const {
+		fc::mutable_variant_object info;
+		info["contract_address"] = contract_address;
+		info["event_name"] = event_name;
+		info["event_arg"] = event_arg;
+		info["caller_addr"] = caller_addr;
+		info["block_num"] = block_num;
+		return info;
+	}
+
+	fc::mutable_variant_object transaction_receipt::to_json() const {
+		fc::mutable_variant_object info;
+		info["tx_id"] = tx_id;
+		fc::variants events_json;
+		for (const auto& event_data : events) {
+			events_json.push_back(event_data.to_json());
+		}
+		info["events"] = events_json;
+		return info;
+	}
+
 }

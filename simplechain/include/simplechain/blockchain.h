@@ -35,6 +35,7 @@ namespace simplechain {
 		block latest_block() const;
 		uint64_t head_block_number() const;
 		std::string head_block_hash() const;
+		std::shared_ptr<transaction> get_trx_by_hash(const std::string& tx_hash) const;
 		std::shared_ptr<block> get_block_by_number(uint64_t num) const;
 		std::shared_ptr<block> get_block_by_hash(const std::string& block_hash) const;
 		balance_t get_account_asset_balance(const std::string& account_address, asset_id_t asset_id) const;

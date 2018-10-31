@@ -67,6 +67,16 @@ namespace simplechain {
 		return latest_block().block_hash();
 	}
 
+	std::shared_ptr<transaction> blockchain::get_trx_by_hash(const std::string& tx_hash) const {
+		for (const auto& block : blocks) {
+			for (const auto& tx : block.txs) {
+				if (tx.tx_hash() == tx_hash)
+					return std::make_shared<transaction>(tx);
+			}
+		}
+		return nullptr;
+	}
+
 	std::shared_ptr<block> blockchain::get_block_by_number(uint64_t num) const {
 		if (num >= blocks.size()) {
 			return nullptr;
