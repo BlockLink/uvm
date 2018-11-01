@@ -49,9 +49,20 @@ type Balance = {
 
 type Challenge = {
     owner: string,
+    ownerPubKey: string,
     challenger: string,
     txHash: string,
     challengingBlockNumber: int
+}
+
+type Transaction = {
+    ownerPubKey: string,
+    owner: string,
+    sigHash: string,
+    hash: string,
+    slot: string,
+    balance: int,
+    prevBlock: int
 }
 
 -- fast map coins: slotId => Coin
@@ -241,7 +252,7 @@ offline function M:get_config(_: string)
     return storageJson
 end
 
-let function create_coin(M: table, from: string, uid: string, denomination: int)
+let function create_coin(M: table, from: string, uid: string, denomination: int, balance: int)
     let from_caller = get_from_address()
     M.storage.currentBlockNum = tointeger(M.storage.currentBlockNum) + 1
     let slotInfoToPack: Array<object> = [tointeger(M.storage.numCoins), from_caller, from]
@@ -266,13 +277,7 @@ let function create_coin(M: table, from: string, uid: string, denomination: int)
     fast_map_set("childChain", tostring(M.storage.currentBlockNum), json.dumps(childBlock))
 
     let vmc = getVmc(M)
-    if vmc:checkValidator(from) then
-        -- the coin is an empty coin that is owned by the validators
-        coin.balance = 0
-    else
-        -- otherwise it's wholy owned by the user
-        coin.balance = denomination
-    end
+    coin.balance = balance
       
     -- create a utxo at `slot`
     let eventArg = {
@@ -295,7 +300,7 @@ function M:on_deposit_asset(arg: string)
     let uid = tostring(parsed[2])   
     let from_caller = get_from_address()
     let from = from_caller
-    create_coin(self, from, uid, amount)
+    create_coin(self, from, uid, amount, amount)
 end
 
 -- validator to create empty coin
@@ -305,7 +310,7 @@ function M:create_empty_coin(arg: string)
     let assetSymbol = arg
     let from_caller = get_from_address()
     let from = from_caller
-    create_coin(self, from, assetSymbol, 0)
+    create_coin(self, from, assetSymbol, 0, 0)
 end
 
 offline function M:get_coin(slot: string)
@@ -347,7 +352,7 @@ end
 
 -- called by a Validator to append a Plasma block to the Plasma chain
 -- arg format: block_txs_merkle_root
-function M:submitBlock(arg: string)
+function M:submit_block(arg: string)
     checkIsValiator(self)
     let root = arg
     self.storage.currentBlockNum = (self.storage.currentBlockNum + self.storage.childBlockInterval) // self.storage.childBlockInterval * self.storage.childBlockInterval
@@ -409,8 +414,8 @@ let function checkBothIncludedAndSigned(M: table, prevTxHex: string, exitingTxHe
     if block1Num >= block2Num then
         return error("invalid blocks numbers")
     end
-    let exitingTxData = totable(cbor_decode(exitingTxHex))
-    let prevTxData = totable(cbor_decode(prevTxHex))
+    let exitingTxData: Transaction = totable(cbor_decode(exitingTxHex))
+    let prevTxData: Transaction = totable(cbor_decode(prevTxHex))
     if (not exitingTxData) or (not prevTxData) then
         return error("decode tx data failed")
     end
@@ -420,8 +425,8 @@ let function checkBothIncludedAndSigned(M: table, prevTxHex: string, exitingTxHe
     end
 
     -- The exiting transaction must be signed by the previous transaciton's owner
-    let prevTxOwnerPubKey = tostring(prevTxData["ownerPubKey"])
-    let exitingTxSigHash = tostring(exitingTxData["sigHash"])
+    let prevTxOwnerPubKey = tostring(prevTxData.ownerPubKey)
+    let exitingTxSigHash = tostring(exitingTxData.sigHash)
     if signature_recover(signatureHex, exitingTxSigHash) ~= prevTxOwnerPubKey then
         return error("Invalid signature")
     end
@@ -494,14 +499,14 @@ function M:startExit(arg: string)
     let from_caller = get_from_address()
     let from_caller_pubkey = caller
 
-    let existingTx = totable(cbor_decode(exitingTxHex))
-    if (not existingTx) or (not existingTx['owner']) then
+    let existingTx: Transaction = totable(cbor_decode(exitingTxHex))
+    if (not existingTx) or (not existingTx.owner) then
         return error("invalid existing tx structure")
     end
-    if (tostring(existingTx['owner'])) ~= from_caller then
+    if (tostring(existingTx.owner)) ~= from_caller then
         return error("caller is not ths existing tx's owner")
     end
-    let prevTx = totable(cbor_decode(prevTxHex))
+    let prevTx: Transaction = totable(cbor_decode(prevTxHex))
 
     doInclusionChecks(self,
         prevTxHex, exitingTxHex,
@@ -510,9 +515,9 @@ function M:startExit(arg: string)
         block1Num, block2Num
     )
     pushExit(slot,
-        tostring(prevTx["owner"]),
+        tostring(prevTx.owner),
         from_caller, from_caller_pubkey,
-        tointeger(existingTx["balance"]),
+        tointeger(existingTx.balance),
         block1Num, block2Num
     )
 end
@@ -717,7 +722,7 @@ end
 
 -- @param slot The slot of the coin being challenged
 -- @param owner The user claimed to be the true ower of the coin
-let function setChallenged(slot: string, owner: string, challengingBlockNumber: int, txHash: string)
+let function setChallenged(slot: string, owner: string, ownerPubKey: string, challengingBlockNumber: int, txHash: string)
     -- Require that the challenge is in the first half of the challenge window
     let coin: Coin = totable(simpleJsonLoads(fast_map_get("coins", "slot")))
     if get_chain_now() > (coin.exit.createdAt + CHALLENGE_WINDOW) then
@@ -734,6 +739,7 @@ let function setChallenged(slot: string, owner: string, challengingBlockNumber: 
     -- that the response is valid
     let challenge = Challenge()
     challenge.owner = owner
+    challenge.ownerPubKey = ownerPubKey
     challenge.challenger = from_caller
     challenge.txHash = txHash
     challenge.challengingBlockNumber = challengingBlockNumber
@@ -776,14 +782,14 @@ function M:challengeBefore(arg: string)
         signatureHex,
         block1Num, block2Num
     )
-    let txData = totable(cbor_decode(txHex))
-    setChallenged(slot, tostring(txData.owner), block2Num, tostring(txData.hash))
+    let txData: Transaction = totable(cbor_decode(txHex))
+    setChallenged(slot, txData.owner, txData.ownerPubKey, block2Num, txData.hash)
 end
 
 let function checkResponse(M: table, slot: string, index: int, blockNumber: int, txHex: string, signatureHex: string, proofHex: string)
-    let txData = totable(cbor_decode(txHex))
-    let sigHash = tostring(txData["sigHash"])
-    let slotChallenges = totable(simpleJsonLoads(fast_map_get("challenges", slot)))
+    let txData: Transaction = totable(cbor_decode(txHex))
+    let sigHash = txData.sigHash
+    let slotChallenges: Array<Challenge> = totable(simpleJsonLoads(fast_map_get("challenges", slot)))
     if signature_recover(signatureHex, sigHash) ~= slotChallenges[index]["ownerPubKey"] then
         return error("invalid signature")
     end
@@ -860,8 +866,8 @@ let function checkBetween(M: table, slot: string, txHex: string, blockNumber: in
     if (not coin) or (coin.exit.exitBlock <= blockNumber) or (coin.exit.prevBlock >= blockNumber) then
         return error("Tx should be between the exit's blocks")
     end
-    let txData = totable(cbor_decode(txHex))
-    if signature_recover(signatureHex, tostring(txData.sigHash)) ~= tostring(coin.exit.prevOwner) then
+    let txData:Transaction = totable(cbor_decode(txHex))
+    if signature_recover(signatureHex, txData.sigHash) ~= coin.exit.prevOwner then
         return error("Invalid signature")
     end
     if tostring(txData.slot) ~= slot then
@@ -871,18 +877,18 @@ let function checkBetween(M: table, slot: string, txHex: string, blockNumber: in
 end
 
 let function checkAfter(M: table, slot: string, txHex: string, blockNumber: int, signatureHex: string, proofHex: string)
-    let txData = totable(cbor_decode(txHex))
+    let txData: Transaction = totable(cbor_decode(txHex))
     let coin: Coin = totable(simpleJsonLoads(fast_map_get("coins", slot)))
-    if signature_recover(signatureHex, tostring(txData.sigHash)) ~= coin.exit.ownerPubKey then
+    if signature_recover(signatureHex, txData.sigHash) ~= coin.exit.ownerPubKey then
         return error("Invalid signature")
     end
-    if tostring(txData.slot) ~= slot then
+    if txData.slot ~= slot then
         return error("Tx is referencing another slot")
     end
-    if tostring(txData.prevBlock) ~= coin.exit.exitBlock then
+    if txData.prevBlock ~= coin.exit.exitBlock then
         return error("Not a direct spend")
     end
-    checkTxIncluded(M, slot, tostring(txData.hash), blockNumber, proofHex)
+    checkTxIncluded(M, slot, txData.hash, blockNumber, proofHex)
 end
 
 let function applyPenalties(slot: string)
@@ -933,15 +939,16 @@ function M:checkMembership(arg: string)
     let root = tostring(parsed[2])
     let slot = tostring(parsed[3])
     let proofHex = tostring(parsed[4])
-    let smt = getSmt(self)
-    return smt:checkMembership(txHash, root, slot, proofHex)
+    return checkMembership(self, txHash, root, slot, proofHex)
 end
 
 -- arg format: slot
-offline function M:getPlasmaCoin(arg: string)
+offline function M:get_plasma_coin(arg: string)
     let slot = arg
     let c: Coin = totable(simpleJsonLoads(fast_map_get("coins", slot)))
-    return c
+    let cStr = json.dumps(c)
+    print(cStr)
+    return cStr
 end
 
 -- arg format: slot
@@ -967,6 +974,15 @@ offline function M:getBlockRoot(arg: string)
     else
         return nil
     end
+end
+
+offline function M:getChildBlockByHeight(arg: string)
+    let blockNumber = tointeger(arg)
+    if (not blockNumber) or (blockNumber < 0) then
+        return error("invalid block number arg")
+    end
+    let blockStr = fast_map_get("childChain", tostring(blockNumber))
+    return blockStr
 end
 
 function M:on_destroy()

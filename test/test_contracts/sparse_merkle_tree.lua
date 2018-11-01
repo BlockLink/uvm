@@ -124,7 +124,9 @@ function M:verify(arg: string)
         index = safemath.div(index, bigint2)
         d = d + 1
     end
-    return safemath.toint(safemath.sub(bytes_to_bigint_as_big_endian(computed_hash), bytes_to_bigint_as_big_endian(tree_root))) == 0
+    let diff = safemath.toint(safemath.sub(bytes_to_bigint_as_big_endian(computed_hash), bytes_to_bigint_as_big_endian(tree_root)))
+    let diffIsZero = (diff == 0)
+    return diffIsZero
 end
 
 function M:on_destory()

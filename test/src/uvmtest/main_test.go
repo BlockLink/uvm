@@ -13,9 +13,13 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"crypto/sha256"
+	"math/big"
 
 	"github.com/bitly/go-simplejson"
 	"github.com/stretchr/testify/assert"
+	"github.com/2tvenom/cbor"
+	gosmt "github.com/zoowii/go_sparse_merkle_tree"
 )
 
 func findUvmSinglePath() string {
@@ -576,6 +580,16 @@ func TestSimpleChainTokenContract(t *testing.T) {
 	assert.True(t, res.Get("api_result").MustString() == "100")
 }
 
+func hexToBigInt(hexStr string) *big.Int {
+	n := new(big.Int)
+	n, ok := n.SetString(hexStr, 16)
+	if !ok {
+		return nil
+	} else {
+		return n
+	}
+}
+
 func TestPlasmaRootChain(t *testing.T) {
 	cmd := execCommandBackground(simpleChainPath)
 	assert.True(t, cmd != nil)
@@ -648,6 +662,12 @@ func TestPlasmaRootChain(t *testing.T) {
 	coin1EventArgJSON, _ := simplejson.NewJson([]byte(coin1EventArg))
 	coin1Slot := coin1EventArgJSON.Get("slot").MustString()
 	fmt.Println("coin1 slot: ", coin1Slot)
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, plasmaContractAddress, "get_plasma_coin", []string{coin1Slot}, 0, 0)
+	coin1CreatedStr := res.Get("api_result").MustString()
+	coin1Created, _ := simplejson.NewJson([]byte(coin1CreatedStr))
+	println("coin1 after created: ", coin1CreatedStr)
+	assert.True(t, coin1Created.Get("denomination").MustInt() == 50000)
+	assert.True(t, coin1Created.Get("balance").MustInt() == 50000)
 	// get tx events
 	// create empty coin
 	res, err = simpleChainRPC("invoke_contract", caller1, plasmaContractAddress, "create_empty_coin", []string{"0"}, 0, 0, 50000, 10)
@@ -661,9 +681,81 @@ func TestPlasmaRootChain(t *testing.T) {
 	coin2EventArgJSON, _ := simplejson.NewJson([]byte(coin2EventArg))
 	coin2Slot := coin2EventArgJSON.Get("slot").MustString()
 	fmt.Println("coin2 slot: ", coin2Slot)
-	// TODO: provide liquidity
-	// TODO: submitBlock
-	// TODO: query childChain blocks
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, plasmaContractAddress, "get_plasma_coin", []string{coin2Slot}, 0, 0)
+	coin2CreatedStr := res.Get("api_result").MustString()
+	coin2Created, _ := simplejson.NewJson([]byte(coin2CreatedStr))
+	println("coin2 after created: ", coin2CreatedStr)
+	assert.True(t, coin2Created.Get("denomination").MustInt() == 0)
+	assert.True(t, coin2Created.Get("balance").MustInt() == 0)
+	// provide liquidity
+	simpleChainRPC("invoke_contract", caller1, plasmaContractAddress, "provide_liquidity", []string{coin2Slot + ",10000"}, 0, 0, 50000, 10)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, plasmaContractAddress, "get_plasma_coin", []string{coin2Slot}, 0, 0)
+	coin2AfterLiquidityStr := res.Get("api_result").MustString()
+	coin2AfterLiquidity, _ := simplejson.NewJson([]byte(coin2AfterLiquidityStr))
+	println("coin2 after provided liquidity: ", coin2AfterLiquidityStr)
+	assert.True(t, coin2AfterLiquidity.Get("denomination").MustInt() == 10000)
+	assert.True(t, coin2AfterLiquidity.Get("balance").MustInt() == 0)
+	// make txs
+	tx1 := make(map[string]interface{})
+	tx1["ownerPubKey"] = "02e9e0da80e519c937294e7d9ed26786e25a6f6adbdf9952de8e9b2c68b0644c6c"
+	tx1["owner"] = "ADDR_02e9e0da80e519c937294e7d9ed26786e25a6f6adbdf9952de8e9b2c68b0644c6c"
+	tx1["slot"] = coin1Slot
+	tx1["balance"] = 100
+	tx1["prevBlock"] = 0
+	var encodeBuffer bytes.Buffer
+	encoder := cbor.NewEncoder(&encodeBuffer)
+	if ok, encodeErr := encoder.Marshal(tx1); !ok {
+		assert.True(t, ok)
+		println("Error decoding ", encodeErr.Error())
+	}
+	tx1Bytes := encodeBuffer.Bytes()
+	fmt.Printf("tx1 Hex = %x\n", tx1Bytes)
+	tx1Hash := sha256.Sum256(tx1Bytes)
+	fmt.Printf("tx1 hash: %x\n", tx1Hash)
+	tx1HashHex := fmt.Sprintf("%x", tx1Hash)
+	tx1["sigHash"] = "00" + tx1HashHex // use "00" + tx hash as sigHash(signature = sig(sigHash, privateKey))
+	if ok, encodeErr := encoder.Marshal(tx1); !ok {
+		assert.True(t, ok)
+		println("Error decoding ", encodeErr.Error())
+	}
+	tx1WithSigHashBytes := encodeBuffer.Bytes()
+	tx1WithSigHashHex := fmt.Sprintf("%x", tx1WithSigHashBytes)
+	fmt.Println("tx1 with sig hash: ", tx1WithSigHashHex)
+	tx1Sig := "20fa8cd18cf7223840c6cf823b66c6200e5b18fd5eec86f094742a6930a6c4d0ba316ee3f08f0a38697cf6454f5f3ca4fe72ee9d9d62306f744d934d84c995b702"
+	fmt.Println("tx1 sig: ", tx1Sig)
+	// submitBlock
+	var block1Txs = make(map[gosmt.Uint256]gosmt.TreeItemHashValue)
+	coin1SlotInt := hexToBigInt(coin1Slot)
+	fmt.Println("coin1SlotInt: ", coin1SlotInt)
+	block1Txs[coin1SlotInt] = tx1Hash[:]
+	smt1 := gosmt.NewSMT(block1Txs, gosmt.DefaultSMTDepth)
+	blockTxsMerkleRoot1 := gosmt.BytesToHex(smt1.Root.Bytes())
+	fmt.Println("blockTxsMerkleRoot1: ", blockTxsMerkleRoot1)
+	tx1ProofHex := gosmt.BytesToHex(smt1.CreateMerkleProof(coin1SlotInt))
+	fmt.Println("tx1 proof: ", tx1ProofHex)
+	simpleChainRPC("invoke_contract", caller1, plasmaContractAddress, "submit_block", []string{blockTxsMerkleRoot1}, 0, 0, 50000, 10)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, plasmaContractAddress, "get_config", []string{" "}, 0, 0)
+	assert.True(t, err == nil)
+	configJSONStr = res.Get("api_result").MustString()
+	configJSON, _ := simplejson.NewJson([]byte(configJSONStr))
+	println("config after submit block: ", configJSONStr)
+	assert.True(t, configJSON.Get("currentBlockNum").MustInt() == 1000)
+	// check tx membership
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, plasmaContractAddress, "checkMembership", []string{tx1HashHex+"," + blockTxsMerkleRoot1 + "," + coin1SlotInt.String() + "," + tx1ProofHex}, 0, 0)
+	tx1MemberShip := res.Get("api_result").MustString() == "true"
+	fmt.Println("tx1MemberShip: ", res.Get("api_result"))
+	assert.True(t, tx1MemberShip)
+
+	// query childChain blocks
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, plasmaContractAddress, "getChildBlockByHeight", []string{"1000"}, 0, 0)
+	block1StrGot := res.Get("api_result").MustString()
+	fmt.Println("block1 got: ", block1StrGot)
+	block1Got, _ := simplejson.NewJson([]byte(block1StrGot))
+	assert.True(t, block1Got.Get("root").MustString() == blockTxsMerkleRoot1)
+
+
 	// TODO: normal exit just after deposit
 	// TODO: normal exit after child chain transfer
 	// TODO: start normal exit
