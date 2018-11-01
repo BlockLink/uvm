@@ -1482,44 +1482,47 @@ end
                 return TYPED_LUA_LIB_CODE;
             }
 
-            static bool upval_defined_in_parent(lua_State *L, uvm_types::GcProto *parent, std::list<uvm_types::GcProto*> *all_protos, Upvaldesc upvaldesc)
-            {
-                // whether the upval defined in parent proto
-                if (!L || !parent)
-                    return false;
-                if (upvaldesc.instack > 0)
-                {
-                    if (upvaldesc.idx < parent->locvars.size())
-                    {
-                        return true;
-                    }
-                    else
-                        return false;
-                }
-                else
-                {
-                    if (!all_protos || all_protos->size() < 1)
-                        return false;
-                    if (upvaldesc.idx < parent->upvalues.size())
-                    {
-                        Upvaldesc parent_upvaldesc = parent->upvalues[upvaldesc.idx];
-                        for (const auto &pp : *all_protos)
-                        {
-                            std::list<uvm_types::GcProto*> remaining;
-                            for (const auto &pp2 : *all_protos)
-                            {
-                                if (remaining.size() >= all_protos->size() - 1)
-                                    break;
-                                remaining.push_back(pp2);
-                            }
-                            return upval_defined_in_parent(L, pp, &remaining, parent_upvaldesc);
-                        }
-                        return false;
-                    }
-                    else
-                        return false;
-                }
-            }
+			static bool upval_defined_in_parent(lua_State *L, uvm_types::GcProto *parent, std::list<uvm_types::GcProto*> *all_protos, Upvaldesc upvaldesc)
+			{
+				// whether the upval defined in parent proto
+				if (!L || !parent)
+					return false;
+				if (upvaldesc.instack > 0)
+				{
+					//if (upvaldesc.idx < parent->sizelocvars)  //zq
+					if ((upvaldesc.idx >= parent->numparams) && upvaldesc.idx < (parent->locvars.size()))
+					{
+						return true;
+					}
+					else
+						return false;
+				}
+				else
+				{
+					if (!all_protos || all_protos->size() <= 1)
+						return false;
+					if (upvaldesc.idx < parent->upvalues.size())
+					{
+						Upvaldesc parent_upvaldesc = parent->upvalues[upvaldesc.idx];
+
+						uvm_types::GcProto *pp = NULL;
+
+						std::list<uvm_types::GcProto*> remaining;
+						for (const auto &pp2 : *all_protos)
+						{
+							remaining.push_back(pp2);
+							if (remaining.size() >= all_protos->size() - 1) {
+								pp = pp2;
+								break;
+							}
+						}
+						return upval_defined_in_parent(L, pp, &remaining, parent_upvaldesc);
+
+					}
+					else
+						return false;
+				}
+			}
 
             bool check_contract_proto(lua_State *L, uvm_types::GcProto *proto, char *error, std::list<uvm_types::GcProto*> *parents)
             {
