@@ -34,14 +34,15 @@ namespace simplechain {
 		{ "view_localvars_in_last_debugger_state", &view_localvars_in_last_debugger_state },
 		{ "view_upvalues_in_last_debugger_state", &view_upvalues_in_last_debugger_state },
 		{ "debugger_step_out", &debugger_step_out },
-	{ "debugger_step_into", &debugger_step_into },
-	{ "debugger_step_over", &debugger_step_over },
-	{ "debugger_go_resume", &debugger_go_resume },
-	{ "get_breakpoints_in_last_debugger_state", &get_breakpoints_in_last_debugger_state },
-	{ "remove_breakpoint_in_last_debugger_state", &remove_breakpoint_in_last_debugger_state },
-	{ "clear_breakpoints_in_last_debugger_state", &clear_breakpoints_in_last_debugger_state },
-	{ "debugger_invoke_contract", &debugger_invoke_contract },
-	{ "view_current_contract_storage_value", &view_current_contract_storage_value }
+		{ "debugger_step_into", &debugger_step_into },
+		{ "debugger_step_over", &debugger_step_over },
+		{ "debugger_go_resume", &debugger_go_resume },
+		{ "get_breakpoints_in_last_debugger_state", &get_breakpoints_in_last_debugger_state },
+		{ "remove_breakpoint_in_last_debugger_state", &remove_breakpoint_in_last_debugger_state },
+		{ "clear_breakpoints_in_last_debugger_state", &clear_breakpoints_in_last_debugger_state },
+		{ "debugger_invoke_contract", &debugger_invoke_contract },
+		{ "view_current_contract_storage_value", &view_current_contract_storage_value },
+		{ "view_call_stack", &view_call_stack }
 
 	};
 

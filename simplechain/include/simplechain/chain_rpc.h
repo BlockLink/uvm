@@ -71,6 +71,7 @@ namespace simplechain {
 		RpcResultType debugger_invoke_contract(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		RpcResultType view_upvalues_in_last_debugger_state(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		RpcResultType view_current_contract_storage_value(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType view_call_stack(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 
 		// TODO: deposit to contract
 

@@ -394,7 +394,8 @@ namespace simplechain {
 			res["result"] = true;
 			return res;
 		}
-
+		
+		//input params: storage_name,fast_map_key,is_fast_map
 		RpcResultType view_current_contract_storage_value(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			fc::variant res;
 			auto storage_name = params.at(0).as_string();
@@ -407,6 +408,13 @@ namespace simplechain {
 				storagekey = storagekey.append("[").append(fast_map_key).append("]");
 			}
 			result[storagekey] = value;
+			fc::to_variant(result, res);
+			return res;
+		}
+
+		RpcResultType view_call_stack(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			fc::variant res;		
+			auto result = chain->view_call_stack();			
 			fc::to_variant(result, res);
 			return res;
 		}

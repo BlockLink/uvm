@@ -543,4 +543,18 @@ namespace simplechain {
 		return result;
 	}
 
+	std::vector<std::string> blockchain::view_call_stack() const {
+		std::vector<std::string> result ;
+		auto engine = get_last_contract_engine_for_debugger();
+		if (!engine)
+			return result;
+		auto uvm_engine = (UvmContractEngine*)engine.get();
+		auto scope = uvm_engine->scope();
+		auto execute_ctx = get_last_execute_context();
+		if (!execute_ctx)
+			return result;
+		result = execute_ctx->view_call_stack(scope->L());
+		return result;
+	}
+
 }

@@ -1976,6 +1976,40 @@ namespace uvm {
 			}			
 			return result;
 		}
+		static uint32_t _ci_line(CallInfo *ci) {
+			if (!ci || !ttisLclosure(ci->func)) {
+				return 0;
+			}
+			auto cl = clLvalue(ci->func);
+			auto inst_index_in_proto = ci->u.l.savedpc - cl->p->codes.data();
+			if (inst_index_in_proto < 0 || inst_index_in_proto >= cl->p->codes.size())
+				return 0;
+			if (inst_index_in_proto >= cl->p->lineinfos.size())
+				return 0;
+			return cl->p->lineinfos[inst_index_in_proto];
+		}
+		std::vector<std::string> ExecuteContext::view_call_stack(lua_State* L) const {
+			std::vector<std::string> result;
+			auto _ci = ci;
+			uint32_t _line = 0;
+			while (_ci) {
+				if (ttisLclosure(_ci->func)) {
+					auto _cl = clLvalue(_ci->func);
+					if (_ci == ci) {
+						_line = _ci_line(_ci);
+					}
+					else {
+						_ci->u.l.savedpc--;
+						_line = _ci_line(_ci);
+						_ci->u.l.savedpc++;
+					}			
+					auto _funcname = _cl->p->source->value;
+					result.push_back(std::string("func:") + _funcname + std::string("    line:") + std::to_string(_line));
+				}				
+				_ci = _ci->previous;
+			}
+			return result;
+		}
 
 
 		uint32_t ExecuteContext::current_line() const {
