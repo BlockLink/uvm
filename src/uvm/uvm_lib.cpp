@@ -1396,12 +1396,12 @@ end
                         lua_free(L, list);
                     }
 
-                    int *insts_executed_count = get_lua_state_value(L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
+					int64_t *insts_executed_count = get_lua_state_value(L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
                     if (nullptr != insts_executed_count)
                     {
                         lua_free(L, insts_executed_count);
                     }
-                    int *stopped_pointer = uvm::lua::lib::get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
+					int64_t *stopped_pointer = uvm::lua::lib::get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
                     if (nullptr != stopped_pointer)
                     {
                         lua_free(L, stopped_pointer);
@@ -1465,7 +1465,7 @@ end
 
             int get_lua_state_instructions_executed_count(lua_State *L)
             {
-                int *insts_executed_count = get_lua_state_value(L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
+				int64_t *insts_executed_count = get_lua_state_value(L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
                 if (nullptr == insts_executed_count)
                 {
                     return 0;
@@ -1500,10 +1500,10 @@ end
             */
             void notify_lua_state_stop(lua_State *L)
             {
-                int *pointer = get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
+				int64_t *pointer = get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
                 if (nullptr == pointer)
                 {
-                    pointer = (int*)lua_malloc(L, sizeof(int));
+                    pointer = (int64_t*)lua_malloc(L, sizeof(int));
                     *pointer = 1;
                     UvmStateValue value;
                     value.int_pointer_value = pointer;
@@ -1520,7 +1520,7 @@ end
             */
             bool check_lua_state_notified_stop(lua_State *L)
             {
-                int *pointer = get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
+				int64_t *pointer = get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
                 if (nullptr == pointer)
                     return false;
                 return (*pointer) > 0;
@@ -1531,7 +1531,7 @@ end
             */
             void resume_lua_state_running(lua_State *L)
             {
-                int *pointer = get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
+				int64_t *pointer = get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
                 if (nullptr != pointer)
                 {
                     *pointer = 0;
@@ -1800,7 +1800,7 @@ end
 							continue;
                         if (!in_whitelist)
                         {
-                            Upvaldesc upvaldesc = proto->upvalues[c];
+                            Upvaldesc upvaldesc = proto->upvalues[b];
                             // check in parent proto, whether defined in parent proto
                             bool upval_defined = (parents && parents->size() > 0) ? upval_defined_in_parent(L, *parents->rbegin(), parents, upvaldesc) : false;
                             if (!upval_defined)
@@ -2076,7 +2076,7 @@ end
 
 			void reset_lvm_instructions_executed_count(lua_State *L)
             {
-				int *insts_executed_count = get_lua_state_value(L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
+				int64_t *insts_executed_count = get_lua_state_value(L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
 				if (insts_executed_count)
 				{
 					*insts_executed_count = 0;
@@ -2085,7 +2085,7 @@ end
 
             void increment_lvm_instructions_executed_count(lua_State *L, int add_count)
             {
-              int *insts_executed_count = get_lua_state_value(L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
+				int64_t *insts_executed_count = get_lua_state_value(L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
               if (insts_executed_count)
               {
                 *insts_executed_count = *insts_executed_count + add_count;

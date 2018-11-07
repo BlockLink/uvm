@@ -1172,7 +1172,7 @@ static bool contract_table_traverser_to_wrap_api(lua_State *L, void *ud)
 
 static bool lua_get_contract_apis_direct(lua_State *L, UvmModuleByteStream *stream, char *error)
 {
-    int *stopped_pointer = uvm::lua::lib::get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
+	int64_t *stopped_pointer = uvm::lua::lib::get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
     if (nullptr != stopped_pointer && (*stopped_pointer) > 0)
         return false;
     intptr_t stream_p = (intptr_t)stream;

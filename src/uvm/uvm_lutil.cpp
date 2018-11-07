@@ -20,7 +20,9 @@ namespace uvm
 
 		inline char file_separator()
 		{
-#if defined(_WIN32) or defined(WIN32)
+#if defined(_WIN32)
+			return '\\';
+#elif defined(WIN32)
 			return '\\';
 #else
 			return '/';

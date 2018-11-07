@@ -124,7 +124,7 @@ namespace simplechain {
 		auto balance_iter = balances.find(asset_id);
 		if (balance_iter == balances.end()) {
 			assert(balance_change >= 0);
-			balances[asset_id] = balance_change;
+			balances[asset_id] = (balance_t)(balance_change);
 		}
 		else {
 			assert(balance_change > 0 || (-balance_change <= balance_iter->second));
@@ -187,7 +187,7 @@ namespace simplechain {
 
 	void blockchain::add_asset(const asset& new_asset) {
 		asset item(new_asset);
-		item.asset_id = assets.size();
+		item.asset_id = (asset_id_t)(assets.size());
 		assets.push_back(item);
 	}
 	std::shared_ptr<asset> blockchain::get_asset(asset_id_t asset_id) {
