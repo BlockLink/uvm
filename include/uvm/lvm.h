@@ -95,9 +95,9 @@
 namespace uvm {
 	namespace core {
 		struct ExecuteContext {
-			int* insts_executed_count;
-			int *stopped_pointer;
-			int insts_limit;
+			int64_t* insts_executed_count;
+			int64_t *stopped_pointer;
+			int64_t insts_limit;
 			bool has_insts_limit;
 			bool use_last_return;
 			CallInfo *ci;

@@ -1304,7 +1304,7 @@ size_t luaL_traverse_table_with_nested(lua_State *L, int index, lua_table_traver
             }
         }
         ++keys_count;
-        if (traverser)
+        if (nullptr != traverser)
             traverser(L, ud, len, jsons, recur_depth+1);
         lua_pop(L, 1);
     }

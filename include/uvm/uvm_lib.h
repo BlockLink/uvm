@@ -54,8 +54,8 @@ enum UvmStateValueType {
 };
 
 typedef union _UvmStateValue {
-    int int_value;
-    int *int_pointer_value;
+	int64_t int_value;
+	int64_t *int_pointer_value;
     const char *string_value;
     void *pointer_value;
 } UvmStateValue;
@@ -133,11 +133,11 @@ namespace uvm
                 /************************************************************************/
                 /* set how many lua vm instructions can run in the lua stack            */
                 /************************************************************************/
-                void set_instructions_limit(int limit);
+                void set_instructions_limit(int64_t limit);
                 /************************************************************************/
                 /* the the max limit instructions count in the lua stack                */
                 /************************************************************************/
-                int get_instructions_limit() const;
+				int64_t get_instructions_limit() const;
                 /************************************************************************/
                 /* get how many lua vm instructions ran now in the lua stack            */
                 /************************************************************************/
@@ -443,7 +443,7 @@ namespace uvm
         char error_msg[LUA_COMPILE_ERROR_MAX_LENGTH+1];		 \
         memset(error_msg, 0x0, sizeof(error_msg));		     \
         snprintf(error_msg, LUA_COMPILE_ERROR_MAX_LENGTH, error_format, ##__VA_ARGS__);				\
-        error_msg[LUA_COMPILE_ERROR_MAX_LENGTH-1] = '\-';       \
+        error_msg[LUA_COMPILE_ERROR_MAX_LENGTH-1] = '\0';       \
         memcpy(error, error_msg, sizeof(char)*(1 + strlen(error_msg)));								\
      }												\
      global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, error_format, ##__VA_ARGS__);		\

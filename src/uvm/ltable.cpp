@@ -288,6 +288,8 @@ TValue *luaH_newkey(lua_State *L, uvm_types::GcTable *t, const TValue *key) {
 		if (val_to_table_key(&p.first, p_key_str) && val_to_table_key(key, key_str) && p_key_str == key_str)
 			return &p.second;
 	}
+	luaG_runerror(L, "can't new this key in this table");
+	return nullptr;
 }
 
 

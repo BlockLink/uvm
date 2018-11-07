@@ -519,12 +519,12 @@ namespace uvm {
 			}
 			std::string DemoUvmChainApi::sha256_hex(const std::string& hex_string) {
 				const auto& chars = hex_to_chars(hex_string);
-				auto hash_result = fc::sha256::hash(chars.data(), chars.size());
+				auto hash_result = fc::sha256::hash(chars.data(), static_cast<uint32_t>(chars.size()));
 				return hash_result.str();
 			}
 			std::string DemoUvmChainApi::sha1_hex(const std::string& hex_string) {
 				const auto& chars = hex_to_chars(hex_string);
-				auto hash_result = fc::sha1::hash(chars.data(), chars.size());
+				auto hash_result = fc::sha1::hash(chars.data(), static_cast<uint32_t>(chars.size()));
 				return hash_result.str();
 			}
 			std::string DemoUvmChainApi::sha3_hex(const std::string& hex_string) {
@@ -535,7 +535,7 @@ namespace uvm {
 			}
 			std::string DemoUvmChainApi::ripemd160_hex(const std::string& hex_string) {
 				const auto& chars = hex_to_chars(hex_string);
-				auto hash_result = fc::ripemd160::hash(chars.data(), chars.size());
+				auto hash_result = fc::ripemd160::hash(chars.data(), static_cast<uint32_t>(chars.size()));
 				return hash_result.str();
 			}
 

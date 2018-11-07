@@ -261,6 +261,9 @@ static int newupvalue(FuncState *fs, uvm_types::GcString *name, expdesc *v) {
 	}
 	int newsize = f->upvalues.size();
     while (oldsize < newsize) f->upvalues[oldsize++].name = nullptr;
+	if (f->upvalues.size() <= fs->nups) {
+		f->upvalues.resize(fs->nups+1);
+	}
     f->upvalues[fs->nups].instack = (v->k == VLOCAL);
     f->upvalues[fs->nups].idx = cast_byte(v->u.info);
     f->upvalues[fs->nups].name = name;

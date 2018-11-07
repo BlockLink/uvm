@@ -179,7 +179,7 @@ namespace uvm
 			return result;
 		}
 
-		class RlpObject;
+		struct RlpObject;
 		struct RlpObject {
 			RlpObjectType type;
 			std::vector<unsigned char> bytes;

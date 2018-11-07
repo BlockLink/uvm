@@ -1885,8 +1885,8 @@ namespace uvm {
 			k = cl->p->ks.empty() ? nullptr : cl->p->ks.data();  /* local reference to function's constant table */
 			base = ci->u.l.base;  /* local copy of function's base */
 
-			int insts_limit = uvm::lua::lib::get_lua_state_value(L, INSTRUCTIONS_LIMIT_LUA_STATE_MAP_KEY).int_value;
-			int *stopped_pointer = uvm::lua::lib::get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
+			auto insts_limit = uvm::lua::lib::get_lua_state_value(L, INSTRUCTIONS_LIMIT_LUA_STATE_MAP_KEY).int_value;
+			auto *stopped_pointer = uvm::lua::lib::get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
 			if (nullptr == stopped_pointer)
 			{
 				uvm::lua::lib::notify_lua_state_stop(L);
@@ -1894,10 +1894,10 @@ namespace uvm {
 				stopped_pointer = uvm::lua::lib::get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
 			}
 			bool has_insts_limit = insts_limit > 0 ? true : false;
-			int *insts_executed_count = uvm::lua::lib::get_lua_state_value(L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
+			auto *insts_executed_count = uvm::lua::lib::get_lua_state_value(L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
 			if (nullptr == insts_executed_count)
 			{
-				insts_executed_count = static_cast<int*>(lua_malloc(L, sizeof(int)));
+				insts_executed_count = static_cast<int64_t*>(lua_malloc(L, sizeof(int64_t)));
 				*insts_executed_count = 0;
 				UvmStateValue lua_state_value_of_exected_count;
 				lua_state_value_of_exected_count.int_pointer_value = insts_executed_count;
