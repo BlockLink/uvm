@@ -5,6 +5,8 @@
 #include <simplechain/storage.h>
 #include <simplechain/contract_object.h>
 #include <simplechain/asset.h>
+#include <fc/variant.hpp>
+#include <fc/variant_object.hpp>
 
 namespace simplechain {
 
@@ -19,6 +21,8 @@ namespace simplechain {
 		std::string event_arg;
 		std::string caller_addr;
 		uint64_t block_num;
+
+		fc::mutable_variant_object to_json() const;
 	};
 
 	struct comparator_for_contract_invoke_result_balance {
@@ -77,6 +81,8 @@ namespace simplechain {
 	struct transaction_receipt {
 		std::string tx_id;
 		std::vector<contract_event_notify_info> events;
+
+		fc::mutable_variant_object to_json() const;
 	};
 
 
@@ -96,6 +102,11 @@ namespace simplechain {
 
 		virtual operation_type_enum get_type() const {
 			return type;
+		}
+
+		virtual fc::mutable_variant_object to_json() const {
+			fc::mutable_variant_object info;
+			return info;
 		}
 
 		std::string calculate_contract_id() const;
@@ -120,6 +131,11 @@ namespace simplechain {
 
 		virtual operation_type_enum get_type() const {
 			return type;
+		}
+
+		virtual fc::mutable_variant_object to_json() const {
+			fc::mutable_variant_object info;
+			return info;
 		}
 	};
 

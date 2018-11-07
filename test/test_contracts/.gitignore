@@ -3,3 +3,8 @@
 /token_caller.lua.gpc
 /simple_contract.lua.gpc
 /change_other_contract_property_contract.lua.gpc
+/sparse_merkle_tree.lua.gpc
+/plasma_root_chain.lua.out
+/plasma_root_chain.lua.gpc
+/validator_manager_contract.lua.gpc
+/validator_manager_contract.lua.out

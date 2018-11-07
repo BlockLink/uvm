@@ -46,6 +46,9 @@ namespace simplechain {
 		RpcResultType invoke_contract(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		RpcResultType invoke_contract_offline(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		RpcResultType generate_block(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType get_block_by_height(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType get_tx(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType get_tx_receipt(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		RpcResultType exit_chain(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		RpcResultType get_chain_state(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		RpcResultType list_accounts(blockchain* chain, HttpServer* server, const RpcRequestParams& params);

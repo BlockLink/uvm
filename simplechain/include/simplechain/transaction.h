@@ -6,6 +6,8 @@
 #include <fc/crypto/base58.hpp>
 #include <fc/crypto/base64.hpp>
 #include <fc/time.hpp>
+#include <fc/variant.hpp>
+#include <fc/variant_object.hpp>
 #include <memory>
 #include <vector>
 
@@ -19,6 +21,8 @@ namespace simplechain {
 		hash_t digest() const;
 		std::string digest_str() const;
 		std::string tx_hash() const;
+
+		fc::mutable_variant_object to_json() const;
 	};
 }
 

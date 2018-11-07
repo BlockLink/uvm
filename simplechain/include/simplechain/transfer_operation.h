@@ -19,6 +19,16 @@ namespace simplechain {
 		virtual operation_type_enum get_type() const {
 			return type;
 		}
+
+		virtual fc::mutable_variant_object to_json() const {
+			fc::mutable_variant_object info;
+			info["type"] = type;
+			info["account_address"] = account_address;
+			info["asset_id"] = asset_id;
+			info["amount"] = amount;
+			info["op_time"] = op_time;
+			return info;
+		}
 	};
 
 	struct transfer_operation : public generic_operation {
@@ -36,6 +46,10 @@ namespace simplechain {
 
 		virtual operation_type_enum get_type() const {
 			return type;
+		}
+		virtual fc::mutable_variant_object to_json() const {
+			fc::mutable_variant_object info;
+			return info;
 		}
 	};
 }

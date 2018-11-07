@@ -187,6 +187,39 @@ namespace simplechain {
 			return block_ids;
 		}
 
+		RpcResultType get_block_by_height(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			const auto& block_height = params.at(0).as_uint64();
+			auto block = chain->get_block_by_number(block_height);
+			if (block) {
+				return block->to_json();
+			}
+			else {
+				return nullptr;
+			}
+		}
+
+		RpcResultType get_tx(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			const auto& tx_id = params.at(0).as_string();
+			auto tx = chain->get_trx_by_hash(tx_id);
+			if (tx) {
+				return tx->to_json();
+			}
+			else {
+				return nullptr;
+			}
+		}
+
+		RpcResultType get_tx_receipt(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			const auto& tx_id = params.at(0).as_string();
+			const auto& receipt = chain->get_tx_receipt(tx_id);
+			if (receipt) {
+				return receipt->to_json();
+			}
+			else {
+				return nullptr;
+			}
+		}
+
 		RpcResultType exit_chain(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			server->stop();
 			return true;
