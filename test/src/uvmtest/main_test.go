@@ -335,7 +335,7 @@ func TestGlobalApis(t *testing.T) {
 	assert.True(t, strings.Contains(out, `systemAssetSymbol: 	COIN`))
 	assert.True(t, strings.Contains(out, `blockNum: 	0`))
 	assert.True(t, strings.Contains(out, `precision: 	10000`))
-	assert.True(t, strings.Contains(out, `callFrameStackSize: 	0`))
+	assert.True(t, strings.Contains(out, `callFrameStackSize: 	1`))
 	assert.True(t, strings.Contains(out, `random: 	0`))
 	assert.True(t, strings.Contains(out, `prevContractAddr: 	nil`))
 	assert.True(t, strings.Contains(out, `prevContractApiName: 	nil`))
