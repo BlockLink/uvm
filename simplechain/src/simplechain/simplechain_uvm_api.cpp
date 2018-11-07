@@ -531,8 +531,8 @@ namespace simplechain {
 					if (contract_balance < amount) {
 						return -1;
 					}
-					evaluator->update_account_asset_balance(contract_address, asset_item->asset_id, amount);
-					evaluator->update_account_asset_balance(to_address, asset_item->asset_id, -amount);
+					evaluator->update_account_asset_balance(contract_address, asset_item->asset_id, -amount);
+					evaluator->update_account_asset_balance(to_address, asset_item->asset_id, amount);
 				}
 				catch (const std::exception& e)
 				{

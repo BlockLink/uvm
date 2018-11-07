@@ -10,8 +10,8 @@ type Storage = {
     operatorDebt: int
 }
 
-let MATURITY_PERIOD = 604800 -- 7 days
-let CHALLENGE_WINDOW = 302400 -- 3.5 days
+let MATURITY_PERIOD = 6 -- TODO: 604800: 7 days, 6 seconds for test
+let CHALLENGE_WINDOW = 3 -- TODO: 302400: 3.5 days, 3 seconds for test
 let BOND_AMOUNT = 100000
 
 
@@ -140,10 +140,18 @@ let function get_from_address()
 end
 
 let function simpleJsonLoads(o: object)
-    if (o == nil) then
+    if (o == nil) or (o == "nil") then
         return nil
     else
         return json.loads(tostring(o))
+    end
+end
+
+let function simpleCborDecode(hex: string)
+    if (not hex) or (hex == '0') then
+        return nil
+    else
+        return cbor_decode(hex)
     end
 end
 
@@ -254,7 +262,7 @@ end
 
 let function create_coin(M: table, from: string, uid: string, denomination: int, balance: int)
     let from_caller = get_from_address()
-    M.storage.currentBlockNum = tointeger(M.storage.currentBlockNum) + 1
+    M.storage.currentBlockNum = tointeger(M.storage.currentBlockNum) + 1  -- TODO: when (currentBlockNum+1) % interval == 0
     let slotInfoToPack: Array<object> = [tointeger(M.storage.numCoins), from_caller, from]
     let slotInfoPackedHex = sha256_hex(cbor_encode(slotInfoToPack))
     let slot = string.sub(slotInfoPackedHex, 0, 16)
@@ -274,7 +282,8 @@ let function create_coin(M: table, from: string, uid: string, denomination: int,
     let childBlock = ChildBlock()
     childBlock.root = sha256_hex(cbor_encode(slot))
     childBlock.createdAt = get_chain_now()
-    fast_map_set("childChain", tostring(M.storage.currentBlockNum), json.dumps(childBlock))
+    let childBlockStr = json.dumps(childBlock)
+    fast_map_set("childChain", tostring(M.storage.currentBlockNum), childBlockStr)
 
     let vmc = getVmc(M)
     coin.balance = balance
@@ -290,7 +299,8 @@ let function create_coin(M: table, from: string, uid: string, denomination: int,
     emit Deposit(json.dumps(eventArg))
 
     M.storage.numCoins = tointeger(M.storage.numCoins) + 1
-    fast_map_set("coins", slot, json.dumps(coin))
+    let coinStr = json.dumps(coin)
+    fast_map_set("coins", slot, coinStr)
 end
 
 -- arg format: amount,assetSymbol
@@ -344,7 +354,8 @@ function M:provide_liquidity (arg: string)
     end
     -- now operator doesn't need to deposit real balance to the coin
     coin.denomination = coin.denomination + denomination
-    fast_map_set("coins", slot, json.dumps(coin))
+    let coinStr = json.dumps(coin)
+    fast_map_set("coins", slot, coinStr)
     self.storage.operatorDebt = self.storage.operatorDebt + denomination
     emit ProvidedLiquidity(arg)
 end
@@ -359,7 +370,8 @@ function M:submit_block(arg: string)
     let childBlock = ChildBlock()
     childBlock.root = root
     childBlock.createdAt = get_chain_now()
-    fast_map_set("childChain", tostring(self.storage.currentBlockNum), json.dumps(childBlock))
+    let childBlockStr = json.dumps(childBlock)
+    fast_map_set("childChain", tostring(self.storage.currentBlockNum), childBlockStr)
     let eventArg = {
         'currentBlock': self.storage.currentBlockNum,
         'root': root,
@@ -378,9 +390,9 @@ let function checkTxIncluded(M: table, slot: string, txHash: string, blockNumber
     if not childBlockStr then
         return error("invalid blocknumber in submited childChain")
     end
-    let childBlock: ChildBlock = totable(json.loads(childBlockStr))
+    let childBlock: ChildBlock = totable(simpleJsonLoads(childBlockStr))
     if not childBlock then
-        return error("invalid child block info")
+        return error("invalid child block info " .. tostring(blockNumber))
     end
     let root = childBlock.root
     if (blockNumber % tointeger(M.storage.childBlockInterval)) ~= 0 then
@@ -397,12 +409,13 @@ let function checkTxIncluded(M: table, slot: string, txHash: string, blockNumber
 end
 
 let function checkIncludedAndSigned(M: table, exitingTxHex: string, exitingTxInclusionProofHex: string, signatureHex: string, blkNum: int)
-    let txData = totable(cbor_decode(exitingTxHex))
+    let txData = totable(simpleCborDecode(exitingTxHex))
     let txOwnerPubKey = tostring(txData["ownerPubKey"])
     let txSigHash = tostring(txData["sigHash"])
     let txHash = tostring(txData["hash"])
     -- Deposit transactions need to be signed by their owners
-    if txOwnerPubKey ~= signature_recover(signatureHex, txSigHash) then
+    let recoveredPubKey = signature_recover(signatureHex, txSigHash)
+    if txOwnerPubKey ~= recoveredPubKey then
         return error("invalid signature")
     end
     let slot = tostring(txData["slot"])
@@ -414,8 +427,8 @@ let function checkBothIncludedAndSigned(M: table, prevTxHex: string, exitingTxHe
     if block1Num >= block2Num then
         return error("invalid blocks numbers")
     end
-    let exitingTxData: Transaction = totable(cbor_decode(exitingTxHex))
-    let prevTxData: Transaction = totable(cbor_decode(prevTxHex))
+    let exitingTxData: Transaction = totable(simpleCborDecode(exitingTxHex))
+    let prevTxData: Transaction = totable(simpleCborDecode(prevTxHex))
     if (not exitingTxData) or (not prevTxData) then
         return error("decode tx data failed")
     end
@@ -438,12 +451,12 @@ end
 
 let function doInclusionChecks(M: table, prevTxHex: string, exitingTxHex: string, prevTxInclusionProofHex: string, exitingTxInclusionProofHex: string,
      signatureHex: string, block1Num: int, block2Num: int)
-    if (block1Num % tointeger(M.storage.childBlockInterval) ~= 0) then
+    if (block2Num % tointeger(M.storage.childBlockInterval) ~= 0) then
         checkIncludedAndSigned(M, 
             exitingTxHex,
             exitingTxInclusionProofHex,
             signatureHex,
-            block1Num
+            block2Num
         )
     else
         checkBothIncludedAndSigned(M, 
@@ -462,7 +475,7 @@ let function pushExit(slot: string, prevOwner: string, exitOwner: string, exitOw
 
     -- Create exit
     let coinStr = tostring(fast_map_get("coins", slot))
-    let c: Coin = totable(json.loads(coinStr))
+    let c: Coin = totable(simpleJsonLoads(coinStr))
     let exit = Exit()
     exit.prevOwner = prevOwner
     exit.owner = exitOwner
@@ -475,14 +488,14 @@ let function pushExit(slot: string, prevOwner: string, exitOwner: string, exitOw
     c.exit = exit
     -- Update coin state
     c.state = "EXITING";
-    fast_map_set("coins", slot, json.dumps(c))
+    let cStr = json.dumps(c)
+    fast_map_set("coins", slot, cStr)
     let eventArg = {
         'slot': slot,
         'caller': from_caller
     }
     emit StartedExit(json.dumps(eventArg))
 end
-
 
 -- arg format: slot,prevTxHex,existingTxHex,prevTxInclusionProofHex,exitingTxInclusionProofHex,signatureHex,block1Num,block2Num
 function M:startExit(arg: string)
@@ -499,14 +512,14 @@ function M:startExit(arg: string)
     let from_caller = get_from_address()
     let from_caller_pubkey = caller
 
-    let existingTx: Transaction = totable(cbor_decode(exitingTxHex))
+    let existingTx: Transaction = totable(simpleCborDecode(exitingTxHex))
     if (not existingTx) or (not existingTx.owner) then
         return error("invalid existing tx structure")
     end
     if (tostring(existingTx.owner)) ~= from_caller then
         return error("caller is not ths existing tx's owner")
     end
-    let prevTx: Transaction = totable(cbor_decode(prevTxHex))
+    let prevTx = totable(simpleCborDecode(prevTxHex))
 
     doInclusionChecks(self,
         prevTxHex, exitingTxHex,
@@ -514,28 +527,32 @@ function M:startExit(arg: string)
         signatureHex,
         block1Num, block2Num
     )
-    pushExit(slot,
-        tostring(prevTx.owner),
+    var prevTxOwner: string = nil
+    if prevTx then
+        prevTxOwner = tostring(prevTx.owner)
+    end
+    pushExit(slot, prevTxOwner,
         from_caller, from_caller_pubkey,
-        tointeger(existingTx.balance),
+        existingTx.balance,
         block1Num, block2Num
     )
 end
 -- bond related
 
 let function freeBond(from: string)
-    let balanceStr = tostring(fast_map_get("balances", from))
-    if not balanceStr then
-        return
-    end
-    let balance: Balance = totable(json.loads(balanceStr))
-    balance.bonded = balance.bonded - BOND_AMOUNT
-    balance.withdrawable = balance.withdrawable + BOND_AMOUNT
-    let eventArg = {
-        'from': from,
-        'band_amount': BOND_AMOUNT
-    }
-    emit FreedBond(json.dumps(eventArg))
+    return -- TODO: exit need to give some bond when exit, when evil
+    -- let balanceStr = tostring(fast_map_get("balances", from))
+    -- if not balanceStr then
+    --     return
+    -- end
+    -- let balance: Balance = totable(simpleJsonLoads(balanceStr))
+    -- balance.bonded = balance.bonded - BOND_AMOUNT
+    -- balance.withdrawable = balance.withdrawable + BOND_AMOUNT
+    -- let eventArg = {
+    --     'from': from,
+    --     'band_amount': BOND_AMOUNT
+    -- }
+    -- emit FreedBond(json.dumps(eventArg))
 end
 
 let function withdrawBonds()
@@ -544,8 +561,8 @@ let function withdrawBonds()
     if not balanceStr then
         return
     end
-    let balance: Balance = totable(json.loads(balanceStr))
-    let amount = balance.withdrawable;
+    let balance: Balance = totable(simpleJsonLoads(balanceStr))
+    let amount = balance.withdrawable
     balance.withdrawable = 0 -- no reentrancy
     if is_valid_contract_address(from_caller) then
         return error("only can withdraw to not contract address now")
@@ -567,12 +584,12 @@ let function slashBond(from: string, to: string)
     if not fromBalanceStr then
         return
     end
-    let fromBalance: Balance = totable(json.loads(fromBalanceStr))
+    let fromBalance: Balance = totable(simpleJsonLoads(fromBalanceStr))
     let toBalanceStr = tostring(fast_map_get("balances", to))
     if not toBalanceStr then
         return
     end
-    let toBalance: Balance = totable(json.loads(toBalanceStr))
+    let toBalance: Balance = totable(simpleJsonLoads(toBalanceStr))
     fromBalance.bonded = fromBalance.bonded - BOND_AMOUNT
     toBalance.withdrawable = toBalance.withdrawable + BOND_AMOUNT
     let eventArg = {
@@ -588,7 +605,10 @@ let function checkPendingChallenges(slot: string)
     if not slotChallengesStr then
         return false
     end
-    let slotChallenges = totable(json.loads(slotChallengesStr))
+    var slotChallenges = totable(simpleJsonLoads(slotChallengesStr))
+    if not slotChallenges then
+        slotChallenges = []
+    end
     let length = #slotChallenges
     var slashed = false
     var i: int = 1
@@ -624,7 +644,7 @@ function M:finalizeExit(arg: string)
     if not coinStr then
         return error("can't find coin of this slot")
     end
-    let coin: Coin = totable(json.loads(coinStr))
+    let coin: Coin = totable(simpleJsonLoads(coinStr))
 
     -- If a coin is not under exit/challenge, then ignore it
     if (coin.state ~= 'EXITING') then
@@ -654,14 +674,17 @@ function M:finalizeExit(arg: string)
             'slot': slot,
             'owner': coin.owner
         }
-        emit FinalizedExit(json.dumps(finalizeExitEventArg))
+        let finalizeExitEventArgStr = json.dumps(finalizeExitEventArg)
+        emit FinalizedExit(finalizeExitEventArgStr)
     else
         -- Reset coin state since it was challenged
         coin.state = "DEPOSITED"
     end
     coin.exit = nil
     fast_map_set("exitSlots", slot, nil)
-    fast_map_set("coins", slot, json.dumps(coin))
+    let coinStr2 = json.dumps(coin)
+    fast_map_set("coins", slot, coinStr2)
+    return "true"
 end
 
 let function isState(slot: string, state: State)
@@ -669,6 +692,7 @@ let function isState(slot: string, state: State)
     if (not coin) or (coin.state ~= state) then
         return error("Wrong state")
     end
+    return true
 end
 
 -- Withdraw a UTXO that has been exited
@@ -681,7 +705,7 @@ function M:withdraw(arg: string)
         return error("You do not own that UTXO")
     end
     if not isState(slot, "EXITED") then
-        return "this slot is not EXITED state"
+        return error("this slot is not EXITED state")
     end
     let uid = coin.uid
     let toUser = coin.balance
@@ -716,7 +740,8 @@ function M:withdraw(arg: string)
         'toUser': toUser,
         'toAuthority': toAuthority
     }
-    emit Withdrew(json.dumps(withdrawEventArg));
+    let withdrawEventArgStr = json.dumps(withdrawEventArg)
+    emit Withdrew(withdrawEventArgStr);
 end
 
 
@@ -782,12 +807,12 @@ function M:challengeBefore(arg: string)
         signatureHex,
         block1Num, block2Num
     )
-    let txData: Transaction = totable(cbor_decode(txHex))
+    let txData: Transaction = totable(simpleCborDecode(txHex))
     setChallenged(slot, txData.owner, txData.ownerPubKey, block2Num, txData.hash)
 end
 
 let function checkResponse(M: table, slot: string, index: int, blockNumber: int, txHex: string, signatureHex: string, proofHex: string)
-    let txData: Transaction = totable(cbor_decode(txHex))
+    let txData: Transaction = totable(simpleCborDecode(txHex))
     let sigHash = txData.sigHash
     let slotChallenges: Array<Challenge> = totable(simpleJsonLoads(fast_map_get("challenges", slot)))
     if signature_recover(signatureHex, sigHash) ~= slotChallenges[index]["ownerPubKey"] then
@@ -853,7 +878,8 @@ end
 let function cleanupExit(slot: string)
     let coin: Coin = totable(simpleJsonLoads(fast_map_get("coins", slot)))
     coin.exit = nil
-    fast_map_set("coins", slot, json.dumps(coin))
+    let coinStr = json.dumps(coin)
+    fast_map_set("coins", slot, coinStr)
     fast_map_set("exitSlots", slot, nil)
 end
 
@@ -866,7 +892,7 @@ let function checkBetween(M: table, slot: string, txHex: string, blockNumber: in
     if (not coin) or (coin.exit.exitBlock <= blockNumber) or (coin.exit.prevBlock >= blockNumber) then
         return error("Tx should be between the exit's blocks")
     end
-    let txData:Transaction = totable(cbor_decode(txHex))
+    let txData:Transaction = totable(simpleCborDecode(txHex))
     if signature_recover(signatureHex, txData.sigHash) ~= coin.exit.prevOwner then
         return error("Invalid signature")
     end
@@ -877,7 +903,7 @@ let function checkBetween(M: table, slot: string, txHex: string, blockNumber: in
 end
 
 let function checkAfter(M: table, slot: string, txHex: string, blockNumber: int, signatureHex: string, proofHex: string)
-    let txData: Transaction = totable(cbor_decode(txHex))
+    let txData: Transaction = totable(simpleCborDecode(txHex))
     let coin: Coin = totable(simpleJsonLoads(fast_map_get("coins", slot)))
     if signature_recover(signatureHex, txData.sigHash) ~= coin.exit.ownerPubKey then
         return error("Invalid signature")
@@ -897,7 +923,8 @@ let function applyPenalties(slot: string)
     let from_caller = get_from_address()
     slashBond(coin.exit.owner, from_caller)
     coin.state = "DEPOSITED"
-    fast_map_set("coins", slot, json.dumps(coin))
+    let coinStr = json.dumps(coin)
+    fast_map_set("coins", slot, coinStr)
 end
 
 -- arg format: slot,challengingBlockNumber,challengingTransactionHex,proofHex,signatureHex
@@ -947,22 +974,24 @@ offline function M:get_plasma_coin(arg: string)
     let slot = arg
     let c: Coin = totable(simpleJsonLoads(fast_map_get("coins", slot)))
     let cStr = json.dumps(c)
-    print(cStr)
     return cStr
 end
 
 -- arg format: slot
 offline function M:getExit(arg: string)
     let slot = arg
-    let c: Coin = totable(simpleJsonLoads(fast_map_get("coins", slot)))
+    let coinStr = fast_map_get("coins", slot)
+    let c: Coin = totable(simpleJsonLoads(coinStr))
+    if not c then
+        return "null"
+    end
     let e = c.exit
     let info = {
-        'owner': e.owner,
-        'prevBlock': e.prevBlock,
-        'exitBlock': e.exitBlock,
+        'exit': e,
         'coin_state': c.state
     }
-    return info
+    let infoStr = json.dumps(info)
+    return infoStr
 end
 
 -- arg format: blockNumber
