@@ -381,6 +381,9 @@ function M:submit_block(arg: string)
 end
 
 let function checkMembership(M:table, txHash: string, root: string, slot: string, proofHex: string)
+    if txHash == root then
+        return true
+    end
     let smt = getSmt(M)
     return smt:verify(slot .. "," .. txHash .. "," .. root .. "," .. proofHex)
 end
