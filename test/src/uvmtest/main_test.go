@@ -2,10 +2,11 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 	"net/http"
 	"os"
 	"os/exec"
@@ -14,12 +15,10 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"crypto/sha256"
-	"encoding/hex"
+	"time"
 
 	"github.com/bitly/go-simplejson"
 	"github.com/stretchr/testify/assert"
-	"github.com/2tvenom/cbor"
 	"github.com/zoowii/ecdsatools"
 	gosmt "github.com/zoowii/go_sparse_merkle_tree"
 )
@@ -514,12 +513,12 @@ func testContractPath(contractPath string) string {
 	return filepath.Join(uvmDir, "test", "test_contracts", contractPath)
 }
 
-func getAccountBalanceOfAssetId(caller string, assetId int) (int, error) {
+func getAccountBalanceOfAssetID(caller string, assetID int) (int, error) {
 	res, err := simpleChainRPC("get_account_balances", caller)
 	if err != nil {
 		return 0, err
 	}
-	return res.GetIndex(assetId).GetIndex(1).MustInt(), nil
+	return res.GetIndex(assetID).GetIndex(1).MustInt(), nil
 }
 
 func TestSimpleChainMintAndTransfer(t *testing.T) {
@@ -542,18 +541,18 @@ func TestSimpleChainMintAndTransfer(t *testing.T) {
 	assert.True(t, err == nil)
 	simpleChainRPC("generate_block")
 
-	balanceValueRes, err = getAccountBalanceOfAssetId(caller1, 0)
+	balanceValueRes, err = getAccountBalanceOfAssetID(caller1, 0)
 	assert.True(t, balanceValueRes == 1000)
-	balanceValueRes, err = getAccountBalanceOfAssetId(caller2, 0)
+	balanceValueRes, err = getAccountBalanceOfAssetID(caller2, 0)
 	assert.True(t, balanceValueRes == 100)
 
 	res, err = simpleChainRPC("transfer", caller1, caller2, 0, 200)
 	assert.True(t, err == nil)
 	simpleChainRPC("generate_block")
 
-	balance1, _ := getAccountBalanceOfAssetId(caller1, 0)
+	balance1, _ := getAccountBalanceOfAssetID(caller1, 0)
 	assert.True(t, balance1 == 800)
-	balance2, _ := getAccountBalanceOfAssetId(caller2, 0)
+	balance2, _ := getAccountBalanceOfAssetID(caller2, 0)
 	assert.True(t, balance2 == 300)
 }
 
@@ -598,6 +597,84 @@ func TestSimpleChainTokenContract(t *testing.T) {
 	assert.True(t, err == nil)
 	fmt.Printf("caller2 balance: %s\n", res.Get("api_result").MustString())
 	assert.True(t, res.Get("api_result").MustString() == "100")
+}
+
+func depositToPlasmaContract(caller string, plasmaContractAddress string, amount int, assetID int) (txID string, coinSlotHex string, err error) {
+	var res *simplejson.Json
+	res, err = simpleChainRPC("invoke_contract", caller, plasmaContractAddress, "on_deposit_asset", []string{""}, assetID, amount, 50000, 10)
+	if err != nil {
+		return
+	}
+	txID = res.Get("txid").MustString()
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("get_tx_receipt", txID)
+	deposit1TxReceipt := res
+	coin1EventArg := deposit1TxReceipt.Get("events").GetIndex(0).Get("event_arg").MustString()
+	coin1EventArgJSON, _ := simplejson.NewJson([]byte(coin1EventArg))
+	coinSlotHex = coin1EventArgJSON.Get("slot").MustString()
+	return
+}
+
+func createEmptyPlasmaCoin(caller string, plasmaContractAddress string) (txID string, coinSlotHex string, err error) {
+	var res *simplejson.Json
+	res, err = simpleChainRPC("invoke_contract", caller, plasmaContractAddress, "create_empty_coin", []string{"0"}, 0, 0, 50000, 10)
+	if err != nil {
+		return
+	}
+	txID = res.Get("txid").MustString()
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("get_tx_receipt", txID)
+	if err != nil {
+		return
+	}
+	emptyCoinTxReceipt := res
+	coinEventArg := emptyCoinTxReceipt.Get("events").GetIndex(0).Get("event_arg").MustString()
+	coinEventArgJSON, err := simplejson.NewJson([]byte(coinEventArg))
+	if err != nil {
+		return
+	}
+	coinSlotHex = coinEventArgJSON.Get("slot").MustString()
+	return
+}
+
+type PlasmaCoin struct {
+	Slot         string
+	Balance      int
+	Denomination int
+}
+
+func getPlasmaCoin(caller string, plasmaContractAddress string, coinSlotHex string) (coin *PlasmaCoin, err error) {
+	var res *simplejson.Json
+	res, err = simpleChainRPC("invoke_contract_offline", caller, plasmaContractAddress, "get_plasma_coin", []string{coinSlotHex}, 0, 0)
+	if err != nil {
+		return
+	}
+	coinCreatedStr := res.Get("api_result").MustString()
+	coinCreated, _ := simplejson.NewJson([]byte(coinCreatedStr))
+	coin = new(PlasmaCoin)
+	coin.Slot = coinSlotHex
+	coin.Balance = coinCreated.Get("balance").MustInt()
+	coin.Denomination = coinCreated.Get("denomination").MustInt()
+	return
+}
+
+func provideLiquidityToPlasmaCoin(caller string, plasmaContractAddress string, coinSlotHex string, amount int) {
+	simpleChainRPC("invoke_contract", caller, plasmaContractAddress, "provide_liquidity", []string{fmt.Sprintf("%s,%d", coinSlotHex, amount)}, 0, 0, 50000, 10)
+	simpleChainRPC("generate_block")
+}
+
+func submitBlockToPlasma(caller string, plasmaContractAddress string, childBlockRootHex string) {
+	simpleChainRPC("invoke_contract", caller, plasmaContractAddress, "submit_block", []string{childBlockRootHex}, 0, 0, 50000, 10)
+	simpleChainRPC("generate_block")
+}
+
+func checkMembershipInPlasma(caller string, plasmaContractAddress string, txHashHex string, childBlockRoot string, coinSlotHex string, txProofHex string) bool {
+	coinSlotInt := HexToBigInt(coinSlotHex)
+	res, err := simpleChainRPC("invoke_contract_offline", caller, plasmaContractAddress, "checkMembership", []string{txHashHex + "," + childBlockRoot + "," + coinSlotInt.String() + "," + txProofHex}, 0, 0)
+	if err != nil {
+		return false
+	}
+	return res.Get("api_result").MustString() == "true"
 }
 
 func TestPlasmaRootChain(t *testing.T) {
@@ -667,77 +744,57 @@ func TestPlasmaRootChain(t *testing.T) {
 	// deposit
 	simpleChainRPC("mint", caller1, 0, 100000)
 	simpleChainRPC("generate_block")
-	res, err = simpleChainRPC("invoke_contract", caller1, plasmaContractAddress, "on_deposit_asset", []string{""}, 0, 50000, 50000, 10)
-	deposit1TxID := res.Get("txid").MustString()
-	simpleChainRPC("generate_block")
-	balance1, _ := getAccountBalanceOfAssetId(plasmaContractAddress, 0)
+
+	deposit1TxID, coin1Slot, err := depositToPlasmaContract(caller1, plasmaContractAddress, 50000, 0)
+	assert.True(t, err == nil)
+	println("deposit1TxID: ", deposit1TxID)
+	balance1, _ := getAccountBalanceOfAssetID(plasmaContractAddress, 0)
 	fmt.Printf("plasma contract balance: %d\n", balance1)
-	res, err = simpleChainRPC("get_tx_receipt", deposit1TxID)
-	deposit1TxReceipt := res
-	fmt.Println("deposit tx: ", deposit1TxReceipt)
-	fmt.Printf("deposit tx id: %s, events count: %d\n", deposit1TxID, len(deposit1TxReceipt.Get("events").MustArray()))
-	coin1EventArg := deposit1TxReceipt.Get("events").GetIndex(0).Get("event_arg").MustString()
-	coin1EventArgJSON, _ := simplejson.NewJson([]byte(coin1EventArg))
-	coin1Slot := coin1EventArgJSON.Get("slot").MustString()
 	fmt.Println("coin1 slot: ", coin1Slot)
-	res, err = simpleChainRPC("invoke_contract_offline", caller1, plasmaContractAddress, "get_plasma_coin", []string{coin1Slot}, 0, 0)
-	coin1CreatedStr := res.Get("api_result").MustString()
-	coin1Created, _ := simplejson.NewJson([]byte(coin1CreatedStr))
-	println("coin1 after created: ", coin1CreatedStr)
-	assert.True(t, coin1Created.Get("denomination").MustInt() == 50000)
-	assert.True(t, coin1Created.Get("balance").MustInt() == 50000)
-	// get tx events
+
+	coin1, err := getPlasmaCoin(caller1, plasmaContractAddress, coin1Slot)
+	println("coin1 after created: ", coin1)
+	assert.True(t, coin1.Denomination == 50000)
+	assert.True(t, coin1.Balance == 50000)
+
 	// create empty coin
-	res, err = simpleChainRPC("invoke_contract", caller1, plasmaContractAddress, "create_empty_coin", []string{"0"}, 0, 0, 50000, 10)
-	emptyCoinTxID := res.Get("txid").MustString()
-	simpleChainRPC("generate_block")
-	res, err = simpleChainRPC("get_tx_receipt", emptyCoinTxID)
-	emptyCoinTxReceipt := res
-	fmt.Println("empty coin tx: ", emptyCoinTxReceipt)
-	fmt.Printf("create empty coin tx id: %s, events count: %d\n", emptyCoinTxID, len(emptyCoinTxReceipt.Get("events").MustArray()))
-	coin2EventArg := emptyCoinTxReceipt.Get("events").GetIndex(0).Get("event_arg").MustString()
-	coin2EventArgJSON, _ := simplejson.NewJson([]byte(coin2EventArg))
-	coin2Slot := coin2EventArgJSON.Get("slot").MustString()
-	fmt.Println("coin2 slot: ", coin2Slot)
-	res, err = simpleChainRPC("invoke_contract_offline", caller1, plasmaContractAddress, "get_plasma_coin", []string{coin2Slot}, 0, 0)
-	coin2CreatedStr := res.Get("api_result").MustString()
-	coin2Created, _ := simplejson.NewJson([]byte(coin2CreatedStr))
-	println("coin2 after created: ", coin2CreatedStr)
-	assert.True(t, coin2Created.Get("denomination").MustInt() == 0)
-	assert.True(t, coin2Created.Get("balance").MustInt() == 0)
+	emptyCoinTxID, coin2Slot, err := createEmptyPlasmaCoin(caller1, plasmaContractAddress)
+	assert.True(t, err == nil)
+	println("emptyCoinTxID: ", emptyCoinTxID)
+	println("coin2 slot: ", coin2Slot)
+
+	coin2, err := getPlasmaCoin(caller1, plasmaContractAddress, coin2Slot)
+	assert.True(t, err == nil)
+	println("coin2 after created: ", coin2)
+	assert.True(t, coin2.Denomination == 0)
+	assert.True(t, coin2.Balance == 0)
+
 	// provide liquidity
-	simpleChainRPC("invoke_contract", caller1, plasmaContractAddress, "provide_liquidity", []string{coin2Slot + ",10000"}, 0, 0, 50000, 10)
-	simpleChainRPC("generate_block")
-	res, err = simpleChainRPC("invoke_contract_offline", caller1, plasmaContractAddress, "get_plasma_coin", []string{coin2Slot}, 0, 0)
-	coin2AfterLiquidityStr := res.Get("api_result").MustString()
-	coin2AfterLiquidity, _ := simplejson.NewJson([]byte(coin2AfterLiquidityStr))
-	println("coin2 after provided liquidity: ", coin2AfterLiquidityStr)
-	assert.True(t, coin2AfterLiquidity.Get("denomination").MustInt() == 10000)
-	assert.True(t, coin2AfterLiquidity.Get("balance").MustInt() == 0)
+	provideLiquidityToPlasmaCoin(caller1, plasmaContractAddress, coin2Slot, 10000)
+	coin2AfterLiquidity, err := getPlasmaCoin(caller1, plasmaContractAddress, coin2Slot)
+	assert.True(t, err == nil)
+	println("coin2 after provided liquidity: ", coin2AfterLiquidity)
+	assert.True(t, coin2AfterLiquidity.Denomination == 10000)
+	assert.True(t, coin2AfterLiquidity.Balance == 0)
+
 	// make txs
-	tx1 := make(map[string]interface{})
-	tx1["ownerPubKey"] = "02e9e0da80e519c937294e7d9ed26786e25a6f6adbdf9952de8e9b2c68b0644c6c"
-	tx1["owner"] = "ADDR_02e9e0da80e519c937294e7d9ed26786e25a6f6adbdf9952de8e9b2c68b0644c6c"
-	tx1["slot"] = coin1Slot
-	tx1["balance"] = 100
-	tx1["prevBlock"] = 0
-	var encodeBuffer bytes.Buffer
-	encoder := cbor.NewEncoder(&encodeBuffer)
-	if ok, encodeErr := encoder.Marshal(tx1); !ok {
-		assert.True(t, ok)
-		println("Error decoding ", encodeErr.Error())
+	tx1 := CreateChildChainTx("ADDR_02e9e0da80e519c937294e7d9ed26786e25a6f6adbdf9952de8e9b2c68b0644c6c",
+		"02e9e0da80e519c937294e7d9ed26786e25a6f6adbdf9952de8e9b2c68b0644c6c", coin1Slot, 100, 0)
+	tx1Bytes, err := EncodeChildChainTx(tx1)
+	if err != nil {
+		assert.True(t, false)
+		println("Error decoding ", err.Error())
 	}
-	tx1Bytes := encodeBuffer.Bytes()
 	fmt.Printf("tx1 Hex = %x\n", tx1Bytes)
 	tx1Hash := sha256.Sum256(tx1Bytes)
 	fmt.Printf("tx1 hash: %x\n", tx1Hash)
 	tx1HashHex := fmt.Sprintf("%x", tx1Hash)
 	tx1["sigHash"] = "00" + tx1HashHex // use "00" + tx hash as sigHash(signature = sig(sigHash, privateKey))
-	if ok, encodeErr := encoder.Marshal(tx1); !ok {
-		assert.True(t, ok)
-		println("Error decoding ", encodeErr.Error())
+	tx1WithSigHashBytes, err := EncodeChildChainTx(tx1)
+	if err != nil {
+		assert.True(t, false)
+		println("Error decoding ", err.Error())
 	}
-	tx1WithSigHashBytes := encodeBuffer.Bytes()
 	tx1WithSigHashHex := fmt.Sprintf("%x", tx1WithSigHashBytes)
 	fmt.Println("tx1 with sig hash: ", tx1WithSigHashHex)
 	tx1Sig := "20fa8cd18cf7223840c6cf823b66c6200e5b18fd5eec86f094742a6930a6c4d0ba316ee3f08f0a38697cf6454f5f3ca4fe72ee9d9d62306f744d934d84c995b702"
@@ -750,8 +807,9 @@ func TestPlasmaRootChain(t *testing.T) {
 	fmt.Println("blockTxsMerkleRoot1: ", blockTxsMerkleRoot1)
 	tx1ProofHex := gosmt.BytesToHex(smt1.CreateMerkleProof(coin1SlotInt))
 	fmt.Println("tx1 proof: ", tx1ProofHex)
-	simpleChainRPC("invoke_contract", caller1, plasmaContractAddress, "submit_block", []string{blockTxsMerkleRoot1}, 0, 0, 50000, 10)
-	simpleChainRPC("generate_block")
+
+	submitBlockToPlasma(caller1, plasmaContractAddress, blockTxsMerkleRoot1)
+
 	res, err = simpleChainRPC("invoke_contract_offline", caller1, plasmaContractAddress, "get_config", []string{" "}, 0, 0)
 	assert.True(t, err == nil)
 	configJSONStr = res.Get("api_result").MustString()
@@ -759,9 +817,10 @@ func TestPlasmaRootChain(t *testing.T) {
 	println("config after submit block: ", configJSONStr)
 	assert.True(t, configJSON.Get("currentBlockNum").MustInt() == 1000)
 	// check tx membership
-	res, err = simpleChainRPC("invoke_contract_offline", caller1, plasmaContractAddress, "checkMembership", []string{tx1HashHex+"," + blockTxsMerkleRoot1 + "," + coin1SlotInt.String() + "," + tx1ProofHex}, 0, 0)
-	tx1MemberShip := res.Get("api_result").MustString() == "true"
-	fmt.Println("tx1MemberShip: ", res.Get("api_result"))
+	tx1MemberShip := checkMembershipInPlasma(caller1, plasmaContractAddress, tx1HashHex, blockTxsMerkleRoot1, coin1Slot, tx1ProofHex)
+	// res, err = simpleChainRPC("invoke_contract_offline", caller1, plasmaContractAddress, "checkMembership", []string{tx1HashHex + "," + blockTxsMerkleRoot1 + "," + coin1SlotInt.String() + "," + tx1ProofHex}, 0, 0)
+	// tx1MemberShip := res.Get("api_result").MustString() == "true"
+	fmt.Println("tx1MemberShip: ", tx1MemberShip)
 	assert.True(t, tx1MemberShip)
 
 	// query childChain blocks
@@ -774,8 +833,7 @@ func TestPlasmaRootChain(t *testing.T) {
 	// normal exit just after deposit
 	coin1SlotBytes, decodeHexErr := hex.DecodeString(coin1Slot)
 	assert.True(t, decodeHexErr == nil)
-	encodeBuffer.Reset()
-	
+
 	// tx: {ownerPubKey: string, owner: string, sigHash: string, hash: string, slot: string, balance: int, prevBlock: int}
 	var coin1DepositTx = make(map[string]interface{})
 	coin1DepositTx["ownerPubKey"] = ecdsatools.BytesToHexWithoutPrefix(pubKeyData[:])
@@ -783,26 +841,24 @@ func TestPlasmaRootChain(t *testing.T) {
 	coin1DepositTx["slot"] = string(coin1SlotBytes)
 	coin1DepositTx["balance"] = 50000
 	coin1DepositTx["prevBlock"] = 0
-	if ok, encodeErr := encoder.Marshal(coin1DepositTx); !ok {
-		assert.True(t, ok)
-		println("Error decoding ", encodeErr.Error())
+	coin1DepositTxBytes, err := EncodeChildChainTx(coin1DepositTx)
+	if err != nil {
+		assert.True(t, false)
+		println("Error decoding ", err.Error())
 	}
-	coin1DepositTxBytes := encodeBuffer.Bytes()
 	coin1DepositTxHex := fmt.Sprintf("%x", coin1DepositTxBytes)
-	encodeBuffer.Reset()
-	if ok, encodeErr := encoder.Marshal(string(coin1Slot)); !ok {
-		assert.True(t, ok)
-		println("Error decoding ", encodeErr.Error())
+	coin1DepositTxHash, err := ComputeChildChainDepositTxHash(coin1Slot) // sha256.Sum256(coin1DepositTxBytes) // deposit tx's hash is coin's slot
+	if err != nil {
+		assert.True(t, false)
+		println("Error decoding ", err.Error())
 	}
-	coin1DepositTxHash := sha256.Sum256(encodeBuffer.Bytes()) // sha256.Sum256(coin1DepositTxBytes) // deposit tx's hash is coin's slot
 	coin1DepositTx["hash"] = string(coin1DepositTxHash[:])
 	coin1DepositTx["sigHash"] = string(coin1DepositTxHash[:])
-	encodeBuffer.Reset()
-	if ok, encodeErr := encoder.Marshal(coin1DepositTx); !ok {
-		assert.True(t, ok)
-		println("Error decoding ", encodeErr.Error())
+	coin1DepositTxBytesWithHash, err := EncodeChildChainTx(coin1DepositTx)
+	if err != nil {
+		assert.True(t, false)
+		println("Error decoding ", err.Error())
 	}
-	coin1DepositTxBytesWithHash := encodeBuffer.Bytes()
 	coin1DepositTxHexWithHash := fmt.Sprintf("%x", coin1DepositTxBytesWithHash)
 	fmt.Println("coin1DepositTxHex: ", coin1DepositTxHex)
 	fmt.Println("coin1DepositTxHash: ", ecdsatools.BytesToHexWithoutPrefix(coin1DepositTxHash[:]))
@@ -815,19 +871,19 @@ func TestPlasmaRootChain(t *testing.T) {
 	fmt.Println("coin1DepositTxSignatureHex: ", coin1DepositTxSignatureHex)
 	fmt.Println("pubKey: ", ecdsatools.BytesToHexWithoutPrefix(pubKeyData[:]))
 	coin1DepositTxBlockNum := 1
-	res, err = simpleChainRPC("invoke_contract", caller1, plasmaContractAddress, "startExit", []string{fmt.Sprintf("%s,%s,%s,%s,%s,%s,%d,%d", coin1Slot, "0",coin1DepositTxHexWithHash, "0", coin1DepositTxProofHex, coin1DepositTxSignatureHex, coin1DepositTxBlockNum, coin1DepositTxBlockNum)}, 0, 0, 50000, 10)
+	res, err = simpleChainRPC("invoke_contract", caller1, plasmaContractAddress, "startExit", []string{fmt.Sprintf("%s,%s,%s,%s,%s,%s,%d,%d", coin1Slot, "0", coin1DepositTxHexWithHash, "0", coin1DepositTxProofHex, coin1DepositTxSignatureHex, coin1DepositTxBlockNum, coin1DepositTxBlockNum)}, 0, 0, 50000, 10)
 	exitTxID := res.Get("txid").MustString()
 	fmt.Println("exit tx id: ", exitTxID, res)
 	assert.True(t, res.Get("exec_succeed").MustBool())
 	simpleChainRPC("generate_block")
-	time.Sleep(time.Duration(7)*time.Second)
+	time.Sleep(time.Duration(7) * time.Second)
 	simpleChainRPC("generate_block")
 	// normal exit started
 	res, err = simpleChainRPC("invoke_contract_offline", caller1, plasmaContractAddress, "getExit", []string{coin1Slot}, 0, 0)
 	exit1 := res.Get("api_result").MustString()
 	println("exit for slot1: ", exit1)
 
-	exitorBalanceBeforeFinalize, _ := getAccountBalanceOfAssetId(caller1, 0)
+	exitorBalanceBeforeFinalize, _ := getAccountBalanceOfAssetID(caller1, 0)
 
 	res, err = simpleChainRPC("invoke_contract", caller1, plasmaContractAddress, "finalizeExit", []string{coin1Slot}, 0, 0, 50000, 10)
 	finalizeExit1Result := res.Get("api_result").MustString() == "true"
@@ -841,12 +897,13 @@ func TestPlasmaRootChain(t *testing.T) {
 	println("exit1AfterFinalize: ", exit1AfterFinalize)
 	assert.True(t, exit1AfterFinalize == "null")
 	// check exitor's balance
-	exitorBalanceAfterFinalize, _ := getAccountBalanceOfAssetId(caller1, 0)
+	exitorBalanceAfterFinalize, _ := getAccountBalanceOfAssetID(caller1, 0)
 	fmt.Println("exitorBalanceBeforeFinalize: ", exitorBalanceBeforeFinalize)
 	fmt.Println("exitorBalanceAfterFinalize: ", exitorBalanceAfterFinalize)
-	assert.True(t, (exitorBalanceBeforeFinalize + 50000) == exitorBalanceAfterFinalize)
+	assert.True(t, (exitorBalanceBeforeFinalize+50000) == exitorBalanceAfterFinalize)
 
 	// TODO: normal exit after child chain transfer
+
 	// TODO: start normal exit
 	// TODO: query exit
 	// TODO: challenge normal exit

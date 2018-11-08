@@ -10,10 +10,12 @@ import (
 	// "github.com/ethereum/go-ethereum/crypto"
 )
 
+// HexToBytes : parse from hex string to bytes
 func HexToBytes(hexStr string) ([]byte, error) {
 	return hex.DecodeString(hexStr)
 }
 
+// HexToBigInt : parse from hex string to big.Int
 func HexToBigInt(hexStr string) *big.Int {
 	n := new(big.Int)
 	n, ok := n.SetString(hexStr, 16)
@@ -23,11 +25,13 @@ func HexToBigInt(hexStr string) *big.Int {
 	return n
 }
 
+// CreateSMTByTxHashes : create sparse merkle root tree by tx hashes
 func CreateSMTByTxHashes(txs map[gosmt.Uint256]gosmt.TreeItemHashValue) *gosmt.SMT {
 	smt := gosmt.NewSMT(txs, gosmt.DefaultSMTDepth)
 	return smt
 }
 
+// CreateSMTBySingleTxTree : create sparse merkle root tree by single leaf tx hash
 func CreateSMTBySingleTxTree(slotHex string, txHash []byte) *gosmt.SMT {
 	blockTxs := make(map[gosmt.Uint256]gosmt.TreeItemHashValue)
 	coinSlotInt := HexToBigInt(slotHex)
@@ -36,6 +40,7 @@ func CreateSMTBySingleTxTree(slotHex string, txHash []byte) *gosmt.SMT {
 	return smt
 }
 
+// BigIntToBytes32 : parse big.Int to [32]byte
 func BigIntToBytes32(value *big.Int) [32]byte {
 	var result [32]byte
 	src := value.Bytes()[0:len(result)]
@@ -49,6 +54,7 @@ func BigIntToBytes32(value *big.Int) [32]byte {
 	return result
 }
 
+// TrySignRecoverableSignature : sign signature which is recoverable
 func TrySignRecoverableSignature(privateKey *ecdsa.PrivateKey, digestHash []byte) (string, error) {
 	signature, err := ecdsatools.SignSignatureRecoverable(privateKey, ecdsatools.ToHashDigest(digestHash))
 	if err != nil {
@@ -58,6 +64,7 @@ func TrySignRecoverableSignature(privateKey *ecdsa.PrivateKey, digestHash []byte
 	return signatureHex, nil
 }
 
+// EthSignatureToFcSignature : parse from eth signature hex format to fc signature hex format
 func EthSignatureToFcSignature(signatureHex string) string {
 	signatureBytes, err := ecdsatools.HexToBytes(signatureHex)
 	if err != nil {
