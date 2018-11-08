@@ -1059,7 +1059,6 @@ namespace uvm {
 					return false;
 				}
 				Instruction i = *(ci->u.l.savedpc++);
-
 #ifdef DEBUG
 				ci->u.l.savedpc--;
 				printf("%s\tline:%d\n", luaP_opnames[GET_OPCODE(i)],current_line());
@@ -1573,7 +1572,7 @@ namespace uvm {
 						b = luaD_poscall(L, ci, ra, (b != 0 ? b - 1 : cast_int(L->top - ra)));
 
 						if (ci->callstatus & CIST_FRESH) {  /* local 'ci' still from callee */
-							union_change_state(L, lua_VMState::LVM_STATE_HALT);
+							//union_change_state(L, lua_VMState::LVM_STATE_HALT);
 							return false;  /* external invocation: return */
 						}
 						else {  /* invocation via reentry: continue execution */

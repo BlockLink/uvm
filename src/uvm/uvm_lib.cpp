@@ -2162,7 +2162,7 @@ end
                 return execute_contract_api_by_stream(L, stream, "start", arg1, result_json_string) == LUA_OK;
             }
 
-			bool call_last_contract_api(lua_State* L, const std::string& contract_id, const std::string& api_name, const std::string& api_arg, std::string* result_json_string) {
+			bool call_last_contract_api(lua_State* L, const std::string& contract_id, const std::string& api_name, const std::string& api_arg, const std::string& caller_address, const std::string& caller_pubkey, std::string* result_json_string) {
 				using uvm::lua::api::global_uvm_chain_api;
 				try {
 					lua_fill_contract_info_for_use(L);
@@ -2181,6 +2181,10 @@ end
 						}
 					}
 
+					//wrap api (push contract api stack when called)
+					auto contract_table_index = lua_gettop(L);
+					luaL_wrap_contract_apis(L, contract_table_index, &contract_table_index);
+
 					lua_getfield(L, -1, api_name.c_str());
 					if (lua_isfunction(L, -1))
 					{
@@ -2198,6 +2202,14 @@ end
 							lua_pushstring(L, api_arg.c_str());
 						}
 
+						add_global_string_variable(L, "caller", caller_pubkey.c_str());
+						add_global_string_variable(L, "caller_address", caller_address.c_str());
+
+						if (api_name == "init") {
+							UvmStateValue state_value;
+							state_value.int_value = 1;
+							set_lua_state_value(L, UVM_CONTRACT_INITING, state_value, LUA_STATE_VALUE_INT);
+						}
 						int status = lua_pcall(L, 2, 1, 0);
 						if (status != LUA_OK)
 						{
@@ -2225,6 +2237,9 @@ end
 					}
 
 					lua_pop(L, 1);
+
+					//commit 
+					luaL_commit_storage_changes(L);
 					return true;
 				}
 				catch (const std::exception& e) {
