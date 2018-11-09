@@ -69,13 +69,13 @@ static void save(LexState *ls, int c) {
 }
 
 
-void luaX_init(lua_State *L) {
+void luaX_init(lua_State *L) {  //delete;  modify isreseved move to llex.h ?
     int i;
 	uvm_types::GcString *e = luaS_newliteral(L, LUA_ENV);  /* create env name */
-    for (i = 0; i < NUM_RESERVED; i++) {
+    /*for (i = 0; i < NUM_RESERVED; i++) {
 		uvm_types::GcString *ts = luaS_new(L, luaX_tokens[i]);
-        ts->extra = cast_byte(i + 1);  /* reserved word */
-    }
+        ts->extra = cast_byte(i + 1);  // reserved word 
+    }*/
 }
 
 
@@ -129,6 +129,16 @@ uvm_types::GcString *luaX_newstring(LexState *ls, const char *str, size_t l) {
     lua_State *L = ls->L;
     TValue *o;  /* entry for 'str' */
 	uvm_types::GcString *ts = luaS_newlstr(L, str, l);  /* create new string */
+
+	// if its reservedword then set extra 
+	for (int i = 0; i < NUM_RESERVED; i++) {
+		auto reservedword = luaX_tokens[i];
+		auto len = strlen(reservedword);
+		if (l == len && (memcmp(str, reservedword, l*sizeof(char)) == 0)) { /* reserved word? */
+			ts->extra = cast_byte(i + 1); // set extra
+		}
+	}
+
     setsvalue2s(L, L->top++, ts);  /* temporarily anchor it in stack */
     o = luaH_set(L, ls->h, L->top - 1);
     if (ttisnil(o)) {  /* not in use yet? */
@@ -561,11 +571,11 @@ static int llex(LexState *ls, SemInfo *seminfo) {
                 ts = luaX_newstring(ls, luaZ_buffer(ls->buff),
                     luaZ_bufflen(ls->buff));
                 seminfo->ts = ts;
-                if (isreserved(ts))  /* reserved word? */
-                    return ts->extra - 1 + FIRST_RESERVED;
-                else {
-                    return TK_NAME;
-                }
+				
+				if (isreserved(ts)) {
+					return ts->extra - 1 + FIRST_RESERVED;
+				}
+				return TK_NAME;
             }
             else {  /* single-char tokens (+ - / ...) */
                 int c = ls->current;

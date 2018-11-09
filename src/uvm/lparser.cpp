@@ -186,6 +186,9 @@ static int registerlocalvar(LexState *ls, uvm_types::GcString *varname) {
 	}
 	int newsize = f->locvars.size();
     while (oldsize < newsize) f->locvars[oldsize++].varname = nullptr;
+	if (fs->nlocvars == newsize) {
+		f->locvars.resize(fs->nlocvars + 1); //fix
+	}
     f->locvars[fs->nlocvars].varname = varname;
     if (testnext(ls, ':'))
     {
@@ -537,7 +540,7 @@ static uvm_types::GcProto *addprototype(LexState *ls) {
 		int newsize = f->ps.size();
         while (oldsize < newsize) f->ps[oldsize++] = nullptr;
     }
-	if (fs->np >= (f->ps.size() - 1)) {
+	if (fs->np >= ((int)(f->ps.size()) - 1)) {
 		f->ps.resize(f->ps.size() + 1);
 	}
     f->ps[fs->np++] = clp = luaF_newproto(L);
