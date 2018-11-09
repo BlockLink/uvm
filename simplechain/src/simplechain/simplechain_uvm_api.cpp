@@ -668,7 +668,7 @@ namespace simplechain {
 				uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
 				try {
 					auto evaluator = get_contract_evaluator(L);
-					return (uint32_t)evaluator->get_chain()->latest_block().block_number;
+					return (uint32_t) evaluator->get_chain()->latest_block().block_number;
 				}
 				catch (...)
 				{

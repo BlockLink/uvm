@@ -1267,7 +1267,7 @@ static bool lua_get_contract_apis_direct(lua_State *L, UvmModuleByteStream *stre
             }
 			for(const auto &item : contract_apis_set)
 			{
-				contract_apis[apis_count] = (char*)malloc((item.length() + 1) * sizeof(char));
+				contract_apis[apis_count] = (char*)lua_malloc(L, (item.length() + 1) * sizeof(char));
 				memset(contract_apis[apis_count], 0x0, (item.length() + 1) * sizeof(char));
 				memcpy(contract_apis[apis_count], item.c_str(), sizeof(char) * (item.length() + 1));
 				contract_apis[apis_count][item.length()] = '\0';
@@ -1537,7 +1537,7 @@ int luaL_import_contract_module_from_address(lua_State *L)
                 }
                 if (strcmp(key, "locals") == 0)
                     continue;
-                contract_apis[apis_count] = (char*)malloc((strlen(key) + 1) * sizeof(char));
+                contract_apis[apis_count] = (char*)lua_malloc(L, (strlen(key) + 1) * sizeof(char));
 				memset(contract_apis[apis_count], 0x0, (strlen(key) + 1) * sizeof(char));
                 if (!contract_apis[apis_count])
                 {
@@ -1826,7 +1826,7 @@ int luaL_import_contract_module(lua_State *L)
                     uvm::lua::lib::notify_lua_state_stop(L);
                     return 0;
                 }
-                contract_apis[apis_count] = (char*)malloc((strlen(key) + 1) * sizeof(char));
+                contract_apis[apis_count] = (char*)lua_malloc(L, (strlen(key) + 1) * sizeof(char));
 				memset(contract_apis[apis_count], 0x0, (strlen(key) + 1) * sizeof(char));
                 memcpy(contract_apis[apis_count], key, sizeof(char) * (strlen(key) + 1));
 				contract_apis[apis_count][strlen(key)] = '\0';

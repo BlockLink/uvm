@@ -28,7 +28,7 @@ namespace simplechain {
 	}
 
 	long StreamFileWrapper::common_tell() {
-		return stream->tellg();
+		return (long) stream->tellg();
 	}
 
 	int ContractHelper::common_fread_int(LikeFile* fp, int* dst_int)

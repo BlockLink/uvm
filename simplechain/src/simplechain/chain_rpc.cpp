@@ -40,8 +40,8 @@ namespace simplechain {
 		RpcResultType transfer(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			const auto& from_addr = params.at(0).as_string();
 			const auto& to_addr = params.at(1).as_string();
-			auto asset_id = params.at(2).as_uint64();
-			auto amount = params.at(3).as_int64();
+			auto asset_id = (asset_id_t) params.at(2).as_uint64();
+			auto amount = (share_type) params.at(3).as_int64();
 			auto tx = std::make_shared<transaction>();
 			auto op = operations_helper::transfer(from_addr, to_addr, asset_id, amount);
 			tx->tx_time = fc::time_point_sec(fc::time_point::now());
