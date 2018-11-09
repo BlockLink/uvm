@@ -207,5 +207,4 @@ FakesAssemblies/
 /libuvm.a
 /simplechain_runner
 /uvm_single_exec
-
-
+/test/src/uvmtest/go.mod
