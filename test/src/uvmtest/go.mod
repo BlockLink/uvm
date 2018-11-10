@@ -11,5 +11,4 @@ require (
 	github.com/stretchr/testify v1.2.2
 	github.com/zoowii/ecdsatools v0.0.0-20181107071511-89a3e8b6512f
 	github.com/zoowii/go_sparse_merkle_tree v0.0.0-20181023101518-399b2dee0dcf
-	rsc.io/quote v1.5.2
 )
