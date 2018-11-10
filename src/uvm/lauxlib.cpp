@@ -2637,7 +2637,7 @@ static bool is_uvm_array_table(UvmTableMapP map) {
  * @param ss
  * @param is_array whether treat it as a json array(table have hash port and array part)
  */
-static void luatablemap_to_json_stream(UvmTableMapP map, std::stringstream &ss, bool is_array=false)
+static void luatablemap_to_json_stream(UvmTableMapP map, uvm::util::stringbuffer& ss, bool is_array=false)
 {
 	if(!is_array)
 	{
@@ -2646,41 +2646,41 @@ static void luatablemap_to_json_stream(UvmTableMapP map, std::stringstream &ss, 
 	}
 
 	if (is_array)
-		ss << "[";
+		ss.put("[");
 	else
-		ss << "{";
+		ss.put("{");
     for (auto it = map->begin(); it != map->end(); ++it)
     {
         if (it != map->begin())
-            ss << ",";
+            ss.put(",");
         struct UvmStorageValue value = it->second;
 		if (!is_array)
 		{
 			std::string key(it->first);
-			ss << "\"" << uvm::util::escape_string(key) << "\":";
+			ss.put("\"")->put(uvm::util::escape_string(key))->put("\":");
 		}
         switch (value.type)
         {
 		case uvm::blockchain::StorageValueTypes::storage_value_null:
-            ss << "null";
+            ss.put("null");
             break;
 		case uvm::blockchain::StorageValueTypes::storage_value_bool:
-            ss << (value.value.bool_value ? "true" : "false");
+            ss.put(value.value.bool_value ? "true" : "false");
             break;
 		case uvm::blockchain::StorageValueTypes::storage_value_int:
-            ss << value.value.int_value;
+            ss.put(value.value.int_value);
             break;
 		case uvm::blockchain::StorageValueTypes::storage_value_number:
-            ss << value.value.number_value;
+            ss.put(value.value.number_value);
             break;
 		case uvm::blockchain::StorageValueTypes::storage_value_string:
         {
             auto str=std::string(value.value.string_value);
-            ss << "\"" << uvm::util::escape_string(str) << "\"";
+            ss.put("\"")->put(uvm::util::escape_string(str))->put("\"");
             break;
         }
 		case uvm::blockchain::StorageValueTypes::storage_value_userdata:
-            ss << "\"userdata\"";
+            ss.put("\"userdata\"");
 		default: 
 		{
 			if (uvm::blockchain::is_any_table_storage_value_type(value.type)
@@ -2689,14 +2689,14 @@ static void luatablemap_to_json_stream(UvmTableMapP map, std::stringstream &ss, 
 				luatablemap_to_json_stream(value.value.table_value, ss);
 				break;
 			}
-			ss << "\"userdata\"";
+			ss.put("\"userdata\"");
 		}
         }
     }
 	if (is_array)
-		ss << "]";
+		ss.put("]");
 	else
-		ss << "}";
+		ss.put("}");
 }
 
 static const char *tojsonstring_with_nested(lua_State *L, int idx, size_t *len, std::list<const void*> &jsons)
@@ -2730,7 +2730,7 @@ static const char *tojsonstring_with_nested(lua_State *L, int idx, size_t *len, 
             jsons.push_back(addr);
             UvmTableMapP map = luaL_create_lua_table_map_in_memory_pool(L);
             luaL_traverse_table_with_nested(L, idx, lua_table_to_map_traverser_with_nested, map, jsons, 0);
-            std::stringstream ss;
+            uvm::util::stringbuffer ss;
             luatablemap_to_json_stream(map, ss);
 			std::string result_str(ss.str());
             if (len)

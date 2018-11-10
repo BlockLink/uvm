@@ -468,5 +468,37 @@ namespace uvm
 			return decode_result;
 		}
 
+		stringbuffer* stringbuffer::put(const std::string& value) {
+			if (value.empty())
+				return this;
+			_parts.push_back(value);
+			return this;
+		}
+		stringbuffer* stringbuffer::put(int32_t value) {
+			return put(std::to_string(value));
+		}
+		stringbuffer* stringbuffer::put(int64_t value) {
+			return put(std::to_string(value));
+		}
+		stringbuffer* stringbuffer::put(uint32_t value) {
+			return put(std::to_string(value));
+		}
+		stringbuffer* stringbuffer::put(uint64_t value) {
+			return put(std::to_string(value));
+		}
+		stringbuffer* stringbuffer::put(double value) {
+			return put(std::to_string(value));
+		}
+		stringbuffer* stringbuffer::put_bool(bool value) {
+			std::string value_str(value ? "true" : "false");
+			return put(value_str);
+		}
+		void stringbuffer::clear() {
+			_parts.clear();
+		}
+		std::string stringbuffer::str() const {
+			return string_join(_parts.begin(), _parts.end(), "");
+		}
+
 	} // end namespace uvm::util
 } // end namespace uvm
