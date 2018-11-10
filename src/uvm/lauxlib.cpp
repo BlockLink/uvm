@@ -1384,15 +1384,13 @@ void lua_fill_contract_info_for_use(lua_State *L)
     lua_pop(L, 3);
 }
 
-static std::string unwrap_get_contract_address(std::string namestr)
+static std::string unwrap_get_contract_address(const std::string& namestr)
 {
-    std::string address;
-    std::stringstream ss(namestr.substr(strlen(ADDRESS_CONTRACT_PREFIX)));
-    ss >> address;
+	const auto& address = namestr.substr(strlen(ADDRESS_CONTRACT_PREFIX));
     return address;
 }
 
-static UvmModuleByteStream *unwrap_get_contract_stream(std::string namestr)
+static UvmModuleByteStream *unwrap_get_contract_stream(const std::string& namestr)
 {
     intptr_t stream_p;
     std::stringstream ss(namestr.substr(strlen(STREAM_CONTRACT_PREFIX)));
@@ -1834,10 +1832,6 @@ int luaL_import_contract_module(lua_State *L)
             }
             // if the contract info stored in uvm before, fetch and check whether the apis are the same. if not the same, error
 			auto stored_contract_info = std::make_shared<UvmContractInfo>();
-            auto clear_stored_contract_info = [&]() {
-                //if (!is_stream)
-                //    global_uvm_chain_api->free_contract_info(L, unwrap_name.c_str(), stored_contract_apis, &stored_contract_apis_count);
-            };
             std::string address = unwrap_name;
             if (!is_pointer && !is_stream)
             {
@@ -1849,15 +1843,6 @@ int luaL_import_contract_module(lua_State *L)
             }
             if (global_uvm_chain_api->get_stored_contract_info_by_address(L, address.c_str(), stored_contract_info))
             {
-                struct exit_scope_of_stored_contract_info
-                {
-                    std::function<void(void)> _clear_stored_contract_info;
-                    exit_scope_of_stored_contract_info(std::function<void(void)> clear_stored_contract_info)
-                        : _clear_stored_contract_info(clear_stored_contract_info) {}
-                    ~exit_scope_of_stored_contract_info(){
-                        _clear_stored_contract_info();
-                    }
-                } exit_scope1(clear_stored_contract_info);
                 // found this contract stored in the uvm api before
                 if (stored_contract_info->contract_apis.size() != apis_count)
                 {
@@ -2176,9 +2161,8 @@ std::shared_ptr<UvmModuleByteStream> lua_common_open_contract(lua_State *L, cons
     std::string namestr(name);
     if (uvm::util::starts_with(namestr, ADDRESS_CONTRACT_PREFIX))
     {
-        std::string pointer_str = namestr.substr(strlen(ADDRESS_CONTRACT_PREFIX), namestr.length() - strlen(ADDRESS_CONTRACT_PREFIX));
-        std::string address;
-        std::stringstream(pointer_str) >> address;
+        const std::string& pointer_str = namestr.substr(strlen(ADDRESS_CONTRACT_PREFIX), namestr.length() - strlen(ADDRESS_CONTRACT_PREFIX));
+		const std::string& address = pointer_str;
         auto stream = global_uvm_chain_api->open_contract_by_address(L, address.c_str());
         if (stream && stream->contract_level != CONTRACT_LEVEL_FOREVER && (stream->contract_name.length() < 1 || stream->contract_state == CONTRACT_STATE_DELETED))
         {
@@ -2202,7 +2186,7 @@ std::shared_ptr<UvmModuleByteStream> lua_common_open_contract(lua_State *L, cons
     {
         std::string p_str = namestr.substr(strlen(STREAM_CONTRACT_PREFIX), namestr.length() - strlen(STREAM_CONTRACT_PREFIX));
         intptr_t p;
-        std::stringstream(p_str) >> p;
+        std::stringstream(p_str) >> p; // TODO: not use stringstream
 		auto stream = std::make_shared<UvmModuleByteStream>(*(UvmModuleByteStream*)p);
         return stream;
     }
@@ -2748,10 +2732,10 @@ static const char *tojsonstring_with_nested(lua_State *L, int idx, size_t *len, 
             luaL_traverse_table_with_nested(L, idx, lua_table_to_map_traverser_with_nested, map, jsons, 0);
             std::stringstream ss;
             luatablemap_to_json_stream(map, ss);
-			const auto& result_str = ss.str();
+			std::string result_str(ss.str());
             if (len)
                 *len = result_str.size();
-            lua_pushlstring(L, result_str.c_str(), ss.str().size());
+            lua_pushlstring(L, result_str.c_str(), result_str.size());
         }
         break;
         default:

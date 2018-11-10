@@ -245,7 +245,6 @@ func TestPairs(t *testing.T) {
 	assert.True(t, strings.Contains(out, `[[100,200],["a",1],["m",234],["n",123],["ab",1]]`))
 }
 
-
 func TestStringGmatch(t *testing.T) {
 	execCommand(uvmCompilerPath, "../../tests_lua/test_gmatch.lua")
 	out, _ := execCommand(uvmSinglePath, "../../tests_lua/test_gmatch.lua.out")
@@ -1065,10 +1064,10 @@ func TestCallContractManyTimes(t *testing.T) {
 	fmt.Printf("contract address: %s\n", contract1Addr)
 	simpleChainRPC("generate_block")
 
-	maxRunCount := 10000
-	for i:=0;i<maxRunCount;i++ {
-		simpleChainRPC("invoke_contract", caller1, contract1Addr, "update", []string{" "}, 0, 0, 50000, 10)
-		simpleChainRPC("generate_block")
+	maxRunCount := 1
+	for i := 0; i < maxRunCount; i++ {
+		//simpleChainRPC("invoke_contract", caller1, contract1Addr, "update", []string{" "}, 0, 0, 50000, 10)
+		//simpleChainRPC("generate_block")
 		res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "query", []string{" "}, 0, 0)
 		assert.True(t, err == nil)
 		num := res.Get("api_result").MustString()

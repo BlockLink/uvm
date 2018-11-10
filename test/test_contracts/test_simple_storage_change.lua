@@ -9,7 +9,10 @@ function M:init()
 end
 
 function M:update(arg: string)
-    self.storage.num = self.storage.num + 1
+    for i=1,1000,1 do
+        self.storage.num = self.storage.num + 1
+        let a = tostring(self.storage.num) .. "a"
+    end
     let numStr = tostring(self.storage.num)
     emit StorageUpdated(numStr)
 end

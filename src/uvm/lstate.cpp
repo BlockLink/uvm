@@ -324,6 +324,23 @@ void *lua_malloc(lua_State *L, size_t size)
 	return L->gc_state->gc_malloc(size);
 }
 
+void* lua_realloc(lua_State *L, void* addr, size_t old_size, size_t new_size)
+{
+	if (old_size >= new_size)
+		return addr;
+	if (old_size == 0) {
+		return lua_malloc(L, new_size);
+	}
+	auto p = lua_malloc(L, new_size);
+	if (!p)
+		return nullptr;
+	if (addr) {
+		memcpy(p, addr, old_size);
+		lua_free(L, addr);
+	}
+	return p;
+}
+
 void *lua_calloc(lua_State *L, size_t element_count, size_t element_size)
 {
 	auto p = L->gc_state->gc_malloc(element_count * element_size);

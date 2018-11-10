@@ -221,6 +221,8 @@ void *lua_malloc(lua_State *L, size_t size);
 
 void *lua_calloc(lua_State *L, size_t element_count, size_t element_size);
 
+void* lua_realloc(lua_State *L, void* addr, size_t old_size, size_t new_size);
+
 void lua_free(lua_State *L, void *address);
 
 

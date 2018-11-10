@@ -131,6 +131,11 @@
     <ClInclude Include="Keccak.hpp" />
     <ClInclude Include="uvm_api.demo.h" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\uvm.vcxproj">
+      <Project>{5bdb377f-63a6-494c-8e0b-e6ec7eaea081}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

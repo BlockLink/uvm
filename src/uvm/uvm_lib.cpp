@@ -1594,11 +1594,6 @@ end
                 return closure;
             }
 
-            void free_bytecode_stream(UvmModuleByteStreamP stream)
-            {
-				delete stream;
-            }
-
 			uvm_types::GcLClosure *luaU_undump_from_stream(lua_State *L, UvmModuleByteStream *stream, const char *name)
             {
                 ZIO z;
@@ -1975,14 +1970,7 @@ end
             {
 				return malloc_managed_string(L, sizeof(char) * (strlen(init_data) + 1), init_data);
             }
-
-            UvmModuleByteStream *malloc_managed_byte_stream(lua_State *L)
-            {
-				auto p = static_cast<UvmModuleByteStream*>(L->gc_state->gc_malloc(sizeof(UvmModuleByteStream)));
-				memset(p, 0x0, sizeof(UvmModuleByteStream));
-				return p;
-            }
-
+			
             bool run_compiledfile(lua_State *L, const char *filename)
             {
                 return lua_docompiledfile(L, filename) == 0;
