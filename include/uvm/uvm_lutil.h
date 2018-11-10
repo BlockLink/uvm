@@ -232,6 +232,21 @@ namespace uvm
 		private:
 			DecodeResult decode_non_empty(const BufferSlice& bytes);
 		};
+		
+		class stringbuffer {
+		private:
+			std::vector<std::string> _parts;
+		public:
+			stringbuffer* put(const std::string& value);
+			stringbuffer* put(int32_t value);
+			stringbuffer* put(int64_t value);
+			stringbuffer* put(uint32_t value);
+			stringbuffer* put(uint64_t value);
+			stringbuffer* put(double value);
+			stringbuffer* put_bool(bool value);
+			void clear();
+			std::string str() const;
+		};
 
 	} // end namespace uvm::util
 } // end namespace uvm
