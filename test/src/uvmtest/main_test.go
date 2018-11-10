@@ -1045,10 +1045,10 @@ func TestCallContractManyTimes(t *testing.T) {
 	fmt.Printf("contract address: %s\n", contract1Addr)
 	simpleChainRPC("generate_block")
 
-	maxRunCount := 10000
-	for i:=0;i<maxRunCount;i++ {
-		simpleChainRPC("invoke_contract", caller1, contract1Addr, "update", []string{" "}, 0, 0, 50000, 10)
-		simpleChainRPC("generate_block")
+	maxRunCount := 1
+	for i := 0; i < maxRunCount; i++ {
+		//simpleChainRPC("invoke_contract", caller1, contract1Addr, "update", []string{" "}, 0, 0, 50000, 10)
+		//simpleChainRPC("generate_block")
 		res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "query", []string{" "}, 0, 0)
 		assert.True(t, err == nil)
 		num := res.Get("api_result").MustString()

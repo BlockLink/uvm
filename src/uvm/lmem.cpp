@@ -83,12 +83,12 @@ void *luaM_realloc_(lua_State *L, void *block, size_t osize, size_t nsize) {
     if (nsize > realosize && g->gcrunning)
         luaC_fullgc(L, 1);  /* force a GC whenever possible */
 #endif
-    newblock = (*g->frealloc)(g->ud, block, osize, nsize);
+	newblock = (*g->frealloc)(g->ud, block, osize, nsize); // FIXME
     if (newblock == nullptr && nsize > 0) {
         lua_assert(nsize > realosize);  /* cannot fail when shrinking a block */
         if (g->version) {  /* is state fully built? */
             luaC_fullgc(L, 1);  /* try to free some memory... */
-            newblock = (*g->frealloc)(g->ud, block, osize, nsize);  /* try again */
+			newblock = (*g->frealloc)(g->ud, block, osize, nsize);  /* try again */
         }
         if (newblock == nullptr)
             luaD_throw(L, LUA_ERRMEM);
@@ -98,3 +98,28 @@ void *luaM_realloc_(lua_State *L, void *block, size_t osize, size_t nsize) {
     return newblock;
 }
 
+void *luaM_realloc_inState(lua_State *L, void *block, size_t osize, size_t nsize) {
+	void *newblock;
+	global_State *g = state_G(L);
+	size_t realosize = (block) ? osize : 0;
+	lua_assert((realosize == 0) == (block == nullptr));
+#if defined(HARDMEMTESTS)
+	if (nsize > realosize && g->gcrunning)
+		luaC_fullgc(L, 1);  /* force a GC whenever possible */
+#endif
+	// TODO: free, malloc and copy
+	newblock = lua_realloc(L, block, osize, nsize);
+	// newblock = (*g->frealloc)(g->ud, block, osize, nsize);
+	if (newblock == nullptr && nsize > 0) {
+		lua_assert(nsize > realosize);  /* cannot fail when shrinking a block */
+		if (g->version) {  /* is state fully built? */
+			luaC_fullgc(L, 1);  /* try to free some memory... */
+			newblock = lua_realloc(L, block, osize, nsize); // (*g->frealloc)(g->ud, block, osize, nsize);  /* try again */
+		}
+		if (newblock == nullptr)
+			luaD_throw(L, LUA_ERRMEM);
+	}
+	lua_assert((nsize == 0) == (newblock == nullptr));
+	g->GCdebt = (g->GCdebt + nsize) - realosize;
+	return newblock;
+}

@@ -8,3 +8,4 @@
 /plasma_root_chain.lua.gpc
 /validator_manager_contract.lua.gpc
 /validator_manager_contract.lua.out
+/test_simple_storage_change.lua.gpc

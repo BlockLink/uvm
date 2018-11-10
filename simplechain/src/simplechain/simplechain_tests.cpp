@@ -15,14 +15,14 @@
 
 using namespace simplechain;
 
+//
+//#define BOOST_TEST_MODULE SimpleGcTestCases
+//#include <boost/test/unit_test.hpp>
 
-#define BOOST_TEST_MODULE SimpleGcTestCases
-#include <boost/test/unit_test.hpp>
+//BOOST_AUTO_TEST_SUITE(simplechain_test_suite)
 
-BOOST_AUTO_TEST_SUITE(simplechain_test_suite)
-
-BOOST_AUTO_TEST_CASE(rlp_test)
-{
+//BOOST_AUTO_TEST_CASE(rlp_test)
+//{
 	//using namespace uvm::util;
 	//RlpEncoder encoder;
 	//RlpDecoder decoder;
@@ -54,9 +54,10 @@ BOOST_AUTO_TEST_CASE(rlp_test)
 	//auto d8 = decoder.decode(encoded8)->to_string(); // "Lorem ipsum dolor sit amet, consectetur adipisicing elit"
 
 	//BOOST_CHECK(true);
-}
+//}
 
-BOOST_AUTO_TEST_CASE(simple_chain_demo_test)
+// BOOST_AUTO_TEST_CASE(simple_chain_demo_test)
+void test2()
 {
 	std::cout << "Hello, simplechain based on uvm" << std::endl;
 	try {
@@ -103,24 +104,24 @@ BOOST_AUTO_TEST_CASE(simple_chain_demo_test)
 		FC_ASSERT(state == "\"COMMON\"");
 
 		const auto& chain_state = chain->get_state_json();
-		BOOST_CHECK(true);
+		//BOOST_CHECK(true);
 	}
 	catch (const std::exception& e) {
 		std::cerr << e.what() << std::endl;
-		BOOST_CHECK(false);
+		//BOOST_CHECK(false);
 	}
 }
 
-BOOST_AUTO_TEST_SUITE_END()
+//BOOST_AUTO_TEST_SUITE_END()
 
 #ifdef RUN_BOOST_TESTS
 
-int hi(int argc, char* argv[])
+int main(int argc, char* argv[])
 {
-	auto res = ::boost::unit_test::unit_test_main(&init_unit_test_suite, argc, argv);
-	int *a = new int();
-	_CrtDumpMemoryLeaks();
-	return res;
+	//auto res = ::boost::unit_test::unit_test_main(&init_unit_test_suite, argc, argv);
+	test2();
+	// _CrtDumpMemoryLeaks();
+	return 0; // res;
 }
 
 #endif

@@ -338,8 +338,6 @@ namespace uvm
 
 			char *malloc_and_copy_string(lua_State *L, const char *init_data);
 
-            UvmModuleByteStream *malloc_managed_byte_stream(lua_State *L);
-
             bool run_compiledfile(lua_State *L, const char *filename);
             bool run_compiled_bytestream(lua_State *L, void *stream_addr);
 
@@ -367,12 +365,6 @@ namespace uvm
 			int execute_contract_api_by_stream(lua_State *L, UvmModuleByteStreamP stream, const char *api_name, const char *arg1, std::string *result_json_string);
 
             const char *get_contract_id_in_api(lua_State *L);
-
-            // UvmStorageValue luvm_get_storage(lua_State *L, const char *contract_id, const char *name);
-            
-			//bool luvm_set_storage(lua_State *L, const char *contract_id, const char *name, UvmStorageValue value);
-
-            void free_bytecode_stream(UvmModuleByteStreamP stream);
 
             /**
             * diff from execute_contract_api is the contract bytestream is loaded by pointer and uvm

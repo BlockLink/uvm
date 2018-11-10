@@ -1396,6 +1396,14 @@ end
                         lua_free(L, list);
                     }
 
+					auto contract_id_stack_value_in_state_node = uvm::lua::lib::get_lua_state_value_node(L, GLUA_CONTRACT_API_CALL_STACK_STATE_MAP_KEY);
+					if (contract_id_stack_value_in_state_node.type == LUA_STATE_VALUE_POINTER && nullptr != contract_id_stack_value_in_state_node.value.pointer_value)
+					{
+						auto contract_id_stack = (std::stack<contract_info_stack_entry>*)contract_id_stack_value_in_state_node.value.pointer_value;
+						delete contract_id_stack;
+						contract_id_stack_value_in_state_node.value.pointer_value = nullptr;
+					}
+
 					int64_t *insts_executed_count = get_lua_state_value(L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
                     if (nullptr != insts_executed_count)
                     {
@@ -1591,11 +1599,6 @@ end
 					return nullptr;
                 fclose(f);
                 return closure;
-            }
-
-            void free_bytecode_stream(UvmModuleByteStreamP stream)
-            {
-				delete stream;
             }
 
             LClosure *luaU_undump_from_stream(lua_State *L, UvmModuleByteStream *stream, const char *name)
@@ -1987,11 +1990,6 @@ end
 			char *malloc_and_copy_string(lua_State *L, const char *init_data)
             {
 				return malloc_managed_string(L, sizeof(char) * (strlen(init_data) + 1), init_data);
-            }
-
-            UvmModuleByteStream *malloc_managed_byte_stream(lua_State *L)
-            {
-                return (UvmModuleByteStream*)lua_calloc(L, 1, sizeof(UvmModuleByteStream));
             }
 
             bool run_compiledfile(lua_State *L, const char *filename)
