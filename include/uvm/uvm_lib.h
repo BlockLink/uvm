@@ -54,8 +54,8 @@ enum UvmStateValueType {
 };
 
 typedef union _UvmStateValue {
-    int int_value;
-    int *int_pointer_value;
+	int64_t int_value;
+	int64_t *int_pointer_value;
     const char *string_value;
     void *pointer_value;
 } UvmStateValue;
@@ -133,11 +133,11 @@ namespace uvm
                 /************************************************************************/
                 /* set how many lua vm instructions can run in the lua stack            */
                 /************************************************************************/
-                void set_instructions_limit(int limit);
+                void set_instructions_limit(int64_t limit);
                 /************************************************************************/
                 /* the the max limit instructions count in the lua stack                */
                 /************************************************************************/
-                int get_instructions_limit() const;
+				int64_t get_instructions_limit() const;
                 /************************************************************************/
                 /* get how many lua vm instructions ran now in the lua stack            */
                 /************************************************************************/
@@ -338,8 +338,6 @@ namespace uvm
 
 			char *malloc_and_copy_string(lua_State *L, const char *init_data);
 
-            UvmModuleByteStream *malloc_managed_byte_stream(lua_State *L);
-
             bool run_compiledfile(lua_State *L, const char *filename);
             bool run_compiled_bytestream(lua_State *L, void *stream_addr);
 
@@ -367,12 +365,6 @@ namespace uvm
 			int execute_contract_api_by_stream(lua_State *L, UvmModuleByteStreamP stream, const char *api_name, const char *arg1, std::string *result_json_string);
 
             const char *get_contract_id_in_api(lua_State *L);
-
-            // UvmStorageValue luvm_get_storage(lua_State *L, const char *contract_id, const char *name);
-            
-			//bool luvm_set_storage(lua_State *L, const char *contract_id, const char *name, UvmStorageValue value);
-
-            void free_bytecode_stream(UvmModuleByteStreamP stream);
 
             /**
             * diff from execute_contract_api is the contract bytestream is loaded by pointer and uvm
@@ -447,7 +439,7 @@ namespace uvm
         char error_msg[LUA_COMPILE_ERROR_MAX_LENGTH+1];		 \
         memset(error_msg, 0x0, sizeof(error_msg));		     \
         snprintf(error_msg, LUA_COMPILE_ERROR_MAX_LENGTH, error_format, ##__VA_ARGS__);				\
-        error_msg[LUA_COMPILE_ERROR_MAX_LENGTH-1] = '\-';       \
+        error_msg[LUA_COMPILE_ERROR_MAX_LENGTH-1] = '\0';       \
         memcpy(error, error_msg, sizeof(char)*(1 + strlen(error_msg)));								\
      }												\
      global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, error_format, ##__VA_ARGS__);		\

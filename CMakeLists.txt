@@ -4,6 +4,10 @@ project(uvm)
 
 set(CMAKE_CXX_STANDARD 11)
 
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(CMAKE_CXX_FLAGS "-std=c++11 -D_DARWIN_C_SOURCE -Wno-invalid-partial-specialization")
+endif()
+
 file(GLOB HEADERS "include/uvm/*.h" "include/cborcpp/*.h" "../jsondiff/jsondiff-cpp/include/jsondiff/*.h")
 
 set(SOURCES src/uvm/lapi.cpp
@@ -89,6 +93,8 @@ target_include_directories( uvm
 #
 # target_link_libraries(simplechain_runner PUBLIC uvm fc OpenSSL::SSL ${CMAKE_SOURCE_DIR}/../jsondiff/libjsondiff_cpp.a)
 
+add_executable(uvm_single_exec uvm_single/main.cpp uvm_single/Keccak.cpp uvm_single/uvm_api.demo.cpp)
+target_link_libraries(uvm_single_exec PUBLIC uvm fc OpenSSL::SSL ${CMAKE_SOURCE_DIR}/../jsondiff/libjsondiff_cpp.a)
 
 if (USE_PCH)
   set_target_properties(uvm PROPERTIES COTIRE_ADD_UNITY_BUILD FALSE)

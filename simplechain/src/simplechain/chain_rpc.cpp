@@ -22,7 +22,7 @@ namespace simplechain {
 
 		RpcResultType mint(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			const auto& caller_addr = params.at(0).as_string();
-			auto asset_id = params.at(1).as_uint64();
+			auto asset_id = (asset_id_t) params.at(1).as_uint64();
 			auto amount = params.at(2).as_int64();
 			auto tx = std::make_shared<transaction>();
 			auto op = operations_helper::mint(caller_addr, asset_id, amount);
@@ -38,8 +38,8 @@ namespace simplechain {
 		RpcResultType transfer(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			const auto& from_addr = params.at(0).as_string();
 			const auto& to_addr = params.at(1).as_string();
-			auto asset_id = params.at(2).as_uint64();
-			auto amount = params.at(3).as_int64();
+			auto asset_id = (asset_id_t) params.at(2).as_uint64();
+			auto amount = (share_type) params.at(3).as_int64();
 			auto tx = std::make_shared<transaction>();
 			auto op = operations_helper::transfer(from_addr, to_addr, asset_id, amount);
 			tx->tx_time = fc::time_point_sec(fc::time_point::now());
@@ -121,7 +121,7 @@ namespace simplechain {
 			auto tx = std::make_shared<transaction>();
 			auto op = operations_helper::invoke_contract(caller_addr, contract_address, api_name, api_args, gas_limit, gas_price);
 			op.deposit_amount = deposit_amount;
-			op.deposit_asset_id = deposit_asset_id;
+			op.deposit_asset_id = (asset_id_t) deposit_asset_id;
 			tx->operations.push_back(op);
 			tx->tx_time = fc::time_point_sec(fc::time_point::now());
 
@@ -143,7 +143,7 @@ namespace simplechain {
 			auto api_name = params.at(2).as_string();
 			params_assert(params.at(3).is_array());
 			auto api_args_json = params.at(3).as<fc::variants>();
-			auto deposit_asset_id = params.at(4).as_uint64();
+			auto deposit_asset_id = (asset_id_t) params.at(4).as_uint64();
 			auto deposit_amount = params.at(5).as_uint64();
 
 			std::vector<std::string> api_args;
@@ -154,7 +154,7 @@ namespace simplechain {
 			auto tx = std::make_shared<transaction>();
 			auto op = operations_helper::invoke_contract(caller_addr, contract_address, api_name, api_args, 10000000);
 			op.deposit_amount = deposit_amount;
-			op.deposit_asset_id = deposit_asset_id;
+			op.deposit_asset_id = (asset_id_t) deposit_asset_id;
 			tx->operations.push_back(op);
 			tx->tx_time = fc::time_point_sec(fc::time_point::now());
 
@@ -172,7 +172,7 @@ namespace simplechain {
 		RpcResultType generate_block(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			int count = 1;
 			if (!params.empty()) {
-				count = params.at(0).as_int64();
+				count = (int) params.at(0).as_int64();
 				if (count <= 0) {
 					throw uvm::core::UvmException("need generate at least 1 block");
 				}
@@ -183,6 +183,39 @@ namespace simplechain {
 				block_ids.push_back(chain->head_block_hash());
 			}
 			return block_ids;
+		}
+
+		RpcResultType get_block_by_height(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			const auto& block_height = params.at(0).as_uint64();
+			auto block = chain->get_block_by_number(block_height);
+			if (block) {
+				return block->to_json();
+			}
+			else {
+				return nullptr;
+			}
+		}
+
+		RpcResultType get_tx(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			const auto& tx_id = params.at(0).as_string();
+			auto tx = chain->get_trx_by_hash(tx_id);
+			if (tx) {
+				return tx->to_json();
+			}
+			else {
+				return nullptr;
+			}
+		}
+
+		RpcResultType get_tx_receipt(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			const auto& tx_id = params.at(0).as_string();
+			const auto& receipt = chain->get_tx_receipt(tx_id);
+			if (receipt) {
+				return receipt->to_json();
+			}
+			else {
+				return nullptr;
+			}
 		}
 
 		RpcResultType exit_chain(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {

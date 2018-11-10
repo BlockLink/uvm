@@ -18,6 +18,8 @@
 #include <fstream>
 
 #include <fc/crypto/hex.hpp>
+#include <fc/crypto/base58.hpp>
+#include <fc/crypto/elliptic.hpp>
 
 #include <uvm/uvm_api.h>
 #include <uvm/uvm_lib.h>
@@ -73,7 +75,8 @@ namespace uvm
                 "tostring", "tojsonstring", "tonumber", "tointeger", "todouble", "totable", "toboolean",
                 "next", "rawequal", "rawlen", "rawget", "rawset", "select",
                 "setmetatable",
-				"hex_to_bytes", "bytes_to_hex", "sha256_hex", "sha1_hex", "sha3_hex", "ripemd160_hex"
+				"hex_to_bytes", "bytes_to_hex", "sha256_hex", "sha1_hex", "sha3_hex", "ripemd160_hex",
+				"cbor_encode", "cbor_decode", "signature_recover"
             };
 
             typedef lua_State* L_Key1;
@@ -291,6 +294,49 @@ namespace uvm
                 return 1;
             }
 
+			static int signature_recover(lua_State* L) {
+				// signature_recover(sig_hex, raw_hex): public_key_hex_string
+				if (lua_gettop(L) < 2 || !lua_isstring(L, 1) || !lua_isstring(L, 2)) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "signature_recover need accept 2 hex string arguments");
+					L->force_stopping = true;
+					return 0;
+				}
+				uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT * 10 - 1);
+				std::string sig_hex(luaL_checkstring(L, 1));
+				std::string raw_hex(luaL_checkstring(L, 2));
+				
+				try {
+					const auto& sig_bytes = uvm::lua::api::global_uvm_chain_api->hex_to_bytes(sig_hex);
+					const auto& raw_bytes = uvm::lua::api::global_uvm_chain_api->hex_to_bytes(raw_hex);
+					fc::ecc::compact_signature compact_sig;
+					if (sig_bytes.size() > compact_sig.size())
+						throw uvm::core::UvmException("invalid sig bytes size");
+					if (raw_bytes.size() != 32)
+						throw uvm::core::UvmException("raw bytes should be 32 bytes");
+					memcpy(compact_sig.data, sig_bytes.data(), sig_bytes.size());
+					fc::sha256 raw_bytes_as_digest((char*)raw_bytes.data(), raw_bytes.size());
+					auto recoved_public_key = fc::ecc::public_key(compact_sig, raw_bytes_as_digest, false);
+					if (!recoved_public_key.valid()) {
+						throw uvm::core::UvmException("invalid signature");
+					}
+					const auto& public_key_chars = recoved_public_key.serialize();
+					std::vector<unsigned char> public_key_bytes(public_key_chars.begin(), public_key_chars.end());
+					const auto& public_key_hex = uvm::lua::api::global_uvm_chain_api->bytes_to_hex(public_key_bytes);
+					lua_pushstring(L, public_key_hex.c_str());
+					return 1;
+				}
+				catch (const std::exception& e) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						e.what());
+					return 0;
+				}
+				catch (...) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"error when signature_recover");
+					return 0;
+				}
+			}
+
 			static int hex_to_bytes(lua_State *L) {
 				if (lua_gettop(L) < 1 || !lua_isstring(L, 1)) {
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
@@ -299,7 +345,7 @@ namespace uvm
 				}
 				auto hex_str = luaL_checkstring(L, 1);
 				try {
-					auto result = uvm::lua::api::global_uvm_chain_api->hex_to_bytes(hex_str);
+					const auto& result = uvm::lua::api::global_uvm_chain_api->hex_to_bytes(hex_str);
 					lua_newtable(L);
 					for (size_t i = 0; i < result.size(); i++) {
 						lua_pushinteger(L, (lua_Integer)result[i]);
@@ -310,6 +356,11 @@ namespace uvm
 				catch (const std::exception& e) {
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
 						e.what());
+					return 0;
+				}
+				catch (...) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"error when hex_to_bytes");
 					return 0;
 				}
 			}
@@ -358,6 +409,11 @@ namespace uvm
 						e.what());
 					return 0;
 				}
+				catch (...) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"error when bytes_to_hex");
+					return 0;
+				}
 			}
 
 			static int cbor_encode(lua_State* L) {
@@ -382,6 +438,11 @@ namespace uvm
 				catch (const std::exception& e) {
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
 						e.what());
+					return 0;
+				}
+				catch (...) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"error when ebor_encode");
 					return 0;
 				}
 			}
@@ -410,6 +471,11 @@ namespace uvm
 						e.what());
 					return 0;
 				}
+				catch (...) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"error when cbor_decode");
+					return 0;
+				}
 			}
 
 			static int sha256_hex(lua_State* L) {
@@ -427,6 +493,11 @@ namespace uvm
 				catch (const std::exception& e) {
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
 						e.what());
+					return 0;
+				}
+				catch (...) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"error when sha256_hex");
 					return 0;
 				}
 			}
@@ -447,6 +518,11 @@ namespace uvm
 						e.what());
 					return 0;
 				}
+				catch (...) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"error when sha1_hex");
+					return 0;
+				}
 			}
 			static int sha3_hex(lua_State* L) {
 				if (lua_gettop(L) < 1 || !lua_isstring(L, 1)) {
@@ -465,6 +541,11 @@ namespace uvm
 						e.what());
 					return 0;
 				}
+				catch (...) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"error when sha3_hex");
+					return 0;
+				}
 			}
 			static int ripemd160_hex(lua_State* L) {
 				if (lua_gettop(L) < 1 || !lua_isstring(L, 1)) {
@@ -481,6 +562,11 @@ namespace uvm
 				catch (const std::exception& e) {
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
 						e.what());
+					return 0;
+				}
+				catch (...) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"error when ripemd160_hex");
 					return 0;
 				}
 			}
@@ -1236,6 +1322,7 @@ end
 					add_global_c_function(L, "get_system_asset_precision", get_system_asset_precision);
 					add_global_c_function(L, "cbor_encode", &cbor_encode);
 					add_global_c_function(L, "cbor_decode", &cbor_decode);
+					add_global_c_function(L, "signature_recover", &signature_recover);
                 }
                 return L;
             }
@@ -1309,12 +1396,20 @@ end
                         lua_free(L, list);
                     }
 
-                    int *insts_executed_count = get_lua_state_value(L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
+					auto contract_id_stack_value_in_state_node = uvm::lua::lib::get_lua_state_value_node(L, GLUA_CONTRACT_API_CALL_STACK_STATE_MAP_KEY);
+					if (contract_id_stack_value_in_state_node.type == LUA_STATE_VALUE_POINTER && nullptr != contract_id_stack_value_in_state_node.value.pointer_value)
+					{
+						auto contract_id_stack = (std::stack<contract_info_stack_entry>*)contract_id_stack_value_in_state_node.value.pointer_value;
+						delete contract_id_stack;
+						contract_id_stack_value_in_state_node.value.pointer_value = nullptr;
+					}
+
+					int64_t *insts_executed_count = get_lua_state_value(L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
                     if (nullptr != insts_executed_count)
                     {
                         lua_free(L, insts_executed_count);
                     }
-                    int *stopped_pointer = uvm::lua::lib::get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
+					int64_t *stopped_pointer = uvm::lua::lib::get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
                     if (nullptr != stopped_pointer)
                     {
                         lua_free(L, stopped_pointer);
@@ -1378,7 +1473,7 @@ end
 
             int get_lua_state_instructions_executed_count(lua_State *L)
             {
-                int *insts_executed_count = get_lua_state_value(L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
+				int64_t *insts_executed_count = get_lua_state_value(L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
                 if (nullptr == insts_executed_count)
                 {
                     return 0;
@@ -1413,10 +1508,10 @@ end
             */
             void notify_lua_state_stop(lua_State *L)
             {
-                int *pointer = get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
+				int64_t *pointer = get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
                 if (nullptr == pointer)
                 {
-                    pointer = (int*)lua_malloc(L, sizeof(int));
+                    pointer = (int64_t*)lua_malloc(L, sizeof(int));
                     *pointer = 1;
                     UvmStateValue value;
                     value.int_pointer_value = pointer;
@@ -1433,7 +1528,7 @@ end
             */
             bool check_lua_state_notified_stop(lua_State *L)
             {
-                int *pointer = get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
+				int64_t *pointer = get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
                 if (nullptr == pointer)
                     return false;
                 return (*pointer) > 0;
@@ -1444,7 +1539,7 @@ end
             */
             void resume_lua_state_running(lua_State *L)
             {
-                int *pointer = get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
+				int64_t *pointer = get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
                 if (nullptr != pointer)
                 {
                     *pointer = 0;
@@ -1504,11 +1599,6 @@ end
 					return nullptr;
                 fclose(f);
                 return closure;
-            }
-
-            void free_bytecode_stream(UvmModuleByteStreamP stream)
-            {
-				delete stream;
             }
 
             LClosure *luaU_undump_from_stream(lua_State *L, UvmModuleByteStream *stream, const char *name)
@@ -1713,7 +1803,7 @@ end
 							continue;
                         if (!in_whitelist)
                         {
-                            Upvaldesc upvaldesc = proto->upvalues[c];
+                            Upvaldesc upvaldesc = proto->upvalues[b];
                             // check in parent proto, whether defined in parent proto
                             bool upval_defined = (parents && parents->size() > 0) ? upval_defined_in_parent(L, *parents->rbegin(), parents, upvaldesc) : false;
                             if (!upval_defined)
@@ -1902,11 +1992,6 @@ end
 				return malloc_managed_string(L, sizeof(char) * (strlen(init_data) + 1), init_data);
             }
 
-            UvmModuleByteStream *malloc_managed_byte_stream(lua_State *L)
-            {
-                return (UvmModuleByteStream*)lua_calloc(L, 1, sizeof(UvmModuleByteStream));
-            }
-
             bool run_compiledfile(lua_State *L, const char *filename)
             {
                 return lua_docompiledfile(L, filename) == 0;
@@ -1989,7 +2074,7 @@ end
 
 			void reset_lvm_instructions_executed_count(lua_State *L)
             {
-				int *insts_executed_count = get_lua_state_value(L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
+				int64_t *insts_executed_count = get_lua_state_value(L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
 				if (insts_executed_count)
 				{
 					*insts_executed_count = 0;
@@ -1998,7 +2083,7 @@ end
 
             void increment_lvm_instructions_executed_count(lua_State *L, int add_count)
             {
-              int *insts_executed_count = get_lua_state_value(L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
+				int64_t *insts_executed_count = get_lua_state_value(L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
               if (insts_executed_count)
               {
                 *insts_executed_count = *insts_executed_count + add_count;
@@ -2104,6 +2189,19 @@ end
 						lua_setfield(L, -2, special_api_name.c_str());
 					}
 				}
+
+				//wrap api (push contract api stack when called)
+				auto contract_table_index = lua_gettop(L);
+				luaL_wrap_contract_apis(L, contract_table_index,  &contract_table_index);
+				/*auto contract_info_stack = uvm::lua::lib::get_using_contract_id_stack(L, true);
+				if (!contract_info_stack) {
+					global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "execute api %s contract error", api_name.c_str());
+					return false;
+				}
+				contract_info_stack_entry stack_entry;
+				stack_entry.contract_id = contract_id;
+				stack_entry.api_name = api_name;
+				contract_info_stack->push(stack_entry);*/
 
 				lua_getfield(L, -1, api_name.c_str());
 				if (lua_isfunction(L, -1))

@@ -364,6 +364,7 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
 LUA_API void lua_close(lua_State *L) {
     L = state_G(L)->mainthread;  /* only the main thread can be closed */
     uvm::lua::lib::close_lua_state_values(L);
+	luaM_freearray(L, L->evalstack, L->evalstacksize);
     delete L->malloced_buffers;
 	delete L->contract_table_addresses;
 	L->contract_table_addresses = nullptr;
@@ -434,6 +435,23 @@ void *lua_malloc(lua_State *L, size_t size)
     L->malloced_buffers->push_back(std::make_pair(offset, size));
     L->malloc_pos += size;
     return p;
+}
+
+void* lua_realloc(lua_State *L, void* addr, size_t old_size, size_t new_size)
+{
+	if (old_size >= new_size)
+		return addr;
+	if (old_size == 0) {
+		return lua_malloc(L, new_size);
+	}
+	auto p = lua_malloc(L, new_size);
+	if (!p)
+		return nullptr;
+	if (addr) {
+		memcpy(p, addr, old_size);
+		lua_free(L, addr);
+	}
+	return p;
 }
 
 void *lua_calloc(lua_State *L, size_t element_count, size_t element_size)

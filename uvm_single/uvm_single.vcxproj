@@ -77,14 +77,13 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>E:\projects\jsondiff-cpp\jsondiff-cpp\include;..\include;E:\projects\fc\include;E:\projects\boost_1.55.x64;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\..\jsondiff-cpp\jsondiff-cpp\include;..\include;$(SolutionDir)\..\fc\include;$(SolutionDir)\..\boost_1.55.x64;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-
-      <AdditionalLibraryDirectories>E:\projects\OpenSSL.x64\lib;E:\projects\libs_win_x64;E:\projects\libs_release_3;E:\projects\libs_debug;E:\projects\jsondiff-cpp\x64\Release;E:\projects\boost_1.55.x64\stage\lib;..\..\uvm\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)\..\OpenSSL.x64\lib;$(SolutionDir)\..\libs_win_x64;$(SolutionDir)\..\libs_release_3;$(SolutionDir)\..\libs_debug;$(SolutionDir)\..\jsondiff-cpp\x64\Release;$(SolutionDir)\..\boost_1.55.x64\stage\lib;..\..\uvm\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>uvm.lib;jsondiff-cpp.lib;libboost_thread-vc120-mt-1_55.lib;libboost_date_time-vc120-mt-1_55.lib;libboost_system-vc120-mt-1_55.lib;libboost_filesystem-vc120-mt-1_55.lib;libboost_program_options-vc120-mt-1_55.lib;libboost_signals-vc120-mt-1_55.lib;libboost_serialization-vc120-mt-1_55.lib;libboost_chrono-vc120-mt-1_55.lib;libboost_unit_test_framework-vc120-mt-1_55.lib;libboost_context-vc120-mt-1_55.lib;libboost_locale-vc120-mt-1_55.lib;libboost_iostreams-vc120-mt-1_55.lib;libboost_coroutine-vc120-mt-1_55.lib;fc.lib;secp256k1.lib;ssleay32MDd.lib;libeay32MDd.lib;WS2_32.Lib;IPHlpApi.Lib;easylzma_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;leveldb.lib;udt.lib;WS2_32.lib;Userenv.lib;Rpcrt4.lib;crypt32.lib;shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -100,11 +99,11 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>E:\projects\jsondiff-cpp\jsondiff-cpp\include;..\include;E:\projects\fc\include;E:\projects\boost_1.55.x64;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\..\jsondiff-cpp\jsondiff-cpp\include;..\include;$(SolutionDir)\..\fc\include;$(SolutionDir)\..\boost_1.55.x64;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>DEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>E:\projects\fc\include;E:\projects\jsondiff-cpp\x64\Debug;E:\projects\libs_release_3;E:\projects\libs_win_x64;E:\projects\OpenSSL.x64\lib;E:\projects\libs_debug;E:\projects\boost_1.55.x64\stage\lib;..\..\uvm\x64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)\..\fc\include;$(SolutionDir)\..\jsondiff-cpp\x64\Debug;$(SolutionDir)\..\libs_release_3;$(SolutionDir)\..\libs_win_x64;$(SolutionDir)\..\OpenSSL.x64\lib;$(SolutionDir)\..\libs_debug;$(SolutionDir)\..\boost_1.55.x64\stage\lib;..\..\uvm\x64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>uvm.lib;jsondiff-cpp.lib;libboost_thread-vc120-mt-gd-1_55.lib;libboost_date_time-vc120-mt-gd-1_55.lib;libboost_system-vc120-mt-gd-1_55.lib;libboost_filesystem-vc120-mt-gd-1_55.lib;libboost_program_options-vc120-mt-gd-1_55.lib;libboost_signals-vc120-mt-gd-1_55.lib;libboost_serialization-vc120-mt-gd-1_55.lib;libboost_chrono-vc120-mt-gd-1_55.lib;libboost_unit_test_framework-vc120-mt-gd-1_55.lib;libboost_context-vc120-mt-gd-1_55.lib;libboost_locale-vc120-mt-gd-1_55.lib;libboost_iostreams-vc120-mt-gd-1_55.lib;libboost_coroutine-vc120-mt-gd-1_55.lib;fc_debug.lib;secp256k1_debug.lib;ssleay32MDd.lib;libeay32MDd.lib;WS2_32.Lib;IPHlpApi.Lib;easylzma_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;leveldb.lib;udt_debug.lib;WS2_32.lib;Userenv.lib;Rpcrt4.lib;crypt32.lib;shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
@@ -130,6 +129,11 @@
   <ItemGroup>
     <ClInclude Include="Keccak.hpp" />
     <ClInclude Include="uvm_api.demo.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\uvm.vcxproj">
+      <Project>{5bdb377f-63a6-494c-8e0b-e6ec7eaea081}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
