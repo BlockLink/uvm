@@ -235,12 +235,19 @@ static int luaK_code(FuncState *fs, Instruction i) {
 		f->codes.resize(fs->pc);
 		memset(f->codes.data() + oldsize, 0x0, sizeof(f->codes[0]) * (fs->pc-oldsize));
 	}
+	if (fs->pc == f->codes.size()) {
+		f->codes.resize(fs->pc + 1 );
+	}
     f->codes[fs->pc] = i;
     /* save corresponding line information */
 	if (fs->pc > f->lineinfos.size()) {
 		auto oldsize = f->lineinfos.size();
 		f->lineinfos.resize(fs->pc);
 		memset(f->lineinfos.data() + oldsize, 0x0, sizeof(f->lineinfos[0]) * (fs->pc - oldsize));
+	}
+
+	if (fs->pc == f->lineinfos.size()) {
+		f->lineinfos.resize(fs->pc + 1);
 	}
     f->lineinfos[fs->pc] = fs->ls->lastline;
     return fs->pc++;

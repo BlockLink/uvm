@@ -22,7 +22,8 @@
 /*
 ** test whether a string is a reserved word
 */
-#define isreserved(s)	((s)->tt == LUA_TSHRSTR && (s)->extra > 0)
+//#define isreserved(s)	((s)->tt == LUA_TSHRSTR && (s)->extra > 0)
+#define isreserved(s)	((s)->tt == LUA_TLNGSTR && (s)->extra > 0)
 
 
 /*
