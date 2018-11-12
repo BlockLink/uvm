@@ -93,8 +93,8 @@ target_include_directories( uvm
 #
 # target_link_libraries(simplechain_runner PUBLIC uvm fc OpenSSL::SSL ${CMAKE_SOURCE_DIR}/../jsondiff/libjsondiff_cpp.a)
 
-add_executable(uvm_single_exec uvm_single/main.cpp uvm_single/Keccak.cpp uvm_single/uvm_api.demo.cpp)
-target_link_libraries(uvm_single_exec PUBLIC uvm fc OpenSSL::SSL ${CMAKE_SOURCE_DIR}/../jsondiff/libjsondiff_cpp.a)
+# add_executable(uvm_single_exec uvm_single/main.cpp uvm_single/Keccak.cpp uvm_single/uvm_api.demo.cpp)
+# target_link_libraries(uvm_single_exec PUBLIC uvm fc OpenSSL::SSL ${CMAKE_SOURCE_DIR}/../jsondiff/libjsondiff_cpp.a)
 
 if (USE_PCH)
   set_target_properties(uvm PROPERTIES COTIRE_ADD_UNITY_BUILD FALSE)
