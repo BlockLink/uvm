@@ -216,16 +216,50 @@ namespace uvm {
 				uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
 				bool is_bytes = true;
 				
+				//..............................................	
+				std::string filename = std::string(name);
+				if (filename.find(uvm::util::file_separator_str()[0]) == std::string::npos) { // for test
+					filename = std::string("uvm_modules") + uvm::util::file_separator_str() + "uvm_contract_" + name;
+				}
+
+
+				FILE *f = fopen(filename.c_str(), "rb");
+				if (nullptr == f)
+				{
+					std::string origin_filename(name);
+					filename = origin_filename + ".lua";
+					f = fopen(filename.c_str(), "rb");
+					if (!f)
+					{
+						filename = origin_filename + ".glua";
+						f = fopen(filename.c_str(), "rb");
+						if (nullptr == f)
+							return nullptr;
+					}
+					is_bytes = false;
+				}
 				auto stream = std::make_shared<UvmModuleByteStream>();
 				if (nullptr == stream)
 					return nullptr;
+				fseek(f, 0, SEEK_END);
+				auto file_size = ftell(f);
+				stream->buff.resize(file_size);
+				fseek(f, 0, 0);
+				file_size = (long)fread(stream->buff.data(), file_size, 1, f);
+				fseek(f, 0, SEEK_END); // seek to end of file
+				file_size = ftell(f); // get current file pointer
 				stream->is_bytes = is_bytes;
 				stream->contract_name = name;
-				stream->contract_id = name;
+				stream->contract_id = std::string("id_") + std::string(name);
+				fclose(f);
+				if (!is_bytes)
+					stream->buff[stream->buff.size() - 1] = '\0';
+				//........................................
+
 
 				//open meta json
-				std::string filename =  std::string(name) + ".meta.json";
-				FILE *f = fopen(filename.c_str(), "rb");
+				filename =  std::string(name) + ".meta.json";
+				f = fopen(filename.c_str(), "rb");
 				if (nullptr == f) {
 					filename = std::string(name);
 					auto pos = filename.find_last_of('.');
@@ -252,7 +286,6 @@ namespace uvm {
 									
 								}
 							}
-						
 						}
 					}
 				}
@@ -329,14 +362,12 @@ namespace uvm {
 
 			bool DemoUvmChainApi::commit_storage_changes_to_uvm(lua_State *L, AllContractsChangesMap &changes)
 			{
+				if (changes.size() == 0) {
+					return true;
+				}
+
 				if (!is_init_storage_file) {
-					if (!fc::exists(fc::path("uvm_storage_demo.json"))) {
-						auto f = fopen("uvm_storage_demo.json", "w");
-						if (f) {
-							fclose(f);
-						}
-					}
-					else {
+					if (fc::exists(fc::path("uvm_storage_demo.json"))) {
 						storage_root = fc::json::from_file(fc::path("uvm_storage_demo.json"), fc::json::legacy_parser).as<fc::mutable_variant_object>();
 					}
 					
@@ -357,7 +388,13 @@ namespace uvm {
 					}
 				}
 
-				if (changes.size()) {
+				if (changes.size()&& storage_root.size()) {
+					/*if (!fc::exists(fc::path("uvm_storage_demo.json"))) {
+						auto f = fopen("uvm_storage_demo.json", "w");
+						if (f) {
+							fclose(f);
+						}
+					}*/
 					//持久化
 					fc::variant temp;
 					fc::to_variant(storage_root, temp);
