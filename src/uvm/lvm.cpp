@@ -408,6 +408,11 @@ int luaV_lessthan(lua_State *L, const TValue *l, const TValue *r) {
 	return res;
 }
 
+//  return -1 when ls<lr ; return 0 when ls==lr ;return 1 when ;
+int luaV_strcmp(const uvm_types::GcString *ls, const uvm_types::GcString *rs) {
+	return l_strcmp(ls, rs);
+}
+
 
 /*
 ** Main operation less than or equal to; return 'l <= r'. If it needs

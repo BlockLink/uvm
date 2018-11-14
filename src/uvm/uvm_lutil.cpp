@@ -487,7 +487,10 @@ namespace uvm
 			return put(std::to_string(value));
 		}
 		stringbuffer* stringbuffer::put(double value) {
-			return put(std::to_string(value));
+			char buf[100] = { 0 };
+			sprintf(buf, "%f", value);
+			return put(std::string(buf));
+			//return put(std::to_string(value));
 		}
 		stringbuffer* stringbuffer::put_bool(bool value) {
 			std::string value_str(value ? "true" : "false");

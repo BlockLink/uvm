@@ -492,9 +492,12 @@ namespace uvm_types {
 		}
 		if (!ttisnumber(&x) && !ttisnumber(&y)) {
 			if (ttisstring(&x) && ttisstring(&y)) {
-				std::string xs = getstr(gco2ts(x.value_.gco));
+				/*std::string xs = getstr(gco2ts(x.value_.gco));
 				std::string ys = getstr(gco2ts(y.value_.gco));
-				return xs < ys;
+				return xs < ys;*/
+				GcString *l = tsvalue(&x);
+				GcString *r = tsvalue(&y);
+				return (luaV_strcmp(l, r) < 0);
 			}
 			else if (ttisstring(&x)) {
 				return true;

@@ -385,8 +385,8 @@ LUALIB_API void luaL_checkstack(lua_State *L, int space, const char *msg) {
 
 
 LUALIB_API void luaL_checktype(lua_State *L, int arg, int t) {
-    if (lua_type(L, arg) != t)
-        tag_error(L, arg, t);
+	if (lua_type(L, arg) != t)
+		tag_error(L, arg, t);
 }
 
 
@@ -2671,7 +2671,10 @@ static void luatablemap_to_json_stream(UvmTableMapP map, uvm::util::stringbuffer
             ss.put(value.value.int_value);
             break;
 		case uvm::blockchain::StorageValueTypes::storage_value_number:
-            ss.put(value.value.number_value);
+			char buff[50];
+			l_sprintf(buff, sizeof(buff), LUA_NUMBER_FMT, value.value.number_value);
+			ss.put(std::string(buff));
+            //ss.put(value.value.number_value);
             break;
 		case uvm::blockchain::StorageValueTypes::storage_value_string:
         {
