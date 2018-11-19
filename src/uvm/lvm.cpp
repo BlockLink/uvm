@@ -1524,6 +1524,99 @@ namespace uvm {
 						}
 						vmbreak;
 					}
+					vmcase(UOP_CCALL)
+					vmcase(UOP_CSTATICCALL)
+					{ //ra:contract_address  ra+1:api_name  ra+2:arg...   b:arg num  c:result_num
+						TValue tempbuf[10];
+						int nargs = GETARG_B(i) - 1;
+						int nresults = GETARG_C(i) - 1;
+						auto rarg = ra + 2;
+						if (nargs > 10) {
+							luaG_runerror(L, "too many args");
+							vmbreak;
+						}
+						//check 
+						if (nargs < 0 || L->top - ra < 2 + nargs) {
+							luaG_runerror(L, "exceed");
+							vmbreak;
+						}
+						if (!ttisstring(ra) || !ttisstring(ra + 1)) {
+							luaG_runerror(L, "ccall args is not string");
+							vmbreak;
+						}
+						
+						uvm_types::GcString *contract_address = tsvalue(ra);
+						uvm_types::GcString *api_name = tsvalue(ra+1);
+						for (int j = 0; j < nargs; j++) {
+							setobj(L, &tempbuf[j], ra + 2 + j); //arg slot val may change during call import contract ,save args 
+						}
+						
+						uvm_types::GcTable *reg = hvalue(&L->l_registry);
+						const TValue *gt = luaH_getint(reg, LUA_RIDX_GLOBALS); //_ENV
+						TValue key;
+						auto ts = luaS_new(L, "import_contract_from_address");
+						setsvalue2s(L, &key, ts);				
+						gettableProtected(L, gt, &key, ra);
+
+						setsvalue2s(L, ra+1, contract_address);
+						//call import contract
+						if (luaD_precall(L, ra, 1)) {  // C function? 
+							L->top = ci->top;  // adjust 
+							Protect((void)0);  // update 'base' 
+						}
+						else {  // Lua function 
+							luaG_runerror(L, "ccall import_contract_from_address wrong ");
+							vmbreak;
+						}
+						
+						//check exception err ...
+						if (stopped_pointer && *stopped_pointer > 0)
+							vmbreak;
+						if (L->force_stopping)
+							vmbreak;
+						
+						ra = RA(i);
+						if (!ttistable(ra)) {
+							luaG_runerror(L, "import_contract_from_address not return a table ");
+							vmbreak;
+						}
+
+						setobj(L, ra + 1, ra); //contract table set to ra+1
+						setsvalue2s(L, &key, api_name);
+						gettableProtected(L, ra, &key, ra); //get api to ra
+
+						
+						if (!ttisfunction(ra)) {
+							luaG_runerror(L, "ccall: get api is not function ");
+							vmbreak;
+						}
+
+						if (UOP_CSTATICCALL == GET_OPCODE(i)) {
+							//todo set disable set storage
+						}
+						auto arg2 = ra + 2;
+						//call api, ra:api function   ra+1:contract table  ra+2：arg
+						L->top = ra + 2 + nargs;
+						for (int j = 0; j < nargs; j++) {
+							setobj(L, ra + 2 + j,  &tempbuf[j]); //resotre args
+						}
+						if (luaD_precall(L, ra, nresults)) {  /* C function? */
+							if (nresults >= 0)
+								L->top = ci->top;  /* adjust results */
+							Protect((void)0);  /* update 'base' */
+						}
+						else {  /* Lua function */
+							if (L->force_stopping)
+								vmbreak;
+							ci = L->ci;
+							lua_assert(ci == L->ci);
+							cl = clLvalue(ci->func);  /* local reference to function's closure */
+							k = cl->p->ks.empty() ? nullptr : cl->p->ks.data();  /* local reference to function's constant table */
+							base = ci->u.l.base;  /* local copy of function's base */
+												  //return true; /* restart luaV_execute over new Lua function */
+						}
+						vmbreak;
+					}
 					vmcase(UOP_TAILCALL) {
 						int b = GETARG_B(i);
 						if (b != 0) L->top = ra + b;  /* else previous instruction set top */
