@@ -337,6 +337,23 @@ namespace uvm
 				}
 			}
 
+			static int get_address_role(lua_State *L) {
+				if (lua_gettop(L) < 1 || !lua_isstring(L, 1)) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"get_address_role need 1 address string argument");
+					return 0;
+				}
+				auto addr = luaL_checkstring(L, 1);
+				if (!uvm::lua::api::global_uvm_chain_api->is_valid_address(L, addr)) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"get_address_role's first argument must be valid address format");
+					return 0;
+				}
+				std::string address_role = uvm::lua::api::global_uvm_chain_api->get_address_role(L, addr);
+				lua_pushstring(L, address_role.c_str());
+				return 1;
+			}
+
 			static int hex_to_bytes(lua_State *L) {
 				if (lua_gettop(L) < 1 || !lua_isstring(L, 1)) {
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
@@ -1323,6 +1340,7 @@ end
 					add_global_c_function(L, "cbor_encode", &cbor_encode);
 					add_global_c_function(L, "cbor_decode", &cbor_decode);
 					add_global_c_function(L, "signature_recover", &signature_recover);
+					add_global_c_function(L, "get_address_role", &get_address_role);
                 }
                 return L;
             }

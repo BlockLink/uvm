@@ -539,6 +539,10 @@ namespace uvm {
 				return hash_result.str();
 			}
 
+			std::string DemoUvmChainApi::get_address_role(lua_State* L, const std::string& addr) {
+				return "address";
+			}
+
 		}
 	}
 }

@@ -585,6 +585,8 @@ namespace uvm {
 			virtual std::string sha1_hex(const std::string& hex_string) = 0;
 			virtual std::string sha3_hex(const std::string& hex_string) = 0;
 			virtual std::string ripemd160_hex(const std::string& hex_string) = 0;
+
+			virtual std::string get_address_role(lua_State* L, const std::string& addr) = 0;
           };
 
 
