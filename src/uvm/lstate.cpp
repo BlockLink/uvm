@@ -293,6 +293,7 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
 	L->allow_contract_modify = 0;
 	L->contract_table_addresses = new std::list<intptr_t>();
 	L->using_contract_id_stack = new std::stack<contract_info_stack_entry>();
+	L->call_op_msg = OpCode(0);
 	L->ci_depth = 0;
 
     for (i = 0; i < LUA_NUMTAGS; i++) L->mt[i] = nullptr;

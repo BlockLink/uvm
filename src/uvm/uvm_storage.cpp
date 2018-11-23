@@ -768,6 +768,13 @@ namespace uvm {
 				L->force_stopping = true;
 				return 0;
 			}
+			auto contract_id_stack = uvm::lua::lib::get_using_contract_id_stack(L, true);
+			if (contract_id_stack && contract_id_stack->size()>0 && contract_id_stack->top().call_type == "STATIC_CALL") {
+				global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "static call can not modify contract storage");
+				uvm::lua::lib::notify_lua_state_stop(L);
+				L->force_stopping = true;
+				return 0;
+			}
 			if (!name || strlen(name) < 1)
 			{
 				global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "second argument of set_storage must be name");

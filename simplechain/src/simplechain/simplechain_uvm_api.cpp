@@ -800,4 +800,8 @@ namespace simplechain {
 				return hash_result.str();
 			}
 
+			std::string SimpleChainUvmChainApi::get_address_role(lua_State* L, const std::string& addr) {
+				return std::string(addr);
+			}
+
 }

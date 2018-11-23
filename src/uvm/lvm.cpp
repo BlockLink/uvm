@@ -1541,7 +1541,7 @@ namespace uvm {
 							vmbreak;
 						}
 						if (!ttisstring(ra) || !ttisstring(ra + 1)) {
-							luaG_runerror(L, "ccall args is not string");
+							luaG_runerror(L, "args is not string");
 							vmbreak;
 						}
 						
@@ -1565,7 +1565,7 @@ namespace uvm {
 							Protect((void)0);  // update 'base' 
 						}
 						else {  // Lua function 
-							luaG_runerror(L, "ccall import_contract_from_address wrong ");
+							luaG_runerror(L, "import_contract_from_address wrong ");
 							vmbreak;
 						}
 						
@@ -1587,13 +1587,12 @@ namespace uvm {
 
 						
 						if (!ttisfunction(ra)) {
-							luaG_runerror(L, "ccall: get api is not function ");
+							luaG_runerror(L, "get api is not function ");
 							vmbreak;
 						}
-
-						if (UOP_CSTATICCALL == GET_OPCODE(i)) {
-							//todo set disable set storage
-						}
+						
+						L->call_op_msg = GET_OPCODE(i);
+						
 						auto arg2 = ra + 2;
 						//call api, ra:api function   ra+1:contract table  ra+2：arg
 						L->top = ra + 2 + nargs;

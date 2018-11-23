@@ -21,6 +21,7 @@
 #include "uvm/lzio.h"
 #include <uvm/uvm_api.h>
 #include <vmgc/vmgc.h>
+#include "uvm/lopcodes.h"
 
 #define LUA_MALLOC_TOTAL_SIZE	(50*1024*1024)
 
@@ -149,6 +150,7 @@ typedef enum lua_VMState {
 struct contract_info_stack_entry {
 	std::string contract_id;
 	std::string api_name;
+	std::string call_type;
 };
 
 /*
@@ -211,6 +213,7 @@ struct lua_State : vmgc::GcObject {
 	bool allow_debug;
 	std::map<std::string, std::list<uint32_t> >* breakpoints; // contract_address => list of line_number
 	std::stack<contract_info_stack_entry>* using_contract_id_stack;
+	OpCode call_op_msg;
 	uint32_t ci_depth;
 
 	inline lua_State() :tt_(LUA_TTHREAD) {}

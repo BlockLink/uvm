@@ -1123,6 +1123,14 @@ static int contract_api_wrapper_func(lua_State *L)
 	contract_info_stack_entry stack_entry;
 	stack_entry.contract_id = contract_id;
 	stack_entry.api_name = api_name;
+	if (L->call_op_msg == UOP_CSTATICCALL) {
+		stack_entry.call_type = std::string("STATIC_CALL");
+	}
+	else {
+		stack_entry.call_type = "CALL";
+	}
+	L->call_op_msg = OpCode(0);
+	
 	contract_info_stack->push(stack_entry);
 	lua_pushvalue(L, api_func_index);
 	auto args_count = lua_gettop(L) - 1;
