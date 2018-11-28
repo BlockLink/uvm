@@ -76,7 +76,7 @@ using uvm::lua::api::global_uvm_chain_api;
 
 #endif
 
-
+static std::shared_ptr<uvm::core::ExecuteContext> last_execute_context;
 /*
 ** Try to convert a value to a float. The float case is already handled
 ** by the macro 'tonumber'.
@@ -892,13 +892,14 @@ namespace uvm {
 			L->ci = ci;
 			*L->using_contract_id_stack = this->using_contract_id_stack;
 			int c = L->ci_depth;
+			bool has_next_op = false;
 			try
 			{
 				while (!enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
 					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT)
 					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK) && L->ci_depth <= c && startline == current_line())
 				{
-					auto has_next_op = executeToNextOp(L);
+					 has_next_op = executeToNextOp(L);
 
 					if (from_break && enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK) && current_line() == startline) {	//skip last break ins					
 							L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
@@ -916,6 +917,10 @@ namespace uvm {
 			{
 				union_change_state(L, lua_VMState::LVM_STATE_FAULT);
 				throw e;
+			}
+
+			if (!has_next_op) {
+				return;
 			}
 
 			if (!enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT) && !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT) && !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)) {
@@ -939,14 +944,14 @@ namespace uvm {
 			L->ci = ci;
 			*L->using_contract_id_stack = this->using_contract_id_stack;
 			int c = L->ci_depth;
-
+			bool has_next_op = false;
 			try
 			{
 				while (!enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
 					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT)
 					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK) && L->ci_depth >= c )
 				{
-					auto has_next_op = executeToNextOp(L);
+					has_next_op = executeToNextOp(L);
 					if (from_break && enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK) && current_line() == startline) { //skip last break ins
 							L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
 							has_next_op = true;
@@ -965,7 +970,9 @@ namespace uvm {
 				union_change_state(L, lua_VMState::LVM_STATE_FAULT);
 				throw e;
 			}
-
+			if (!has_next_op) {
+				return;
+			}
 			if (!enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT) && !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT) && !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)) {
 				union_change_state(L, lua_VMState::LVM_STATE_SUSPEND);
 			}
@@ -1013,7 +1020,10 @@ namespace uvm {
 				union_change_state(L, lua_VMState::LVM_STATE_FAULT);
 				throw e;
 			}
-
+			
+			if (!has_next_op) {
+				return;
+			}
 			if (!enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT) && !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT) && !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)) {
 				union_change_state(L,lua_VMState::LVM_STATE_SUSPEND);
 			}
@@ -1544,7 +1554,7 @@ namespace uvm {
 							luaG_runerror(L, "args is not string");
 							vmbreak;
 						}
-						
+						auto save_last_execute_context = last_execute_context;
 						uvm_types::GcString *contract_address = tsvalue(ra);
 						uvm_types::GcString *api_name = tsvalue(ra+1);
 						for (int j = 0; j < nargs; j++) {
@@ -1614,6 +1624,7 @@ namespace uvm {
 							base = ci->u.l.base;  /* local copy of function's base */
 												  //return true; /* restart luaV_execute over new Lua function */
 						}
+						last_execute_context = save_last_execute_context;
 						vmbreak;
 					}
 					vmcase(UOP_TAILCALL) {
@@ -2123,7 +2134,7 @@ namespace uvm {
 	}
 }
 
-static std::shared_ptr<uvm::core::ExecuteContext> last_execute_context;
+
 
 std::shared_ptr<uvm::core::ExecuteContext> luaV_execute(lua_State *L)
 {
