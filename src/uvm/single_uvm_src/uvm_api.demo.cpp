@@ -475,6 +475,10 @@ namespace uvm {
 				return "COIN";
 			}
 
+			std::string DemoGluaChainApi::get_address_role(lua_State* L, const std::string& addr) {
+				return "address";
+			}
+
 		}
 	}
 }

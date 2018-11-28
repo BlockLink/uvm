@@ -156,6 +156,8 @@ namespace uvm {
 		virtual bool is_valid_address(lua_State *L, const char *address_str);
 		virtual const char *get_system_asset_symbol(lua_State *L);
 
+		virtual std::string get_address_role(lua_State* L, const std::string& addr);
+
       };
 
     }

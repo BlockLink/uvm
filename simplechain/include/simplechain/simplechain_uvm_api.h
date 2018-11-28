@@ -165,7 +165,6 @@ namespace simplechain {
 
 		virtual std::string get_address_role(lua_State* L, const std::string& addr) override;
 
-
       };
 
 }
