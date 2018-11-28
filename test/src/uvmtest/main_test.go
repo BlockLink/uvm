@@ -329,7 +329,7 @@ func TestGlobalApis(t *testing.T) {
 	assert.Equal(t, err, "")
 	assert.True(t, strings.Contains(out, `now is 	0`))
 	assert.True(t, strings.Contains(out, `TEST_ADDRESS	 is valid address? 	true`))
-	assert.True(t, strings.Contains(out, `TEST_ADDRESS	 is valid contract address? 	true`))
+	assert.True(t, strings.Contains(out, `TEST_ADDRESS	 is valid contract address? 	false`))
 	assert.True(t, strings.Contains(out, `systemAssetSymbol: 	COIN`))
 	assert.True(t, strings.Contains(out, `blockNum: 	0`))
 	assert.True(t, strings.Contains(out, `precision: 	10000`))
