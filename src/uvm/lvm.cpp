@@ -39,6 +39,7 @@
 #include <uvm/uvm_api.h>
 #include <uvm/uvm_lib.h>
 #include <uvm/uvm_storage.h>
+#include <uvm/exceptions.h>
 
 using uvm::lua::api::global_uvm_chain_api;
 
@@ -1039,7 +1040,7 @@ namespace uvm {
 			lua_assert(L->ci == ci);
 
 			if (!isLua(L->ci)) {
-				throw std::exception("not lua function to resume");
+				throw uvm::core::UvmException("not lua function to resume");
 			}
 			int startline = current_line();
 			bool from_break = false;
