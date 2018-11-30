@@ -54,8 +54,8 @@ enum UvmStateValueType {
 };
 
 typedef union _UvmStateValue {
-    int int_value;
-    int *int_pointer_value;
+	int64_t int_value;
+	int64_t *int_pointer_value;
     const char *string_value;
     void *pointer_value;
 } UvmStateValue;
@@ -133,11 +133,11 @@ namespace uvm
                 /************************************************************************/
                 /* set how many lua vm instructions can run in the lua stack            */
                 /************************************************************************/
-                void set_instructions_limit(int limit);
+                void set_instructions_limit(int64_t limit);
                 /************************************************************************/
                 /* the the max limit instructions count in the lua stack                */
                 /************************************************************************/
-                int get_instructions_limit() const;
+				int64_t get_instructions_limit() const;
                 /************************************************************************/
                 /* get how many lua vm instructions ran now in the lua stack            */
                 /************************************************************************/
@@ -338,8 +338,6 @@ namespace uvm
 
 			char *malloc_and_copy_string(lua_State *L, const char *init_data);
 
-            UvmModuleByteStream *malloc_managed_byte_stream(lua_State *L);
-
             bool run_compiledfile(lua_State *L, const char *filename);
             bool run_compiled_bytestream(lua_State *L, void *stream_addr);
 
@@ -368,12 +366,6 @@ namespace uvm
 
             const char *get_contract_id_in_api(lua_State *L);
 
-            // UvmStorageValue luvm_get_storage(lua_State *L, const char *contract_id, const char *name);
-            
-			//bool luvm_set_storage(lua_State *L, const char *contract_id, const char *name, UvmStorageValue value);
-
-            void free_bytecode_stream(UvmModuleByteStreamP stream);
-
             /**
             * diff from execute_contract_api is the contract bytestream is loaded by pointer and uvm
             */
@@ -386,7 +378,7 @@ namespace uvm
             bool execute_contract_init_by_address(lua_State *L, const char *contract_address, const char *arg1, std::string *result_json_string);
             bool execute_contract_start_by_address(lua_State *L, const char *contract_address, const char *arg1, std::string *result_json_string);
 
-			bool call_last_contract_api(lua_State* L, const std::string& contract_id, const std::string& api_name, const std::string& api_arg, std::string* result_json_string);
+			bool call_last_contract_api(lua_State* L, const std::string& contract_id, const std::string& api_name, const std::string& api_arg, const std::string& caller_address, const std::string& caller_pubkey, std::string* result_json_string);
 
 			// whether the head of call stack is contract's init API
 			bool is_calling_contract_init_api(lua_State *L);
@@ -394,10 +386,6 @@ namespace uvm
 			// get the head contract address of call stack
 			std::string get_starting_contract_address(lua_State *L);
 
-			struct contract_info_stack_entry {
-				std::string contract_id;
-				std::string api_name;
-			};
 			// contract id stack of API call stack
 			std::stack<contract_info_stack_entry> *get_using_contract_id_stack(lua_State *L, bool init_if_not_exist=true);
 
@@ -407,12 +395,12 @@ namespace uvm
             /**
             * load one chunk from lua bytecode file
             */
-            LClosure* luaU_undump_from_file(lua_State *L, const char *binary_filename, const char* name);
+			uvm_types::GcLClosure* luaU_undump_from_file(lua_State *L, const char *binary_filename, const char* name);
 
             /**
              * load one chunk from lua bytecode stream
              */
-            LClosure *luaU_undump_from_stream(lua_State *L, UvmModuleByteStreamP stream, const char *name);
+            uvm_types::GcLClosure *luaU_undump_from_stream(lua_State *L, UvmModuleByteStreamP stream, const char *name);
 
             /**
              * secure apis
@@ -431,7 +419,7 @@ namespace uvm
             /**
              * check contract lua bytecode proto is right(whether safe)
              */
-            bool check_contract_proto(lua_State *L, Proto *proto, char *error = nullptr, std::list<Proto*> *parents = nullptr);
+            bool check_contract_proto(lua_State *L, uvm_types::GcProto *proto, char *error = nullptr, std::list<uvm_types::GcProto*> *parents = nullptr);
 
             std::string wrap_contract_name(const char *contract_name);
 
@@ -447,7 +435,7 @@ namespace uvm
         char error_msg[LUA_COMPILE_ERROR_MAX_LENGTH+1];		 \
         memset(error_msg, 0x0, sizeof(error_msg));		     \
         snprintf(error_msg, LUA_COMPILE_ERROR_MAX_LENGTH, error_format, ##__VA_ARGS__);				\
-        error_msg[LUA_COMPILE_ERROR_MAX_LENGTH-1] = '\-';       \
+        error_msg[LUA_COMPILE_ERROR_MAX_LENGTH-1] = '\0';       \
         memcpy(error, error_msg, sizeof(char)*(1 + strlen(error_msg)));								\
      }												\
      global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, error_format, ##__VA_ARGS__);		\

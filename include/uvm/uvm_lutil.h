@@ -1,12 +1,8 @@
-﻿/**
-* some utils functions
-* @author
-*/
-
-#ifndef uvm_lutil_h
-#define uvm_lutil_h
+﻿#pragma once
 
 #include <uvm/lprefix.h>
+#include <boost/asio/buffer.hpp>
+#include <boost/variant.hpp>
 
 #include <setjmp.h>
 #include <stdlib.h>
@@ -18,6 +14,7 @@
 #include <vector>
 #include <chrono>
 #include <algorithm>
+#include <memory>
 
 struct lua_State;
 
@@ -134,8 +131,128 @@ namespace uvm
             return diff_time(end_time).count();
           }
         };
+		
+		typedef std::vector<unsigned char> Buffer;
+		struct BufferSlice {
+			std::shared_ptr<Buffer> source;
+			size_t offset;
+
+			size_t size() const;
+			unsigned char at(size_t pos) const;
+			bool empty() const;
+			BufferSlice slice(size_t from) const;
+			std::shared_ptr<Buffer> clone_slice(size_t from, size_t length) const;
+			std::shared_ptr<Buffer> to_buffer() const;
+
+			static BufferSlice create(std::shared_ptr<Buffer> source, size_t offset = 0);
+		};
+		std::string buffer_to_hex(const Buffer& buffer);
+		int64_t hex_to_int(const std::string& hex_str);
+
+		enum RlpObjectType {
+			ROT_BYTES = 0,
+			ROT_LIST = 1
+		};
+
+		template <typename T>
+		Buffer int_little_endian_pack(T v) {
+			auto val = v;
+			size_t cycle_count = sizeof(v);
+			Buffer result(cycle_count);
+			for (size_t i = 0; i < cycle_count; i++) {
+				uint8_t b = uint8_t(val);
+				val >>= 8;
+				result[cycle_count - i - 1] = b;
+			}
+			return result;
+		}
+
+		template <typename T>
+		T little_endian_unpack_int(const Buffer& buf) {
+			T result = 0;
+			if (buf.empty())
+				return 0;
+			for (size_t i = 0; i < buf.size();i++) {
+				unsigned char c = buf[i];
+				result = (result << 8) + c;
+			}
+			return result;
+		}
+
+		struct RlpObject;
+		struct RlpObject {
+			RlpObjectType type;
+			std::vector<unsigned char> bytes;
+			std::vector<std::shared_ptr<RlpObject> > objects;
+
+			template <typename T>
+			static std::shared_ptr<RlpObject> pack_to_bytes(const T& value) {
+				auto obj = std::make_shared<RlpObject>();
+				const auto& packed = int_little_endian_pack(value);
+				Buffer bytes(packed.size());
+				memcpy(bytes.data(), packed.data(), packed.size());
+				obj->type = RlpObjectType::ROT_BYTES;
+				obj->bytes = bytes;
+				return obj;
+			}
+
+			static std::shared_ptr<RlpObject> from_char(char c);
+			static std::shared_ptr<RlpObject> from_int32(int32_t value);
+			static std::shared_ptr<RlpObject> from_int64(int64_t value);
+			static std::shared_ptr<RlpObject> from_string(const std::string& str);
+			static std::shared_ptr<RlpObject> from_bytes(const Buffer& buf);
+			static std::shared_ptr<RlpObject> from_list(std::vector<std::shared_ptr<RlpObject> > objects);
+
+			int32_t to_int32() const;
+			int64_t to_int64() const;
+			char to_char() const;
+			std::string to_string() const;
+			Buffer to_buffer() const;
+
+		};
+
+		class RlpEncoder {
+		public:
+			Buffer encode(unsigned char input);
+			Buffer encode(const std::string& input);
+			Buffer encode(const std::vector<unsigned char>& input);
+			Buffer encode(const std::vector<std::shared_ptr<RlpObject> >& objects);
+			Buffer encode(std::shared_ptr<RlpObject> obj);
+			Buffer encode_length(uint32_t length, int32_t offset);
+		};
+
+		struct DecodeResult {
+			std::shared_ptr<RlpObject> data;
+			BufferSlice source;
+		};
+
+		class RlpDecoder {
+		public:
+			std::shared_ptr<RlpObject> decode(const Buffer& bytes);
+		private:
+			DecodeResult decode_non_empty(const BufferSlice& bytes);
+		};
+		
+		class stringbuffer {
+		private:
+			std::vector<std::string> _parts;
+		public:
+			stringbuffer* put(const std::string& value);
+			stringbuffer* put(int32_t value);
+			stringbuffer* put(int64_t value);
+			stringbuffer* put(uint32_t value);
+			stringbuffer* put(uint64_t value);
+			stringbuffer* put(double value);
+			stringbuffer* put_bool(bool value);
+			void clear();
+			std::string str() const;
+		};
+
+		std::string unhex(const std::string& int_str);
+
+		std::string hex(const std::string& hex_str);
+
+		std::string convert_pre(int old_base, int new_base, std::string source_str);
 
 	} // end namespace uvm::util
 } // end namespace uvm
-
-#endif

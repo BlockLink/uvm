@@ -2,8 +2,11 @@
 #include <simplechain/evaluator.h>
 #include <simplechain/contract.h>
 #include <simplechain/evaluate_state.h>
+#include <simplechain/contract_engine.h>
 
 namespace simplechain {
+	std::shared_ptr<ContractEngine> get_last_contract_engine_for_debugger();
+
 	class contract_create_evaluator : public evaluator<contract_create_evaluator>, public evaluate_state {
 	public:
 		typedef contract_create_operation operation_type;

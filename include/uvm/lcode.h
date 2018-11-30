@@ -40,7 +40,7 @@ typedef enum BinOpr {
 typedef enum UnOpr { OPR_MINUS, OPR_BNOT, OPR_NOT, OPR_LEN, OPR_NOUNOPR } UnOpr;
 
 
-#define getcode(fs,e)	((fs)->f->code[(e)->u.info])
+#define getcode(fs,e)	((fs)->f->codes[(e)->u.info])
 
 #define luaK_codeAsBx(fs,o,A,sBx)	luaK_codeABx(fs,o,A,(sBx)+MAXARG_sBx)
 
@@ -55,7 +55,7 @@ LUAI_FUNC void luaK_fixline(FuncState *fs, int line);
 LUAI_FUNC void luaK_nil(FuncState *fs, int from, int n);
 LUAI_FUNC void luaK_reserveregs(FuncState *fs, int n);
 LUAI_FUNC void luaK_checkstack(FuncState *fs, int n);
-LUAI_FUNC int luaK_stringK(FuncState *fs, TString *s);
+LUAI_FUNC int luaK_stringK(FuncState *fs, uvm_types::GcString *s);
 LUAI_FUNC int luaK_intK(FuncState *fs, lua_Integer n);
 LUAI_FUNC void luaK_dischargevars(FuncState *fs, expdesc *e);
 LUAI_FUNC int luaK_exp2anyreg(FuncState *fs, expdesc *e);

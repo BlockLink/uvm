@@ -240,6 +240,9 @@ typedef enum {
 	UOP_CMP_GT, /* A B C R(A) = 1 if RK(B) > RK(C), else 0 */
 	UOP_CMP_LT, /* A B C R(A) = 1 if RK(B) < RK(C), else 0 */
 
+	UOP_CCALL, /* A B C  R(A), ... ,R(A+C-2) := CALL CONTRACT:R(A)  API:R(A+1)(ARGS: R(A+2),...R(A+B))*/
+	UOP_CSTATICCALL, /* A B C  R(A), ... ,R(A+C-2) := CALL CONTRACT:R(A)  API:R(A+1)(ARGS: R(A+2),...R(A+B))*/
+
 	UOP_DUMMY_COUNT /* not used, just to count opcodes */
 } OpCode;
 

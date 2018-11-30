@@ -43,7 +43,7 @@ namespace uvm
             }
             UvmStateScope::UvmStateScope(const UvmStateScope &other) : _L(other._L) {}
             UvmStateScope::~UvmStateScope() {
-                if (nullptr != _L)
+				if (nullptr != _L)
                     close_lua_state(_L);
             }
 
@@ -99,11 +99,11 @@ namespace uvm
                 set_lua_state_value(_L, key, value, type);
             }
 
-            void UvmStateScope::set_instructions_limit(int limit)
+            void UvmStateScope::set_instructions_limit(int64_t limit)
             {
                 return set_lua_state_instructions_limit(_L, limit);
             }
-            int UvmStateScope::get_instructions_limit() const
+			int64_t UvmStateScope::get_instructions_limit() const
             {
                 return get_lua_state_instructions_limit(_L);
             }

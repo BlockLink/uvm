@@ -162,9 +162,11 @@ int luaD_rawrunprotected(lua_State *L, Pfunc f, void *ud) {
     LUAI_TRY(L, &lj,
         (*f)(L, ud);
     );
+	if (L->state & (lua_VMState::LVM_STATE_BREAK | lua_VMState::LVM_STATE_SUSPEND)) {
+		return lj.status;
+	}
     L->errorJmp = lj.previous;  /* restore old error handler */
     L->nCcalls = oldnCcalls;
-	// TODO: ，，lua_State
     return lj.status;
 }
 
@@ -200,7 +202,10 @@ void luaD_reallocstack(lua_State *L, int newsize) {
     int lim = L->stacksize;
     lua_assert(newsize <= LUAI_MAXSTACK || newsize == ERRORSTACKSIZE);
     lua_assert(L->stack_last - L->stack == L->stacksize - EXTRA_STACK);
-    luaM_reallocvector(L, L->stack, L->stacksize, newsize, TValue);
+
+	auto newstack = static_cast<TValue*>(L->gc_state->gc_malloc_vector(newsize, sizeof(TValue)));
+	memcpy(newstack, L->stack, sizeof(TValue) * L->stacksize);
+	L->stack = newstack;
     for (; lim < newsize; lim++)
         setnilvalue(L->stack + lim); /* erase new segment */
     L->stacksize = newsize;
@@ -303,7 +308,7 @@ static void callhook(lua_State *L, CallInfo *ci) {
 }
 
 
-static StkId adjust_varargs(lua_State *L, Proto *p, int actual) {
+static StkId adjust_varargs(lua_State *L, uvm_types::GcProto *p, int actual) {
     int i;
     int nfixargs = p->numparams;
     StkId base, fixed;
@@ -365,6 +370,7 @@ static void tryfuncTM(lua_State *L, StkId func) {
 int luaD_precall(lua_State *L, StkId func, int nresults) {
     lua_CFunction f;
     CallInfo *ci;
+	L->ci_depth++;
     switch (ttype(func)) {
     case LUA_TCCL:  /* C closure */
         f = clCvalue(func)->f;
@@ -385,13 +391,16 @@ int luaD_precall(lua_State *L, StkId func, int nresults) {
         lua_unlock(L);
         n = (*f)(L);  /* do the actual call */
         lua_lock(L);
-        api_checknelems(L, n);
-        luaD_poscall(L, ci, L->top - n, n);
+		if (L->state & (lua_VMState::LVM_STATE_BREAK | lua_VMState::LVM_STATE_SUSPEND)) {
+			return 1;
+		}
+		api_checknelems(L, n);
+		luaD_poscall(L, ci, L->top - n, n);
         return 1;
     }
     case LUA_TLCL: {  /* Lua function: prepare its call */
         StkId base;
-        Proto *p = clLvalue(func)->p;
+		uvm_types::GcProto *p = clLvalue(func)->p;
         int n = cast_int(L->top - func) - 1;  /* number of real arguments */
         int fsize = p->maxstacksize;  /* frame size */
         checkstackp(L, fsize, func);
@@ -408,7 +417,7 @@ int luaD_precall(lua_State *L, StkId func, int nresults) {
         ci->u.l.base = base;
         L->top = ci->top = base + fsize;
         lua_assert(ci->top <= L->stack_last);
-        ci->u.l.savedpc = p->code;  /* starting point */
+        ci->u.l.savedpc = p->codes.empty() ? nullptr : p->codes.data();  /* starting point */
         ci->callstatus = CIST_LUA;
         if (L->hookmask & LUA_MASKCALL)
             callhook(L, ci);
@@ -486,6 +495,9 @@ int luaD_poscall(lua_State *L, CallInfo *ci, StkId firstResult, int nres) {
     }
     res = ci->func;  /* res == final position of 1st result */
     L->ci = ci->previous;  /* back to caller */
+	if (L->ci_depth > 0) {
+		L->ci_depth--;
+	}
     /* move results to proper place */
     return moveresults(L, firstResult, res, nres, wanted);
 }
@@ -517,6 +529,9 @@ void luaD_call(lua_State *L, StkId func, int nResults) {
         stackerror(L);
     if (!luaD_precall(L, func, nResults))  /* is a Lua function? */
         luaV_execute(L);  /* call it */
+	if (L->state & (lua_VMState::LVM_STATE_BREAK | lua_VMState::LVM_STATE_SUSPEND)) {
+		return;
+	}
     L->nCcalls--;
 }
 
@@ -527,6 +542,9 @@ void luaD_call(lua_State *L, StkId func, int nResults) {
 void luaD_callnoyield(lua_State *L, StkId func, int nResults) {
     L->nny++;
     luaD_call(L, func, nResults);
+	if (L->state & (lua_VMState::LVM_STATE_BREAK| lua_VMState::LVM_STATE_SUSPEND)) {
+		return;
+	}
     L->nny--;
 }
 
@@ -576,6 +594,9 @@ static void unroll(lua_State *L, void *ud) {
         else {  /* Lua function */
             luaV_finishOp(L);  /* finish interrupted instruction */
             luaV_execute(L);  /* execute down to higher C 'boundary' */
+			if (L->state & (lua_VMState::LVM_STATE_BREAK | lua_VMState::LVM_STATE_SUSPEND)) {
+				return;
+			}
         }
     }
 }
@@ -756,6 +777,9 @@ int luaD_pcall(lua_State *L, Pfunc func, void *u,
         L->nny = old_nny;
         luaD_shrinkstack(L);
     }
+	if (status == LUA_OK && (L->state & (lua_VMState::LVM_STATE_BREAK | lua_VMState::LVM_STATE_SUSPEND))) {
+		return status;
+	}
     L->errfunc = old_errfunc;
     return status;
 }
@@ -784,7 +808,7 @@ static void checkmode(lua_State *L, const char *mode, const char *x) {
 
 
 static void f_parser(lua_State *L, void *ud) {
-    LClosure *cl;
+	uvm_types::GcLClosure *cl;
     struct SParser *p = lua_cast(struct SParser *, ud);
     int c = zgetc(p->z);  /* read first character */
     if (c == LUA_SIGNATURE[0]) {
@@ -797,7 +821,7 @@ static void f_parser(lua_State *L, void *ud) {
     }
 	if (!cl)
 		return;
-    lua_assert(cl->nupvalues == cl->p->sizeupvalues);
+    lua_assert(cl->nupvalues == cl->p->upvalues.size());
     luaF_initupvals(L, cl);
 }
 
@@ -820,5 +844,7 @@ int luaD_protectedparser(lua_State *L, ZIO *z, const char *name,
     L->nny--;
     return status;
 }
+
+
 
 

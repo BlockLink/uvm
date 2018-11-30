@@ -2,8 +2,11 @@
 #include <simplechain/operations.h>
 #include <simplechain/transfer_evaluate.h>
 #include <simplechain/simplechain_uvm_api.h>
+#include <simplechain/uvm_contract_engine.h>
 #include <iostream>
+#include <list>
 #include <fc/io/json.hpp>
+#include <uvm/lvm.h>
 
 namespace simplechain {
 	blockchain::blockchain() {
@@ -16,22 +19,31 @@ namespace simplechain {
 		assets.push_back(core_asset);
 
 		block genesis_block;
+		genesis_block.prev_block_hash = "";
 		genesis_block.block_number = 0;
 		genesis_block.block_time = fc::time_point(fc::microseconds(1536033055382L));
 		blocks.push_back(genesis_block);
 	}
 
-	void blockchain::evaluate_transaction(std::shared_ptr<transaction> tx) {
+	std::shared_ptr<evaluate_result> blockchain::evaluate_transaction(std::shared_ptr<transaction> tx) {
 		try {
 			// TODO: evaluate_state of block or tx(need nested evaluate state)
+			std::shared_ptr<evaluate_result> last_op_result;
+			this->last_evaluator_when_debugger = nullptr;
 			for (const auto& op : tx->operations) {
 				auto evaluator_instance = get_operation_evaluator(tx.get(), op);
 				auto op_result = evaluator_instance->evaluate(op);
+				last_op_result = op_result;
+				this->last_evaluator_when_debugger = evaluator_instance; // TODO: only save it when break into debugger
 			}
+			return last_op_result;
 		}
 		catch (const std::exception& e) {
 			throw e;
 		}
+	}
+	void blockchain::clear_debugger_info() {
+		this->last_evaluator_when_debugger = nullptr;
 	}
 	void blockchain::apply_transaction(std::shared_ptr<transaction> tx) {
 		try {
@@ -57,6 +69,20 @@ namespace simplechain {
 
 	uint64_t blockchain::head_block_number() const {
 		return blocks.size();
+	}
+
+	std::string blockchain::head_block_hash() const {
+		return latest_block().block_hash();
+	}
+
+	std::shared_ptr<transaction> blockchain::get_trx_by_hash(const std::string& tx_hash) const {
+		for (const auto& block : blocks) {
+			for (const auto& tx : block.txs) {
+				if (tx.tx_hash() == tx_hash)
+					return std::make_shared<transaction>(tx);
+			}
+		}
+		return nullptr;
 	}
 
 	std::shared_ptr<block> blockchain::get_block_by_number(uint64_t num) const {
@@ -106,7 +132,7 @@ namespace simplechain {
 		auto balance_iter = balances.find(asset_id);
 		if (balance_iter == balances.end()) {
 			assert(balance_change >= 0);
-			balances[asset_id] = balance_change;
+			balances[asset_id] = (balance_t)(balance_change);
 		}
 		else {
 			assert(balance_change > 0 || (-balance_change <= balance_iter->second));
@@ -147,6 +173,16 @@ namespace simplechain {
 		}
 		return it2->second;
 	}
+
+	std::map<std::string, StorageDataType> blockchain::get_contract_storages(const std::string& contract_address) const {
+		auto it1 = contract_storages.find(contract_address);
+		std::map<std::string, StorageDataType> storages;
+		if (it1 != contract_storages.end()) {
+			storages = it1->second;
+		}
+		return storages;
+	}
+
 	void blockchain::set_storage(const std::string& contract_address, const std::string& key, const StorageDataType& value) {
 		auto it1 = contract_storages.find(contract_address);
 		std::map<std::string, StorageDataType> storages;
@@ -159,7 +195,7 @@ namespace simplechain {
 
 	void blockchain::add_asset(const asset& new_asset) {
 		asset item(new_asset);
-		item.asset_id = assets.size();
+		item.asset_id = (asset_id_t)(assets.size());
 		assets.push_back(item);
 	}
 	std::shared_ptr<asset> blockchain::get_asset(asset_id_t asset_id) {
@@ -204,6 +240,9 @@ namespace simplechain {
 		case operation::tag<mint_operation>::value: {
 			return std::make_shared<min_operation_evaluator>(this, tx);
 		} break;
+		case operation::tag<transfer_operation>::value: {
+			return std::make_shared<transfer_operation_evaluator>(this, tx);
+		} break;
 		case operation::tag<contract_create_operation>::value: {
 			return std::make_shared<contract_create_evaluator>(this, tx);
 		} break;
@@ -211,7 +250,7 @@ namespace simplechain {
 			return std::make_shared<contract_invoke_evaluator>(this, tx);
 		} break;
 		default: {
-			auto err = std::string("unknown operation type ") + std::to_string(type);
+			auto err = std::string("unknown operation type ") + std::to_string(type) + " in blockchain::get_operation_evaluator";
 			throw uvm::core::UvmException(err.c_str());
 		}
 		}
@@ -245,7 +284,287 @@ namespace simplechain {
 		blk.txs = valid_txs;
 		blk.block_time = fc::time_point_sec(fc::time_point::now());
 		blk.block_number = blocks.size();
+		blk.prev_block_hash = latest_block().block_hash();
 		blocks.push_back(blk);
+	}
+
+	fc::variant blockchain::get_state() const {
+		fc::mutable_variant_object chainstate_json;
+		fc::variant assets_obj;
+		fc::to_variant(assets, assets_obj);
+		chainstate_json["assets"] = assets_obj;
+		chainstate_json["contracts_count"] = contracts.size();
+		chainstate_json["head_block_num"] = head_block_number();
+		chainstate_json["head_block_hash"] = head_block_hash();
+		fc::variant accounts_obj;
+		fc::to_variant(account_balances, accounts_obj);
+		chainstate_json["accounts"] = accounts_obj;
+		return chainstate_json;
+	}
+
+	std::string blockchain::get_state_json() const {
+		return fc::json::to_string(get_state());
+	}
+
+	std::vector<contract_object> blockchain::get_contracts() const {
+		std::vector<contract_object> result;
+		for (const auto& p : contracts) {
+			result.push_back(p.second);
+		}
+		return result;
+	}
+
+	std::vector<std::string> blockchain::get_account_addresses() const {
+		std::vector<std::string> result;
+		for (const auto& p : account_balances) {
+			result.push_back(p.first);
+		}
+		return result;
+	}
+
+	bool blockchain::is_break_when_last_evaluate() const {
+		return get_last_contract_engine_for_debugger() ? true : false;
+	}
+
+	void blockchain::debugger_go_resume() {
+		auto engine = get_last_contract_engine_for_debugger();
+		if (!engine)
+			return;
+		auto uvm_engine = (UvmContractEngine*)engine.get();
+		auto scope = uvm_engine->scope();
+		auto execute_ctx = get_last_execute_context();
+		if (!execute_ctx)
+			return;
+		execute_ctx->go_resume(scope->L());
+	}
+
+
+	void blockchain::debugger_step_into() {
+		auto engine = get_last_contract_engine_for_debugger();
+		if (!engine)
+			return;
+		auto uvm_engine = (UvmContractEngine*)engine.get();
+		auto scope = uvm_engine->scope();
+		auto execute_ctx = get_last_execute_context();
+		if (!execute_ctx)
+			return;
+		execute_ctx->step_into(scope->L());
+	}
+	void blockchain::debugger_step_out() {
+		auto engine = get_last_contract_engine_for_debugger();
+		if (!engine)
+			return;
+		auto uvm_engine = (UvmContractEngine*)engine.get();
+		auto scope = uvm_engine->scope();
+		auto execute_ctx = get_last_execute_context();
+		if (!execute_ctx)
+			return;
+		execute_ctx->step_out(scope->L());
+	}
+	void blockchain::debugger_step_over() {
+		auto engine = get_last_contract_engine_for_debugger();
+		if (!engine)
+			return;
+		auto uvm_engine = (UvmContractEngine*)engine.get();
+		auto scope = uvm_engine->scope();
+		auto execute_ctx = get_last_execute_context();
+		if (!execute_ctx)
+			return;
+		execute_ctx->step_over(scope->L());
+	}
+
+	// TODO: add breakpoint to all evaluate
+	void blockchain::add_breakpoint_in_last_debugger_state(const std::string& contract_address, uint32_t line) {
+		auto engine = get_last_contract_engine_for_debugger();
+		std::map<std::string, std::list<uint32_t> > *breakpoints_pointer = nullptr;
+		if (!engine) {
+			breakpoints_pointer = &breakpoints;
+		}
+		else {
+			auto uvm_engine = (UvmContractEngine*)engine.get();
+			auto scope = uvm_engine->scope();
+			if (scope->L()->breakpoints) {
+				breakpoints_pointer = scope->L()->breakpoints;
+			}
+			else {
+				return;
+			}
+		}
+		std::list<uint32_t> lines;
+		if (breakpoints_pointer->find(contract_address) != breakpoints_pointer->end())
+			lines = breakpoints_pointer->at(contract_address);
+		if (std::find(lines.begin(), lines.end(), line) == lines.end())
+			lines.push_back(line);
+		(*breakpoints_pointer)[contract_address] = lines;
+	}
+	void blockchain::remove_breakpoint_in_last_debugger_state(const std::string& contract_address, uint32_t line) {
+		auto engine = get_last_contract_engine_for_debugger();
+		std::map<std::string, std::list<uint32_t> > *breakpoints_pointer = nullptr;
+		if (!engine) {
+			breakpoints_pointer = &breakpoints;
+		}
+		else {
+			auto uvm_engine = (UvmContractEngine*)engine.get();
+			auto scope = uvm_engine->scope();
+			if (scope->L()->breakpoints) {
+				breakpoints_pointer = scope->L()->breakpoints;
+			}
+			else {
+				return;
+			}
+		}
+		std::list<uint32_t> lines;
+		if (breakpoints_pointer->find(contract_address) != breakpoints_pointer->end())
+			lines = breakpoints_pointer->at(contract_address);
+		if (std::find(lines.begin(), lines.end(), line) != lines.end())
+			lines.erase(std::find(lines.begin(), lines.end(), line));
+		(*breakpoints_pointer)[contract_address] = lines;
+	}
+	void blockchain::clear_breakpoints_in_last_debugger_state() {
+		breakpoints.clear();
+		auto engine = get_last_contract_engine_for_debugger();
+		std::map<std::string, std::list<uint32_t> > *breakpoints_pointer = nullptr;
+		if (engine) {
+			breakpoints_pointer = &breakpoints;
+			auto uvm_engine = (UvmContractEngine*)engine.get();
+			auto scope = uvm_engine->scope();
+			if (scope->L()->breakpoints) {
+				scope->L()->breakpoints->clear();
+			}
+		}
+	}
+
+	std::map<std::string, std::list<uint32_t> > blockchain::get_breakpoints_in_last_debugger_state() {
+
+		auto engine = get_last_contract_engine_for_debugger();
+		std::map<std::string, std::list<uint32_t> > *breakpoints_pointer = nullptr;
+		if (!engine) {
+			breakpoints_pointer = &breakpoints;
+		}
+		else {
+			auto uvm_engine = (UvmContractEngine*)engine.get();
+			auto scope = uvm_engine->scope();
+			if (scope->L()->breakpoints) {
+				breakpoints_pointer = scope->L()->breakpoints;
+			}
+			else {
+				return std::map<std::string, std::list<uint32_t> >();
+			}
+		}
+		return *breakpoints_pointer;
+	}
+
+	std::map<std::string, TValue> blockchain::view_localvars_in_last_debugger_state() const {
+		std::map<std::string, TValue> result;
+		auto engine = get_last_contract_engine_for_debugger();
+		if (!engine)
+			return result;
+		auto uvm_engine = (UvmContractEngine*)engine.get();
+		auto scope = uvm_engine->scope();
+		auto execute_ctx = get_last_execute_context();
+		if (!execute_ctx)
+			return result;
+		result = execute_ctx->view_localvars(scope->L());
+		return result;
+	}
+	std::map<std::string, TValue> blockchain::view_upvalues_in_last_debugger_state() const {
+		std::map<std::string, TValue> result;
+		std::map<std::string, std::string> res;
+		auto engine = get_last_contract_engine_for_debugger();
+		if (!engine)
+			return result;
+		auto uvm_engine = (UvmContractEngine*)engine.get();
+		auto scope = uvm_engine->scope();
+		auto execute_ctx = get_last_execute_context();
+		if (!execute_ctx)
+			return result;
+		result = execute_ctx->view_upvalues(scope->L());
+
+		//auto L = scope->L();
+
+		//std::map<std::string, TValue>::iterator it;
+	
+		/*for (it = result.begin(); it != result.end();)
+		{
+			*(L->top) = it->second;
+			//setobj2s(L, L->top, &tvalue)
+			api_incr_top(L);
+			
+			luaL_tojsonstring(L, -1, nullptr);
+			const char *value_str = luaL_checkstring(L, -1);
+			lua_pop(L, 1);
+			//it->first
+			res[it->first] = luaL_
+		}*/
+
+		
+		
+
+		return result;
+	}
+
+	std::pair<std::string, std::string> blockchain::view_current_contract_stack_item_in_last_debugger_state() const {
+		std::pair<std::string, std::string> result;
+		auto engine = get_last_contract_engine_for_debugger();
+		if (!engine)
+			return result;
+		auto uvm_engine = (UvmContractEngine*)engine.get();
+		auto scope = uvm_engine->scope();
+		auto execute_ctx = get_last_execute_context();
+		if (!execute_ctx)
+			return result;
+		if (scope->L()->using_contract_id_stack->empty())
+			return result;
+		const auto& top = scope->L()->using_contract_id_stack->top();
+		result.first = top.contract_id;
+		result.second = top.api_name;
+		return result;
+	}
+	uint32_t blockchain::view_current_line_number_in_last_debugger_state() const {
+		auto engine = get_last_contract_engine_for_debugger();
+		if (!engine)
+			return 0;
+		auto uvm_engine = (UvmContractEngine*)engine.get();
+		auto scope = uvm_engine->scope();
+		auto execute_ctx = get_last_execute_context();
+		if (!execute_ctx)
+			return 0;
+		return execute_ctx->current_line();
+	}
+
+	debugger_state blockchain::view_debugger_state() const {
+		debugger_state state;
+		state.current_line = view_current_line_number_in_last_debugger_state();
+		return state;
+	}
+
+
+	TValue blockchain::view_contract_storage_value(const char *name, const char* fast_map_key, bool is_fast_map) const {
+		TValue result = *luaO_nilobject;
+		auto engine = get_last_contract_engine_for_debugger();
+		if (!engine)
+			return result;
+		auto uvm_engine = (UvmContractEngine*)engine.get();
+		auto scope = uvm_engine->scope();
+		auto execute_ctx = get_last_execute_context();
+		if (!execute_ctx)
+			return result;
+		result = execute_ctx->view_contract_storage_value(scope->L(),name,fast_map_key,is_fast_map);
+		return result;
+	}
+
+	std::vector<std::string> blockchain::view_call_stack() const {
+		std::vector<std::string> result ;
+		auto engine = get_last_contract_engine_for_debugger();
+		if (!engine)
+			return result;
+		auto uvm_engine = (UvmContractEngine*)engine.get();
+		auto scope = uvm_engine->scope();
+		auto execute_ctx = get_last_execute_context();
+		if (!execute_ctx)
+			return result;
+		result = execute_ctx->view_call_stack(scope->L());
+		return result;
 	}
 
 }

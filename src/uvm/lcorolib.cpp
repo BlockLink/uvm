@@ -84,77 +84,7 @@ static int luaB_auxwrap(lua_State *L) {
     return r;
 }
 
-
-static int luaB_cocreate(lua_State *L) {
-    lua_State *NL;
-    luaL_checktype(L, 1, LUA_TFUNCTION);
-    NL = lua_newthread(L);
-    lua_pushvalue(L, 1);  /* move function to top */
-    lua_xmove(L, NL, 1);  /* move function from L to NL */
-    return 1;
-}
-
-
-static int luaB_cowrap(lua_State *L) {
-    luaB_cocreate(L);
-    lua_pushcclosure(L, luaB_auxwrap, 1);
-    return 1;
-}
-
-
-static int luaB_yield(lua_State *L) {
-    return lua_yield(L, lua_gettop(L));
-}
-
-
-static int luaB_costatus(lua_State *L) {
-    lua_State *co = getco(L);
-    if (L == co) lua_pushliteral(L, "running");
-    else {
-        switch (lua_status(co)) {
-        case LUA_YIELD:
-            lua_pushliteral(L, "suspended");
-            break;
-        case LUA_OK: {
-            lua_Debug ar;
-            if (lua_getstack(co, 0, &ar) > 0)  /* does it have frames? */
-                lua_pushliteral(L, "normal");  /* it is running */
-            else if (lua_gettop(co) == 0)
-                lua_pushliteral(L, "dead");
-            else
-                lua_pushliteral(L, "suspended");  /* initial state */
-            break;
-        }
-        default:  /* some error occurred */
-            lua_pushliteral(L, "dead");
-            break;
-        }
-    }
-    return 1;
-}
-
-
-static int luaB_yieldable(lua_State *L) {
-    lua_pushboolean(L, lua_isyieldable(L));
-    return 1;
-}
-
-
-static int luaB_corunning(lua_State *L) {
-    int ismain = lua_pushthread(L);
-    lua_pushboolean(L, ismain);
-    return 2;
-}
-
-
 static const luaL_Reg co_funcs[] = {
-    { "create", luaB_cocreate },
-    { "resume", luaB_coresume },
-    { "running", luaB_corunning },
-    { "status", luaB_costatus },
-    { "wrap", luaB_cowrap },
-    { "yield", luaB_yield },
-    { "isyieldable", luaB_yieldable },
     { nullptr, nullptr }
 };
 

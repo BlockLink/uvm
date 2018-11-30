@@ -14,6 +14,16 @@ namespace simplechain {
 
 		virtual std::shared_ptr<operation_type::result_type> do_evaluate(const operation_type& op) final;
 		virtual std::shared_ptr<operation_type::result_type> do_apply(const operation_type& op) final;
+	};
 
+	class transfer_operation_evaluator : public evaluator<transfer_operation_evaluator>, public evaluate_state {
+	public:
+		typedef transfer_operation operation_type;
+	public:
+		transfer_operation_evaluator(blockchain* chain_, transaction* tx_) : evaluate_state(chain_, tx_) {}
+		virtual ~transfer_operation_evaluator() {}
+
+		virtual std::shared_ptr<operation_type::result_type> do_evaluate(const operation_type& op) final;
+		virtual std::shared_ptr<operation_type::result_type> do_apply(const operation_type& op) final;
 	};
 }

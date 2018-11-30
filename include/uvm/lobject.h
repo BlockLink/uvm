@@ -10,10 +10,13 @@
 
 
 #include <stdarg.h>
+#include <map>
+#include <algorithm>
 
 
 #include "uvm/llimits.h"
 #include "uvm/lua.h"
+#include <vmgc/vmgc.h>
 
 
 /*
@@ -65,26 +68,10 @@
 /* mark a tag as collectable */
 #define ctb(t)			((t) | BIT_ISCOLLECTABLE)
 
-
-/*
-** Common type for all collectable objects
-*/
-typedef struct GCObject GCObject;
-
-
-/*
-** Common Header for all collectable objects (in macro form, to be
-** included in other objects)
-*/
-#define CommonHeader	GCObject *next; lu_byte tt; lu_byte marked
-
-
-/*
-** Common type has only the common header
-*/
-struct GCObject {
-    CommonHeader;
-};
+namespace uvm_types {
+	struct GcString;
+	struct GcTable;
+}
 
 
 
@@ -98,7 +85,7 @@ struct GCObject {
 ** Union of all Lua values
 */
 typedef union Value {
-    GCObject *gc;    /* collectable objects */
+	vmgc::GcObject* gco;
     void *p;         /* light userdata */
     int b;           /* booleans */
     lua_CFunction f; /* light C functions */
@@ -164,17 +151,17 @@ typedef struct lua_TValue {
 #define fltvalue(o)	check_exp(ttisfloat(o), val_(o).n)
 #define nvalue(o)	check_exp(ttisnumber(o), \
 	(ttisinteger(o) ? cast_num(ivalue(o)) : fltvalue(o)))
-#define gcvalue(o)	check_exp(iscollectable(o), val_(o).gc)
+#define gcvalue(o)	check_exp(iscollectable(o), val_(o).gco)
 #define pvalue(o)	check_exp(ttislightuserdata(o), val_(o).p)
-#define tsvalue(o)	check_exp(ttisstring(o), gco2ts(val_(o).gc))
-#define uvalue(o)	check_exp(ttisfulluserdata(o), gco2u(val_(o).gc))
-#define clvalue(o)	check_exp(ttisclosure(o), gco2cl(val_(o).gc))
-#define clLvalue(o)	check_exp(ttisLclosure(o), gco2lcl(val_(o).gc))
-#define clCvalue(o)	check_exp(ttisCclosure(o), gco2ccl(val_(o).gc))
+#define tsvalue(o)	check_exp(ttisstring(o), gco2ts(val_(o).gco))
+#define uvalue(o)	check_exp(ttisfulluserdata(o), gco2u(val_(o).gco))
+#define clvalue(o)	check_exp(ttisclosure(o), gco2cl(val_(o).gco))
+#define clLvalue(o)	check_exp(ttisLclosure(o), gco2lcl(val_(o).gco))
+#define clCvalue(o)	check_exp(ttisCclosure(o), gco2ccl(val_(o).gco))
 #define fvalue(o)	check_exp(ttislcf(o), val_(o).f)
-#define hvalue(o)	check_exp(ttistable(o), gco2t(val_(o).gc))
+#define hvalue(o)	check_exp(ttistable(o), gco2t(val_(o).gco))
 #define bvalue(o)	check_exp(ttisboolean(o), val_(o).b)
-#define thvalue(o)	check_exp(ttisthread(o), gco2th(val_(o).gc))
+#define thvalue(o)	check_exp(ttisthread(o), gco2th(val_(o).gco))
 /* a dead value may get the 'gc' field, but cannot access its contents */
 #define deadvalue(o)	check_exp(ttisdeadkey(o), lua_cast(void *, val_(o).gc))
 
@@ -187,10 +174,7 @@ typedef struct lua_TValue {
 /* Macros for internal tests */
 #define righttt(obj)		(ttype(obj) == gcvalue(obj)->tt)
 
-#define checkliveness(L,obj) \
-	lua_longassert(!iscollectable(obj) || \
-		(righttt(obj) && (L == nullptr || !isdead(state_G(L),gcvalue(obj)))))
-
+#define checkliveness(L,obj) (0)
 
 /* Macros to set values */
 #define settt_(o,t)	((o)->tt_=(t))
@@ -222,34 +206,39 @@ typedef struct lua_TValue {
   { TValue *io = (obj); GCObject *i_g=(x); \
     val_(io).gc = i_g; settt_(io, ctb(i_g->tt)); }
 
+//#define setsvalue(L,obj,x) \
+//  { TValue *io = (obj); TString *x_ = (x); \
+//    val_(io).gc = obj2gco(x_); settt_(io, ctb(x_->tt)); \
+//    checkliveness(L,io); }
+
 #define setsvalue(L,obj,x) \
-  { TValue *io = (obj); TString *x_ = (x); \
-    val_(io).gc = obj2gco(x_); settt_(io, ctb(x_->tt)); \
+  { TValue *io = (obj); uvm_types::GcString *x_ = (x); \
+    val_(io).gco = x_; settt_(io, ctb(x_->tt_)); \
     checkliveness(L,io); }
 
 #define setuvalue(L,obj,x) \
-  { TValue *io = (obj); Udata *x_ = (x); \
-    val_(io).gc = obj2gco(x_); settt_(io, ctb(LUA_TUSERDATA)); \
+  { TValue *io = (obj); uvm_types::GcUserdata *x_ = (x); \
+    val_(io).gco = x_; settt_(io, ctb(LUA_TUSERDATA)); \
     checkliveness(L,io); }
 
 #define setthvalue(L,obj,x) \
   { TValue *io = (obj); lua_State *x_ = (x); \
-    val_(io).gc = obj2gco(x_); settt_(io, ctb(LUA_TTHREAD)); \
+    val_(io).gco = x_; settt_(io, ctb(LUA_TTHREAD)); \
     checkliveness(L,io); }
 
 #define setclLvalue(L,obj,x) \
-  { TValue *io = (obj); LClosure *x_ = (x); \
-    val_(io).gc = obj2gco(x_); settt_(io, ctb(LUA_TLCL)); \
+  { TValue *io = (obj); uvm_types::GcLClosure *x_ = (x); \
+    val_(io).gco = x_; settt_(io, ctb(LUA_TLCL)); \
     checkliveness(L,io); }
 
 #define setclCvalue(L,obj,x) \
-  { TValue *io = (obj); CClosure *x_ = (x); \
-    val_(io).gc = obj2gco(x_); settt_(io, ctb(LUA_TCCL)); \
+  { TValue *io = (obj); uvm_types::GcCClosure *x_ = (x); \
+    val_(io).gco = (x_); settt_(io, ctb(LUA_TCCL)); \
     checkliveness(L,io); }
 
 #define sethvalue(L,obj,x) \
-  { TValue *io = (obj); Table *x_ = (x); \
-    val_(io).gc = obj2gco(x_); settt_(io, ctb(LUA_TTABLE)); \
+  { TValue *io = (obj); uvm_types::GcTable *x_ = (x); \
+    val_(io).gco = x_; settt_(io, ctb(LUA_TTABLE)); \
     checkliveness(L,io); }
 
 #define setdeadvalue(obj)	settt_(obj, LUA_TDEADKEY)
@@ -293,72 +282,27 @@ typedef struct lua_TValue {
 
 typedef TValue *StkId;  /* index to stack elements */
 
-
-
-
-/*
-** Header for string value; string bytes follow the end of this structure
-** (aligned according to 'UTString'; see next).
-*/
-typedef struct TString {
-    CommonHeader;
-    lu_byte extra;  /* reserved words for short strings; "has hash" for longs */
-    lu_byte shrlen;  /* length for short strings */
-    unsigned int hash;
-    union {
-        size_t lnglen;  /* length for long strings */
-        struct TString *hnext;  /* linked list for hash table */
-    } u;
-} TString;
-
-
-/*
-** Ensures that address after this type is always fully aligned.
-*/
-typedef union UTString {
-    L_Umaxalign dummy;  /* ensures maximum alignment for strings */
-    TString tsv;
-} UTString;
-
+namespace uvm_types {
+	struct GcString;
+	struct GcProto;
+}
 
 /*
 ** Get the actual string (array of bytes) from a 'TString'.
 ** (Access to 'extra' ensures that value is really a 'TString'.)
 */
 #define getstr(ts)  \
-  check_exp(sizeof((ts)->extra), lua_cast(char *, (ts)) + sizeof(UTString))
+  ((char*)((ts)->value.data()))
 
 
 /* get the actual string (array of bytes) from a Lua value */
 #define svalue(o)       getstr(tsvalue(o))
 
 /* get string length from 'TString *s' */
-#define tsslen(s)	((s)->tt == LUA_TSHRSTR ? (s)->shrlen : (s)->u.lnglen)
+#define tsslen(s)	((s)->tt == LUA_TSHRSTR ? (s)->value.size() : (s)->value.size())
 
 /* get string length from 'TValue *o' */
 #define vslen(o)	tsslen(tsvalue(o))
-
-
-/*
-** Header for userdata; memory area follows the end of this structure
-** (aligned according to 'UUdata'; see next).
-*/
-typedef struct Udata {
-    CommonHeader;
-    lu_byte ttuv_;  /* user value's tag */
-    struct Table *metatable;
-    size_t len;  /* number of bytes */
-    union Value user_;  /* user value */
-} Udata;
-
-
-/*
-** Ensures that address after this type is always fully aligned.
-*/
-typedef union UUdata {
-    L_Umaxalign dummy;  /* ensures maximum alignment for 'local' udata */
-    Udata uv;
-} UUdata;
 
 
 /*
@@ -366,17 +310,17 @@ typedef union UUdata {
 ** (Access to 'ttuv_' ensures that value is really a 'Udata'.)
 */
 #define getudatamem(u)  \
-  check_exp(sizeof((u)->ttuv_), (lua_cast(char*, (u)) + sizeof(UUdata)))
+  check_exp(sizeof((u)->ttuv_), (lua_cast(char*, (u)->gc_value)))
 
 #define setuservalue(L,u,o) \
-	{ const TValue *io=(o); Udata *iu = (u); \
+	{ const TValue *io=(o); uvm_types::GcUserdata *iu = (u); \
 	  iu->user_ = io->value_; iu->ttuv_ = rttype(io); \
 	  checkliveness(L,io); }
 
 
 #define getuservalue(L,u,o) \
-	{ TValue *io=(o); const Udata *iu = (u); \
-	  io->value_ = iu->user_; settt_(io, iu->ttuv_); \
+	{ TValue *io=(o); auto *iu = (u); \
+	  io->value_.gco = iu; settt_(io, iu->tt_); \
 	  checkliveness(L,io); }
 
 
@@ -384,7 +328,7 @@ typedef union UUdata {
 ** Description of an upvalue for function prototypes
 */
 typedef struct Upvaldesc {
-    TString *name;  /* upvalue name (for debug information) */
+	uvm_types::GcString *name;  /* upvalue name (for debug information) */
     lu_byte instack;  /* whether it is in stack (register) */
     lu_byte idx;  /* index of upvalue (in stack or in outer function's list) */
 } Upvaldesc;
@@ -395,39 +339,11 @@ typedef struct Upvaldesc {
 ** (used for debug information)
 */
 typedef struct LocVar {
-    TString *varname;
+    uvm_types::GcString *varname;
     int startpc;  /* first point where variable is active */
     int endpc;    /* first point where variable is dead */
     int vartype;
 } LocVar;
-
-
-/*
-** Function Prototypes
-*/
-typedef struct Proto {
-    CommonHeader;
-    lu_byte numparams;  /* number of fixed parameters */
-    lu_byte is_vararg;  /* 2: declared vararg; 1: uses vararg */
-    lu_byte maxstacksize;  /* number of registers needed by this function */
-    int sizeupvalues;  /* size of 'upvalues' */
-    int sizek;  /* size of 'k' */
-    int sizecode;
-    int sizelineinfo;
-    int sizep;  /* size of 'p' */
-    int sizelocvars;
-    int linedefined;  /* debug information  */
-    int lastlinedefined;  /* debug information  */
-    TValue *k;  /* constants used by the function */
-    Instruction *code;  /* opcodes */
-    struct Proto **p;  /* functions defined inside the function */
-    int *lineinfo;  /* map from opcodes to source lines (debug information) */
-    LocVar *locvars;  /* information about local variables (debug information) */
-    Upvaldesc *upvalues;  /* upvalue information */
-    struct LClosure *cache;  /* last-created closure with this prototype */
-    TString  *source;  /* used for debug information */
-    GCObject *gclist;
-} Proto;
 
 
 
@@ -437,77 +353,9 @@ typedef struct Proto {
 typedef struct UpVal UpVal;
 
 
-/*
-** Closures
-*/
-
-#define ClosureHeader \
-	CommonHeader; lu_byte nupvalues; GCObject *gclist
-
-typedef struct CClosure {
-    ClosureHeader;
-    lua_CFunction f;
-    TValue upvalue[1];  /* list of upvalues */
-} CClosure;
-
-
-typedef struct LClosure {
-    ClosureHeader;
-    struct Proto *p;
-    UpVal *upvals[1];  /* list of upvalues */
-} LClosure;
-
-
-typedef union Closure {
-    CClosure c;
-    LClosure l;
-} Closure;
-
-
 #define isLfunction(o)	ttisLclosure(o)
 
 #define getproto(o)	(clLvalue(o)->p)
-
-
-/*
-** Tables
-*/
-
-typedef union TKey {
-    struct {
-        TValuefields;
-        int next;  /* for chaining (offset for next node) */
-    } nk;
-    TValue tvk;
-} TKey;
-
-
-/* copy a value into a key without messing up field 'next' */
-#define setnodekey(L,key,obj) \
-	{ TKey *k_=(key); const TValue *io_=(obj); \
-	  k_->nk.value_ = io_->value_; k_->nk.tt_ = io_->tt_; \
-	  (void)L; checkliveness(L,io_); }
-
-
-typedef struct Node {
-    TValue i_val;
-    TKey i_key;
-} Node;
-
-
-typedef struct Table {
-    CommonHeader;
-    lu_byte flags;  /* 1<<p means tagmethod(p) is not present */
-    lu_byte lsizenode;  // log2 of size of 'node' arrayϣֵĴС2^lsizenode
-    unsigned int sizearray;  // size of 'array' arrayֵĴС
-    TValue *array;  // 
-    Node *node; // ϣ
-    Node *lastfree;  /* any free position is before this position */
-    struct Table *metatable;
-    GCObject *gclist;
-} Table;
-
-
 
 /*
 ** 'module' operation for hashing (size is always a power of 2)
@@ -544,6 +392,127 @@ LUAI_FUNC const char *luaO_pushvfstring(lua_State *L, const char *fmt,
     va_list argp);
 LUAI_FUNC const char *luaO_pushfstring(lua_State *L, const char *fmt, ...);
 LUAI_FUNC void luaO_chunkid(char *out, const char *source, size_t len);
+
+
+
+unsigned int luaS_hash(const char *str, size_t l, unsigned int seed);
+
+// vmgc object types
+namespace uvm_types {
+	struct GcString : vmgc::GcObject
+	{
+		const static vmgc::gc_type type = LUA_TLNGSTR;
+		int tt_ = LUA_TLNGSTR;
+		std::string value;
+		lu_byte extra = 0;
+
+		inline GcString() : tt_(LUA_TLNGSTR){ }
+
+		virtual ~GcString() {}
+
+		inline unsigned int hash() const {
+			return luaS_hash(value.data(), value.size(), 1);
+		}
+	};
+	struct GcUserdata : vmgc::GcObject
+	{
+		const static vmgc::gc_type type = LUA_TUSERDATA;
+		int tt_ = LUA_TUSERDATA;
+		void* gc_value = nullptr; // user value managed in vmgc
+		uvm_types::GcTable *metatable;
+		size_t len;  /* number of bytes */
+		int ttuv_;
+		Value user_;
+
+		inline GcUserdata() : tt_(LUA_TUSERDATA), gc_value(nullptr), metatable(0), len(0), ttuv_(LUA_TNIL) {
+			this->user_.gco = nullptr;
+		}
+
+		virtual ~GcUserdata() {}
+	};
+	struct GcClosure : vmgc::GcObject 
+	{
+		virtual ~GcClosure() {}
+
+		virtual vmgc::gc_type tt_value() const = 0;
+		virtual lu_byte nupvalues_count() const = 0;
+	};
+	struct GcProto;
+
+	struct GcLClosure : GcClosure
+	{
+		const static vmgc::gc_type type = LUA_TLCL;
+		lu_byte nupvalues;
+		int tt_ = LUA_TLCL;
+		GcProto *p;
+		std::vector<UpVal*> upvals;
+
+		inline GcLClosure() : nupvalues(0), tt_(LUA_TLCL), p(nullptr) {}
+
+		virtual ~GcLClosure() {}
+		inline virtual vmgc::gc_type tt_value() const { return tt_; }
+		inline virtual lu_byte nupvalues_count() const { return nupvalues; }
+	};
+	struct GcCClosure : GcClosure
+	{
+		const static vmgc::gc_type type = LUA_TCCL;
+		lu_byte nupvalues;
+		int tt_ = LUA_TCCL;
+		lua_CFunction f;
+		std::vector<TValue> upvalue;
+
+		inline GcCClosure() : nupvalues(0), tt_(LUA_TCCL), f(nullptr) {}
+
+		virtual ~GcCClosure() {}
+		inline virtual vmgc::gc_type tt_value() const { return tt_; }
+		inline virtual lu_byte nupvalues_count() const { return nupvalues; }
+	};
+	struct table_sort_comparator
+	{
+	public:
+		bool operator()(const TValue& x, const TValue& y) const;
+	};
+	struct GcTable : vmgc::GcObject
+	{
+		typedef TValue GcTableItemType;
+		const static vmgc::gc_type type = LUA_TTABLE;
+		int tt_ = LUA_TTABLE;
+		std::map<TValue, GcTableItemType, table_sort_comparator> entries;
+		std::vector<GcTableItemType> array;
+		GcTable* metatable;
+		lu_byte flags; // flag to mask meta methods
+		inline GcTable() : metatable(nullptr), flags(0) { }
+		virtual ~GcTable() {}
+	};
+	struct GcProto : vmgc::GcObject
+	{
+		typedef TValue GcTableItemType;
+		const static vmgc::gc_type type = LUA_TPROTO;
+		int tt_ = LUA_TPROTO;
+
+		lu_byte numparams;  /* number of fixed parameters */
+		lu_byte is_vararg;  /* 2: declared vararg; 1: uses vararg */
+		lu_byte maxstacksize;  /* number of registers needed by this function */
+		int linedefined;  /* debug information  */
+		int lastlinedefined;  /* debug information  */
+		std::vector<TValue> ks;  /* constants used by the function */
+		std::vector<Instruction> codes;  /* opcodes */
+		std::vector<GcProto*> ps;  /* functions defined inside the function */
+		std::vector<int> lineinfos;  /* map from opcodes to source lines (debug information) */
+		std::vector<LocVar> locvars;  /* information about local variables (debug information) */
+		std::vector<Upvaldesc> upvalues;  /* upvalue information */
+		struct GcLClosure *cache;  /* last-created closure with this prototype */
+		GcString  *source;  /* used for debug information */
+
+		inline GcProto() : numparams(0), is_vararg(0), maxstacksize(0), linedefined(0)
+			, cache(nullptr), source(nullptr)
+		{ }
+		virtual ~GcProto() {}
+	};
+	// TODO: Contract
+
+}
+
 
 
 #endif

@@ -16,6 +16,8 @@ namespace simplechain {
 		virtual bool has_gas_limit() const;
 		virtual int64_t gas_limit() const;
 		virtual int64_t gas_used() const;
+		virtual int vm_state() const;
+		std::shared_ptr<uvm::lua::lib::UvmStateScope> scope() const;
 		virtual void set_gas_limit(int64_t gas_limit);
 		virtual void set_no_gas_limit();
 		virtual void set_gas_used(int64_t gas_used);
@@ -40,5 +42,6 @@ namespace simplechain {
 		virtual void load_and_run_stream(void *stream);
 
 		virtual std::shared_ptr<VMModuleByteStream> get_bytestream_from_code(const uvm::blockchain::Code& code);
+
 	};
 }

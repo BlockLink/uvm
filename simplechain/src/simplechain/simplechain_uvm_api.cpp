@@ -26,6 +26,7 @@
 #include <simplechain/contract_evaluate.h>
 #include <simplechain/contract_object.h>
 #include <simplechain/blockchain.h>
+#include <simplechain/address_helper.h>
 
 namespace simplechain {
 	using namespace uvm::lua::api;
@@ -75,7 +76,7 @@ namespace simplechain {
 
 				//如果上次的exception code为uvm_API_LVM_LIMIT_OVER_ERROR, 不能被其他异常覆盖
 				//只有调用clear清理后，才能继续记录异常
-				int last_code = uvm::lua::lib::get_lua_state_value(L, "exception_code").int_value;
+				auto last_code = uvm::lua::lib::get_lua_state_value(L, "exception_code").int_value;
 				if (last_code != code && last_code != 0)
 				{
 					return;
@@ -256,7 +257,7 @@ namespace simplechain {
 			{
 				auto evaluator = get_contract_evaluator(L);
 				std::string contract_name = uvm::lua::lib::unwrap_any_contract_name(name);
-				auto is_address = true; // TODO
+				auto is_address = is_valid_contract_address(L, name);
 				auto code = is_address ? get_contract_code_by_id(evaluator, contract_name) : get_contract_code_by_name(evaluator, contract_name);
 				auto contract_info_by_id = get_contract_info_by_id(evaluator, contract_name);
 				auto contract_info_by_name = get_contract_object_by_name(evaluator, contract_name);
@@ -267,6 +268,7 @@ namespace simplechain {
 					*address_size = address_str.length();
 					strncpy(address, address_str.c_str(), CONTRACT_ID_MAX_LENGTH - 1);
 					address[CONTRACT_ID_MAX_LENGTH - 1] = '\0';
+					*address_size = strlen(address);
 				}
 			}
             
@@ -337,7 +339,7 @@ namespace simplechain {
 				{
 					return get_storage_value_from_uvm_by_address(L, contract_id.c_str(), name , fast_map_key, is_fast_map );
 				}
-				catch (fc::exception &e) {
+				catch (...) {
 					return null_storage;
 				}
 			}
@@ -366,7 +368,7 @@ namespace simplechain {
 					auto storage_data = evaluator->get_storage(contract_id, key);
 					return StorageDataType::create_lua_storage_from_storage_data(L, storage_data);
 				}
-				catch (fc::exception &e) {
+				catch (...) {
 					return null_storage;
 				}
 			}
@@ -401,7 +403,7 @@ namespace simplechain {
 					}
 					put_contract_storage_changes_to_evaluator(evaluator, contract_id, contract_storage_change);
 				}
-				uvm::lua::lib::increment_lvm_instructions_executed_count(L, storage_gas);
+				uvm::lua::lib::increment_lvm_instructions_executed_count(L, (int)storage_gas);
 				return true;
 			}
 
@@ -526,13 +528,13 @@ namespace simplechain {
 						return -5;
 					}
 					auto contract_balance = evaluator->get_account_asset_balance(contract_address, asset_item->asset_id);
-					if (contract_balance < amount) {
+					if (contract_balance < static_cast<share_type>(amount)) {
 						return -1;
 					}
-					evaluator->update_account_asset_balance(contract_address, asset_item->asset_id, amount);
-					evaluator->update_account_asset_balance(to_address, asset_item->asset_id, -amount);
+					evaluator->update_account_asset_balance(contract_address, asset_item->asset_id, -amount);
+					evaluator->update_account_asset_balance(to_address, asset_item->asset_id, amount);
 				}
-				catch (const std::exception& e)
+				catch (...)
 				{
 					return -1;
 				}
@@ -569,7 +571,7 @@ namespace simplechain {
 						auto balance = evaluator->get_account_asset_balance(contract_address, asset_item->asset_id);
 						return balance;
 					}
-					catch (const std::exception& e)
+					catch (...)
 					{
 						return -1;
 					}
@@ -592,6 +594,11 @@ namespace simplechain {
 						break;
 					}
 				}
+				catch (...) {
+					L->force_stopping = true;
+					L->exit_code = LUA_API_INTERNAL_ERROR;
+					return -4;
+				}
 			}
 
 			int64_t SimpleChainUvmChainApi::get_transaction_fee(lua_State *L)
@@ -600,7 +607,7 @@ namespace simplechain {
 				try {
 					return 0;
 				}
-				catch (fc::exception e)
+				catch (...)
 				{
 					L->force_stopping = true;
 					L->exit_code = LUA_API_INTERNAL_ERROR;
@@ -615,7 +622,7 @@ namespace simplechain {
 					auto evaluator = get_contract_evaluator(L);
 					return evaluator->get_chain()->latest_block().block_time.sec_since_epoch();
 				}
-				catch (fc::exception e)
+				catch (...)
 				{
 					L->force_stopping = true;
 					L->exit_code = LUA_API_INTERNAL_ERROR;
@@ -633,7 +640,7 @@ namespace simplechain {
 					auto hash = block.digest();
 					return hash._hash[3] % ((1 << 31) - 1);
 				}
-				catch (fc::exception e)
+				catch (...)
 				{
 					L->force_stopping = true;
 					L->exit_code = LUA_API_INTERNAL_ERROR;
@@ -648,7 +655,7 @@ namespace simplechain {
 					auto evaluator = get_contract_evaluator(L);
 					return evaluator->get_current_tx()->tx_hash();
 				}
-				catch (fc::exception e)
+				catch (...)
 				{
 					L->force_stopping = true;
 					L->exit_code = LUA_API_INTERNAL_ERROR;
@@ -661,9 +668,9 @@ namespace simplechain {
 				uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
 				try {
 					auto evaluator = get_contract_evaluator(L);
-					return evaluator->get_chain()->latest_block().block_number;
+					return (uint32_t) evaluator->get_chain()->latest_block().block_number;
 				}
-				catch (fc::exception e)
+				catch (...)
 				{
 					L->force_stopping = true;
 					L->exit_code = LUA_API_INTERNAL_ERROR;
@@ -680,9 +687,9 @@ namespace simplechain {
 					auto target = chain->latest_block().block_number + next;
 					if (target < next)
 						return 0;
-					return target;
+					return static_cast<uint32_t>(target);
 				}
-				catch (fc::exception e)
+				catch (...)
 				{
 					L->force_stopping = true;
 					L->exit_code = LUA_API_INTERNAL_ERROR;
@@ -704,7 +711,7 @@ namespace simplechain {
 					auto hash = block->digest();
 					return hash._hash[3] % ((1 << 31) - 1);
 				}
-				catch (const fc::exception& e)
+				catch (...)
 				{
 					L->force_stopping = true;
 					L->exit_code = LUA_API_INTERNAL_ERROR;
@@ -720,7 +727,7 @@ namespace simplechain {
 					contract_address_type contract_addr(contract_id);
 					evaluator->emit_event(contract_addr, std::string(event_name), std::string(event_param));
 				}
-				catch (const fc::exception&)
+				catch (...)
 				{
 					L->force_stopping = true;
 					L->exit_code = LUA_API_INTERNAL_ERROR;
@@ -731,13 +738,13 @@ namespace simplechain {
 			bool SimpleChainUvmChainApi::is_valid_address(lua_State *L, const char *address_str)
 			{
 				std::string addr(address_str);
-				return true; // TODO
+				return helper::is_valid_address(addr);
 			}
 
 			bool SimpleChainUvmChainApi::is_valid_contract_address(lua_State *L, const char *address_str)
 			{
 				std::string addr(address_str);
-				return true; // TODO
+				return helper::is_valid_contract_address(addr);
 			}
 
 			const char * SimpleChainUvmChainApi::get_system_asset_symbol(lua_State *L)
@@ -748,7 +755,7 @@ namespace simplechain {
 
 			uint64_t SimpleChainUvmChainApi::get_system_asset_precision(lua_State *L)
 			{
-				return std::pow(10, SIMPLECHAIN_CORE_ASSET_PRECISION);
+				return static_cast<uint64_t>(std::pow(10, SIMPLECHAIN_CORE_ASSET_PRECISION));
 			}
 
 			static std::vector<char> hex_to_chars(const std::string& hex_string) {
@@ -773,12 +780,12 @@ namespace simplechain {
 			}
 			std::string SimpleChainUvmChainApi::sha256_hex(const std::string& hex_string) {
 				const auto& chars = hex_to_chars(hex_string);
-				auto hash_result = fc::sha256::hash(chars.data(), chars.size());
+				auto hash_result = fc::sha256::hash(chars.data(), static_cast<uint32_t>(chars.size()));
 				return hash_result.str();
 			}
 			std::string SimpleChainUvmChainApi::sha1_hex(const std::string& hex_string) {
 				const auto& chars = hex_to_chars(hex_string);
-				auto hash_result = fc::sha1::hash(chars.data(), chars.size());
+				auto hash_result = fc::sha1::hash(chars.data(), static_cast<uint32_t>(chars.size()));
 				return hash_result.str();
 			}
 			std::string SimpleChainUvmChainApi::sha3_hex(const std::string& hex_string) {
@@ -789,8 +796,12 @@ namespace simplechain {
 			}
 			std::string SimpleChainUvmChainApi::ripemd160_hex(const std::string& hex_string) {
 				const auto& chars = hex_to_chars(hex_string);
-				auto hash_result = fc::ripemd160::hash(chars.data(), chars.size());
+				auto hash_result = fc::ripemd160::hash(chars.data(), static_cast<uint32_t>(chars.size()));
 				return hash_result.str();
+			}
+
+			std::string SimpleChainUvmChainApi::get_address_role(lua_State* L, const std::string& addr) {
+				return std::string(addr);
 			}
 
 }

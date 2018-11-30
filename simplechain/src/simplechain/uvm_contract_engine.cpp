@@ -9,6 +9,7 @@ namespace simplechain
 	UvmContractEngine::UvmContractEngine(bool use_contract)
 	{
 		_scope = std::make_shared<uvm::lua::lib::UvmStateScope>(use_contract);
+		_scope->L()->allow_debug = true;
 	}
 	UvmContractEngine::~UvmContractEngine()
 	{
@@ -26,6 +27,14 @@ namespace simplechain
 	{
 		return _scope->get_instructions_executed_count();
 	}
+	int UvmContractEngine::vm_state() const {
+		return _scope->L()->state;
+	}
+
+	std::shared_ptr<uvm::lua::lib::UvmStateScope> UvmContractEngine::scope() const {
+		return _scope;
+	}
+
 	void UvmContractEngine::set_gas_limit(int64_t gas_limit)
 	{
 		_scope->set_instructions_limit(gas_limit);
@@ -36,7 +45,7 @@ namespace simplechain
 	}
 	void UvmContractEngine::set_gas_used(int64_t gas_used)
 	{
-		int *insts_executed_count = uvm::lua::lib::get_lua_state_value(_scope->L(), INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
+		int64_t *insts_executed_count = uvm::lua::lib::get_lua_state_value(_scope->L(), INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
 		if (insts_executed_count)
 		{
 			*insts_executed_count = gas_used;
@@ -93,7 +102,7 @@ namespace simplechain
 		uvm::lua::lib::execute_contract_api_by_address(_scope->L(), contract_id.c_str(), method.c_str(), argument.c_str(), result_json_string);
 		if (_scope->L()->force_stopping == true && _scope->L()->exit_code == LUA_API_INTERNAL_ERROR)
 			throw uvm::core::UvmException("uvm_executor_internal_error");
-		int exception_code = uvm::lua::lib::get_lua_state_value(_scope->L(), "exception_code").int_value;
+		auto exception_code = uvm::lua::lib::get_lua_state_value(_scope->L(), "exception_code").int_value;
 		char* exception_msg = (char*)uvm::lua::lib::get_lua_state_value(_scope->L(), "exception_msg").string_value;
 		if (exception_code > 0)
 		{
@@ -112,7 +121,7 @@ namespace simplechain
 		uvm::lua::lib::execute_contract_init_by_address(_scope->L(), contract_id.c_str(), argument.c_str(), result_json_string);
 		if (_scope->L()->force_stopping == true && _scope->L()->exit_code == LUA_API_INTERNAL_ERROR)
 			throw uvm::core::UvmException("uvm_executor_internal_error");
-		int exception_code = uvm::lua::lib::get_lua_state_value(_scope->L(), "exception_code").int_value;
+		auto exception_code = uvm::lua::lib::get_lua_state_value(_scope->L(), "exception_code").int_value;
 		char* exception_msg = (char*)uvm::lua::lib::get_lua_state_value(_scope->L(), "exception_msg").string_value;
 		if (exception_code > 0)
 		{

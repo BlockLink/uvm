@@ -94,21 +94,11 @@
 
 
 /*
-** barrier that moves collector forward, that is, mark the white object
-** being pointed by a black object. (If in sweep phase, clear the black
-** object to white [sweep it] to avoid other barrier calls for this
-** same object.)
-*/
-void luaC_barrier_(lua_State *L, GCObject *o, GCObject *v) {
 
-}
-
-
-/*
 ** barrier that moves collector backward, that is, mark the black object
 ** pointing to a white object as gray again.
 */
-void luaC_barrierback_(lua_State *L, Table *t) {
+void luaC_barrierback_(lua_State *L, uvm_types::GcTable *t) {
 
 }
 
@@ -123,74 +113,23 @@ void luaC_upvalbarrier_(lua_State *L, UpVal *uv) {
 
 }
 
-
-void luaC_fix(lua_State *L, GCObject *o) {
-
-}
-
-
-/*
-** create a new collectable object (with given type and size) and link
-** it to 'allgc' list.
-*/
-GCObject *luaC_newobj(lua_State *L, int tt, size_t sz) {
-    GCObject *o = lua_cast(GCObject *, luaM_newobject(L, novariant(tt), sz));
-    o->tt = tt;
-    return o;
-}
-
 /* }====================================================== */
 
-static void freeLclosure(lua_State *L, LClosure *cl) {
+static void freeLclosure(lua_State *L, uvm_types::GcLClosure *cl) {
     int i;
     for (i = 0; i < cl->nupvalues; i++) {
         UpVal *uv = cl->upvals[i];
         if (uv)
             luaC_upvdeccount(L, uv);
     }
-    luaM_freemem(L, cl, sizeLclosure(cl->nupvalues));
-}
 
-
-static void freeobj(lua_State *L, GCObject *o) {
-    switch (o->tt) {
-    case LUA_TPROTO: luaF_freeproto(L, gco2p(o)); break;
-    case LUA_TLCL: {
-        freeLclosure(L, gco2lcl(o));
-        break;
-    }
-    case LUA_TCCL: {
-        luaM_freemem(L, o, sizeCclosure(gco2ccl(o)->nupvalues));
-        break;
-    }
-    case LUA_TTABLE: luaH_free(L, gco2t(o)); break;
-    case LUA_TTHREAD: luaE_freethread(L, gco2th(o)); break;
-    case LUA_TUSERDATA: luaM_freemem(L, o, sizeudata(gco2u(o))); break;
-    case LUA_TSHRSTR:
-        luaS_remove(L, gco2ts(o));  /* remove it from hash table */
-        luaM_freemem(L, o, sizelstring(gco2ts(o)->shrlen));
-        break;
-    case LUA_TLNGSTR: {
-        luaM_freemem(L, o, sizelstring(gco2ts(o)->u.lnglen));
-        break;
-    }
-    default: lua_assert(0);
-    }
 }
 
 void luaC_upvdeccount(lua_State *L, UpVal *uv) {
 	lua_assert(uv->refcount > 0);
 	uv->refcount--;
 	if (uv->refcount == 0 && !upisopen(uv))
-		luaM_free(L, uv);
-}
-
-/*
-** if object 'o' has a finalizer, remove it from 'allgc' list (must
-** search the list to find it) and link it in 'finobj' list.
-*/
-void luaC_checkfinalizer(lua_State *L, GCObject *o, Table *mt) {
-
+		L->gc_state->gc_free(uv);
 }
 
 /* }====================================================== */

@@ -8,6 +8,11 @@
 #ifndef luaconf_h
 #define luaconf_h
 
+//#ifndef lua_assert
+//	#include <assert.h>
+//	#define lua_assert(c) assert(c)
+//#endif
+
 #include <limits.h>
 #include <stddef.h>
 #include <stdint.h>

@@ -11,6 +11,7 @@
 #include "uvm/ldo.h"
 #include "uvm/lobject.h"
 #include "uvm/ltm.h"
+#include <memory>
 
 
 #if !defined(LUA_NOCVTN2S)
@@ -83,8 +84,7 @@
    ? (slot = nullptr, 0) \
    : (slot = f(hvalue(t), k), \
      ttisnil(slot) ? 0 \
-     : (luaC_barrierback(L, hvalue(t), v), \
-        setobj2t(L, lua_cast(TValue *,slot), v), \
+     : (setobj2t(L, lua_cast(TValue *,slot), v), \
         1)))
 
 
@@ -92,7 +92,39 @@
   if (!luaV_fastset(L,t,k,slot,luaH_get,v)) \
     luaV_finishset(L,t,k,v,slot); }
 
+namespace uvm {
+	namespace core {
+		struct ExecuteContext {
+			int64_t* insts_executed_count;
+			int64_t *stopped_pointer;
+			int64_t insts_limit;
+			bool has_insts_limit;
+			bool use_last_return;
+			CallInfo *ci;
+			uvm_types::GcLClosure *cl;
+			TValue *k;
+			StkId base;
+			std::stack<contract_info_stack_entry> using_contract_id_stack;
 
+			void step_out(lua_State *L);
+			void step_into(lua_State* L);
+			void step_over(lua_State* L);
+			// execute to next ci called, return whether has next ci to execute
+			bool executeToNextCi(lua_State* L);
+			bool executeToNextOp(lua_State* L);
+			void enter_newframe(lua_State* L);
+			void prepare_newframe(lua_State* L);
+
+			void go_resume(lua_State* L);
+
+			std::map<std::string, TValue> view_localvars(lua_State* L) const;
+			std::map<std::string, TValue> view_upvalues(lua_State* L) const;
+			TValue ExecuteContext::view_contract_storage_value(lua_State* L, const char *name, const char* fast_map_key, bool is_fast_map) const;
+			uint32_t current_line() const;
+			std::vector<std::string> ExecuteContext::view_call_stack(lua_State* L) const;
+		};
+	}
+}
 
 LUAI_FUNC int luaV_equalobj(lua_State *L, const TValue *t1, const TValue *t2);
 LUAI_FUNC int luaV_lessthan(lua_State *L, const TValue *l, const TValue *r);
@@ -104,12 +136,16 @@ LUAI_FUNC void luaV_finishget(lua_State *L, const TValue *t, TValue *key,
 LUAI_FUNC void luaV_finishset(lua_State *L, const TValue *t, TValue *key,
     StkId val, const TValue *oldval);
 LUAI_FUNC void luaV_finishOp(lua_State *L);
-LUAI_FUNC void luaV_execute(lua_State *L);
+LUAI_FUNC std::shared_ptr<uvm::core::ExecuteContext> luaV_execute(lua_State *L);
+// if not sure, don't use result of get_last_execute_context()'s pointer fields
+std::shared_ptr<uvm::core::ExecuteContext> get_last_execute_context();
 LUAI_FUNC void luaV_concat(lua_State *L, int total);
 LUAI_FUNC lua_Integer luaV_div(lua_State *L, lua_Integer x, lua_Integer y);
 LUAI_FUNC lua_Integer luaV_mod(lua_State *L, lua_Integer x, lua_Integer y);
 LUAI_FUNC lua_Integer luaV_shiftl(lua_Integer x, lua_Integer y);
 LUAI_FUNC void luaV_objlen(lua_State *L, StkId ra, const TValue *rb);
+
+LUAI_FUNC int luaV_strcmp(const uvm_types::GcString *ls, const uvm_types::GcString *rs);
 
 
 #endif

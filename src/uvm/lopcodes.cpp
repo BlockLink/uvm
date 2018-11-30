@@ -75,6 +75,9 @@ LUAI_DDEF const char *const luaP_opnames[UNUM_OPCODES + 1] = {
 	"CMP_NE",
 	"CMP_GT",
 	"CMP_LT",
+	//add call contract api by name,api,arg
+	"CCALL",
+	"CSTATICCALL",
 
     nullptr
 };
@@ -141,5 +144,7 @@ LUAI_DDEF const lu_byte luaP_opmodes[UNUM_OPCODES] = {
 	, opmode(0, 1, OpArgK, OpArgK, iABC)       /* UOP_CMP_NE */
 	, opmode(0, 1, OpArgK, OpArgK, iABC)       /* UOP_CMP_GT */
 	, opmode(0, 1, OpArgK, OpArgK, iABC)       /* UOP_CMP_LT */
+	, opmode(0, 1, OpArgR, OpArgN, iABC)		/* UOP_CCALL */
+	, opmode(0, 1, OpArgR, OpArgN, iABC)		/* UOP_CSTATICCALL */
 };
 

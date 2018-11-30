@@ -46,8 +46,7 @@ void luaT_init(lua_State *L) {
     };
     int i;
     for (i = 0; i < TM_N; i++) {
-		L->tmname[i] = luaS_new(L, luaT_eventname[i]);
-        luaC_fix(L, obj2gco(L->tmname[i]));  /* never collect these names */
+        L->tmname[i] = luaS_new(L, luaT_eventname[i]);
     }
 }
 
@@ -56,11 +55,11 @@ void luaT_init(lua_State *L) {
 ** function to be used with macro "fasttm": optimized for absence of
 ** tag methods
 */
-const TValue *luaT_gettm(Table *events, TMS event, TString *ename) {
-    const TValue *tm = luaH_getshortstr(events, ename);
+const TValue *luaT_gettm(uvm_types::GcTable *events, TMS event, uvm_types::GcString *ename) {
+    const TValue *tm = luaH_getstr(events, ename);
     lua_assert(event <= TM_EQ);
     if (ttisnil(tm)) {  /* no tag method? */
-        events->flags |= cast_byte(1u << event);  /* cache this fact */
+		events->flags |= cast_byte(1u << event);  /* cache this fact */
         return nullptr;
     }
     else return tm;
@@ -68,7 +67,7 @@ const TValue *luaT_gettm(Table *events, TMS event, TString *ename) {
 
 
 const TValue *luaT_gettmbyobj(lua_State *L, const TValue *o, TMS event) {
-    Table *mt;
+    uvm_types::GcTable *mt;
     switch (ttnov(o)) {
     case LUA_TTABLE:
         mt = hvalue(o)->metatable;

@@ -20,7 +20,7 @@ static UvmStorageTableReadList *get_or_init_storage_table_read_list(lua_State *L
 	UvmStorageTableReadList *list = nullptr;;
 	if (state_value_node.type != LUA_STATE_VALUE_POINTER || nullptr == state_value_node.value.pointer_value)
 	{
-		list = (UvmStorageTableReadList*)malloc(sizeof(UvmStorageTableReadList));
+		list = (UvmStorageTableReadList*)lua_malloc(L, sizeof(UvmStorageTableReadList));
 		new (list)UvmStorageTableReadList();
 		UvmStateValue value_to_store;
 		value_to_store.pointer_value = list;
@@ -68,7 +68,7 @@ static struct UvmStorageValue get_last_storage_changed_value(lua_State *L, const
 		post_when_read_table(value);
 		// cache the value if it's the first time to read
 		if (!list) {
-			list = (UvmStorageChangeList*)malloc(sizeof(UvmStorageChangeList));
+			list = (UvmStorageChangeList*)lua_malloc(L, sizeof(UvmStorageChangeList));
 			new (list)UvmStorageChangeList();
 			UvmStateValue value_to_store;
 			value_to_store.pointer_value = list;
@@ -386,7 +386,7 @@ bool luaL_commit_storage_changes(lua_State *L)
 	if (storage_changelist_node.type != LUA_STATE_VALUE_POINTER && table_read_list)
 	{
 		storage_changelist_node.type = LUA_STATE_VALUE_POINTER;
-		auto *list = (UvmStorageChangeList*)malloc(sizeof(UvmStorageChangeList));
+		auto *list = (UvmStorageChangeList*)lua_malloc(L, sizeof(UvmStorageChangeList));
 		new (list)UvmStorageChangeList();
 		UvmStateValue value_to_store;
 		value_to_store.pointer_value = list;
@@ -768,6 +768,13 @@ namespace uvm {
 				L->force_stopping = true;
 				return 0;
 			}
+			auto contract_id_stack = uvm::lua::lib::get_using_contract_id_stack(L, true);
+			if (contract_id_stack && contract_id_stack->size()>0 && contract_id_stack->top().call_type == "STATIC_CALL") {
+				global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "static call can not modify contract storage");
+				uvm::lua::lib::notify_lua_state_stop(L);
+				L->force_stopping = true;
+				return 0;
+			}
 			if (!name || strlen(name) < 1)
 			{
 				global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "second argument of set_storage must be name");
@@ -825,7 +832,7 @@ namespace uvm {
 			UvmStorageChangeList *list;
 			if (state_value_node.type != LUA_STATE_VALUE_POINTER || nullptr == state_value_node.value.pointer_value)
 			{
-				list = (UvmStorageChangeList*)malloc(sizeof(UvmStorageChangeList));
+				list = (UvmStorageChangeList*)lua_malloc(L, sizeof(UvmStorageChangeList));
 				new (list)UvmStorageChangeList();
 				UvmStateValue value_to_store;
 				value_to_store.pointer_value = list;

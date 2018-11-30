@@ -5,6 +5,8 @@
 #include <simplechain/storage.h>
 #include <simplechain/contract_object.h>
 #include <simplechain/asset.h>
+#include <fc/variant.hpp>
+#include <fc/variant_object.hpp>
 
 namespace simplechain {
 
@@ -19,6 +21,8 @@ namespace simplechain {
 		std::string event_arg;
 		std::string caller_addr;
 		uint64_t block_num;
+
+		fc::mutable_variant_object to_json() const;
 	};
 
 	struct comparator_for_contract_invoke_result_balance {
@@ -64,6 +68,8 @@ namespace simplechain {
 		std::vector<contract_event_notify_info> events;
 		std::vector<std::pair<contract_address_type, contract_object> > new_contracts;
 		bool exec_succeed = true;
+		std::string error;
+		gas_count_type gas_used = 0;
 		address invoker;
 		void reset();
 		void set_failed();
@@ -76,6 +82,8 @@ namespace simplechain {
 	struct transaction_receipt {
 		std::string tx_id;
 		std::vector<contract_event_notify_info> events;
+
+		fc::mutable_variant_object to_json() const;
 	};
 
 
@@ -97,6 +105,11 @@ namespace simplechain {
 			return type;
 		}
 
+		virtual fc::mutable_variant_object to_json() const {
+			fc::mutable_variant_object info;
+			return info;
+		}
+
 		std::string calculate_contract_id() const;
 	};
 
@@ -110,6 +123,8 @@ namespace simplechain {
 		std::vector<std::string> contract_args;
 		uint64_t gas_price;
 		uint64_t gas_limit;
+		share_type deposit_amount = 0;
+		asset_id_t deposit_asset_id = 0;
 		fc::time_point_sec op_time;
 
 		contract_invoke_operation();
@@ -118,6 +133,11 @@ namespace simplechain {
 		virtual operation_type_enum get_type() const {
 			return type;
 		}
+
+		virtual fc::mutable_variant_object to_json() const {
+			fc::mutable_variant_object info;
+			return info;
+		}
 	};
 
 }
@@ -125,4 +145,4 @@ namespace simplechain {
 FC_REFLECT(simplechain::transaction_receipt, (tx_id)(events))
 
 FC_REFLECT(simplechain::contract_create_operation, (type)(caller_address)(contract_code)(gas_price)(gas_limit)(op_time))
-FC_REFLECT(simplechain::contract_invoke_operation, (type)(caller_address)(contract_address)(contract_api)(contract_args)(gas_price)(gas_limit)(op_time))
+FC_REFLECT(simplechain::contract_invoke_operation, (type)(caller_address)(contract_address)(contract_api)(contract_args)(gas_price)(gas_limit)(deposit_amount)(deposit_asset_id)(op_time))

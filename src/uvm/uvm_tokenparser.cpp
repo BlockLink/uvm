@@ -1,6 +1,7 @@
 ﻿#include <uvm/uvm_tokenparser.h>
 #include <sstream>
 #include <uvm/uvm_lutil.h>
+#include <uvm/lctype.h>
 #include <uvm/exceptions.h>
 
 using uvm::lua::api::global_uvm_chain_api;

@@ -11,9 +11,9 @@
 #include "uvm/lstate.h"
 
 
-#define pcRel(pc, p)	(lua_cast(int, (pc) - (p)->code) - 1)
+#define pcRel(pc, p)	(lua_cast(int, (pc) - ((p)->codes.empty() ? nullptr : (p)->codes.data())) - 1)
 
-#define getfuncline(f,pc)	(((f)->lineinfo) ? (f)->lineinfo[pc] : -1)
+#define getfuncline(f,pc)	(((f)->lineinfos.size()>pc) ? (f)->lineinfos[pc] : -1)
 
 #define resethookcount(L)	(L->hookcount = L->basehookcount)
 
@@ -31,7 +31,7 @@ LUAI_FUNC void luaG_ordererror(lua_State *L, const TValue *p1,
     const TValue *p2);
 LUAI_FUNC void luaG_runerror(lua_State *L, const char *fmt, ...);
 LUAI_FUNC const char *luaG_addinfo(lua_State *L, const char *msg,
-    TString *src, int line);
+    uvm_types::GcString *src, int line);
 LUAI_FUNC void luaG_errormsg(lua_State *L, const char *msg=nullptr);
 LUAI_FUNC void luaG_traceexec(lua_State *L);
 

@@ -17,6 +17,7 @@ namespace simplechain
 		virtual bool has_gas_limit() const = 0;
 		virtual int64_t gas_limit() const = 0;
 		virtual int64_t gas_used() const = 0;
+		virtual int vm_state() const = 0;
 		virtual void set_gas_limit(int64_t gas_limit) = 0;
 		virtual void set_no_gas_limit() = 0;
 		virtual void set_gas_used(int64_t gas_used) = 0;

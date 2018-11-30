@@ -103,7 +103,8 @@ void luaE_setdebt(l_mem debt) {
 
 
 CallInfo *luaE_extendCI(lua_State *L) {
-    CallInfo *ci = luaM_new(L, CallInfo);
+	CallInfo *ci = static_cast<CallInfo*>(L->gc_state->gc_malloc(sizeof(CallInfo)));
+	memset(ci, 0x0, sizeof(CallInfo));
     lua_assert(L->ci->next == nullptr);
     L->ci->next = ci;
     ci->previous = L->ci;
@@ -122,7 +123,7 @@ void luaE_freeCI(lua_State *L) {
     ci->next = nullptr;
     while ((ci = next) != nullptr) {
         next = ci->next;
-        luaM_free(L, ci);
+		L->gc_state->gc_free(ci);
         L->nci--;
     }
 }
@@ -136,7 +137,7 @@ void luaE_shrinkCI(lua_State *L) {
     CallInfo *next2;  /* next's next */
     /* while there are two nexts */
     while (ci->next != nullptr && (next2 = ci->next->next) != nullptr) {
-        luaM_free(L, ci->next);  /* free next */
+		L->gc_state->gc_free(ci->next); /* free next */
         L->nci--;
         ci->next = next2;  /* remove 'next' from the list */
         next2->previous = ci;
@@ -148,7 +149,7 @@ void luaE_shrinkCI(lua_State *L) {
 static void stack_init(lua_State *L1, lua_State *L) {
     int i; CallInfo *ci;
     /* initialize stack array */
-    L1->stack = luaM_newvector(L, BASIC_STACK_SIZE, TValue);
+	L1->stack = static_cast<TValue*>(L->gc_state->gc_malloc_vector(BASIC_STACK_SIZE, sizeof(TValue)));
     L1->stacksize = BASIC_STACK_SIZE;
     for (i = 0; i < BASIC_STACK_SIZE; i++)
         setnilvalue(L1->stack + i);  /* erase new stack */
@@ -171,7 +172,7 @@ static void freestack(lua_State *L) {
     L->ci = &L->base_ci;  /* free the entire 'ci' list */
     luaE_freeCI(L);
     lua_assert(L->nci == 0);
-    luaM_freearray(L, L->stack, L->stacksize);  /* free stack array */
+	L->gc_state->gc_free_array(L->stack, L->stacksize, sizeof(TValue)); /* free stack array */
 }
 
 
@@ -181,7 +182,7 @@ static void freestack(lua_State *L) {
 static void init_registry(lua_State *L) {
     TValue temp;
     /* create registry */
-    Table *registry = luaH_new(L);
+    auto *registry = luaH_new(L);
     sethvalue(L, &L->l_registry, registry);
     luaH_resize(L, registry, LUA_RIDX_LAST, 0);
     /* registry[LUA_RIDX_MAINTHREAD] = L */
@@ -237,51 +238,19 @@ static void close_state(lua_State *L) {
     luaC_freeallobjects(L);  /* collect all objects */
     if (L->version)  /* closing a fully built state? */
         luai_userstateclose(L);
-    luaM_freearray(L, L->strt.hash, L->strt.size);
     freestack(L);
+	if (L->breakpoints) {
+		delete L->breakpoints;
+	}
+	if (L->using_contract_id_stack) {
+		delete L->using_contract_id_stack;
+	}
 	if (L->gc_state) {
 		delete L->gc_state;
 		// L->ud = nullptr;
 	}
     // (*g->frealloc)(L->ud, fromstate(L), sizeof(LG), 0);  /* free main block */
 }
-
-
-// TODO: remove lua thread
-LUA_API lua_State *lua_newthread(lua_State *L) {
-    lua_State *L1;
-    lua_lock(L);
-    luaC_checkGC(L);
-    /* create new thread */
-    L1 = &lua_cast(LX *, luaM_newobject(L, LUA_TTHREAD, sizeof(LX)))->l;
-    L1->tt = LUA_TTHREAD;
-    /* anchor it on L stack */
-    setthvalue(L, L->top, L1);
-    api_incr_top(L);
-    preinit_thread(L1);
-    L1->hookmask = L->hookmask;
-    L1->basehookcount = L->basehookcount;
-    L1->hook = L->hook;
-    resethookcount(L1);
-    /* initialize L1 extra space */
-    /*memcpy(lua_getextraspace(L1), lua_getextraspace(g->mainthread),
-        LUA_EXTRASPACE);*/
-    luai_userstatethread(L, L1);
-    stack_init(L1, L);  /* init stack */
-    lua_unlock(L);
-    return L1;
-}
-
-
-void luaE_freethread(lua_State *L, lua_State *L1) {
-    LX *l = fromstate(L1);
-    luaF_close(L1, L1->stack);  /* close all upvalues for this thread */
-    lua_assert(L1->openupval == nullptr);
-    luai_userstatefree(L, L1);
-    freestack(L1);
-    luaM_free(L, l);
-}
-
 
 LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
     int i;
@@ -291,10 +260,6 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
     LG *l = lua_cast(LG *, (*f)(ud ? ud : gc_state, nullptr, LUA_TTHREAD, sizeof(LG)));
     if (l == nullptr) return nullptr;
     L = &l->l.l;
-    L->next = nullptr;
-    L->tt = LUA_TTHREAD;
-	L->malloc_buffer = nullptr;// malloc(LUA_MALLOC_TOTAL_SIZE);
-    L->malloc_pos = 0;
 	L->gc_state = gc_state;
     memset(L->compile_error, 0x0, LUA_COMPILE_ERROR_MAX_LENGTH);
 	memset(L->runerror, 0x0, LUA_VM_EXCEPTION_STRNG_MAX_LENGTH);
@@ -308,18 +273,28 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
 	L->version = &version;
 	L->frealloc = f;
 	L->ud = ud ? ud : gc_state;
-	L->seed = makeseed(L);
+	L->seed = 1; // makeseed(L);
 	setnilvalue(&L->l_registry);
-	L->strt.size = L->strt.nuse = 0;
-	L->strt.hash = nullptr;
+	//L->strt.size = L->strt.nuse = 0;
+	//L->strt.hash = nullptr;
 
 	L->panic = nullptr;
     preinit_thread(L);
 
 	L->evalstacksize = 100;
-	L->evalstack = luaM_newvector(L, L->evalstacksize, TValue);
+	L->evalstack = static_cast<TValue*>(L->gc_state->gc_malloc_vector(L->evalstacksize, sizeof(TValue)));
 	L->evalstacktop = L->evalstack;
 
+	//L->state = lua_VMState::LVM_STATE_BREAK;
+	L->state = lua_VMState::LVM_STATE_NONE;
+	L->allow_debug = false;
+	L->breakpoints = new std::map<std::string, std::list<uint32_t> >();
+
+	L->allow_contract_modify = 0;
+	L->contract_table_addresses = new std::list<intptr_t>();
+	L->using_contract_id_stack = new std::stack<contract_info_stack_entry>();
+	L->call_op_msg = OpCode(0);
+	L->ci_depth = 0;
 
     for (i = 0; i < LUA_NUMTAGS; i++) L->mt[i] = nullptr;
     if (luaD_rawrunprotected(L, f_luaopen, nullptr) != LUA_OK) {
@@ -333,6 +308,8 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
 
 LUA_API void lua_close(lua_State *L) {
     uvm::lua::lib::close_lua_state_values(L);
+	delete L->contract_table_addresses;
+	L->contract_table_addresses = nullptr;
     lua_lock(L);
     close_state(L);
 }
@@ -346,6 +323,23 @@ static size_t align8(size_t s) {
 void *lua_malloc(lua_State *L, size_t size)
 {
 	return L->gc_state->gc_malloc(size);
+}
+
+void* lua_realloc(lua_State *L, void* addr, size_t old_size, size_t new_size)
+{
+	if (old_size >= new_size)
+		return addr;
+	if (old_size == 0) {
+		return lua_malloc(L, new_size);
+	}
+	auto p = lua_malloc(L, new_size);
+	if (!p)
+		return nullptr;
+	if (addr) {
+		memcpy(p, addr, old_size);
+		lua_free(L, addr);
+	}
+	return p;
 }
 
 void *lua_calloc(lua_State *L, size_t element_count, size_t element_size)

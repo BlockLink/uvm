@@ -63,7 +63,7 @@ typedef struct Vardesc {
 
 /* description of pending goto statements and label statements */
 typedef struct Labeldesc {
-    TString *name;  /* label identifier */
+	uvm_types::GcString *name;  /* label identifier */
     int pc;  /* position in code */
     int line;  /* line where it appeared */
     lu_byte nactvar;  /* local level where it appears in current block */
@@ -96,7 +96,7 @@ struct BlockCnt;  /* defined in lparser.c */
 
 /* state needed to generate code for a given function */
 typedef struct FuncState {
-    Proto *f;  /* current function header */
+    uvm_types::GcProto *f;  /* current function header */
     struct FuncState *prev;  /* enclosing function */
     struct LexState *ls;  /* lexical state */
     struct BlockCnt *bl;  /* chain of current blocks */
@@ -113,7 +113,7 @@ typedef struct FuncState {
 } FuncState;
 
 
-LUAI_FUNC LClosure *luaY_parser(lua_State *L, ZIO *z, Mbuffer *buff,
+LUAI_FUNC uvm_types::GcLClosure *luaY_parser(lua_State *L, ZIO *z, Mbuffer *buff,
     Dyndata *dyd, const char *name, int firstchar);
 
 

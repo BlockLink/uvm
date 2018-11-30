@@ -22,17 +22,19 @@
 
 
 
-CClosure *luaF_newCclosure(lua_State *L, int n) {
-    GCObject *o = luaC_newobj(L, LUA_TCCL, sizeCclosure(n));
-    CClosure *c = gco2ccl(o);
-    c->nupvalues = cast_byte(n);
-    return c;
+uvm_types::GcCClosure *luaF_newCclosure(lua_State *L, int n) {
+	uvm_types::GcCClosure* o = L->gc_state->gc_new_object<uvm_types::GcCClosure>();
+	o->nupvalues = n;
+	o->upvalue.resize(n);
+    return o;
 }
 
 
-LClosure *luaF_newLclosure(lua_State *L, int n) {
-    GCObject *o = luaC_newobj(L, LUA_TLCL, sizeLclosure(n));
-    LClosure *c = gco2lcl(o);
+uvm_types::GcLClosure *luaF_newLclosure(lua_State *L, int n) {
+	auto o = L->gc_state->gc_new_object<uvm_types::GcLClosure>();
+	o->nupvalues = n;
+	o->upvals.resize(n);
+	uvm_types::GcLClosure *c = gco2lcl(o);
     c->p = nullptr;
     c->nupvalues = cast_byte(n);
     while (n--) c->upvals[n] = nullptr;
@@ -42,10 +44,10 @@ LClosure *luaF_newLclosure(lua_State *L, int n) {
 /*
 ** fill a closure with new closed upvalues
 */
-void luaF_initupvals(lua_State *L, LClosure *cl) {
+void luaF_initupvals(lua_State *L, uvm_types::GcLClosure *cl) {
     int i;
     for (i = 0; i < cl->nupvalues; i++) {
-        UpVal *uv = luaM_new(L, UpVal);
+		UpVal *uv = static_cast<UpVal*>(L->gc_state->gc_malloc(sizeof(UpVal)));
         uv->refcount = 1;
         uv->v = &uv->u.value;  /* make it closed */
         setnilvalue(uv->v);
@@ -66,7 +68,7 @@ UpVal *luaF_findupval(lua_State *L, StkId level) {
         pp = &p->u.open.next;
     }
     /* not found: create a new upvalue */
-    uv = luaM_new(L, UpVal);
+	uv = static_cast<UpVal*>(L->gc_state->gc_malloc(sizeof(UpVal)));
     uv->refcount = 0;
     uv->u.open.next = *pp;  /* link it to list of open upvalues */
     uv->u.open.touched = 1;
@@ -86,8 +88,8 @@ void luaF_close(lua_State *L, StkId level) {
     while (L->openupval != nullptr && (uv = L->openupval)->v >= level) {
         lua_assert(upisopen(uv));
         L->openupval = uv->u.open.next;  /* remove from 'open' list */
-        if (uv->refcount == 0)  /* no references? */
-            luaM_free(L, uv);  /* free upvalue */
+		if (uv->refcount == 0)  /* no references? */
+			L->gc_state->gc_free(uv);
         else {
             setobj(L, &uv->u.value, uv->v);  /* move value to upvalue slot */
             uv->v = &uv->u.value;  /* now current value lives here */
@@ -97,40 +99,13 @@ void luaF_close(lua_State *L, StkId level) {
 }
 
 
-Proto *luaF_newproto(lua_State *L) {
-    GCObject *o = luaC_newobj(L, LUA_TPROTO, sizeof(Proto));
-    Proto *f = gco2p(o);
-    f->k = nullptr;
-    f->sizek = 0;
-    f->p = nullptr;
-    f->sizep = 0;
-    f->code = nullptr;
-    f->cache = nullptr;
-    f->sizecode = 0;
-    f->lineinfo = nullptr;
-    f->sizelineinfo = 0;
-    f->upvalues = nullptr;
-    f->sizeupvalues = 0;
-    f->numparams = 0;
-    f->is_vararg = 0;
-    f->maxstacksize = 0;
-    f->locvars = nullptr;
-    f->sizelocvars = 0;
-    f->linedefined = 0;
-    f->lastlinedefined = 0;
-    f->source = nullptr;
+uvm_types::GcProto *luaF_newproto(lua_State *L) {
+	auto f = L->gc_state->gc_new_object<uvm_types::GcProto>();
     return f;
 }
 
 
-void luaF_freeproto(lua_State *L, Proto *f) {
-    luaM_freearray(L, f->code, f->sizecode);
-    luaM_freearray(L, f->p, f->sizep);
-    luaM_freearray(L, f->k, f->sizek);
-    luaM_freearray(L, f->lineinfo, f->sizelineinfo);
-    luaM_freearray(L, f->locvars, f->sizelocvars);
-    luaM_freearray(L, f->upvalues, f->sizeupvalues);
-    luaM_free(L, f);
+void luaF_freeproto(lua_State *L, uvm_types::GcProto *f) {
 }
 
 
@@ -138,9 +113,9 @@ void luaF_freeproto(lua_State *L, Proto *f) {
 ** Look for n-th local variable at line 'line' in function 'func'.
 ** Returns nullptr if not found.
 */
-const char *luaF_getlocalname(const Proto *f, int local_number, int pc) {
+const char *luaF_getlocalname(const uvm_types::GcProto *f, int local_number, int pc) {
     int i;
-    for (i = 0; i < f->sizelocvars && f->locvars[i].startpc <= pc; i++) {
+    for (i = 0; i < f->locvars.size() && f->locvars[i].startpc <= pc; i++) {
         if (pc < f->locvars[i].endpc) {  /* is variable active? */
             local_number--;
             if (local_number == 0)

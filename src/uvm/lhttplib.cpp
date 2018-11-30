@@ -1,5 +1,4 @@
-﻿// TODO: async apis
-/**
+﻿/**
  * This is a simple http module for uvm
  */
 

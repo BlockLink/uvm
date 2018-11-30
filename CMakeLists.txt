@@ -1,4 +1,14 @@
-file(GLOB HEADERS "include/uvm/*.h" "../jsondiff/jsondiff-cpp/include/jsondiff/*.h")
+cmake_minimum_required(VERSION 3.5)
+
+project(uvm)
+
+set(CMAKE_CXX_STANDARD 11)
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(CMAKE_CXX_FLAGS "-std=c++11 -D_DARWIN_C_SOURCE -Wno-invalid-partial-specialization")
+endif()
+
+file(GLOB HEADERS "include/uvm/*.h" "include/cborcpp/*.h" "../jsondiff/jsondiff-cpp/include/jsondiff/*.h")
 
 set(SOURCES src/uvm/lapi.cpp
     src/uvm/lauxlib.cpp
@@ -47,15 +57,44 @@ set(SOURCES src/uvm/lapi.cpp
     src/uvm/uvm_state_scope.cpp
     src/uvm/uvm_storage.cpp
     src/uvm/uvm_tokenparser.cpp
+
+	src/cborcpp/cbor_object.cpp
+	src/cborcpp/decoder.cpp
+	src/cborcpp/encoder.cpp
+	src/cborcpp/input.cpp
+	src/cborcpp/output_dynamic.cpp
+	src/cborcpp/output_static.cpp
+	src/cborcpp/output.cpp
 )
+
+find_package(OpenSSL REQUIRED)
 
 add_library( uvm ${SOURCES} ${HEADERS} )
 
 target_link_libraries( uvm 
-  PUBLIC fc jsondiff)
+  PUBLIC fc)
 target_include_directories( uvm 
   PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/../jsondiff/jsondiff-cpp/include"
 )
+
+aux_source_directory(./simplechain/src simplechain_src1)
+aux_source_directory(./simplechain/src/simplechain simplechain_src2)
+
+include_directories(simplechain/include)
+
+link_directories(../fc /usr/local/lib/boost/lib)
+link_libraries(fc boost_system boost_system boost_chrono boost_date_time boost_coroutine boost_context boost_thread boost_filesystem pthread)
+
+add_executable(simplechain_runner ${simplechain_src1} ${simplechain_src2})
+
+target_include_directories( simplechain_runner 
+  PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/simplechain/include" "${CMAKE_CURRENT_SOURCE_DIR}/../jsondiff/jsondiff-cpp/include"
+)
+
+target_link_libraries(simplechain_runner PUBLIC uvm fc OpenSSL::SSL ${CMAKE_SOURCE_DIR}/../jsondiff/libjsondiff_cpp.a)
+
+add_executable(uvm_single_exec uvm_single/main.cpp uvm_single/Keccak.cpp uvm_single/uvm_api.demo.cpp)
+target_link_libraries(uvm_single_exec PUBLIC uvm fc OpenSSL::SSL ${CMAKE_SOURCE_DIR}/../jsondiff/libjsondiff_cpp.a)
 
 if (USE_PCH)
   set_target_properties(uvm PROPERTIES COTIRE_ADD_UNITY_BUILD FALSE)

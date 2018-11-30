@@ -41,6 +41,9 @@
 #include <boost/variant.hpp>
 #include <boost/lexical_cast.hpp>
 #include <vmgc/vmgc.h>
+#include <boost/scope_exit.hpp>
+
+#include <fc/crypto/hex.hpp>
 
 using uvm::lua::api::global_uvm_chain_api;
 
@@ -382,8 +385,8 @@ LUALIB_API void luaL_checkstack(lua_State *L, int space, const char *msg) {
 
 
 LUALIB_API void luaL_checktype(lua_State *L, int arg, int t) {
-    if (lua_type(L, arg) != t)
-        tag_error(L, arg, t);
+	if (lua_type(L, arg) != t)
+		tag_error(L, arg, t);
 }
 
 
@@ -1117,9 +1120,17 @@ static int contract_api_wrapper_func(lua_State *L)
 	auto contract_info_stack = uvm::lua::lib::get_using_contract_id_stack(L, true);
 	if (!contract_info_stack)
 		return 0;
-	uvm::lua::lib::contract_info_stack_entry stack_entry;
+	contract_info_stack_entry stack_entry;
 	stack_entry.contract_id = contract_id;
 	stack_entry.api_name = api_name;
+	if (L->call_op_msg == UOP_CSTATICCALL) {
+		stack_entry.call_type = std::string("STATIC_CALL");
+	}
+	else {
+		stack_entry.call_type = "CALL";
+	}
+	L->call_op_msg = OpCode(0);
+	
 	contract_info_stack->push(stack_entry);
 	lua_pushvalue(L, api_func_index);
 	auto args_count = lua_gettop(L) - 1;
@@ -1129,6 +1140,9 @@ static int contract_api_wrapper_func(lua_State *L)
 	}
     auto nresults = 1;
 	lua_call(L, args_count, nresults);
+	if (L->state & (lua_VMState::LVM_STATE_BREAK | lua_VMState::LVM_STATE_SUSPEND)) {
+		return 0;
+	}
 	// pop contract id from stack
 	if (contract_info_stack->size() > 0)
 		contract_info_stack->pop();
@@ -1170,7 +1184,7 @@ static bool contract_table_traverser_to_wrap_api(lua_State *L, void *ud)
 
 static bool lua_get_contract_apis_direct(lua_State *L, UvmModuleByteStream *stream, char *error)
 {
-    int *stopped_pointer = uvm::lua::lib::get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
+	int64_t *stopped_pointer = uvm::lua::lib::get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
     if (nullptr != stopped_pointer && (*stopped_pointer) > 0)
         return false;
     intptr_t stream_p = (intptr_t)stream;
@@ -1261,7 +1275,7 @@ static bool lua_get_contract_apis_direct(lua_State *L, UvmModuleByteStream *stre
             }
 			for(const auto &item : contract_apis_set)
 			{
-				contract_apis[apis_count] = (char*)malloc((item.length() + 1) * sizeof(char));
+				contract_apis[apis_count] = (char*)lua_malloc(L, (item.length() + 1) * sizeof(char));
 				memset(contract_apis[apis_count], 0x0, (item.length() + 1) * sizeof(char));
 				memcpy(contract_apis[apis_count], item.c_str(), sizeof(char) * (item.length() + 1));
 				contract_apis[apis_count][item.length()] = '\0';
@@ -1378,15 +1392,13 @@ void lua_fill_contract_info_for_use(lua_State *L)
     lua_pop(L, 3);
 }
 
-static std::string unwrap_get_contract_address(std::string namestr)
+static std::string unwrap_get_contract_address(const std::string& namestr)
 {
-    std::string address;
-    std::stringstream ss(namestr.substr(strlen(ADDRESS_CONTRACT_PREFIX)));
-    ss >> address;
+	const auto& address = namestr.substr(strlen(ADDRESS_CONTRACT_PREFIX));
     return address;
 }
 
-static UvmModuleByteStream *unwrap_get_contract_stream(std::string namestr)
+static UvmModuleByteStream *unwrap_get_contract_stream(const std::string& namestr)
 {
     intptr_t stream_p;
     std::stringstream ss(namestr.substr(strlen(STREAM_CONTRACT_PREFIX)));
@@ -1496,6 +1508,10 @@ int luaL_import_contract_module_from_address(lua_State *L)
     } exit_scope1(update_loaded_func);
 
     lua_pcall(L, 2, 1, 0);  /* run loader to load module */
+
+	BOOST_SCOPE_EXIT_ALL(L) {
+		L->allow_contract_modify = 0;
+	};
     if (!lua_isnil(L, -1))  /* non-nil return? */
     {
         if (lua_istable(L, -1)) {
@@ -1527,7 +1543,7 @@ int luaL_import_contract_module_from_address(lua_State *L)
                 }
                 if (strcmp(key, "locals") == 0)
                     continue;
-                contract_apis[apis_count] = (char*)malloc((strlen(key) + 1) * sizeof(char));
+                contract_apis[apis_count] = (char*)lua_malloc(L, (strlen(key) + 1) * sizeof(char));
 				memset(contract_apis[apis_count], 0x0, (strlen(key) + 1) * sizeof(char));
                 if (!contract_apis[apis_count])
                 {
@@ -1633,7 +1649,19 @@ int luaL_import_contract_module_from_address(lua_State *L)
             return 0;
         }
 
+		{
+			auto contract_addr = (intptr_t)lua_topointer(L, -1);
+			L->contract_table_addresses->push_back(contract_addr);
+			L->allow_contract_modify = contract_addr;
+		}
+
         lua_fill_contract_info_for_use(L);
+
+		{
+			auto contract_addr = (intptr_t)lua_topointer(L, -1);
+			L->contract_table_addresses->push_back(contract_addr);
+			L->allow_contract_modify = contract_addr;
+		}
 
         // set name of contract to contract module table
         lua_pushstring(L, get_contract_name_using_in_lua(namestr).c_str());
@@ -1762,6 +1790,10 @@ int luaL_import_contract_module(lua_State *L)
     } exit_scope1(update_loaded_func);
 
     lua_pcall(L, 2, 1, 0);  /* run loader to load module */
+
+	BOOST_SCOPE_EXIT_ALL(L) {
+		L->allow_contract_modify = 0;
+	};
     if (!lua_isnil(L, -1))  /* non-nil return? */
     {
         if (lua_istable(L, -1)) {
@@ -1800,7 +1832,7 @@ int luaL_import_contract_module(lua_State *L)
                     uvm::lua::lib::notify_lua_state_stop(L);
                     return 0;
                 }
-                contract_apis[apis_count] = (char*)malloc((strlen(key) + 1) * sizeof(char));
+                contract_apis[apis_count] = (char*)lua_malloc(L, (strlen(key) + 1) * sizeof(char));
 				memset(contract_apis[apis_count], 0x0, (strlen(key) + 1) * sizeof(char));
                 memcpy(contract_apis[apis_count], key, sizeof(char) * (strlen(key) + 1));
 				contract_apis[apis_count][strlen(key)] = '\0';
@@ -1808,10 +1840,6 @@ int luaL_import_contract_module(lua_State *L)
             }
             // if the contract info stored in uvm before, fetch and check whether the apis are the same. if not the same, error
 			auto stored_contract_info = std::make_shared<UvmContractInfo>();
-            auto clear_stored_contract_info = [&]() {
-                //if (!is_stream)
-                //    global_uvm_chain_api->free_contract_info(L, unwrap_name.c_str(), stored_contract_apis, &stored_contract_apis_count);
-            };
             std::string address = unwrap_name;
             if (!is_pointer && !is_stream)
             {
@@ -1823,15 +1851,6 @@ int luaL_import_contract_module(lua_State *L)
             }
             if (global_uvm_chain_api->get_stored_contract_info_by_address(L, address.c_str(), stored_contract_info))
             {
-                struct exit_scope_of_stored_contract_info
-                {
-                    std::function<void(void)> _clear_stored_contract_info;
-                    exit_scope_of_stored_contract_info(std::function<void(void)> clear_stored_contract_info)
-                        : _clear_stored_contract_info(clear_stored_contract_info) {}
-                    ~exit_scope_of_stored_contract_info(){
-                        _clear_stored_contract_info();
-                    }
-                } exit_scope1(clear_stored_contract_info);
                 // found this contract stored in the uvm api before
                 if (stored_contract_info->contract_apis.size() != apis_count)
                 {
@@ -1887,6 +1906,10 @@ int luaL_import_contract_module(lua_State *L)
             global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "this uvm contract not return a table");
             return 0;
         }
+
+		auto contract_addr = (intptr_t)lua_topointer(L, -1);
+		L->contract_table_addresses->push_back(contract_addr);
+		L->allow_contract_modify = contract_addr;
 
         lua_fill_contract_info_for_use(L);
 
@@ -1962,7 +1985,7 @@ static int lua_real_execute_contract_api(lua_State *L
     {
         global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "can't find this contract");
         lua_pushinteger(L, LUA_ERRRUN);
-        return 1;
+        return 0;
     }
     bool is_address = uvm::util::starts_with(contract_name, ADDRESS_CONTRACT_PREFIX);
     char address[CONTRACT_ID_MAX_LENGTH + 1] = "\0";
@@ -1985,6 +2008,10 @@ static int lua_real_execute_contract_api(lua_State *L
 
 	std::string api_name_str(api_name);
 
+	BOOST_SCOPE_EXIT_ALL(L) {
+		L->allow_contract_modify = 0;
+	};
+
     luaL_import_contract_module(L); // FIXME: maybe searcher_Lua changed api_name
     
     lua_settop(L, 1);  /* _LOADED table will be at index 2 */
@@ -1999,18 +2026,30 @@ static int lua_real_execute_contract_api(lua_State *L
     {
         global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "need load contract before execute contract api");
         lua_pushinteger(L, LUA_ERRRUN);
-        return 1;
+        return 0;
     }
     if (!lua_istable(L, -1))
     {
         lua_pushinteger(L, LUA_ERRRUN);
-        return 1;
+        return 0;
     }
 
     bool is_self = uvm::util::starts_with(contract_name, STREAM_CONTRACT_PREFIX)
         || uvm::util::starts_with(contract_name, ADDRESS_CONTRACT_PREFIX);
 
+	{
+		auto contract_addr = (intptr_t)lua_topointer(L, -1);
+		L->contract_table_addresses->push_back(contract_addr);
+		L->allow_contract_modify = contract_addr;
+	}
+
     lua_fill_contract_info_for_use(L);
+
+	{
+		auto contract_addr = (intptr_t)lua_topointer(L, -1);
+		L->contract_table_addresses->push_back(contract_addr);
+		L->allow_contract_modify = contract_addr;
+	}
 
     lua_pushstring(L, is_self ? CURRENT_CONTRACT_NAME : contract_name);
     lua_setfield(L, -2, "name");
@@ -2049,6 +2088,10 @@ static int lua_real_execute_contract_api(lua_State *L
 			global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "execute api %s contract error", api_name_str.c_str());
 			return 0;
 		}
+		if (status == LUA_OK && (L->state & (lua_VMState::LVM_STATE_BREAK | lua_VMState::LVM_STATE_SUSPEND))) {
+			return status;
+		}
+
 		lua_pop(L, 1);
         lua_pop(L, 1); // pop self
     } else
@@ -2065,36 +2108,45 @@ static int lua_real_execute_contract_api(lua_State *L
 LUA_API int lua_execute_contract_api(lua_State *L, const char *contract_name,
 	const char *api_name, const char *arg1, std::string *result_json_string)
 {
-	auto contract_address = uvm::lua::lib::malloc_managed_string(L, CONTRACT_ID_MAX_LENGTH + 1);
-	memset(contract_address, 0x0, CONTRACT_ID_MAX_LENGTH + 1);
-	size_t address_size = 0;
-	global_uvm_chain_api->get_contract_address_by_name(L, contract_name, contract_address, &address_size);
-	if (address_size > 0)
-	{
-		UvmStateValue value;
-		value.string_value = contract_address;
-		uvm::lua::lib::set_lua_state_value(L, STARTING_CONTRACT_ADDRESS, value, LUA_STATE_VALUE_STRING);
+	try {
+		auto contract_address = uvm::lua::lib::malloc_managed_string(L, CONTRACT_ID_MAX_LENGTH + 1);
+		memset(contract_address, 0x0, CONTRACT_ID_MAX_LENGTH + 1);
+		size_t address_size = 0;
+		global_uvm_chain_api->get_contract_address_by_name(L, contract_name, contract_address, &address_size);
+		if (address_size > 0)
+		{
+			UvmStateValue value;
+			value.string_value = contract_address;
+			uvm::lua::lib::set_lua_state_value(L, STARTING_CONTRACT_ADDRESS, value, LUA_STATE_VALUE_STRING);
+		}
+
+		lua_createtable(L, 0, 0);
+		lua_setglobal(L, "last_return");
+
+		int status = lua_real_execute_contract_api(L, contract_name, api_name, arg1);
+		if (status == LUA_OK && (L->state & (lua_VMState::LVM_STATE_BREAK | lua_VMState::LVM_STATE_SUSPEND))) {
+			return status;
+		}
+
+		if (lua_gettop(L) < 1)
+			return LUA_ERRRUN;
+		int result = lua_toboolean(L, -1);
+		if (result > 0 && result_json_string)
+		{
+			lua_getglobal(L, "last_return");
+			auto last_return_value_json = luaL_tojsonstring(L, -1, nullptr);
+			auto last_return_value_json_string = std::string(last_return_value_json);
+			lua_pop(L, 1);
+			*result_json_string = last_return_value_json_string;
+		}
+		if (result && !(L->state & (lua_VMState::LVM_STATE_BREAK| lua_VMState::LVM_STATE_SUSPEND)))
+			result = luaL_commit_storage_changes(L);
+		return result > 0 ? LUA_OK : LUA_ERRRUN;
 	}
-
-	lua_createtable(L, 0, 0);
-	lua_setglobal(L, "last_return");
-
-    int status = lua_real_execute_contract_api(L, contract_name, api_name, arg1);
-
-    if (lua_gettop(L) < 1)
-        return LUA_ERRRUN;
-    int result = lua_toboolean(L, -1);
-	if (result>0 && result_json_string)
-	{
-		lua_getglobal(L, "last_return");
-		auto last_return_value_json = luaL_tojsonstring(L, -1, nullptr);
-		auto last_return_value_json_string = std::string(last_return_value_json);
-		lua_pop(L, 1);
-		*result_json_string = last_return_value_json_string;
+	catch (const std::exception& e) {
+		uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_LVM_ERROR, e.what());
+		return LUA_ERRRUN;
 	}
-	if(result)
-		result = luaL_commit_storage_changes(L);
-    return result > 0 ? LUA_OK : LUA_ERRRUN;
 }
 
 LUA_API int lua_execute_contract_api_by_address(lua_State *L, const char *address,
@@ -2117,9 +2169,8 @@ std::shared_ptr<UvmModuleByteStream> lua_common_open_contract(lua_State *L, cons
     std::string namestr(name);
     if (uvm::util::starts_with(namestr, ADDRESS_CONTRACT_PREFIX))
     {
-        std::string pointer_str = namestr.substr(strlen(ADDRESS_CONTRACT_PREFIX), namestr.length() - strlen(ADDRESS_CONTRACT_PREFIX));
-        std::string address;
-        std::stringstream(pointer_str) >> address;
+        const std::string& pointer_str = namestr.substr(strlen(ADDRESS_CONTRACT_PREFIX), namestr.length() - strlen(ADDRESS_CONTRACT_PREFIX));
+		const std::string& address = pointer_str;
         auto stream = global_uvm_chain_api->open_contract_by_address(L, address.c_str());
         if (stream && stream->contract_level != CONTRACT_LEVEL_FOREVER && (stream->contract_name.length() < 1 || stream->contract_state == CONTRACT_STATE_DELETED))
         {
@@ -2143,7 +2194,7 @@ std::shared_ptr<UvmModuleByteStream> lua_common_open_contract(lua_State *L, cons
     {
         std::string p_str = namestr.substr(strlen(STREAM_CONTRACT_PREFIX), namestr.length() - strlen(STREAM_CONTRACT_PREFIX));
         intptr_t p;
-        std::stringstream(p_str) >> p;
+        std::stringstream(p_str) >> p; // TODO: not use stringstream
 		auto stream = std::make_shared<UvmModuleByteStream>(*(UvmModuleByteStream*)p);
         return stream;
     }
@@ -2533,104 +2584,114 @@ bool lua_table_to_map_traverser_with_nested(lua_State *L, void *ud, size_t len, 
     return true;
 }
 
+static bool is_uvm_array_table(UvmTableMapP map) {
+	bool is_array = false;
+	std::vector<int> all_int_keys;
+	bool has_wrong_array_format = false;
+	for (const auto &p : *map)
+	{
+		std::string key(p.first);
+		if (key.length()<1)
+		{
+			has_wrong_array_format = true;
+			break;
+		}
+		int int_key = 0;
+		if (key == "0")
+		{
+			int_key = 0;
+		}
+		else
+		{
+			try
+			{
+				int_key = boost::lexical_cast<int>(key);
+				if (int_key == 0)
+				{
+					has_wrong_array_format = true;
+					break;
+				}
+			}
+			catch (std::exception e)
+			{
+				has_wrong_array_format = true;
+				break;
+			}
+		}
+		all_int_keys.push_back(int_key);
+	}
+	if (!has_wrong_array_format)
+	{
+		std::sort(all_int_keys.begin(), all_int_keys.end());
+		for (int i = 1; i <= all_int_keys.size(); ++i)
+		{
+			if (i != all_int_keys[i - 1])
+			{
+				has_wrong_array_format = true;
+				break;
+			}
+		}
+		if (!has_wrong_array_format)
+		{
+			is_array = true;
+		}
+	}
+	return is_array;
+}
+
 /**
  * parse map to json string
  * @param map
  * @param ss
  * @param is_array whether treat it as a json array(table have hash port and array part)
  */
-static void luatablemap_to_json_stream(UvmTableMapP map, std::stringstream &ss, bool is_array=false)
+static void luatablemap_to_json_stream(UvmTableMapP map, uvm::util::stringbuffer& ss, bool is_array=false)
 {
 	if(!is_array)
 	{
 		// check whether is array
-		std::vector<int> all_int_keys;
-		bool has_wrong_array_format = false;
-		for(const auto &p : *map)
-		{
-			std::string key(p.first);
-			if(key.length()<1)
-			{
-				has_wrong_array_format = true;
-				break;
-			}
-			int int_key = 0;
-			if(key=="0")
-			{
-				int_key = 0;
-			}
-			else
-			{
-				try
-				{
-					int_key = boost::lexical_cast<int>(key);
-					if (int_key == 0)
-					{
-						has_wrong_array_format = true;
-						break;
-					}
-				}catch(std::exception e)
-				{
-					has_wrong_array_format = true;
-					break;
-				}
-			}
-			all_int_keys.push_back(int_key);
-		}
-		if(!has_wrong_array_format)
-		{
-			std::sort(all_int_keys.begin(), all_int_keys.end());
-			for (int i = 1; i <= all_int_keys.size(); ++i)
-			{
-				if (i != all_int_keys[i-1])
-				{
-					has_wrong_array_format = true;
-					break;
-				}
-			}
-			if (!has_wrong_array_format)
-			{
-				is_array = true;
-			}
-		}
+		is_array = is_uvm_array_table(map);
 	}
 
 	if (is_array)
-		ss << "[";
+		ss.put("[");
 	else
-		ss << "{";
+		ss.put("{");
     for (auto it = map->begin(); it != map->end(); ++it)
     {
         if (it != map->begin())
-            ss << ",";
+            ss.put(",");
         struct UvmStorageValue value = it->second;
 		if (!is_array)
 		{
 			std::string key(it->first);
-			ss << "\"" << uvm::util::escape_string(key) << "\":";
+			ss.put("\"")->put(uvm::util::escape_string(key))->put("\":");
 		}
         switch (value.type)
         {
 		case uvm::blockchain::StorageValueTypes::storage_value_null:
-            ss << "null";
+            ss.put("null");
             break;
 		case uvm::blockchain::StorageValueTypes::storage_value_bool:
-            ss << (value.value.bool_value ? "true" : "false");
+            ss.put(value.value.bool_value ? "true" : "false");
             break;
 		case uvm::blockchain::StorageValueTypes::storage_value_int:
-            ss << value.value.int_value;
+            ss.put(value.value.int_value);
             break;
 		case uvm::blockchain::StorageValueTypes::storage_value_number:
-            ss << value.value.number_value;
+			char buff[50];
+			l_sprintf(buff, sizeof(buff), LUA_NUMBER_FMT, value.value.number_value);
+			ss.put(std::string(buff));
+            //ss.put(value.value.number_value);
             break;
 		case uvm::blockchain::StorageValueTypes::storage_value_string:
         {
             auto str=std::string(value.value.string_value);
-            ss << "\"" << uvm::util::escape_string(str) << "\"";
+            ss.put("\"")->put(uvm::util::escape_string(str))->put("\"");
             break;
         }
 		case uvm::blockchain::StorageValueTypes::storage_value_userdata:
-            ss << "\"userdata\"";
+            ss.put("\"userdata\"");
 		default: 
 		{
 			if (uvm::blockchain::is_any_table_storage_value_type(value.type)
@@ -2639,14 +2700,14 @@ static void luatablemap_to_json_stream(UvmTableMapP map, std::stringstream &ss, 
 				luatablemap_to_json_stream(value.value.table_value, ss);
 				break;
 			}
-			ss << "\"userdata\"";
+			ss.put("\"userdata\"");
 		}
         }
     }
 	if (is_array)
-		ss << "]";
+		ss.put("]");
 	else
-		ss << "}";
+		ss.put("}");
 }
 
 static const char *tojsonstring_with_nested(lua_State *L, int idx, size_t *len, std::list<const void*> &jsons)
@@ -2680,12 +2741,12 @@ static const char *tojsonstring_with_nested(lua_State *L, int idx, size_t *len, 
             jsons.push_back(addr);
             UvmTableMapP map = luaL_create_lua_table_map_in_memory_pool(L);
             luaL_traverse_table_with_nested(L, idx, lua_table_to_map_traverser_with_nested, map, jsons, 0);
-            std::stringstream ss;
+            uvm::util::stringbuffer ss;
             luatablemap_to_json_stream(map, ss);
-			const auto& result_str = ss.str();
+			std::string result_str(ss.str());
             if (len)
                 *len = result_str.size();
-            lua_pushlstring(L, result_str.c_str(), ss.str().size());
+            lua_pushlstring(L, result_str.c_str(), result_str.size());
         }
         break;
         default:
@@ -2703,6 +2764,165 @@ LUALIB_API const char *(luaL_tojsonstring)(lua_State *L, int idx, size_t *len)
     return tojsonstring_with_nested(L, idx, len, jsons);
 }
 
+static cbor::CborObjectP uvm_json_item_to_cbor(const UvmStorageValue& value) {
+	switch (value.type) {
+	case uvm::blockchain::StorageValueTypes::storage_value_null:
+		return cbor::CborObject::create_null();
+	case uvm::blockchain::StorageValueTypes::storage_value_int:
+		return cbor::CborObject::from_int(value.value.int_value);
+	case uvm::blockchain::StorageValueTypes::storage_value_bool:
+		return cbor::CborObject::from_bool(value.value.bool_value);
+	case uvm::blockchain::StorageValueTypes::storage_value_number:
+	{
+		auto int_value = (lua_Integer)value.value.number_value;
+		return cbor::CborObject::from_int(int_value);
+	}
+	case uvm::blockchain::StorageValueTypes::storage_value_string:
+		return cbor::CborObject::from_string(value.value.string_value);
+	default: {
+		if (uvm::blockchain::is_any_array_storage_value_type(value.type)) {
+			auto table = value.value.table_value;
+			auto result = cbor::CborObject::create_array(table->size());
+			std::vector<cbor::CborObjectP> items;
+			for (size_t i = 0; i < table->size(); i++) {
+				std::string key = std::to_string(i + 1);
+				if (table->find(key) == table->end())
+					break;
+				auto item = uvm_json_item_to_cbor(table->at(key));
+				if (!item)
+					return nullptr;
+				items.push_back(item);
+			}
+			result->value = items;
+			return result;
+		}
+		else if (uvm::blockchain::is_any_table_storage_value_type(value.type)) {
+			auto table = value.value.table_value;
+			auto result = cbor::CborObject::create_map(table->size());
+			std::map<std::string, cbor::CborObjectP, std::less<std::string>> items;
+			for (const auto& p : *table) {
+				std::string key = p.first;
+				auto item = uvm_json_item_to_cbor(p.second);
+				if (!item)
+					return nullptr;
+				items[key] = item;
+			}
+			result->value = items;
+			return result;
+		}
+		else {
+			return nullptr;
+		}
+	}
+	}
+}
+
+LUALIB_API cbor::CborObjectP luaL_to_cbor(lua_State* L, int idx) {
+	switch (lua_type(L, idx)) {
+	case LUA_TNUMBER: {
+		if (lua_isinteger(L, idx))
+			return cbor::CborObject::from_int(luaL_checkinteger(L, idx));
+		else {
+			auto int_value = (lua_Integer)lua_tonumber(L, idx);
+			return cbor::CborObject::from_int(int_value);
+		}
+	}
+	case LUA_TSTRING:
+		return cbor::CborObject::from_string(luaL_checkstring(L, idx));
+	case LUA_TBOOLEAN:
+		return cbor::CborObject::from_bool(lua_toboolean(L, idx));
+	case LUA_TNIL:
+		return cbor::CborObject::create_null();
+	case LUA_TTABLE:
+	{
+		std::list<const void*> jsons;
+		UvmTableMapP map = luaL_create_lua_table_map_in_memory_pool(L);
+		luaL_traverse_table_with_nested(L, idx, lua_table_to_map_traverser_with_nested, map, jsons, 0);
+		UvmStorageValue map_value;
+		map_value.value.table_value = map;
+		if (is_uvm_array_table(map)) {
+			map_value.type = uvm::blockchain::StorageValueTypes::storage_value_unknown_array;
+			return uvm_json_item_to_cbor(map_value);
+		}
+		else {
+			map_value.type = uvm::blockchain::StorageValueTypes::storage_value_unknown_table;
+			return uvm_json_item_to_cbor(map_value);
+		}
+	}
+	break;
+	default:
+		return nullptr;
+	}
+}
+
+LUALIB_API int luaL_push_cbor_as_json(lua_State* L, cbor::CborObjectP cbor_object) {
+	if (!cbor_object)
+		return 0;
+	switch (cbor_object->object_type()) {
+	case cbor::CborObjectType::COT_NULL:
+		lua_pushnil(L);
+		return 1;
+	case cbor::CborObjectType::COT_UNDEFINED:
+		lua_pushnil(L);
+		return 1;
+	case cbor::CborObjectType::COT_BOOL:
+		lua_pushboolean(L, cbor_object->as_bool() ? 1 : 0);
+		return 1;
+	case cbor::CborObjectType::COT_INT:
+		lua_pushinteger(L, cbor_object->as_int());
+		return 1;
+	case cbor::CborObjectType::COT_EXTRA_INT:
+		lua_pushinteger(L, cbor_object->as<uint64_t>());
+		return 1;
+	case cbor::CborObjectType::COT_STRING: {
+		const auto& str = cbor_object->as_string();
+		lua_pushstring(L, str.c_str());
+		return 1;
+	}
+	case cbor::CborObjectType::COT_BYTES: {
+		const auto& bytes = cbor_object->as_bytes();
+		// bytes to hex
+		try {
+			const auto& hex_str = fc::to_hex(bytes);
+			lua_pushstring(L, hex_str.c_str());
+			return 1;
+		}
+		catch (const std::exception& e) {
+			return 0;
+		}
+	}
+	case cbor::CborObjectType::COT_ARRAY: {
+		const auto& array_value = cbor_object->as_array();
+		lua_createtable(L, array_value.size(), 0);
+		for (size_t i = 0; i < array_value.size(); i++) {
+			auto item = array_value[i];
+			if (!luaL_push_cbor_as_json(L, item)) {
+				lua_pop(L, 1);
+				return 0;
+			}
+			lua_seti(L, -2, i + 1);
+		}
+		return 1;
+	}
+	case cbor::CborObjectType::COT_MAP: {
+		lua_newtable(L);
+		const auto& map_value = cbor_object->as_map();
+		for (const auto& p : map_value) {
+			const auto& key = p.first;
+			const auto& item_value = p.second;
+			if (!luaL_push_cbor_as_json(L, item_value)) {
+				lua_pop(L, 1);
+				return 0;
+			}
+			lua_setfield(L, -2, key.c_str());
+		}
+		return 1;
+	}
+	default: {
+		return 0;
+	}
+	}
+}
 
 /*
 ** {======================================================
@@ -2900,5 +3120,29 @@ LUALIB_API void luaL_checkversion_(lua_State *L, lua_Number ver, size_t sz) {
     else if (*v != ver)
         luaL_error(L, "version mismatch: app. needs %f, Lua core provides %f",
         ver, *v);
+}
+
+namespace fc {
+	void to_variant(std::map<std::string, TValue> m, variant& vo) {
+		std::map<std::string, TValue>::iterator it;
+		auto L = luaL_newstate();
+		fc::mutable_variant_object res;
+        for (it = m.begin(); it != m.end();it++) {
+            *(L->top) = it->second;
+            api_incr_top(L);
+            luaL_tojsonstring(L, -1, nullptr);
+            const char *value_str = luaL_checkstring(L, -1);
+            lua_pop(L, 2);
+            auto v = std::string(value_str);
+            res[it->first]=v;
+        }		
+		vo = std::move(res);
+		lua_close(L);	
+	}
+}
+
+size_t luaL_wrap_contract_apis(lua_State *L, int index, void *ud)
+{
+	return luaL_traverse_table(L, index, contract_table_traverser_to_wrap_api, ud);
 }
 

@@ -43,7 +43,7 @@ enum RESERVED {
 typedef union {
     lua_Number r;
     lua_Integer i;
-    TString *ts;
+	uvm_types::GcString *ts;
 } SemInfo;  /* semantics information */
 
 
@@ -65,18 +65,18 @@ typedef struct LexState {
     struct lua_State *L;
     ZIO *z;  /* input stream */
     Mbuffer *buff;  /* buffer for tokens */
-    Table *h;  /* to avoid collection/reuse strings */
+    uvm_types::GcTable *h;  /* to avoid collection/reuse strings */
     struct Dyndata *dyd;  /* dynamic structures used by the parser */
-    TString *source;  /* current source name */
-    TString *envn;  /* environment variable name */
+	uvm_types::GcString *source;  /* current source name */
+	uvm_types::GcString *envn;  /* environment variable name */
     char decpoint;  /* locale decimal point */
 } LexState;
 
 
 LUAI_FUNC void luaX_init(lua_State *L);
 LUAI_FUNC void luaX_setinput(lua_State *L, LexState *ls, ZIO *z,
-    TString *source, int firstchar);
-LUAI_FUNC TString *luaX_newstring(LexState *ls, const char *str, size_t l);
+	uvm_types::GcString *source, int firstchar);
+LUAI_FUNC uvm_types::GcString *luaX_newstring(LexState *ls, const char *str, size_t l);
 LUAI_FUNC void luaX_next(LexState *ls);
 LUAI_FUNC int luaX_lookahead(LexState *ls);
 LUAI_FUNC void luaX_syntaxerror(LexState *ls, const char *s);

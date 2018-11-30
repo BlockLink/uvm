@@ -163,6 +163,7 @@ namespace simplechain {
 		virtual std::string sha3_hex(const std::string& hex_string) override;
 		virtual std::string ripemd160_hex(const std::string& hex_string) override;
 
+		virtual std::string get_address_role(lua_State* L, const std::string& addr) override;
 
       };
 

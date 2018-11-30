@@ -27,6 +27,7 @@
 #include "uvm/lstate.h"
 #include "uvm/lstring.h"
 #include "uvm/lvm.h"
+#include <uvm/exceptions.h>
 
 
 
@@ -475,3 +476,49 @@ void luaO_chunkid(char *out, const char *source, size_t bufflen) {
     }
 }
 
+namespace uvm_types {
+	bool table_sort_comparator::operator()(const TValue& x, const TValue& y) const {
+		if (ttislightuserdata(&x) && !ttislightuserdata(&y))
+			return true;
+		if (ttislightuserdata(&y) && !ttislightuserdata(&x))
+			return false;
+		if (ttislightuserdata(&x) && ttislightuserdata(&y))
+			return (intptr_t)x.value_.p < (intptr_t)y.value_.p;
+		if (ttisnumber(&x) && !ttisnumber(&y)) {
+			return true;
+		}
+		if (ttisnumber(&y) && !ttisnumber(&x)) {
+			return false;
+		}
+		if (!ttisnumber(&x) && !ttisnumber(&y)) {
+			if (ttisstring(&x) && ttisstring(&y)) {
+				/*std::string xs = getstr(gco2ts(x.value_.gco));
+				std::string ys = getstr(gco2ts(y.value_.gco));
+				return xs < ys;*/
+				GcString *l = tsvalue(&x);
+				GcString *r = tsvalue(&y);
+				return (luaV_strcmp(l, r) < 0);
+			}
+			else if (ttisstring(&x)) {
+				return true;
+			}
+			else if (ttisstring(&y)) {
+				return false;
+			}
+			else {
+				throw uvm::core::UvmException("invalid key type of uvm table");
+			}
+		}
+		lua_Integer xi;
+		lua_Integer yi;
+		auto x_is_int = luaV_tointeger(&x, &xi, 0);
+		auto y_is_int = luaV_tointeger(&y, &yi, 0);
+		if (x_is_int && !y_is_int) {
+			return true;
+		}
+		else if (y_is_int && !x_is_int) {
+			return false;
+		}
+		return xi < yi;
+	}
+}

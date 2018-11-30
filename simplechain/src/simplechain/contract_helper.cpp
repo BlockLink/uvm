@@ -28,7 +28,7 @@ namespace simplechain {
 	}
 
 	long StreamFileWrapper::common_tell() {
-		return stream->tellg();
+		return (long) stream->tellg();
 	}
 
 	int ContractHelper::common_fread_int(LikeFile* fp, int* dst_int)
@@ -170,7 +170,7 @@ else \
 		common_fwrite_int(f, &contract_apis_count);
 		for (int i = 0; i < contract_apis_count; ++i)
 		{
-			int api_len = p_new_stream->contract_apis[i].length();
+			int api_len = (int)(p_new_stream->contract_apis[i].length());
 			common_fwrite_int(f, &api_len);
 			common_fwrite_stream(f, p_new_stream->contract_apis[i].c_str(), api_len);
 		}
@@ -179,7 +179,7 @@ else \
 		common_fwrite_int(f, &offline_apis_count);
 		for (int i = 0; i < offline_apis_count; ++i)
 		{
-			int offline_api_len = p_new_stream->offline_apis[i].length();
+			int offline_api_len = (int)(p_new_stream->offline_apis[i].length());
 			common_fwrite_int(f, &offline_api_len);
 			common_fwrite_stream(f, p_new_stream->offline_apis[i].c_str(), offline_api_len);
 		}
@@ -188,7 +188,7 @@ else \
 		common_fwrite_int(f, &contract_emit_events_count);
 		for (int i = 0; i < contract_emit_events_count; ++i)
 		{
-			int event_len = p_new_stream->contract_emit_events[i].length();
+			int event_len = (int)(p_new_stream->contract_emit_events[i].length());
 			common_fwrite_int(f, &event_len);
 			common_fwrite_stream(f, p_new_stream->contract_emit_events[i].c_str(), event_len);
 		}
@@ -197,7 +197,7 @@ else \
 		common_fwrite_int(f, &contract_storage_properties_count);
 		for (const auto& storage_info : p_new_stream->contract_storage_properties)
 		{
-			int storage_len = storage_info.first.length();
+			int storage_len = (int)storage_info.first.length();
 			common_fwrite_int(f, &storage_len);
 			common_fwrite_stream(f, storage_info.first.c_str(), storage_len);
 			int storage_type = storage_info.second;

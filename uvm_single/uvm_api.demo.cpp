@@ -27,6 +27,11 @@
 #include "Keccak.hpp"
 #include "uvm_api.demo.h"
 
+#include <fc/io/json.hpp>
+#include <simplechain/storage.h>
+
+
+
 namespace uvm {
 	namespace lua {
 		namespace api {
@@ -167,7 +172,7 @@ namespace uvm {
 			/**
 			* load contract lua byte stream from uvm api
 			*/
-			std::shared_ptr<UvmModuleByteStream> DemoUvmChainApi::open_contract(lua_State *L, const char *name)
+			/*std::shared_ptr<UvmModuleByteStream> DemoUvmChainApi::open_contract(lua_State *L, const char *name)
 			{
               uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
 				bool is_bytes = true;
@@ -204,6 +209,87 @@ namespace uvm {
 				if (!is_bytes)
 					stream->buff[stream->buff.size()-1] = '\0';
 				return stream;
+			}*/
+
+			std::shared_ptr<UvmModuleByteStream> DemoUvmChainApi::open_contract(lua_State *L, const char *name)
+			{
+				uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
+				bool is_bytes = true;
+				
+				//..............................................	
+				std::string filename = std::string(name);
+				if (filename.find(uvm::util::file_separator_str()[0]) == std::string::npos) { // for test
+					filename = std::string("uvm_modules") + uvm::util::file_separator_str() + "uvm_contract_" + name;
+				}
+
+
+				FILE *f = fopen(filename.c_str(), "rb");
+				if (nullptr == f)
+				{
+					std::string origin_filename(name);
+					filename = origin_filename + ".lua";
+					f = fopen(filename.c_str(), "rb");
+					if (!f)
+					{
+						filename = origin_filename + ".glua";
+						f = fopen(filename.c_str(), "rb");
+						if (nullptr == f)
+							return nullptr;
+					}
+					is_bytes = false;
+				}
+				auto stream = std::make_shared<UvmModuleByteStream>();
+				if (nullptr == stream)
+					return nullptr;
+				fseek(f, 0, SEEK_END);
+				auto file_size = ftell(f);
+				stream->buff.resize(file_size);
+				fseek(f, 0, 0);
+				file_size = (long)fread(stream->buff.data(), file_size, 1, f);
+				fseek(f, 0, SEEK_END); // seek to end of file
+				file_size = ftell(f); // get current file pointer
+				stream->is_bytes = is_bytes;
+				stream->contract_name = name;
+				stream->contract_id = std::string("id_") + std::string(name);
+				fclose(f);
+				if (!is_bytes)
+					stream->buff[stream->buff.size() - 1] = '\0';
+				//........................................
+
+
+				//open meta json
+				filename =  std::string(name) + ".meta.json";
+				f = fopen(filename.c_str(), "rb");
+				if (nullptr == f) {
+					filename = std::string(name);
+					auto pos = filename.find_last_of('.');
+					
+					if (pos >= 0) {
+						filename = filename.substr(0, pos) + ".meta.json";
+						f = fopen(filename.c_str(), "rb");
+						if (nullptr != f) {
+							fclose(f);
+							auto meta = fc::json::from_file(fc::path(filename), fc::json::legacy_parser);
+							if (!meta.is_object()) {
+								return stream;
+							}
+							auto metajson = meta.as<fc::mutable_variant_object>();
+							
+							if (metajson["storage_properties_types"].is_array()) {
+								auto storage_types_json_array = metajson["storage_properties_types"].as<fc::variants>();
+								for (size_t i = 0; i < storage_types_json_array.size(); i++)
+								{		
+									auto item_json = storage_types_json_array[i].as<fc::variants>();
+									if (item_json.size() == 2) {
+										stream->contract_storage_properties[item_json[0].as_string()] = uvm::blockchain::StorageValueTypes(item_json[1].as_uint64());
+									}
+									
+								}
+							}
+						}
+					}
+				}
+				return stream;				
 			}
             
 			std::shared_ptr<UvmModuleByteStream> DemoUvmChainApi::open_contract_by_address(lua_State *L, const char *address)
@@ -223,94 +309,98 @@ namespace uvm {
 					}
 					return open_contract(L, name.c_str());
 				}
-                return open_contract(L, "pointer_demo");
+                //return open_contract(L, "pointer_demo");
+				return open_contract(L, address);
             }
 
             // storage,mapkey contract_id + "$" + storage_name
             // TODO: lua_closepost_callback，
             static std::map<lua_State *, std::shared_ptr<std::map<std::string, UvmStorageValue>>> _demo_chain_storage_buffer;
+			static fc::mutable_variant_object storage_root;
+			static bool is_init_storage_file = false;
 
 			UvmStorageValue DemoUvmChainApi::get_storage_value_from_uvm(lua_State *L, const char *contract_name,
 				const std::string& name, const std::string& fast_map_key, bool is_fast_map)
 			{
-              // fetch storage value from uvm
-              if (_demo_chain_storage_buffer.find(L) == _demo_chain_storage_buffer.end()) {
-                if (_demo_chain_storage_buffer.size() > 5)
-                {
-                  _demo_chain_storage_buffer.clear();
-                }
-                _demo_chain_storage_buffer[L] = std::make_shared<std::map<std::string, UvmStorageValue>>();
-              }
-              auto cache = _demo_chain_storage_buffer[L];
-              // auto key = std::string(contract_address) + "$" + name;
-              auto key = std::string("demo$") + name; // democontract_idid_+，
-			  if (is_fast_map) {
-				  key = std::string("demo$") + name + "$" + fast_map_key;
-			  }
-              if (cache->find(key) != cache->end())
-              {
-                return (*cache)[key];
-              }
-              UvmStorageValue value;
-              value.type = uvm::blockchain::StorageValueTypes::storage_value_null;
-              value.value.int_value = 0;
-              (*cache)[key] = value;
-              return value;
+				if (!is_init_storage_file) {
+					if (fc::exists(fc::path("uvm_storage_demo.json"))) {
+						storage_root = fc::json::from_file(fc::path("uvm_storage_demo.json"), fc::json::legacy_parser).as<fc::mutable_variant_object>();
+					}					
+					is_init_storage_file = true;
+				}
+				auto key = std::string(contract_name) + "$" + name; // fix me zq ???????
+				if (storage_root.find(key) != storage_root.end()) {
+					auto s = simplechain::json_to_uvm_storage_value(L, storage_root[key]);
+					return s;
+				}
+				UvmStorageValue value;
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_null;
+				value.value.int_value = 0;
+				return value;
 			}
 
 			UvmStorageValue DemoUvmChainApi::get_storage_value_from_uvm_by_address(lua_State *L, const char *contract_address,
 				const std::string& name, const std::string& fast_map_key, bool is_fast_map)
 			{
-				// fetch storage value from uvm
-                if (_demo_chain_storage_buffer.find(L) == _demo_chain_storage_buffer.end()) {
-                  if (_demo_chain_storage_buffer.size() > 5)
-                  {
-                    _demo_chain_storage_buffer.clear();
-                  }
-                    _demo_chain_storage_buffer[L] = std::make_shared<std::map<std::string, UvmStorageValue>>();
-                }
-                auto cache = _demo_chain_storage_buffer[L];
-                // auto key = std::string(contract_address) + "$" + name;
-                auto key = std::string("demo$") + name; // democontract_idid_+，
-				if (is_fast_map) {
-					key = std::string("demo$") + name + "$" + fast_map_key;
+				if (!is_init_storage_file) {
+					if (fc::exists(fc::path("uvm_storage_demo.json"))) {
+						storage_root = fc::json::from_file(fc::path("uvm_storage_demo.json"), fc::json::legacy_parser).as<fc::mutable_variant_object>();
+					}
+					is_init_storage_file = true;
 				}
-                if (cache->find(key) != cache->end())
-                {
-                  return (*cache)[key];
-                }
+				auto key = std::string(contract_address) + "$" + name;
+				if (storage_root.find(key) != storage_root.end()) {
+					auto s = simplechain::json_to_uvm_storage_value(L, storage_root[key]);
+					return s;
+				}
 				UvmStorageValue value;
 				value.type = uvm::blockchain::StorageValueTypes::storage_value_null;
 				value.value.int_value = 0;
-                (*cache)[key] = value;
+
 				return value;
 			}
 
 			bool DemoUvmChainApi::commit_storage_changes_to_uvm(lua_State *L, AllContractsChangesMap &changes)
 			{
-				// printf("commited storage changes to uvm\n");
-                if (_demo_chain_storage_buffer.find(L) == _demo_chain_storage_buffer.end()) {
-                  if (_demo_chain_storage_buffer.size() > 5)
-                  {
-                    _demo_chain_storage_buffer.clear();
-                  }
-                  _demo_chain_storage_buffer[L] = std::make_shared<std::map<std::string, UvmStorageValue>>();
-                }
-                auto cache = _demo_chain_storage_buffer[L];
-                for (const auto &change : changes)
-                {
-                  auto contract_id = change.first;
-                  for (const auto &change_info : *(change.second))
-                  {
-                    auto name = change_info.first;
-                    auto change_item = change_info.second;
-                    // auto key = contract_id + "$" + name;
-                    auto key =  std::string("demo$") + name; // democontract_idid_+，
-                    // FIIXME: merge
-                    UvmStorageValue value = change_item.after;
-                    (*cache)[key] = value;
-                  }
-                }
+				if (changes.size() == 0) {
+					return true;
+				}
+
+				if (!is_init_storage_file) {
+					if (fc::exists(fc::path("uvm_storage_demo.json"))) {
+						storage_root = fc::json::from_file(fc::path("uvm_storage_demo.json"), fc::json::legacy_parser).as<fc::mutable_variant_object>();
+					}
+					
+					is_init_storage_file = true;
+				}
+
+				for (const auto &change : changes)
+				{
+					auto contract_id = change.first;
+					for (const auto &change_info : *(change.second))
+					{
+						auto name = change_info.first;
+						auto change_item = change_info.second;
+						
+						UvmStorageValue value = change_item.after;
+						auto key = contract_id + "$" + name;
+						storage_root[key] = simplechain::uvm_storage_value_to_json(value);
+					}
+				}
+
+				if (changes.size()&& storage_root.size()) {
+					/*if (!fc::exists(fc::path("uvm_storage_demo.json"))) {
+						auto f = fopen("uvm_storage_demo.json", "w");
+						if (f) {
+							fclose(f);
+						}
+					}*/
+					//持久化
+					fc::variant temp;
+					fc::to_variant(storage_root, temp);
+					fc::json::save_to_file(temp, fc::path("uvm_storage_demo.json"),true, fc::json::legacy_generator);
+
+				}
 				return true;
 			}
 
@@ -484,7 +574,10 @@ namespace uvm {
 
 			bool DemoUvmChainApi::is_valid_contract_address(lua_State *L, const char *address_str)
 			{
-				return true;
+				if (std::string(address_str).find_first_of("CON_") == 0) {
+					return true;
+				}
+				return false;
 			}
 
 			const char * DemoUvmChainApi::get_system_asset_symbol(lua_State *L)
@@ -537,6 +630,10 @@ namespace uvm {
 				const auto& chars = hex_to_chars(hex_string);
 				auto hash_result = fc::ripemd160::hash(chars.data(), chars.size());
 				return hash_result.str();
+			}
+
+			std::string DemoUvmChainApi::get_address_role(lua_State* L, const std::string& addr) {
+				return "address";
 			}
 
 		}
