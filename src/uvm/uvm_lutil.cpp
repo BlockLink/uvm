@@ -500,5 +500,75 @@ namespace uvm
 			return string_join(_parts.begin(), _parts.end(), "");
 		}
 
+		std::string unhex(const std::string& int_str) {
+			return convert_pre(16, 10, int_str);
+		}
+		std::string hex(const std::string& hex_str) {
+			return convert_pre(10, 16, hex_str);
+		}
+		std::string convert_pre(int old_base, int new_base, std::string source_str) {
+			if (source_str.length() > 0 && source_str[0] == '-')
+			{
+				return std::string("-") + convert_pre(old_base, new_base, source_str.substr(1));
+			}
+			std::string ret;
+			int data[1010];
+			int output[1010];
+			memset(output, 0, sizeof(output));
+			for (int i = 0; i < source_str.length(); i++) {
+				if (i >= 1010)
+					throw uvm::core::UvmException("too long source string for convert_pre");
+				if (isalpha(source_str[i]))
+					if (isupper(source_str[i]))
+					{
+						data[i] = source_str[i] - 'A' + 10;
+					}
+					else {
+						data[i] = source_str[i] - 'a' + 10;
+					}
+				else
+					data[i] = source_str[i] - '0';
+				if (data[i] >= old_base)
+					throw uvm::core::UvmException("invalid digit char when convert_pre");
+			}
+			int sum = 1;
+			int d = 0;
+			int len = source_str.length();
+			int k = 0;
+			while (sum) {
+				sum = 0;
+				for (int i = 0; i < len; i++) {
+					d = data[i] / new_base;
+					sum += d;
+					if (i == len - 1) {
+						output[k++] = data[i] % new_base;
+					}
+					else {
+						data[i + 1] += (data[i] % new_base) * old_base;
+					}
+					data[i] = d;
+				}
+			}
+			if (k == 0) {
+				output[k] = 0;
+				k--;
+			}
+			if (k == -1) {
+				ret = "0";
+			}
+			else {
+				for (int i = 0; i < k; i++) {
+					if (output[k - i - 1] > 9) {
+						ret += (char)(output[k - i - 1] + 'a' - 10);
+						//cout << (char)(output[k - i - 1] + 'a' - 10);
+					}
+					else {
+						ret += output[k - i - 1] + '0';
+					}
+				}
+			}
+			return ret;
+		}
+
 	} // end namespace uvm::util
 } // end namespace uvm

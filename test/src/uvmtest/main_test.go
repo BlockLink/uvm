@@ -173,7 +173,7 @@ func TestTypes(t *testing.T) {
 	execCommand(uvmCompilerPath, "../../tests_lua/test_types.lua")
 	out, _ := execCommand(uvmSinglePath, "../../tests_lua/test_types.lua.out")
 	fmt.Println(out)
-	assert.True(t, strings.Contains(out, "123	4.56	abc	true	[123,4.56,\"abc\",true]"))
+	assert.True(t, strings.Contains(out, "123	4.56	abc	true	[123,4.560000,\"abc\",true]"))
 	assert.True(t, strings.Contains(out, `b=table: 0`))
 	assert.True(t, strings.Contains(out, `c={"b":"userdata","c":{"a":1,"b":"hi"},"name":1}`))
 }
@@ -254,9 +254,9 @@ func TestSafeMath(t *testing.T) {
 	out, err := execCommand(uvmSinglePath, "../../test_safemath.lua.out")
 	fmt.Println(out)
 	assert.Equal(t, err, "")
-	assert.True(t, strings.Contains(out, `a=	{"hex":"313233","type":"bigint"}`))
-	assert.True(t, strings.Contains(out, `b=	{"hex":"343536","type":"bigint"}`))
-	assert.True(t, strings.Contains(out, `hex(a)=	313233`))
+	assert.True(t, strings.Contains(out, `a=	{"hex":"7b","type":"bigint"}`))
+	assert.True(t, strings.Contains(out, `b=	{"hex":"1c8","type":"bigint"}`))
+	assert.True(t, strings.Contains(out, `hex(a)=	7b`))
 	assert.True(t, strings.Contains(out, `int(a)=	123`))
 	assert.True(t, strings.Contains(out, `str(a)=	123`))
 	assert.True(t, strings.Contains(out, `c	579`))
@@ -264,6 +264,9 @@ func TestSafeMath(t *testing.T) {
 	assert.True(t, strings.Contains(out, `e	56088`))
 	assert.True(t, strings.Contains(out, `f	3`))
 	assert.True(t, strings.Contains(out, `g	792594609605189126649`))
+	assert.True(t, strings.Contains(out, `h	3333333333333333333333333333333333332`))
+	assert.True(t, strings.Contains(out, `j	0`))
+	assert.True(t, strings.Contains(out, `try parse a1 is:	nil`))
 	assert.True(t, strings.Contains(out, `123 > 456=false`))
 	assert.True(t, strings.Contains(out, `123 >= 456=false`))
 	assert.True(t, strings.Contains(out, `123 < 456=true`))
@@ -1045,7 +1048,7 @@ func TestCallContractManyTimes(t *testing.T) {
 	fmt.Printf("contract address: %s\n", contract1Addr)
 	simpleChainRPC("generate_block")
 
-	maxRunCount := 10000
+	maxRunCount := 1
 	for i := 0; i < maxRunCount; i++ {
 		//simpleChainRPC("invoke_contract", caller1, contract1Addr, "update", []string{" "}, 0, 0, 50000, 10)
 		//simpleChainRPC("generate_block")

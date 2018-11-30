@@ -58,6 +58,7 @@ namespace simplechain {
 			has_error = true;
 			undo_contract_effected();
 			std::cerr << e.what() << std::endl;
+			invoke_contract_result.error = e.what();
 		}
 		return std::make_shared<contract_invoke_result>(invoke_contract_result);
 	}
@@ -131,6 +132,7 @@ namespace simplechain {
 			has_error = true;
 			undo_contract_effected();
 			std::cerr << e.what() << std::endl;
+			invoke_contract_result.error = e.what();
 		}
 		return std::make_shared<contract_invoke_result>(invoke_contract_result);
 	}
