@@ -15,6 +15,11 @@ func HexToBytes(hexStr string) ([]byte, error) {
 	return hex.DecodeString(hexStr)
 }
 
+func BytesToBigInt(data []byte) *big.Int {
+	h := ecdsatools.BytesToHex(data)
+	return HexToBigInt(h)
+}
+
 // HexToBigInt : parse from hex string to big.Int
 func HexToBigInt(hexStr string) *big.Int {
 	n := new(big.Int)

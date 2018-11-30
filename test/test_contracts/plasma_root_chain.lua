@@ -61,6 +61,7 @@ type Transaction = {
     sigHash: string,
     hash: string,
     slot: string,
+    -- toSlot: string,
     balance: int,
     prevBlock: int
 }
@@ -260,12 +261,28 @@ offline function M:get_config(_: string)
     return storageJson
 end
 
+let function bytes_to_bigint_as_big_endian(bytes_hex: string)
+    let bytes = hex_to_bytes(bytes_hex)
+    if not bytes then
+        return error("invalid bytes hex")
+    end
+    var result = safemath.bigint(0)
+    var i: int = 1
+    var bigint256 = safemath.bigint(256)
+    while i <= #bytes do
+        let byte = tointeger(bytes[i])
+        result = safemath.add(safemath.mul(result, bigint256), safemath.bigint(byte))
+        i = i + 1
+    end
+    return result
+end
+
 let function create_coin(M: table, from: string, uid: string, denomination: int, balance: int)
     let from_caller = get_from_address()
     M.storage.currentBlockNum = tointeger(M.storage.currentBlockNum) + 1  -- TODO: when (currentBlockNum+1) % interval == 0
     let slotInfoToPack: Array<object> = [tointeger(M.storage.numCoins), from_caller, from]
     let slotInfoPackedHex = sha256_hex(cbor_encode(slotInfoToPack))
-    let slot = string.sub(slotInfoPackedHex, 0, 16)
+    var slot = string.sub(slotInfoPackedHex, 0, 16)
     var coin: Coin = totable(simpleJsonLoads(fast_map_get("coins", slot)))
     if not coin then
         coin = Coin()
@@ -283,6 +300,7 @@ let function create_coin(M: table, from: string, uid: string, denomination: int,
     childBlock.root = sha256_hex(cbor_encode(slot))
     childBlock.createdAt = get_chain_now()
     let childBlockStr = json.dumps(childBlock)
+    print("now child chain currentBlockNum in contract is: ", M.storage.currentBlockNum)
     fast_map_set("childChain", tostring(M.storage.currentBlockNum), childBlockStr)
 
     let vmc = getVmc(M)
@@ -377,6 +395,7 @@ function M:submit_block(arg: string)
         'root': root,
         'timestamp': get_chain_now()
     }
+    print("submited block #", self.storage.currentBlockNum)
     emit SubmittedBlock(json.dumps(eventArg));
 end
 
@@ -385,7 +404,8 @@ let function checkMembership(M:table, txHash: string, root: string, slot: string
         return true
     end
     let smt = getSmt(M)
-    return smt:verify(slot .. "," .. txHash .. "," .. root .. "," .. proofHex)
+    let slotIntStr = safemath.tostring(bytes_to_bigint_as_big_endian(slot))
+    return smt:verify(slotIntStr .. "," .. txHash .. "," .. root .. "," .. proofHex)
 end
 
 let function checkTxIncluded(M: table, slot: string, txHash: string, blockNumber: int, proofHex: string)
@@ -406,7 +426,7 @@ let function checkTxIncluded(M: table, slot: string, txHash: string, blockNumber
     else
         -- Check against merkle tree for all other block numbers
         if not checkMembership(M, txHash, root, slot, proofHex) then
-            return error("Tx not included in claimed block")
+            return error("tx not included in claimed block #" .. tostring(blockNumber))
         end
     end
 end
@@ -448,8 +468,8 @@ let function checkBothIncludedAndSigned(M: table, prevTxHex: string, exitingTxHe
     end
 
     -- Both transactions must be included in their respective blocks
-    checkTxIncluded(M, tostring(prevTxData["slot"]), tostring(prevTxData["hash"]), block1Num, prevTxInclusionProofHex);
-    checkTxIncluded(M, tostring(exitingTxData["slot"]), tostring(exitingTxData["hash"]), block2Num, exitingTxInclusionProofHex);
+    checkTxIncluded(M, tostring(prevTxData["slot"]), tostring(prevTxData["hash"]), block1Num, prevTxInclusionProofHex)
+    checkTxIncluded(M, tostring(exitingTxData["slot"]), tostring(exitingTxData["hash"]), block2Num, exitingTxInclusionProofHex)
 end
 
 let function doInclusionChecks(M: table, prevTxHex: string, exitingTxHex: string, prevTxInclusionProofHex: string, exitingTxInclusionProofHex: string,
@@ -479,6 +499,9 @@ let function pushExit(slot: string, prevOwner: string, exitOwner: string, exitOw
     -- Create exit
     let coinStr = tostring(fast_map_get("coins", slot))
     let c: Coin = totable(simpleJsonLoads(coinStr))
+    if not c then
+        return error("can't find coin with slot " .. slot)
+    end
     let exit = Exit()
     exit.prevOwner = prevOwner
     exit.owner = exitOwner
@@ -662,7 +685,7 @@ function M:finalizeExit(arg: string)
     -- Check if there are any pending challenges for the coin.
     -- `checkPendingChallenges` will also penalize
     -- for each challenge that has not been responded to
-    let hasChallenges = checkPendingChallenges(slot);
+    let hasChallenges = checkPendingChallenges(slot)
 
     if (not hasChallenges) then
         -- Update coin's owner and balance

@@ -81,7 +81,8 @@ offline function M:depth(_: string)
 end
 
 -- check the proof of the leaf as 'uid' is valid
--- arg format: uid, leave_hash, tree_root, proof
+-- TODO: uid use hex format
+-- arg format: uid(big int string), leave_hash(hex string), tree_root(hex string), proof(hex string)
 -- bytes represented by hex string
 function M:verify(arg: string)
     let parsed = parse_at_least_args(arg, 4, "need arg format: uid, leave_hash, tree_root, proof")

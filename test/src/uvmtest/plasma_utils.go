@@ -30,6 +30,12 @@ func ComputeChildChainDepositTxHash(slotHex string) ([]byte, error) {
 	return txHash, nil
 }
 
+func ComputeChildChainCommonTxHash(txBytes []byte) ([]byte, error) {
+	txHashBytes := sha256.Sum256(txBytes)
+	txHash := txHashBytes[:]
+	return txHash, nil
+}
+
 // EncodeChildChainTx : encode plasma child chain's tx by cbor encoder
 func EncodeChildChainTx(tx map[string]interface{}) ([]byte, error) {
 	var encodeBuffer bytes.Buffer
