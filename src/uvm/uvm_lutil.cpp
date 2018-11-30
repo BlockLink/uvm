@@ -575,6 +575,5 @@ namespace uvm
 			return ret;
 		}
 
-
 	} // end namespace uvm::util
 } // end namespace uvm
