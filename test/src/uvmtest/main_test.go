@@ -652,7 +652,13 @@ func getPlasmaCoin(caller string, plasmaContractAddress string, coinSlotHex stri
 		return
 	}
 	coinCreatedStr := res.Get("api_result").MustString()
-	coinCreated, _ := simplejson.NewJson([]byte(coinCreatedStr))
+	if coinCreatedStr == "nil" {
+		return nil, nil
+	}
+	coinCreated, err := simplejson.NewJson([]byte(coinCreatedStr))
+	if err != nil {
+		return
+	}
 	coin = new(PlasmaCoin)
 	coin.Slot = coinSlotHex
 	coin.Balance = coinCreated.Get("balance").MustInt()
@@ -1041,7 +1047,11 @@ func TestPlasmaRootChain(t *testing.T) {
 	fmt.Println("exitorBalanceBeforeFinalize: ", exitorBalanceBeforeFinalize)
 	fmt.Println("exitorBalanceAfterFinalize: ", exitorBalanceAfterFinalize)
 	assert.True(t, (exitorBalanceBeforeFinalize+10000) == exitorBalanceAfterFinalize)
-	// TODO: check from Slot's balance
+	// check from Slot's balance
+
+	coinExitAfterExit, err := getPlasmaCoin(caller1, plasmaContractAddress, coinForTransferExitSlot)
+	fmt.Println(err)
+	assert.True(t, err == nil && coinExitAfterExit == nil)
 
 	// TODO: start normal exit
 	// TODO: query exit
