@@ -689,6 +689,7 @@ func TestPlasmaRootChain(t *testing.T) {
 	var res *simplejson.Json
 	var err error
 	caller1 := "SPLtest1"
+	caller2 := "SPLtest2"
 	compileOut, compileErr := execCommand(uvmCompilerPath, "-g", testContractPath("sparse_merkle_tree.lua"))
 	fmt.Printf("compile out: %s\n", compileOut)
 	assert.True(t, compileErr == "")
@@ -903,7 +904,7 @@ func TestPlasmaRootChain(t *testing.T) {
 	fmt.Println("exitorBalanceAfterFinalize: ", exitorBalanceAfterFinalize)
 	assert.True(t, (exitorBalanceBeforeFinalize+50000) == exitorBalanceAfterFinalize)
 
-	// TODO: normal exit after child chain transfer
+	// normal exit after child chain transfer
 	simpleChainRPC("mint", caller1, 0, 100000)
 	simpleChainRPC("generate_block")
 
@@ -924,7 +925,7 @@ func TestPlasmaRootChain(t *testing.T) {
 	// make child chain transfer tx and submit block to plasma. transfer is fromUtxo - amount and toUtxo + amount
 	transfer1Amount := 10000
 	transferTx1 := make(map[string]interface{})
-	transferTx1["owner"] = caller1
+	transferTx1["owner"] = caller2
 	transferTx1["ownerPubKey"] = ecdsatools.BytesToHexWithoutPrefix(pubKeyData[:])
 	transferTx1["slot"] = coinForTransferExitSlot
 	transferTx1["balance"] = transfer1Amount
@@ -961,8 +962,6 @@ func TestPlasmaRootChain(t *testing.T) {
 	transferTx1SignatureHex = transferTx1SignatureHex[2:]
 	transferTx1SignatureHex = EthSignatureToFcSignature(transferTx1SignatureHex)
 	fmt.Println("transferTx1SignatureHex: ", transferTx1SignatureHex)
-	simpleChainRPC("invoke_contract", caller1, plasmaContractAddress, "submit_block", []string{fmt.Sprintf("%x", transferTx1BlockSMT.Root)}, 0, 0, 50000, 10)
-	simpleChainRPC("generate_block")
 
 	// tx: {ownerPubKey: string, owner: string, sigHash: string, hash: string, slot: string, balance: int, prevBlock: int}
 	var coinTransferDepositTx = make(map[string]interface{})
@@ -1004,13 +1003,13 @@ func TestPlasmaRootChain(t *testing.T) {
 	coinTransferDepositBlockSMTRootHex := fmt.Sprintf("%x", coinTransferDepositBlockSMT.Root)
 	fmt.Println("coinTransferDepositBlockSMTRootHex: ", coinTransferDepositBlockSMTRootHex)
 
-	simpleChainRPC("invoke_contract", caller1, plasmaContractAddress, "submit_block", []string{coinTransferDepositBlockSMTRootHex}, 0, 0, 50000, 10)
+	simpleChainRPC("invoke_contract", caller1, plasmaContractAddress, "submit_block", []string{fmt.Sprintf("%x", transferTx1BlockSMT.Root)}, 0, 0, 50000, 10)
 	simpleChainRPC("generate_block")
 
 	// exit begin
 	startExitArg := fmt.Sprintf("%s,%s,%s,%s,%s,%s,%d,%d", coinForTransferExitSlot, coinTransferDepositTxHexWithHash, transferTx1HexWithHash, coinTransferDepositTxProofHex, transferTx1ProofHex, transferTx1SignatureHex, depositTransferCoinBlockNumber, headBlockNumInChildChain)
 	println("startExitArg: ", startExitArg)
-	res, err = simpleChainRPC("invoke_contract", caller1, plasmaContractAddress, "startExit", []string{startExitArg}, 0, 0, 50000, 10)
+	res, err = simpleChainRPC("invoke_contract", caller2, plasmaContractAddress, "startExit", []string{startExitArg}, 0, 0, 50000, 10)
 	exitTxID = res.Get("txid").MustString()
 	fmt.Println("exit tx id: ", exitTxID, res)
 	resBytes, err := res.Encode()
@@ -1024,13 +1023,13 @@ func TestPlasmaRootChain(t *testing.T) {
 	exit2 := res.Get("api_result").MustString()
 	println("exit for transferSlot: ", exit2)
 
-	exitorBalanceBeforeFinalize, _ = getAccountBalanceOfAssetID(caller1, 0)
+	exitorBalanceBeforeFinalize, _ = getAccountBalanceOfAssetID(caller2, 0)
 
 	res, err = simpleChainRPC("invoke_contract", caller1, plasmaContractAddress, "finalizeExit", []string{coinForTransferExitSlot}, 0, 0, 10000, 10)
 	finalizeExit2Result := res.Get("api_result").MustString() == "true"
 	println("finalizeExit2Result: ", finalizeExit2Result)
 	simpleChainRPC("generate_block")
-	res, err = simpleChainRPC("invoke_contract", caller1, plasmaContractAddress, "withdraw", []string{coinForTransferExitSlot}, 0, 0, 10000, 10)
+	res, err = simpleChainRPC("invoke_contract", caller2, plasmaContractAddress, "withdraw", []string{coinForTransferExitSlot}, 0, 0, 10000, 10)
 	assert.True(t, res.Get("exec_succeed").MustBool())
 	simpleChainRPC("generate_block")
 	res, err = simpleChainRPC("invoke_contract_offline", caller1, plasmaContractAddress, "getExit", []string{coinForTransferExitSlot}, 0, 0)
@@ -1038,11 +1037,11 @@ func TestPlasmaRootChain(t *testing.T) {
 	println("exit2AfterFinalize: ", exit2AfterFinalize)
 	assert.True(t, exit2AfterFinalize == "null")
 	// check exitor's balance
-	exitorBalanceAfterFinalize, _ = getAccountBalanceOfAssetID(caller1, 0)
+	exitorBalanceAfterFinalize, _ = getAccountBalanceOfAssetID(caller2, 0)
 	fmt.Println("exitorBalanceBeforeFinalize: ", exitorBalanceBeforeFinalize)
 	fmt.Println("exitorBalanceAfterFinalize: ", exitorBalanceAfterFinalize)
-	// assert.True(t, (exitorBalanceBeforeFinalize+10000) == exitorBalanceAfterFinalize) // TODO: should use caller2, not operator user
-	// TODO: check toSlot's balance
+	assert.True(t, (exitorBalanceBeforeFinalize+10000) == exitorBalanceAfterFinalize)
+	// TODO: check from Slot's balance
 
 	// TODO: start normal exit
 	// TODO: query exit
