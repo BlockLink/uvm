@@ -1093,12 +1093,12 @@ func TestPlasmaRootChain(t *testing.T) {
 }
 
 func TestPlasmaChallengeNormalExit(t *testing.T) {
-	// cmd := execCommandBackground(simpleChainPath)
-	// assert.True(t, cmd != nil)
-	// fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
-	// defer func() {
-	// 	kill(cmd)
-	// }()
+	cmd := execCommandBackground(simpleChainPath)
+	assert.True(t, cmd != nil)
+	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
+	defer func() {
+		kill(cmd)
+	}()
 
 	var res *simplejson.Json
 	var err error
