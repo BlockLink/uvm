@@ -684,6 +684,79 @@ func checkMembershipInPlasma(caller string, plasmaContractAddress string, txHash
 	return res.Get("api_result").MustString() == "true"
 }
 
+func invokeContractOffline(caller string, contractAddress string, apiName string, apiArg string) (*simplejson.Json, error) {
+	res, err := simpleChainRPC("invoke_contract_offline", caller, contractAddress, apiName, []string{apiArg}, 0, 0)
+	return res, err
+}
+
+func createPlasmaContract(caller1 string) (string, error) {
+	compileOut, compileErr := execCommand(uvmCompilerPath, "-g", testContractPath("sparse_merkle_tree.lua"))
+	fmt.Printf("compile out: %s\n", compileOut)
+	if compileErr != "" {
+		return "", errors.New(compileErr)
+	}
+	var res *simplejson.Json
+	var err error
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("sparse_merkle_tree.lua.gpc"), 50000, 10)
+	if err != nil {
+		return "", err
+	}
+	smtContractAddress := res.Get("contract_address").MustString()
+	fmt.Printf("contract address: %s\n", smtContractAddress)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("get_contract_info", smtContractAddress)
+	if err != nil {
+		return "", err
+	}
+	if !(res.Get("owner_address").MustString() == caller1 && res.Get("contract_address").MustString() == smtContractAddress) {
+		return "", errors.New("invalid smt contract address or owner address")
+	}
+
+	compileOut2, compileErr2 := execCommand(uvmCompilerPath, "-g", testContractPath("plasma_root_chain.lua"))
+	fmt.Printf("compile out: %s\n", compileOut2)
+	if compileErr2 != "" {
+		return "", errors.New(compileErr2)
+	}
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("plasma_root_chain.lua.gpc"), 50000, 10)
+	if err != nil {
+		return "", err
+	}
+	plasmaContractAddress := res.Get("contract_address").MustString()
+	fmt.Printf("contract address: %s\n", plasmaContractAddress)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("get_contract_info", plasmaContractAddress)
+	if err != nil {
+		return "", err
+	}
+	if !(res.Get("owner_address").MustString() == caller1 && res.Get("contract_address").MustString() == plasmaContractAddress) {
+		return "", errors.New("invalid plasma contract address or owner address")
+	}
+
+	compileOut3, compileErr3 := execCommand(uvmCompilerPath, "-g", testContractPath("validator_manager_contract.lua"))
+	fmt.Printf("compile out: %s\n", compileOut3)
+	if compileErr3 != "" {
+		return "", errors.New(compileErr3)
+	}
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("validator_manager_contract.lua.gpc"), 50000, 10)
+	if err != nil {
+		return "", err
+	}
+	vmcContractAddress := res.Get("contract_address").MustString()
+	fmt.Printf("contract address: %s\n", vmcContractAddress)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("get_contract_info", vmcContractAddress)
+	if err != nil {
+		return "", err
+	}
+	if !(res.Get("owner_address").MustString() == caller1 && res.Get("contract_address").MustString() == vmcContractAddress) {
+		return "", errors.New("invalid vmc contract address or owner address")
+	}
+
+	simpleChainRPC("invoke_contract", caller1, plasmaContractAddress, "set_config", []string{caller1 + "," + vmcContractAddress + "," + smtContractAddress + ",1000"}, 0, 0, 50000, 10)
+	simpleChainRPC("generate_block")
+	return plasmaContractAddress, nil
+}
+
 func TestPlasmaRootChain(t *testing.T) {
 	cmd := execCommandBackground(simpleChainPath)
 	assert.True(t, cmd != nil)
@@ -696,46 +769,11 @@ func TestPlasmaRootChain(t *testing.T) {
 	var err error
 	caller1 := "SPLtest1"
 	caller2 := "SPLtest2"
-	compileOut, compileErr := execCommand(uvmCompilerPath, "-g", testContractPath("sparse_merkle_tree.lua"))
-	fmt.Printf("compile out: %s\n", compileOut)
-	assert.True(t, compileErr == "")
-	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("sparse_merkle_tree.lua.gpc"), 50000, 10)
-	assert.True(t, err == nil)
-	smtContractAddress := res.Get("contract_address").MustString()
-	fmt.Printf("contract address: %s\n", smtContractAddress)
-	simpleChainRPC("generate_block")
-	res, err = simpleChainRPC("get_contract_info", smtContractAddress)
-	assert.True(t, err == nil)
-	assert.True(t, res.Get("owner_address").MustString() == caller1 && res.Get("contract_address").MustString() == smtContractAddress)
 
-	compileOut2, compileErr2 := execCommand(uvmCompilerPath, "-g", testContractPath("plasma_root_chain.lua"))
-	fmt.Printf("compile out: %s\n", compileOut2)
-	assert.True(t, compileErr2 == "")
-	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("plasma_root_chain.lua.gpc"), 50000, 10)
+	plasmaContractAddress, err := createPlasmaContract(caller1)
 	assert.True(t, err == nil)
-	plasmaContractAddress := res.Get("contract_address").MustString()
-	fmt.Printf("contract address: %s\n", plasmaContractAddress)
-	simpleChainRPC("generate_block")
-	res, err = simpleChainRPC("get_contract_info", plasmaContractAddress)
-	assert.True(t, err == nil)
-	assert.True(t, res.Get("owner_address").MustString() == caller1 && res.Get("contract_address").MustString() == plasmaContractAddress)
 
-	compileOut3, compileErr3 := execCommand(uvmCompilerPath, "-g", testContractPath("validator_manager_contract.lua"))
-	fmt.Printf("compile out: %s\n", compileOut3)
-	assert.True(t, compileErr3 == "")
-	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("validator_manager_contract.lua.gpc"), 50000, 10)
-	assert.True(t, err == nil)
-	vmcContractAddress := res.Get("contract_address").MustString()
-	fmt.Printf("contract address: %s\n", vmcContractAddress)
-	simpleChainRPC("generate_block")
-	res, err = simpleChainRPC("get_contract_info", vmcContractAddress)
-	assert.True(t, err == nil)
-	assert.True(t, res.Get("owner_address").MustString() == caller1 && res.Get("contract_address").MustString() == vmcContractAddress)
-
-	simpleChainRPC("invoke_contract", caller1, plasmaContractAddress, "set_config", []string{caller1 + "," + vmcContractAddress + "," + smtContractAddress + ",1000"}, 0, 0, 50000, 10)
-	simpleChainRPC("generate_block")
-
-	res, err = simpleChainRPC("invoke_contract_offline", caller1, plasmaContractAddress, "get_config", []string{" "}, 0, 0)
+	res, err = invokeContractOffline(caller1, plasmaContractAddress, "get_config", " ")
 	assert.True(t, err == nil)
 	configJSONStr := res.Get("api_result").MustString()
 	fmt.Printf("plasma root chain config: %s\n", configJSONStr)
@@ -1052,13 +1090,182 @@ func TestPlasmaRootChain(t *testing.T) {
 	coinExitAfterExit, err := getPlasmaCoin(caller1, plasmaContractAddress, coinForTransferExitSlot)
 	fmt.Println(err)
 	assert.True(t, err == nil && coinExitAfterExit == nil)
+}
 
-	// TODO: start normal exit
-	// TODO: query exit
+func TestPlasmaChallengeNormalExit(t *testing.T) {
+	// cmd := execCommandBackground(simpleChainPath)
+	// assert.True(t, cmd != nil)
+	// fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
+	// defer func() {
+	// 	kill(cmd)
+	// }()
+
+	var res *simplejson.Json
+	var err error
+	caller1 := "SPLtest1"
+	caller2 := "SPLtest2"
+
+	plasmaContractAddress, err := createPlasmaContract(caller1)
+	assert.True(t, err == nil)
+
+	res, err = invokeContractOffline(caller1, plasmaContractAddress, "get_config", " ")
+	assert.True(t, err == nil)
+	configJSONStr := res.Get("api_result").MustString()
+	fmt.Printf("plasma root chain config: %s\n", configJSONStr)
+
+	privateKey, err := ecdsatools.GenerateKey()
+	if err != nil {
+		panic(err)
+	}
+	pubKey := ecdsatools.PubKeyFromPrivateKey(privateKey)
+	pubKeyData := ecdsatools.CompactPubKeyToBytes(pubKey)
+	fmt.Println("privateKey: ", ecdsatools.BytesToHexWithoutPrefix(ecdsatools.PrivateKeyToBytes(privateKey)))
+	fmt.Println("pubKey: ", ecdsatools.BytesToHexWithoutPrefix(pubKeyData[:]))
+
+	// create empty coin
+	emptyCoinTxID, coin2Slot, err := createEmptyPlasmaCoin(caller1, plasmaContractAddress)
+	assert.True(t, err == nil)
+	println("emptyCoinTxID: ", emptyCoinTxID)
+	println("coin2 slot: ", coin2Slot)
+
+	coin2, err := getPlasmaCoin(caller1, plasmaContractAddress, coin2Slot)
+	assert.True(t, err == nil)
+	println("coin2 after created: ", coin2)
+	assert.True(t, coin2.Denomination == 0)
+	assert.True(t, coin2.Balance == 0)
+
+	// provide liquidity
+	provideLiquidityToPlasmaCoin(caller1, plasmaContractAddress, coin2Slot, 10000)
+	coin2AfterLiquidity, err := getPlasmaCoin(caller1, plasmaContractAddress, coin2Slot)
+	assert.True(t, err == nil)
+	println("coin2 after provided liquidity: ", coin2AfterLiquidity)
+	assert.True(t, coin2AfterLiquidity.Denomination == 10000)
+	assert.True(t, coin2AfterLiquidity.Balance == 0)
+
+	// start normal exit
+	simpleChainRPC("mint", caller1, 0, 100000)
+	simpleChainRPC("generate_block")
+
+	depositTransferExitTxID, coinForTransferExitSlot, err := depositToPlasmaContract(caller1, plasmaContractAddress, 30000, 0)
+	assert.True(t, err == nil)
+	depositTransferCoinBlockNumber := 2
+	println("depositTransferExitTxID: ", depositTransferExitTxID)
+	balanceAfterDepositTransferExit, _ := getAccountBalanceOfAssetID(plasmaContractAddress, 0)
+	fmt.Printf("plasma contract balance: %d\n", balanceAfterDepositTransferExit)
+	fmt.Println("coinForTransferExitSlot: ", coinForTransferExitSlot)
+	coinForTransferExitSlotIntStr := HexToBigInt(coinForTransferExitSlot).String()
+	fmt.Println("coinForTransferExitSlot int: ", coinForTransferExitSlotIntStr)
+
+	depositTransferExitCoin, err := getPlasmaCoin(caller1, plasmaContractAddress, coinForTransferExitSlot)
+	fmt.Println("depositTransferExitCoin after created: ", depositTransferExitCoin)
+	assert.True(t, depositTransferExitCoin.Denomination == 30000)
+	assert.True(t, depositTransferExitCoin.Balance == 30000)
+	// make child chain transfer tx and submit block to plasma. transfer is fromUtxo - amount and toUtxo + amount
+	transfer1Amount := 10000
+	transferTx1 := make(map[string]interface{})
+	transferTx1["owner"] = caller2
+	transferTx1["ownerPubKey"] = ecdsatools.BytesToHexWithoutPrefix(pubKeyData[:])
+	transferTx1["slot"] = coinForTransferExitSlot
+	transferTx1["balance"] = transfer1Amount
+	transferTx1["toSlot"] = coin2Slot
+	transferTx1["prevBlock"] = 2
+	// hash, sigHash
+	transferTx1Bytes, err := EncodeChildChainTx(transferTx1)
+	if err != nil {
+		assert.True(t, false)
+		println("Error decoding ", err.Error())
+	}
+	transferTx1Hex := fmt.Sprintf("%x", transferTx1Bytes)
+	transferTx1Hash, err := ComputeChildChainCommonTxHash(transferTx1Bytes)
+	if err != nil {
+		assert.True(t, false)
+		println("Error decoding ", err.Error())
+	}
+	transferTx1["hash"] = string(transferTx1Hash[:])
+	transferTx1["sigHash"] = string(transferTx1Hash[:])
+	transferTx1BytesWithHash, err := EncodeChildChainTx(transferTx1)
+	if err != nil {
+		assert.True(t, false)
+		println("Error decoding ", err.Error())
+	}
+	transferTx1HexWithHash := fmt.Sprintf("%x", transferTx1BytesWithHash)
+	fmt.Println("transferTx1Hex: ", transferTx1Hex)
+	fmt.Println("transferTx1Hash: ", ecdsatools.BytesToHexWithoutPrefix(transferTx1Hash[:]))
+	fmt.Println("transferTx1HexWithHash: ", transferTx1HexWithHash)
+	transferTx1BlockSMT := CreateSMTBySingleTxTree(coinForTransferExitSlot, transferTx1Hash[:])
+	transferTx1ProofHex := ecdsatools.BytesToHexWithoutPrefix(transferTx1BlockSMT.CreateMerkleProof(HexToBigInt(coinForTransferExitSlot)))
+	fmt.Println("transferTx1ProofHex: ", transferTx1ProofHex)
+	transferTx1SignatureHex, _ := TrySignRecoverableSignature(privateKey, transferTx1Hash[:])
+	transferTx1SignatureHex = transferTx1SignatureHex[2:]
+	transferTx1SignatureHex = EthSignatureToFcSignature(transferTx1SignatureHex)
+	fmt.Println("transferTx1SignatureHex: ", transferTx1SignatureHex)
+
+	// tx: {ownerPubKey: string, owner: string, sigHash: string, hash: string, slot: string, balance: int, prevBlock: int}
+	var coinTransferDepositTx = make(map[string]interface{})
+	coinTransferDepositTx["ownerPubKey"] = ecdsatools.BytesToHexWithoutPrefix(pubKeyData[:])
+	coinTransferDepositTx["owner"] = caller1
+	coinTransferDepositTx["slot"] = string(coinForTransferExitSlot)
+	coinTransferDepositTx["balance"] = 30000
+	coinTransferDepositTx["prevBlock"] = 1
+	coinTransferDepositTxBytes, err := EncodeChildChainTx(coinTransferDepositTx)
+	if err != nil {
+		assert.True(t, false)
+		println("Error decoding ", err.Error())
+	}
+	coinTransferDepositTxHex := fmt.Sprintf("%x", coinTransferDepositTxBytes)
+	coinTransferDepositTxHash, err := ComputeChildChainDepositTxHash(coinForTransferExitSlot) // sha256.Sum256(coinTransferDepositTxBytes) // deposit tx's hash is coin's slot
+	if err != nil {
+		assert.True(t, false)
+		println("Error decoding ", err.Error())
+	}
+	coinTransferDepositTx["hash"] = string(coinTransferDepositTxHash[:])
+	coinTransferDepositTx["sigHash"] = string(coinTransferDepositTxHash[:])
+	coinTransferDepositTxBytesWithHash, err := EncodeChildChainTx(coinTransferDepositTx)
+	if err != nil {
+		assert.True(t, false)
+		println("Error decoding ", err.Error())
+	}
+	coinTransferDepositTxHexWithHash := fmt.Sprintf("%x", coinTransferDepositTxBytesWithHash)
+	fmt.Println("coinTransferDepositTxHex: ", coinTransferDepositTxHex)
+	coinTransferDepositTxHashHex := ecdsatools.BytesToHexWithoutPrefix(coinTransferDepositTxHash[:])
+	fmt.Println("coinTransferDepositTxHash: ", coinTransferDepositTxHashHex)
+	coinTransferDepositTxSignatureHex, _ := TrySignRecoverableSignature(privateKey, coinTransferDepositTxHash[:])
+	coinTransferDepositTxSignatureHex = coinTransferDepositTxSignatureHex[2:]
+	coinTransferDepositTxSignatureHex = EthSignatureToFcSignature(coinTransferDepositTxSignatureHex)
+	fmt.Println("coinTransferDepositTxSignatureHex: ", coinTransferDepositTxSignatureHex)
+	println("coinForTransferExitSlot: ", coinForTransferExitSlot)
+	coinTransferDepositBlockSMT := CreateSMTBySingleTxTree(coinForTransferExitSlot, coinTransferDepositTxHash[:])
+	coinTransferDepositTxProofHex := ecdsatools.BytesToHexWithoutPrefix(coinTransferDepositBlockSMT.CreateMerkleProof(HexToBigInt(coinForTransferExitSlot)))
+	fmt.Println("coinTransferDepositTxProofHex: ", coinTransferDepositTxProofHex)
+	coinTransferDepositBlockSMTRootHex := fmt.Sprintf("%x", coinTransferDepositBlockSMT.Root)
+	fmt.Println("coinTransferDepositBlockSMTRootHex: ", coinTransferDepositBlockSMTRootHex)
+
+	simpleChainRPC("invoke_contract", caller1, plasmaContractAddress, "submit_block", []string{fmt.Sprintf("%x", transferTx1BlockSMT.Root)}, 0, 0, 50000, 10)
+	simpleChainRPC("generate_block")
+
+	// exit begin
+	startExitArg := fmt.Sprintf("%s,%s,%s,%s,%s,%s,%d,%d", coinForTransferExitSlot, coinTransferDepositTxHexWithHash, transferTx1HexWithHash, coinTransferDepositTxProofHex, transferTx1ProofHex, transferTx1SignatureHex, depositTransferCoinBlockNumber, 1000)
+	println("startExitArg: ", startExitArg)
+	res, err = simpleChainRPC("invoke_contract", caller2, plasmaContractAddress, "startExit", []string{startExitArg}, 0, 0, 50000, 10)
+	exitTxID := res.Get("txid").MustString()
+	fmt.Println("exit tx id: ", exitTxID, res)
+	resBytes, err := res.Encode()
+	println(string(resBytes))
+	assert.True(t, res.Get("exec_succeed").MustBool())
+	simpleChainRPC("generate_block")
+	time.Sleep(time.Duration(7) * time.Second)
+	simpleChainRPC("generate_block")
+	// normal exit started
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, plasmaContractAddress, "getExit", []string{coinForTransferExitSlot}, 0, 0)
+	exit2 := res.Get("api_result").MustString()
+	println("exit for transferSlot: ", exit2)
 	// TODO: challenge normal exit
 	// TODO: query challenge
 	// TODO: check membership
 	// TODO: respond challenge
+}
+
+func TestPlasmaChallengeEvilExit(t *testing.T) {
 	// TODO: start evil exit
 	// TODO: challenge evil exit
 	// TODO: withdraw
