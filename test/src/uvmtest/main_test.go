@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -623,12 +624,14 @@ func createEmptyPlasmaCoin(caller string, plasmaContractAddress string) (txID st
 	if err != nil {
 		return
 	}
+	fmt.Println(res)
 	txID = res.Get("txid").MustString()
 	simpleChainRPC("generate_block")
 	res, err = simpleChainRPC("get_tx_receipt", txID)
 	if err != nil {
 		return
 	}
+	fmt.Println("empty plasma coin create tx receipt: ", res)
 	emptyCoinTxReceipt := res
 	coinEventArg := emptyCoinTxReceipt.Get("events").GetIndex(0).Get("event_arg").MustString()
 	coinEventArgJSON, err := simplejson.NewJson([]byte(coinEventArg))
@@ -686,6 +689,11 @@ func checkMembershipInPlasma(caller string, plasmaContractAddress string, txHash
 
 func invokeContractOffline(caller string, contractAddress string, apiName string, apiArg string) (*simplejson.Json, error) {
 	res, err := simpleChainRPC("invoke_contract_offline", caller, contractAddress, apiName, []string{apiArg}, 0, 0)
+	return res, err
+}
+
+func invokeContract(caller string, contractAddress string, apiName, apiArg string) (*simplejson.Json, error) {
+	res, err := simpleChainRPC("invoke_contract", caller, contractAddress, apiName, []string{apiArg}, 0, 0, 50000, 10)
 	return res, err
 }
 
@@ -975,7 +983,7 @@ func TestPlasmaRootChain(t *testing.T) {
 	transferTx1["balance"] = transfer1Amount
 	transferTx1["toSlot"] = coin2Slot
 	headBlockNumInChildChain := 2000
-	transferTx1["prevBlock"] = headBlockNumInChildChain
+	transferTx1["prevBlock"] = headBlockNumInChildChain - 1
 	// hash, sigHash
 	transferTx1Bytes, err := EncodeChildChainTx(transferTx1)
 	if err != nil {
@@ -1007,47 +1015,13 @@ func TestPlasmaRootChain(t *testing.T) {
 	transferTx1SignatureHex = EthSignatureToFcSignature(transferTx1SignatureHex)
 	fmt.Println("transferTx1SignatureHex: ", transferTx1SignatureHex)
 
-	// tx: {ownerPubKey: string, owner: string, sigHash: string, hash: string, slot: string, balance: int, prevBlock: int}
-	var coinTransferDepositTx = make(map[string]interface{})
-	coinTransferDepositTx["ownerPubKey"] = ecdsatools.BytesToHexWithoutPrefix(pubKeyData[:])
-	coinTransferDepositTx["owner"] = caller1
-	coinTransferDepositTx["slot"] = string(coinForTransferExitSlot)
-	coinTransferDepositTx["balance"] = 30000
-	coinTransferDepositTx["prevBlock"] = 1000
-	coinTransferDepositTxBytes, err := EncodeChildChainTx(coinTransferDepositTx)
-	if err != nil {
-		assert.True(t, false)
-		println("Error decoding ", err.Error())
-	}
-	coinTransferDepositTxHex := fmt.Sprintf("%x", coinTransferDepositTxBytes)
-	coinTransferDepositTxHash, err := ComputeChildChainDepositTxHash(coinForTransferExitSlot) // sha256.Sum256(coinTransferDepositTxBytes) // deposit tx's hash is coin's slot
-	if err != nil {
-		assert.True(t, false)
-		println("Error decoding ", err.Error())
-	}
-	coinTransferDepositTx["hash"] = string(coinTransferDepositTxHash[:])
-	coinTransferDepositTx["sigHash"] = string(coinTransferDepositTxHash[:])
-	coinTransferDepositTxBytesWithHash, err := EncodeChildChainTx(coinTransferDepositTx)
-	if err != nil {
-		assert.True(t, false)
-		println("Error decoding ", err.Error())
-	}
-	coinTransferDepositTxHexWithHash := fmt.Sprintf("%x", coinTransferDepositTxBytesWithHash)
-	fmt.Println("coinTransferDepositTxHex: ", coinTransferDepositTxHex)
-	coinTransferDepositTxHashHex := ecdsatools.BytesToHexWithoutPrefix(coinTransferDepositTxHash[:])
-	fmt.Println("coinTransferDepositTxHash: ", coinTransferDepositTxHashHex)
-	coinTransferDepositTxSignatureHex, _ := TrySignRecoverableSignature(privateKey, coinTransferDepositTxHash[:])
-	coinTransferDepositTxSignatureHex = coinTransferDepositTxSignatureHex[2:]
-	coinTransferDepositTxSignatureHex = EthSignatureToFcSignature(coinTransferDepositTxSignatureHex)
-	fmt.Println("coinTransferDepositTxSignatureHex: ", coinTransferDepositTxSignatureHex)
-	println("coinForTransferExitSlot: ", coinForTransferExitSlot)
-	coinTransferDepositBlockSMT := CreateSMTBySingleTxTree(coinForTransferExitSlot, coinTransferDepositTxHash[:])
-	coinTransferDepositTxProofHex := ecdsatools.BytesToHexWithoutPrefix(coinTransferDepositBlockSMT.CreateMerkleProof(HexToBigInt(coinForTransferExitSlot)))
-	fmt.Println("coinTransferDepositTxProofHex: ", coinTransferDepositTxProofHex)
-	coinTransferDepositBlockSMTRootHex := fmt.Sprintf("%x", coinTransferDepositBlockSMT.Root)
-	fmt.Println("coinTransferDepositBlockSMTRootHex: ", coinTransferDepositBlockSMTRootHex)
+	coinTransferDepositTxHexWithHash, coinTransferDepositTxHash, coinTransferDepositTxSignatureHex, coinTransferDepositBlockSMTRoot, coinTransferDepositTxProofHex, err := makeDepositToPlasmaTx(caller1, pubKeyData[:], privateKey, depositTransferExitCoin, plasmaContractAddress, depositTransferCoinBlockNumber-1)
+	println("coinTransferDepositTxHash: ", coinTransferDepositTxHash)
+	println("coinTransferDepositTxSignatureHex: ", coinTransferDepositTxSignatureHex)
+	println("coinTransferDepositBlockSMTRoot: ", coinTransferDepositBlockSMTRoot)
+	assert.True(t, err == nil)
 
-	simpleChainRPC("invoke_contract", caller1, plasmaContractAddress, "submit_block", []string{fmt.Sprintf("%x", transferTx1BlockSMT.Root)}, 0, 0, 50000, 10)
+	submitBlockToPlasma(caller1, plasmaContractAddress, fmt.Sprintf("%x", transferTx1BlockSMT.Root))
 	simpleChainRPC("generate_block")
 
 	// exit begin
@@ -1256,7 +1230,7 @@ func TestPlasmaChallengeNormalExit(t *testing.T) {
 	time.Sleep(time.Duration(7) * time.Second)
 	simpleChainRPC("generate_block")
 	// normal exit started
-	res, err = simpleChainRPC("invoke_contract_offline", caller1, plasmaContractAddress, "getExit", []string{coinForTransferExitSlot}, 0, 0)
+	res, err = invokeContractOffline(caller1, plasmaContractAddress, "getExit", coinForTransferExitSlot)
 	exit2 := res.Get("api_result").MustString()
 	println("exit for transferSlot: ", exit2)
 	// TODO: challenge normal exit
@@ -1265,9 +1239,231 @@ func TestPlasmaChallengeNormalExit(t *testing.T) {
 	// TODO: respond challenge
 }
 
+func createCoinForAccountToReceive(accountName string, plasmaContractAddress string, maxAmount int) (*PlasmaCoin, error) {
+	// create empty coin
+	_, coinSlot, err := createEmptyPlasmaCoin(accountName, plasmaContractAddress)
+	if err != nil {
+		return nil, err
+	}
+	println("created coinSlot: ", coinSlot)
+
+	coin, err := getPlasmaCoin(accountName, plasmaContractAddress, coinSlot)
+	if err != nil {
+		return nil, err
+	}
+	if coin.Denomination != 0 || coin.Balance != 0 {
+		return nil, errors.New("invalid empty coin value")
+	}
+	// provide liquidity
+	provideLiquidityToPlasmaCoin(accountName, plasmaContractAddress, coinSlot, maxAmount)
+	coinAfterLiquidity, err := getPlasmaCoin(accountName, plasmaContractAddress, coinSlot)
+	if err != nil {
+		return nil, err
+	}
+	if coinAfterLiquidity.Denomination != maxAmount || coinAfterLiquidity.Balance != 0 {
+		return nil, errors.New("invalid coin value after provided liquidity")
+	}
+	return coinAfterLiquidity, nil
+}
+
+func transferToOtherInChildChain(from string, fromPrivateKey *ecdsa.PrivateKey, to string, toPubKey []byte, plasmaContractAddress string, fromSlotHex string, toSlotHex string, amount int, prevBlockHeight int) (txHex string, txHash string, txSignatureHex string, txBlockSMTRoot string, txProofHex string, err error) {
+	transferTx1 := make(map[string]interface{})
+	transferTx1["owner"] = to
+	transferTx1["ownerPubKey"] = ecdsatools.BytesToHexWithoutPrefix(toPubKey)
+	transferTx1["slot"] = fromSlotHex
+	transferTx1["balance"] = amount
+	transferTx1["toSlot"] = toSlotHex // TODO: should not use toSlot
+	transferTx1["prevBlock"] = prevBlockHeight
+	// hash, sigHash
+	transferTx1Bytes, err := EncodeChildChainTx(transferTx1)
+	if err != nil {
+		return
+	}
+	transferTx1Hex := fmt.Sprintf("%x", transferTx1Bytes)
+	transferTx1Hash, err := ComputeChildChainCommonTxHash(transferTx1Bytes)
+	if err != nil {
+		return
+	}
+	transferTx1["hash"] = string(transferTx1Hash[:])
+	transferTx1["sigHash"] = string(transferTx1Hash[:])
+	transferTx1BytesWithHash, err := EncodeChildChainTx(transferTx1)
+	if err != nil {
+		return
+	}
+	transferTx1HexWithHash := fmt.Sprintf("%x", transferTx1BytesWithHash)
+	fmt.Println("transferTx1Hex: ", transferTx1Hex)
+	fmt.Println("transferTx1Hash: ", ecdsatools.BytesToHexWithoutPrefix(transferTx1Hash[:]))
+	fmt.Println("transferTx1HexWithHash: ", transferTx1HexWithHash)
+	transferTx1BlockSMT := CreateSMTBySingleTxTree(fromSlotHex, transferTx1Hash[:])
+	transferTx1ProofHex := ecdsatools.BytesToHexWithoutPrefix(transferTx1BlockSMT.CreateMerkleProof(HexToBigInt(fromSlotHex)))
+	fmt.Println("transferTx1ProofHex: ", transferTx1ProofHex)
+	transferTx1SignatureHex, _ := TrySignRecoverableSignature(fromPrivateKey, transferTx1Hash[:])
+	transferTx1SignatureHex = transferTx1SignatureHex[2:]
+	transferTx1SignatureHex = EthSignatureToFcSignature(transferTx1SignatureHex)
+	fmt.Println("transferTx1SignatureHex: ", transferTx1SignatureHex)
+
+	txHex = transferTx1HexWithHash
+	txHash = string(transferTx1Hash[:])
+	txSignatureHex = transferTx1SignatureHex
+	txBlockSMTRoot = fmt.Sprintf("%x", transferTx1BlockSMT.Root)
+	txProofHex = transferTx1ProofHex
+	err = nil
+	return
+}
+
+func makeDepositToPlasmaTx(caller string, callerPubKey []byte, callerPrivateKey *ecdsa.PrivateKey, coin *PlasmaCoin, plasmaContractAddress string, chilChainPrevBlockHeight int) (txHex string, txHash string, txSignatureHex string, txBlockSMTRoot string, txProofHex string, err error) {
+	// tx: {ownerPubKey: string, owner: string, sigHash: string, hash: string, slot: string, balance: int, prevBlock: int}
+	var coinTransferDepositTx = make(map[string]interface{})
+	coinTransferDepositTx["ownerPubKey"] = ecdsatools.BytesToHexWithoutPrefix(callerPubKey)
+	coinTransferDepositTx["owner"] = caller
+	coinTransferDepositTx["slot"] = string(coin.Slot)
+	coinTransferDepositTx["balance"] = coin.Balance
+	coinTransferDepositTx["prevBlock"] = chilChainPrevBlockHeight
+	coinTransferDepositTxBytes, err := EncodeChildChainTx(coinTransferDepositTx)
+	if err != nil {
+		return
+	}
+	coinTransferDepositTxHex := fmt.Sprintf("%x", coinTransferDepositTxBytes)
+	coinTransferDepositTxHash, err := ComputeChildChainDepositTxHash(coin.Slot) // sha256.Sum256(txBytes) // deposit tx's hash is coin's slot
+	if err != nil {
+		return
+	}
+	coinTransferDepositTx["hash"] = string(coinTransferDepositTxHash[:])
+	coinTransferDepositTx["sigHash"] = string(coinTransferDepositTxHash[:])
+	coinTransferDepositTxBytesWithHash, err := EncodeChildChainTx(coinTransferDepositTx)
+	if err != nil {
+		return
+	}
+	coinTransferDepositTxHexWithHash := fmt.Sprintf("%x", coinTransferDepositTxBytesWithHash)
+	fmt.Println("coinTransferDepositTxHex: ", coinTransferDepositTxHex)
+	coinTransferDepositTxHashHex := ecdsatools.BytesToHexWithoutPrefix(coinTransferDepositTxHash[:])
+	fmt.Println("coinTransferDepositTxHash: ", coinTransferDepositTxHashHex)
+	coinTransferDepositTxSignatureHex, _ := TrySignRecoverableSignature(callerPrivateKey, coinTransferDepositTxHash[:])
+	coinTransferDepositTxSignatureHex = coinTransferDepositTxSignatureHex[2:]
+	coinTransferDepositTxSignatureHex = EthSignatureToFcSignature(coinTransferDepositTxSignatureHex)
+	fmt.Println("coinTransferDepositTxSignatureHex: ", coinTransferDepositTxSignatureHex)
+	coinTransferDepositBlockSMT := CreateSMTBySingleTxTree(coin.Slot, coinTransferDepositTxHash[:])
+	coinTransferDepositTxProofHex := ecdsatools.BytesToHexWithoutPrefix(coinTransferDepositBlockSMT.CreateMerkleProof(HexToBigInt(coin.Slot)))
+	fmt.Println("coinTransferDepositTxProofHex: ", coinTransferDepositTxProofHex)
+	coinTransferDepositBlockSMTRootHex := fmt.Sprintf("%x", coinTransferDepositBlockSMT.Root)
+	fmt.Println("coinTransferDepositBlockSMTRootHex: ", coinTransferDepositBlockSMTRootHex)
+
+	txHex = coinTransferDepositTxHexWithHash
+	txHash = string(coinTransferDepositTxHash[:])
+	txSignatureHex = coinTransferDepositTxSignatureHex
+	txBlockSMTRoot = fmt.Sprintf("%x", coinTransferDepositBlockSMT.Root)
+	txProofHex = coinTransferDepositTxProofHex
+	err = nil
+	return
+}
+
 func TestPlasmaChallengeEvilExit(t *testing.T) {
+	cmd := execCommandBackground(simpleChainPath)
+	assert.True(t, cmd != nil)
+	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
+	defer func() {
+		kill(cmd)
+	}()
+
+	var res *simplejson.Json
+	var err error
+	caller1 := "SPLtest1" // caller1 is plasma operator and validator
+	caller2 := "SPLtest2"
+	// caller3 := "SPLtest3"
+
+	plasmaContractAddress, err := createPlasmaContract(caller1)
+	assert.True(t, err == nil)
+
+	res, err = invokeContractOffline(caller1, plasmaContractAddress, "get_config", " ")
+	assert.True(t, err == nil)
+	configJSONStr := res.Get("api_result").MustString()
+	fmt.Printf("plasma root chain config: %s\n", configJSONStr)
+
+	privateKey, err := ecdsatools.GenerateKey()
+	if err != nil {
+		panic(err)
+	}
+	pubKey := ecdsatools.PubKeyFromPrivateKey(privateKey)
+	pubKeyData := ecdsatools.CompactPubKeyToBytes(pubKey)
+	fmt.Println("privateKey: ", ecdsatools.BytesToHexWithoutPrefix(ecdsatools.PrivateKeyToBytes(privateKey)))
+	fmt.Println("pubKey: ", ecdsatools.BytesToHexWithoutPrefix(pubKeyData[:]))
+
+	caller1ReceiveCoin, err := createCoinForAccountToReceive(caller1, plasmaContractAddress, 50000)
+	if err != nil {
+		println(err.Error())
+	}
+	assert.True(t, err == nil)
+	caller2ReceiveCoin, err := createCoinForAccountToReceive(caller1, plasmaContractAddress, 50000)
+	if err != nil {
+		println(err.Error())
+	}
+	assert.True(t, err == nil)
+	caller3ReceiveCoin, err := createCoinForAccountToReceive(caller1, plasmaContractAddress, 50000)
+	if err != nil {
+		println(err.Error())
+	}
+	assert.True(t, err == nil)
+	fmt.Println("caller1ReceiveCoin: ", caller1ReceiveCoin)
+	fmt.Println("caller2ReceiveCoin: ", caller2ReceiveCoin)
+	fmt.Println("caller3ReceiveCoin: ", caller3ReceiveCoin)
+
+	// TODO: caller1 should transfer coin2 to caller2 and transfer coin3 to caller3
+
+	// start normal exit
+	simpleChainRPC("mint", caller1, 0, 100000)
+	simpleChainRPC("generate_block")
+
+	depositTransferExitTxID, coinForTransferExitSlot, err := depositToPlasmaContract(caller1, plasmaContractAddress, 30000, 0)
+	assert.True(t, err == nil)
+	depositTransferCoinBlockNumber := 4
+	println("depositTransferExitTxID: ", depositTransferExitTxID)
+	balanceAfterDepositTransferExit, _ := getAccountBalanceOfAssetID(plasmaContractAddress, 0)
+	fmt.Printf("plasma contract balance: %d\n", balanceAfterDepositTransferExit)
+	fmt.Println("coinForTransferExitSlot: ", coinForTransferExitSlot)
+	coinForTransferExitSlotIntStr := HexToBigInt(coinForTransferExitSlot).String()
+	fmt.Println("coinForTransferExitSlot int: ", coinForTransferExitSlotIntStr)
+
+	depositTransferExitCoin, err := getPlasmaCoin(caller1, plasmaContractAddress, coinForTransferExitSlot)
+	fmt.Println("depositTransferExitCoin after created: ", depositTransferExitCoin)
+	assert.True(t, depositTransferExitCoin.Denomination == 30000)
+	assert.True(t, depositTransferExitCoin.Balance == 30000)
+	// make child chain transfer tx and submit block to plasma. transfer is fromUtxo - amount and toUtxo + amount
+
+	transfer1Amount := 10000
+
+	transferTx1HexWithHash, transferTx1Hash, transferTx1SignatureHex, transferTx1BlockSMTRoot, transferTx1ProofHex, err := transferToOtherInChildChain(caller1, privateKey, caller2, pubKeyData[:], plasmaContractAddress, coinForTransferExitSlot, caller2ReceiveCoin.Slot, transfer1Amount, depositTransferCoinBlockNumber)
+	assert.True(t, err == nil)
+	println("transferTx1HexWithHash: ", transferTx1HexWithHash)
+	println("transferTx1Hash: ", string(transferTx1Hash))
+
+	coinTransferDepositTxHexWithHash, coinTransferDepositTxHash, coinTransferDepositTxSignatureHex, coinTransferDepositBlockSMTRoot, coinTransferDepositTxProofHex, err := makeDepositToPlasmaTx(caller1, pubKeyData[:], privateKey, depositTransferExitCoin, plasmaContractAddress, depositTransferCoinBlockNumber-1)
+	println("coinTransferDepositTxHash: ", coinTransferDepositTxHash)
+	println("coinTransferDepositTxSignatureHex: ", coinTransferDepositTxSignatureHex)
+	println("coinTransferDepositBlockSMTRoot: ", coinTransferDepositBlockSMTRoot)
+	assert.True(t, err == nil)
+
+	submitBlockToPlasma(caller1, plasmaContractAddress, transferTx1BlockSMTRoot)
+
 	// TODO: start evil exit
-	// TODO: challenge evil exit
+	// exit begin
+	startExitArg := fmt.Sprintf("%s,%s,%s,%s,%s,%s,%d,%d", coinForTransferExitSlot, coinTransferDepositTxHexWithHash, transferTx1HexWithHash, coinTransferDepositTxProofHex, transferTx1ProofHex, transferTx1SignatureHex, depositTransferCoinBlockNumber, 1000)
+	println("startExitArg: ", startExitArg)
+	res, err = simpleChainRPC("invoke_contract", caller2, plasmaContractAddress, "startExit", []string{startExitArg}, 0, 0, 50000, 10)
+	exitTxID := res.Get("txid").MustString()
+	fmt.Println("exit tx id: ", exitTxID, res)
+	resBytes, err := res.Encode()
+	println(string(resBytes))
+	assert.True(t, res.Get("exec_succeed").MustBool())
+	simpleChainRPC("generate_block")
+	time.Sleep(time.Duration(7) * time.Second)
+	simpleChainRPC("generate_block")
+	// normal exit started
+	res, err = invokeContractOffline(caller1, plasmaContractAddress, "getExit", coinForTransferExitSlot)
+	exit2 := res.Get("api_result").MustString()
+	println("exit for transferSlot: ", exit2)
+	// TODO: exitor spend the utxo after startExit and try submit(fail) and not submit again
+
+	// TODO: others challenge evil exit
 	// TODO: withdraw
 	// TODO: check operator's balance and withdrawer's balance
 }
