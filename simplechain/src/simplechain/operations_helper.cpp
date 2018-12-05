@@ -2,6 +2,14 @@
 #include <simplechain/contract_helper.h>
 
 namespace simplechain {
+	register_account_operation operations_helper::register_account(const std::string& account_address, const std::string& pubkey_hex) {
+		register_account_operation op;
+		op.account_address = account_address;
+		op.pubkey_hex = pubkey_hex;
+		op.op_time = fc::time_point_sec(fc::time_point::now());
+		return op;
+	}
+
 	mint_operation operations_helper::mint(const std::string& account_address, asset_id_t asset_id, share_type amount) {
 		mint_operation op;
 		op.account_address = account_address;

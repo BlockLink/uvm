@@ -127,6 +127,12 @@ function M:verify(arg: string)
     end
     let diff = safemath.toint(safemath.sub(bytes_to_bigint_as_big_endian(computed_hash), bytes_to_bigint_as_big_endian(tree_root)))
     let diffIsZero = (diff == 0)
+    if not diffIsZero then
+        print("smt verify failed")
+        print("computed_hash: ", computed_hash)
+        print("tree_root: ", tree_root)
+        print("diff: ", safemath.toint(safemath.sub(bytes_to_bigint_as_big_endian(computed_hash), bytes_to_bigint_as_big_endian(tree_root))))
+    end
     return diffIsZero
 end
 

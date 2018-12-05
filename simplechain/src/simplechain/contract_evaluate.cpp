@@ -29,7 +29,8 @@ namespace simplechain {
 		bool has_error = false;
 		try {
 			auto origin_op = o;
-			engine->set_caller(o.caller_address, o.caller_address);
+			const auto& caller_pubkey = get_chain()->get_address_pubkey_hex(o.caller_address);
+			engine->set_caller(caller_pubkey, o.caller_address);
 			engine->set_state_pointer_value("register_evaluate_state", this);
 			engine->clear_exceptions();
 			auto limit = o.gas_limit;
@@ -104,7 +105,8 @@ namespace simplechain {
 		try {
 			FC_ASSERT(helper::is_valid_contract_address(o.contract_address));
 			auto origin_op = o;
-			engine->set_caller(o.caller_address, o.caller_address);
+			const auto& caller_pubkey = get_chain()->get_address_pubkey_hex(o.caller_address);
+			engine->set_caller(caller_pubkey, o.caller_address);
 			engine->set_state_pointer_value("invoke_evaluate_state", this);
 			engine->clear_exceptions();
 			auto limit = o.gas_limit;

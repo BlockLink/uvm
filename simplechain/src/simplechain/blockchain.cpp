@@ -156,6 +156,20 @@ namespace simplechain {
 		}
 		return nullptr;
 	}
+
+
+
+	void blockchain::register_account(const std::string& addr, const std::string& pub_key_hex) {
+		address_pubkeys[addr] = pub_key_hex;
+	}
+
+	std::string blockchain::get_address_pubkey_hex(const std::string& addr) const {
+		auto it = address_pubkeys.find(addr);
+		if (it == address_pubkeys.end())
+			return "";
+		return it->second;
+	}
+
 	void blockchain::store_contract(const std::string& addr, const contract_object& contract_obj) {
 		contracts[addr] = contract_obj;
 	}
@@ -237,6 +251,9 @@ namespace simplechain {
 	{
 		auto type = op.which();
 		switch (type) {
+		case operation::tag<register_account_operation>::value: {
+			return std::make_shared<register_account_operation_evaluator>(this, tx);
+		} break;
 		case operation::tag<mint_operation>::value: {
 			return std::make_shared<min_operation_evaluator>(this, tx);
 		} break;
@@ -337,7 +354,6 @@ namespace simplechain {
 			return;
 		execute_ctx->go_resume(scope->L());
 	}
-
 
 	void blockchain::debugger_step_into() {
 		auto engine = get_last_contract_engine_for_debugger();

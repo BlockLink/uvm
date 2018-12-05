@@ -26,6 +26,7 @@ namespace simplechain {
 		std::vector<asset> assets;
 		std::vector<block> blocks;
 		std::map<std::string, transaction_receipt> tx_receipts; // txid => tx_receipt
+		std::map<std::string, std::string> address_pubkeys; // address => pub_key_hex
 		std::map<std::string, std::map<asset_id_t, balance_t> > account_balances;
 		std::map<std::string, contract_object> contracts;
 		std::map<std::string, std::map<std::string, StorageDataType> > contract_storages;
@@ -63,6 +64,9 @@ namespace simplechain {
 		std::vector<std::string> get_account_addresses() const;
 		void set_tx_receipt(const std::string& tx_id, const transaction_receipt& tx_receipt);
 		std::shared_ptr<transaction_receipt> get_tx_receipt(const std::string& tx_id);
+
+		void register_account(const std::string& addr, const std::string& pub_key_hex);
+		std::string get_address_pubkey_hex(const std::string& addr) const;
 
 		void accept_transaction_to_mempool(const transaction& tx);
 		std::vector<transaction> get_tx_mempool() const;

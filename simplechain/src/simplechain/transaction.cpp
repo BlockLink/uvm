@@ -21,6 +21,9 @@ namespace simplechain {
 		for (const auto& op : operations) {
 			fc::mutable_variant_object op_json;
 			switch (op.which()) {
+			case operation::tag<register_account_operation>::value: {
+				op_json = op.get<register_account_operation>().to_json();
+			} break;
 			case operation::tag<mint_operation>::value: {
 				op_json = op.get<mint_operation>().to_json();
 			} break;

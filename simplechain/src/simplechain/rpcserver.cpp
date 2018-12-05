@@ -15,6 +15,8 @@ namespace simplechain {
 		{ "transfer", &transfer },
 		{ "create_contract_from_file", &create_contract_from_file },
 		{ "create_contract", &create_contract },
+		{ "register_account", &register_account },
+		{ "get_account", &get_account },
 		{ "invoke_contract", &invoke_contract },
 		{ "invoke_contract_offline", &invoke_contract_offline },
 		{ "exit", &exit_chain },

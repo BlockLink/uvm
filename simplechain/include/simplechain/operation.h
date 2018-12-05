@@ -7,6 +7,7 @@ namespace simplechain {
 
 	enum operation_type_enum : int32_t {
 		TRANSFER = 0,
+		REGISTER_ACCOUNT = 1,
 
 		MINT = 10,
 
@@ -22,4 +23,4 @@ namespace simplechain {
 	};
 }
 
-FC_REFLECT_ENUM(simplechain::operation_type_enum, (TRANSFER)(CONTRACT_CREATE)(CONTRACT_INVOKE))
+FC_REFLECT_ENUM(simplechain::operation_type_enum, (TRANSFER)(REGISTER_ACCOUNT)(CONTRACT_CREATE)(CONTRACT_INVOKE))

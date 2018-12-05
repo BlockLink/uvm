@@ -1239,7 +1239,7 @@ func TestPlasmaChallengeNormalExit(t *testing.T) {
 	// TODO: respond challenge
 }
 
-func createCoinForAccountToReceive(accountName string, plasmaContractAddress string, maxAmount int) (*PlasmaCoin, error) {
+func createCoinForAccountToReceive(operatorAccount string, plasmaContractAddress string, accountName string, maxAmount int) (*PlasmaCoin, error) {
 	// create empty coin
 	_, coinSlot, err := createEmptyPlasmaCoin(accountName, plasmaContractAddress)
 	if err != nil {
@@ -1255,13 +1255,13 @@ func createCoinForAccountToReceive(accountName string, plasmaContractAddress str
 		return nil, errors.New("invalid empty coin value")
 	}
 	// provide liquidity
-	provideLiquidityToPlasmaCoin(accountName, plasmaContractAddress, coinSlot, maxAmount)
+	provideLiquidityToPlasmaCoin(operatorAccount, plasmaContractAddress, coinSlot, maxAmount)
 	coinAfterLiquidity, err := getPlasmaCoin(accountName, plasmaContractAddress, coinSlot)
 	if err != nil {
 		return nil, err
 	}
 	if coinAfterLiquidity.Denomination != maxAmount || coinAfterLiquidity.Balance != 0 {
-		return nil, errors.New("invalid coin value after provided liquidity")
+		return nil, fmt.Errorf("invalid coin value after provided liquidity, expect %d got %d", maxAmount, coinAfterLiquidity.Denomination)
 	}
 	return coinAfterLiquidity, nil
 }
@@ -1279,7 +1279,7 @@ func transferToOtherInChildChain(from string, fromPrivateKey *ecdsa.PrivateKey, 
 	if err != nil {
 		return
 	}
-	transferTx1Hex := fmt.Sprintf("%x", transferTx1Bytes)
+	// transferTx1Hex := fmt.Sprintf("%x", transferTx1Bytes)
 	transferTx1Hash, err := ComputeChildChainCommonTxHash(transferTx1Bytes)
 	if err != nil {
 		return
@@ -1291,16 +1291,11 @@ func transferToOtherInChildChain(from string, fromPrivateKey *ecdsa.PrivateKey, 
 		return
 	}
 	transferTx1HexWithHash := fmt.Sprintf("%x", transferTx1BytesWithHash)
-	fmt.Println("transferTx1Hex: ", transferTx1Hex)
-	fmt.Println("transferTx1Hash: ", ecdsatools.BytesToHexWithoutPrefix(transferTx1Hash[:]))
-	fmt.Println("transferTx1HexWithHash: ", transferTx1HexWithHash)
 	transferTx1BlockSMT := CreateSMTBySingleTxTree(fromSlotHex, transferTx1Hash[:])
 	transferTx1ProofHex := ecdsatools.BytesToHexWithoutPrefix(transferTx1BlockSMT.CreateMerkleProof(HexToBigInt(fromSlotHex)))
-	fmt.Println("transferTx1ProofHex: ", transferTx1ProofHex)
 	transferTx1SignatureHex, _ := TrySignRecoverableSignature(fromPrivateKey, transferTx1Hash[:])
 	transferTx1SignatureHex = transferTx1SignatureHex[2:]
 	transferTx1SignatureHex = EthSignatureToFcSignature(transferTx1SignatureHex)
-	fmt.Println("transferTx1SignatureHex: ", transferTx1SignatureHex)
 
 	txHex = transferTx1HexWithHash
 	txHash = string(transferTx1Hash[:])
@@ -1358,18 +1353,18 @@ func makeDepositToPlasmaTx(caller string, callerPubKey []byte, callerPrivateKey 
 }
 
 func TestPlasmaChallengeEvilExit(t *testing.T) {
-	cmd := execCommandBackground(simpleChainPath)
-	assert.True(t, cmd != nil)
-	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
-	defer func() {
-		kill(cmd)
-	}()
+	// cmd := execCommandBackground(simpleChainPath)
+	// assert.True(t, cmd != nil)
+	// fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
+	// defer func() {
+	// 	kill(cmd)
+	// }()
 
 	var res *simplejson.Json
 	var err error
 	caller1 := "SPLtest1" // caller1 is plasma operator and validator
 	caller2 := "SPLtest2"
-	// caller3 := "SPLtest3"
+	caller3 := "SPLtest3"
 
 	plasmaContractAddress, err := createPlasmaContract(caller1)
 	assert.True(t, err == nil)
@@ -1385,20 +1380,26 @@ func TestPlasmaChallengeEvilExit(t *testing.T) {
 	}
 	pubKey := ecdsatools.PubKeyFromPrivateKey(privateKey)
 	pubKeyData := ecdsatools.CompactPubKeyToBytes(pubKey)
+	pubKeyHex := ecdsatools.BytesToHexWithoutPrefix(pubKeyData[:])
 	fmt.Println("privateKey: ", ecdsatools.BytesToHexWithoutPrefix(ecdsatools.PrivateKeyToBytes(privateKey)))
-	fmt.Println("pubKey: ", ecdsatools.BytesToHexWithoutPrefix(pubKeyData[:]))
+	fmt.Println("pubKey: ", pubKeyHex)
 
-	caller1ReceiveCoin, err := createCoinForAccountToReceive(caller1, plasmaContractAddress, 50000)
+	simpleChainRPC("register_account", caller1, pubKeyHex)
+	simpleChainRPC("register_account", caller2, pubKeyHex)
+	simpleChainRPC("register_account", caller3, pubKeyHex)
+	simpleChainRPC("generate_block")
+
+	caller1ReceiveCoin, err := createCoinForAccountToReceive(caller1, plasmaContractAddress, caller1, 50000)
 	if err != nil {
 		println(err.Error())
 	}
 	assert.True(t, err == nil)
-	caller2ReceiveCoin, err := createCoinForAccountToReceive(caller1, plasmaContractAddress, 50000)
+	caller2ReceiveCoin, err := createCoinForAccountToReceive(caller1, plasmaContractAddress, caller2, 50000)
 	if err != nil {
 		println(err.Error())
 	}
 	assert.True(t, err == nil)
-	caller3ReceiveCoin, err := createCoinForAccountToReceive(caller1, plasmaContractAddress, 50000)
+	caller3ReceiveCoin, err := createCoinForAccountToReceive(caller1, plasmaContractAddress, caller3, 50000)
 	if err != nil {
 		println(err.Error())
 	}
@@ -1406,8 +1407,6 @@ func TestPlasmaChallengeEvilExit(t *testing.T) {
 	fmt.Println("caller1ReceiveCoin: ", caller1ReceiveCoin)
 	fmt.Println("caller2ReceiveCoin: ", caller2ReceiveCoin)
 	fmt.Println("caller3ReceiveCoin: ", caller3ReceiveCoin)
-
-	// TODO: caller1 should transfer coin2 to caller2 and transfer coin3 to caller3
 
 	// start normal exit
 	simpleChainRPC("mint", caller1, 0, 100000)
@@ -1444,7 +1443,7 @@ func TestPlasmaChallengeEvilExit(t *testing.T) {
 
 	submitBlockToPlasma(caller1, plasmaContractAddress, transferTx1BlockSMTRoot)
 
-	// TODO: start evil exit
+	// start evil exit
 	// exit begin
 	startExitArg := fmt.Sprintf("%s,%s,%s,%s,%s,%s,%d,%d", coinForTransferExitSlot, coinTransferDepositTxHexWithHash, transferTx1HexWithHash, coinTransferDepositTxProofHex, transferTx1ProofHex, transferTx1SignatureHex, depositTransferCoinBlockNumber, 1000)
 	println("startExitArg: ", startExitArg)
@@ -1460,12 +1459,38 @@ func TestPlasmaChallengeEvilExit(t *testing.T) {
 	// normal exit started
 	res, err = invokeContractOffline(caller1, plasmaContractAddress, "getExit", coinForTransferExitSlot)
 	exit2 := res.Get("api_result").MustString()
-	println("exit for transferSlot: ", exit2)
-	// TODO: exitor spend the utxo after startExit and try submit(fail) and not submit again
+	println("exit2 for transferSlot: ", exit2)
+	// exitor spend the utxo after startExit
+	transferTx2HexWithHash, transferTx2Hash, transferTx2SignatureHex, transferTx2BlockSMTRoot, transferTx2ProofHex, err := transferToOtherInChildChain(caller2, privateKey, caller3, pubKeyData[:], plasmaContractAddress, coinForTransferExitSlot, caller3ReceiveCoin.Slot, transfer1Amount, 1000+1)
+	assert.True(t, err == nil)
+	println("transferTx2HexWithHash: ", transferTx2HexWithHash)
+	println("transferTx2Hash: ", string(transferTx2Hash))
+	println("transferTx2SignatureHex: ", transferTx2SignatureHex)
+	println("transferTx2BlockSMTRoot: ", transferTx2BlockSMTRoot)
+	println("transferTx2ProofHex: ", transferTx2ProofHex)
+	submitBlockToPlasma(caller1, plasmaContractAddress, transferTx2BlockSMTRoot)
+	// TODO: when transfer tx in child chain not submited in rootchain
+	// TODO: child chain should find double-spend or exit-and-spend txs
 
-	// TODO: others challenge evil exit
-	// TODO: withdraw
-	// TODO: check operator's balance and withdrawer's balance
+	// others challenge evil exit
+	res, err = invokeContract(caller3, plasmaContractAddress, "challengeAfter", fmt.Sprintf("%s,%d,%s,%s,%s", coinForTransferExitSlot, 2000, transferTx2HexWithHash, transferTx2ProofHex, transferTx2SignatureHex))
+	fmt.Println("challengeAfter res: ", res)
+	assert.True(t, err == nil)
+	challengeExitResult := res.Get("api_result").MustString() == "true"
+	assert.True(t, !challengeExitResult)
+	simpleChainRPC("generate_block")
+
+	res, err = invokeContractOffline(caller1, plasmaContractAddress, "getExit", coinForTransferExitSlot)
+	exitAfterChallenge := res.Get("api_result").MustString()
+	println("exitAfterChallenge for transferSlot: ", exitAfterChallenge)
+	// TODO: check coin state and should be normal state
+
+	// exitor try to finalizeExit and should fail
+	res, err = simpleChainRPC("invoke_contract", caller2, plasmaContractAddress, "finalizeExit", []string{coinForTransferExitSlot}, 0, 0, 50000, 10)
+	finalizeExit2Result := res.Get("api_result").MustString() == "true"
+	println("finalizeExit2Result: ", finalizeExit2Result)
+	assert.True(t, !finalizeExit2Result)
+
 }
 
 func TestSparseMerkleTreeContract(t *testing.T) {
