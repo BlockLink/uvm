@@ -174,7 +174,7 @@ func TestTypes(t *testing.T) {
 	execCommand(uvmCompilerPath, "../../tests_lua/test_types.lua")
 	out, _ := execCommand(uvmSinglePath, "../../tests_lua/test_types.lua.out")
 	fmt.Println(out)
-	assert.True(t, strings.Contains(out, "123	4.56	abc	true	[123,4.560000,\"abc\",true]"))
+	assert.True(t, strings.Contains(out, "123	4.56	abc	true	[123,4.56,\"abc\",true]"))
 	assert.True(t, strings.Contains(out, `b=table: 0`))
 	assert.True(t, strings.Contains(out, `c={"b":"userdata","c":{"a":1,"b":"hi"},"name":1}`))
 }
@@ -857,7 +857,7 @@ func TestPlasmaRootChain(t *testing.T) {
 	coin1SlotInt := HexToBigInt(coin1Slot)
 	fmt.Println("coin1SlotInt: ", coin1SlotInt)
 	smt1 := CreateSMTBySingleTxTree(coin1Slot, tx1Hash[:])
-	blockTxsMerkleRoot1 := gosmt.BytesToHex(smt1.Root.Bytes())
+	blockTxsMerkleRoot1 := smt1.RootHex()
 	fmt.Println("blockTxsMerkleRoot1: ", blockTxsMerkleRoot1)
 	tx1ProofHex := gosmt.BytesToHex(smt1.CreateMerkleProof(coin1SlotInt))
 	fmt.Println("tx1 proof: ", tx1ProofHex)
@@ -1021,7 +1021,7 @@ func TestPlasmaRootChain(t *testing.T) {
 	println("coinTransferDepositBlockSMTRoot: ", coinTransferDepositBlockSMTRoot)
 	assert.True(t, err == nil)
 
-	submitBlockToPlasma(caller1, plasmaContractAddress, fmt.Sprintf("%x", transferTx1BlockSMT.Root))
+	submitBlockToPlasma(caller1, plasmaContractAddress, transferTx1BlockSMT.RootHex())
 	simpleChainRPC("generate_block")
 
 	// exit begin
@@ -1211,10 +1211,10 @@ func TestPlasmaChallengeNormalExit(t *testing.T) {
 	coinTransferDepositBlockSMT := CreateSMTBySingleTxTree(coinForTransferExitSlot, coinTransferDepositTxHash[:])
 	coinTransferDepositTxProofHex := ecdsatools.BytesToHexWithoutPrefix(coinTransferDepositBlockSMT.CreateMerkleProof(HexToBigInt(coinForTransferExitSlot)))
 	fmt.Println("coinTransferDepositTxProofHex: ", coinTransferDepositTxProofHex)
-	coinTransferDepositBlockSMTRootHex := fmt.Sprintf("%x", coinTransferDepositBlockSMT.Root)
+	coinTransferDepositBlockSMTRootHex := coinTransferDepositBlockSMT.RootHex()
 	fmt.Println("coinTransferDepositBlockSMTRootHex: ", coinTransferDepositBlockSMTRootHex)
 
-	simpleChainRPC("invoke_contract", caller1, plasmaContractAddress, "submit_block", []string{fmt.Sprintf("%x", transferTx1BlockSMT.Root)}, 0, 0, 50000, 10)
+	simpleChainRPC("invoke_contract", caller1, plasmaContractAddress, "submit_block", []string{transferTx1BlockSMT.RootHex()}, 0, 0, 50000, 10)
 	simpleChainRPC("generate_block")
 
 	// exit begin
@@ -1300,7 +1300,7 @@ func transferToOtherInChildChain(from string, fromPrivateKey *ecdsa.PrivateKey, 
 	txHex = transferTx1HexWithHash
 	txHash = string(transferTx1Hash[:])
 	txSignatureHex = transferTx1SignatureHex
-	txBlockSMTRoot = fmt.Sprintf("%x", transferTx1BlockSMT.Root)
+	txBlockSMTRoot = transferTx1BlockSMT.RootHex()
 	txProofHex = transferTx1ProofHex
 	err = nil
 	return
@@ -1340,25 +1340,25 @@ func makeDepositToPlasmaTx(caller string, callerPubKey []byte, callerPrivateKey 
 	coinTransferDepositBlockSMT := CreateSMTBySingleTxTree(coin.Slot, coinTransferDepositTxHash[:])
 	coinTransferDepositTxProofHex := ecdsatools.BytesToHexWithoutPrefix(coinTransferDepositBlockSMT.CreateMerkleProof(HexToBigInt(coin.Slot)))
 	fmt.Println("coinTransferDepositTxProofHex: ", coinTransferDepositTxProofHex)
-	coinTransferDepositBlockSMTRootHex := fmt.Sprintf("%x", coinTransferDepositBlockSMT.Root)
+	coinTransferDepositBlockSMTRootHex := coinTransferDepositBlockSMT.RootHex()
 	fmt.Println("coinTransferDepositBlockSMTRootHex: ", coinTransferDepositBlockSMTRootHex)
 
 	txHex = coinTransferDepositTxHexWithHash
 	txHash = string(coinTransferDepositTxHash[:])
 	txSignatureHex = coinTransferDepositTxSignatureHex
-	txBlockSMTRoot = fmt.Sprintf("%x", coinTransferDepositBlockSMT.Root)
+	txBlockSMTRoot = coinTransferDepositBlockSMT.RootHex()
 	txProofHex = coinTransferDepositTxProofHex
 	err = nil
 	return
 }
 
 func TestPlasmaChallengeEvilExit(t *testing.T) {
-	// cmd := execCommandBackground(simpleChainPath)
-	// assert.True(t, cmd != nil)
-	// fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
-	// defer func() {
-	// 	kill(cmd)
-	// }()
+	cmd := execCommandBackground(simpleChainPath)
+	assert.True(t, cmd != nil)
+	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
+	defer func() {
+		kill(cmd)
+	}()
 
 	var res *simplejson.Json
 	var err error
