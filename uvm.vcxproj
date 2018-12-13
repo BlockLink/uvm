@@ -26,6 +26,8 @@
     <ClCompile Include="src\cborcpp\output.cpp" />
     <ClCompile Include="src\cborcpp\output_dynamic.cpp" />
     <ClCompile Include="src\cborcpp\output_static.cpp" />
+    <ClCompile Include="src\uvm\json_reader.cpp" />
+    <ClCompile Include="src\uvm\ljsonlib2.cpp" />
     <ClCompile Include="src\uvm\lsafemathlib.cpp" />
     <ClCompile Include="src\uvm\uvm_api_types.cpp" />
     <ClCompile Include="src\uvm\uvm_lib.cpp" />
@@ -89,6 +91,7 @@
     <ClInclude Include="include\cborcpp\output_dynamic.h" />
     <ClInclude Include="include\cborcpp\output_static.h" />
     <ClInclude Include="include\uvm\exceptions.h" />
+    <ClInclude Include="include\uvm\json_reader.h" />
     <ClInclude Include="include\uvm\uvm_api.h" />
     <ClInclude Include="include\uvm\uvm_api_types.h" />
     <ClInclude Include="include\uvm\uvm_common.h" />

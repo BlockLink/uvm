@@ -6,6 +6,8 @@
 #include <iostream>
 #include <uvm/uvm_lib.h>
 
+#include <fc/io/json.hpp>
+
 namespace simplechain {
 	using namespace std;
 
@@ -29,8 +31,7 @@ namespace simplechain {
 		bool has_error = false;
 		try {
 			auto origin_op = o;
-			const auto& caller_pubkey = get_chain()->get_address_pubkey_hex(o.caller_address);
-			engine->set_caller(caller_pubkey, o.caller_address);
+			engine->set_caller(o.caller_address, o.caller_address);
 			engine->set_state_pointer_value("register_evaluate_state", this);
 			engine->clear_exceptions();
 			auto limit = o.gas_limit;
@@ -75,7 +76,6 @@ namespace simplechain {
 			has_error = true;
 			undo_contract_effected();
 			std::cerr << e.what() << std::endl;
-			invoke_contract_result.error = e.what();
 		}
 		return std::make_shared<contract_invoke_result>(invoke_contract_result);
 	}
@@ -105,8 +105,7 @@ namespace simplechain {
 		try {
 			FC_ASSERT(helper::is_valid_contract_address(o.contract_address));
 			auto origin_op = o;
-			const auto& caller_pubkey = get_chain()->get_address_pubkey_hex(o.caller_address);
-			engine->set_caller(caller_pubkey, o.caller_address);
+			engine->set_caller(o.caller_address, o.caller_address);
 			engine->set_state_pointer_value("invoke_evaluate_state", this);
 			engine->clear_exceptions();
 			auto limit = o.gas_limit;
@@ -123,11 +122,16 @@ namespace simplechain {
 					if (o.contract_api != "on_deposit_asset") {
 						throw uvm::core::UvmException("only can deposit to contract by call api on_deposit_asset");
 					}
-					if(!chain->get_asset(o.deposit_asset_id)) {
+					auto asset = chain->get_asset(o.deposit_asset_id);
+					if (!asset) {
 						throw uvm::core::UvmException(std::string("can't find asset #") + std::to_string(o.deposit_asset_id));
 					}
-					update_account_asset_balance(o.contract_address, o.deposit_asset_id, o.deposit_amount);
-					first_contract_arg = std::to_string(o.deposit_amount) + "," + std::to_string(o.deposit_asset_id);
+					fc::mutable_variant_object depositArgs;
+					depositArgs["num"] = o.deposit_amount;
+					depositArgs["symbol"] = asset->symbol;
+					depositArgs["param"] = first_contract_arg;
+					first_contract_arg = fc::json::to_string(depositArgs);
+					//first_contract_arg = std::to_string(o.deposit_amount) + "," + std::to_string(o.deposit_asset_id);
 				}
 				else {
 					if (std::find(uvm::lua::lib::contract_special_api_names.begin(), uvm::lua::lib::contract_special_api_names.end(), o.contract_api) != uvm::lua::lib::contract_special_api_names.end()) {
@@ -135,7 +139,10 @@ namespace simplechain {
 					}
 				}
 				std::string result_json_str;
-				engine->execute_contract_api_by_address(o.contract_address, o.contract_api, first_contract_arg, &result_json_str);
+				engine->execute_contract_api_by_address(o.contract_address, o.contract_api, first_contract_arg, &result_json_str); //execute fail will throw e
+				if (o.deposit_amount > 0) {
+					update_account_asset_balance(o.contract_address, o.deposit_asset_id, o.deposit_amount);
+				}
 				invoke_contract_result.api_result = result_json_str;
 			}
 			catch (std::exception &e)
@@ -152,7 +159,7 @@ namespace simplechain {
 
 			if (engine->vm_state() & (lua_VMState::LVM_STATE_BREAK | lua_VMState::LVM_STATE_SUSPEND)) {
 				last_contract_engine_for_debugger = engine;
-				
+
 			}
 			//if (engine->vm_state() & lua_VMState::LVM_STATE_BREAK) {
 			//	last_contract_engine_for_debugger = engine;
@@ -163,7 +170,6 @@ namespace simplechain {
 			has_error = true;
 			undo_contract_effected();
 			std::cerr << e.what() << std::endl;
-			invoke_contract_result.error = e.what();
 		}
 		return std::make_shared<contract_invoke_result>(invoke_contract_result);
 	}
