@@ -22,9 +22,30 @@ namespace simplechain {
 			}
 		}
 
+		RpcResultType get_account(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			const auto& addr = params.at(0).as_string();
+			const auto& pubkey_hex = chain->get_address_pubkey_hex(addr);
+			fc::mutable_variant_object result;
+			result["address"] = addr;
+			result["pubkey"] = pubkey_hex;
+			return result;
+		}
+
+		RpcResultType register_account(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			const auto& addr = params.at(0).as_string();
+			const auto& pubkey_hex = params.at(1).as_string();
+			auto tx = std::make_shared<transaction>();
+			auto op = operations_helper::register_account(addr, pubkey_hex);
+			tx->tx_time = fc::time_point_sec(fc::time_point::now());
+			tx->operations.push_back(op);
+			chain->evaluate_transaction(tx);
+			chain->accept_transaction_to_mempool(*tx);
+			return tx->tx_hash();
+		}
+
 		RpcResultType mint(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			const auto& caller_addr = params.at(0).as_string();
-			auto asset_id = (asset_id_t)params.at(1).as_uint64();
+			auto asset_id = (asset_id_t) params.at(1).as_uint64();
 			auto amount = params.at(2).as_int64();
 			auto tx = std::make_shared<transaction>();
 			auto op = operations_helper::mint(caller_addr, asset_id, amount);
@@ -149,6 +170,8 @@ namespace simplechain {
 				contract_invoke_result* contract_result = (contract_invoke_result*)op_result.get();
 				res["api_result"] = contract_result->api_result;
 				res["exec_succeed"] = contract_result->exec_succeed;
+				if (!contract_result->exec_succeed)
+					res["error"] = contract_result->error;
 			}
 			chain->accept_transaction_to_mempool(*tx);
 			return res;

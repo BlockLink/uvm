@@ -33,7 +33,10 @@ namespace simplechain {
 		};
 
 		typedef boost::function<RpcResultType(blockchain*, HttpServer*, const RpcRequestParams&)> RpcHandlerType;
-
+		// get_account(address: string)
+		RpcResultType get_account(blockchain* chain, HttpServer* server, const RpcRequestParams& param);
+		// register_account(address: string, pub_key_hex: string)
+		RpcResultType register_account(blockchain* chain, HttpServer* server, const RpcRequestParams& param);
 		// mint(caller_address: string, asset_id: int, amount: int)
 		RpcResultType mint(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		// add_asset(asset_symbol: string, precision: int)
