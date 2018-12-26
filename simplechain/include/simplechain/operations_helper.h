@@ -7,6 +7,7 @@ namespace simplechain {
 	private:
 		operations_helper() {}
 	public:
+		static register_account_operation register_account(const std::string& account_address, const std::string& pubkey_hex);
 		static mint_operation mint(const std::string& account_address, asset_id_t asset_id, share_type amount);
 		static transfer_operation transfer(const std::string& from_address, const std::string& to_address, asset_id_t asset_id, share_type amount);
 		static contract_create_operation create_contract_from_file(const std::string& caller_addr, const std::string& contract_filepath,

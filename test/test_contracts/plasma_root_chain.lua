@@ -14,9 +14,10 @@ let MATURITY_PERIOD = 6 -- TODO: 604800: 7 days, 6 seconds for test
 let CHALLENGE_WINDOW = 3 -- TODO: 302400: 3.5 days, 3 seconds for test
 let BOND_AMOUNT = 100000
 
-
+-- Each exit can only be challenged by a single challenger at a time
 type Exit = {
     prevOwner: string,
+    prevOwnerPubKey: string,
     owner: string,
     ownerPubKey: string,
     createdAt: int,
@@ -323,7 +324,7 @@ end
 
 -- arg format: amount,assetSymbol
 function M:on_deposit_asset(arg: string)
-    let parsed = parse_at_least_args(arg, 2, "arg need format amount,assetSymbol")
+    let parsed = parse_at_least_args(arg, 2, "arg need format: amount,assetSymbol")
     let amount = tointeger(parsed[1]) 
     let uid = tostring(parsed[2])   
     let from_caller = get_from_address()
@@ -331,14 +332,19 @@ function M:on_deposit_asset(arg: string)
     create_coin(self, from, uid, amount, amount)
 end
 
--- validator to create empty coin
--- arg format: assetSymbol
+-- create empty coin
+-- arg format: assetSymbol[,owner_address]
 function M:create_empty_coin(arg: string)
-    checkIsValiator(self)
-    let assetSymbol = arg
+    -- checkIsValiator(self)
+    let parsed = parse_at_least_args(arg, 1, "arg need format: assetSymbol[,owner_address]")
+    let assetSymbol = tostring(parsed[1])
     let from_caller = get_from_address()
     let from = from_caller
-    create_coin(self, from, assetSymbol, 0, 0)
+    var owner: string = from
+    if #parsed > 1 then
+        owner =  tostring(parsed[2])
+    end
+    create_coin(self, owner, assetSymbol, 0, 0)
 end
 
 offline function M:get_coin(slot: string)
@@ -404,6 +410,7 @@ let function checkMembership(M:table, txHash: string, root: string, slot: string
         return true
     end
     let smt = getSmt(M)
+    pprint("smt: ", smt)
     let slotIntStr = safemath.tostring(bytes_to_bigint_as_big_endian(slot))
     return smt:verify(slotIntStr .. "," .. txHash .. "," .. root .. "," .. proofHex)
 end
@@ -417,6 +424,7 @@ let function checkTxIncluded(M: table, slot: string, txHash: string, blockNumber
     if not childBlock then
         return error("invalid child block info " .. tostring(blockNumber))
     end
+    pprint("in child block: ", childBlock, " in block #", blockNumber)
     let root = childBlock.root
     if (blockNumber % tointeger(M.storage.childBlockInterval)) ~= 0 then
         -- Check against block root for deposit block numbers
@@ -426,7 +434,7 @@ let function checkTxIncluded(M: table, slot: string, txHash: string, blockNumber
     else
         -- Check against merkle tree for all other block numbers
         if not checkMembership(M, txHash, root, slot, proofHex) then
-            return error("tx not included in claimed block #" .. tostring(blockNumber))
+            return error("tx not included in claimed block #" .. tostring(blockNumber) .. ", txHash: " .. txHash .. ", root: " .. root .. ", slot: " .. slot .. ", proof: " .. proofHex)
         end
     end
 end
@@ -606,6 +614,9 @@ let function withdrawBonds()
 end
 
 let function slashBond(from: string, to: string)
+    if true then
+        return  -- TODO
+    end
     let fromBalanceStr = tostring(fast_map_get("balances", from))
     if not fromBalanceStr then
         return
@@ -919,7 +930,7 @@ let function checkBetween(M: table, slot: string, txHex: string, blockNumber: in
         return error("Tx should be between the exit's blocks")
     end
     let txData:Transaction = totable(simpleCborDecode(txHex))
-    if signature_recover(signatureHex, txData.sigHash) ~= coin.exit.prevOwner then
+    if signature_recover(signatureHex, txData.sigHash) ~= coin.exit.prevOwnerPubKey then
         return error("Invalid signature")
     end
     if tostring(txData.slot) ~= slot then
@@ -930,15 +941,28 @@ end
 
 let function checkAfter(M: table, slot: string, txHex: string, blockNumber: int, signatureHex: string, proofHex: string)
     let txData: Transaction = totable(simpleCborDecode(txHex))
+    if not txData then
+        return error("decode tx error when checkAfter")
+    end
+    pprint("checkAfter txData: ", txData)
     let coin: Coin = totable(simpleJsonLoads(fast_map_get("coins", slot)))
-    if signature_recover(signatureHex, txData.sigHash) ~= coin.exit.ownerPubKey then
-        return error("Invalid signature")
+    if not coin then
+        return error("can't find coin with slot " .. slot)
+    end
+
+    if not coin.exit then
+        return error("invalid coin state, only exiting coin can be challenged")
+    end
+    let recoveredPubKey = signature_recover(signatureHex, txData.sigHash)
+    if recoveredPubKey ~= coin.exit.ownerPubKey then
+        return error("Invalid signature, expect " .. tostring(coin.exit.ownerPubKey) .. " but got " .. tostring(recoveredPubKey))
     end
     if txData.slot ~= slot then
         return error("Tx is referencing another slot")
     end
-    if txData.prevBlock ~= coin.exit.exitBlock then
-        return error("Not a direct spend")
+    -- TODO: txData.prevBlock == coin.exit.exitBlock ?
+    if txData.prevBlock < coin.exit.exitBlock then
+        return error("Not a direct spend, exit block is #" .. tostring(coin.exit.exitBlock))
     end
     checkTxIncluded(M, slot, txData.hash, blockNumber, proofHex)
 end
@@ -947,6 +971,7 @@ let function applyPenalties(slot: string)
     -- Apply penalties and change state
     let coin: Coin = totable(simpleJsonLoads(fast_map_get("coins", slot)))
     let from_caller = get_from_address()
+    pprint("coin to applyPenalties: ", coin)
     slashBond(coin.exit.owner, from_caller)
     coin.state = "DEPOSITED"
     let coinStr = json.dumps(coin)
@@ -961,12 +986,12 @@ function M:challengeBetween(arg: string)
     let challengingTransactionHex = tostring(parsed[3])
     let proofHex = tostring(parsed[4])
     let signatureHex = tostring(parsed[5])
-    cleanupExit(slot)
     if not isState(slot, "EXITING") then
         return error("require slot with EXITING state")
     end
     checkBetween(self, slot, challengingTransactionHex, challengingBlockNumber, signatureHex, proofHex)
     applyPenalties(slot)
+    cleanupExit(slot)
 end
 
 -- arg format: slot,challengingBlockNumber,challengingTransactionHex,proofHex,signatureHex
@@ -980,9 +1005,9 @@ function M:challengeAfter(arg: string)
     if not isState(slot, "EXITING") then
         return error("require slot with EXITING state")
     end
-    cleanupExit(slot)
     checkAfter(self, slot, challengingTransactionHex, challengingBlockNumber, signatureHex, proofHex)
     applyPenalties(slot)
+    cleanupExit(slot)
 end
 
 -- arg format: txHash,root,slot,proofHex

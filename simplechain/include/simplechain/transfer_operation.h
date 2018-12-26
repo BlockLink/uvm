@@ -4,6 +4,31 @@
 #include <simplechain/asset.h>
 
 namespace simplechain {
+
+	struct register_account_operation : public generic_operation {
+		typedef void_evaluate_result result_type;
+
+		operation_type_enum type;
+		std::string account_address;
+		std::string pubkey_hex;
+		fc::time_point_sec op_time;
+
+		register_account_operation() : type(operation_type_enum::REGISTER_ACCOUNT) {}
+		virtual ~register_account_operation() {}
+
+		virtual operation_type_enum get_type() const {
+			return type;
+		}
+
+		virtual fc::mutable_variant_object to_json() const {
+			fc::mutable_variant_object info;
+			info["type"] = type;
+			info["account_address"] = account_address;
+			info["pubkey"] = pubkey_hex;
+			return info;
+		}
+	};
+
 	struct mint_operation : public generic_operation {
 		typedef void_evaluate_result result_type;
 
@@ -54,5 +79,6 @@ namespace simplechain {
 	};
 }
 
+FC_REFLECT(simplechain::register_account_operation, (type)(account_address)(pubkey_hex)(op_time))
 FC_REFLECT(simplechain::mint_operation, (type)(account_address)(asset_id)(amount)(op_time))
 FC_REFLECT(simplechain::transfer_operation, (type)(from_address)(to_address)(asset_id)(amount)(op_time))

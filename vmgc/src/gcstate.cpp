@@ -1,5 +1,6 @@
 #include "vmgc/gcstate.h"
 #include "vmgc/gcobject.h"
+#include <algorithm>
 
 namespace vmgc {
 	GcState::GcState(ptrdiff_t max_gc_heap_size) {

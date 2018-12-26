@@ -531,7 +531,7 @@ static int safemath_rem(lua_State *L) {
 		push_bigint(L, result_int);
 		return 1;
 	}
-	catch (const std::exception& e) {
+	catch (...) {
 		return 0;
 	}
 }

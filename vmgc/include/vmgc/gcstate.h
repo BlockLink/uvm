@@ -6,7 +6,10 @@
 #include <exception>
 #include <string>
 #include <inttypes.h>
+#include <cstddef>
+#include <cstring>
 #include "vmgc/exceptions.h"
+#include "vmgc/gcobject.h"
 
 namespace vmgc {
 

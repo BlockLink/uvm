@@ -22,6 +22,27 @@ namespace simplechain {
 			}
 		}
 
+		RpcResultType get_account(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			const auto& addr = params.at(0).as_string();
+			const auto& pubkey_hex = chain->get_address_pubkey_hex(addr);
+			fc::mutable_variant_object result;
+			result["address"] = addr;
+			result["pubkey"] = pubkey_hex;
+			return result;
+		}
+
+		RpcResultType register_account(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			const auto& addr = params.at(0).as_string();
+			const auto& pubkey_hex = params.at(1).as_string();
+			auto tx = std::make_shared<transaction>();
+			auto op = operations_helper::register_account(addr, pubkey_hex);
+			tx->tx_time = fc::time_point_sec(fc::time_point::now());
+			tx->operations.push_back(op);
+			chain->evaluate_transaction(tx);
+			chain->accept_transaction_to_mempool(*tx);
+			return tx->tx_hash();
+		}
+
 		RpcResultType mint(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			const auto& caller_addr = params.at(0).as_string();
 			auto asset_id = (asset_id_t) params.at(1).as_uint64();
@@ -33,15 +54,30 @@ namespace simplechain {
 
 			chain->evaluate_transaction(tx);
 			chain->accept_transaction_to_mempool(*tx);
-			
+
 			return tx->tx_hash();
+		}
+
+		RpcResultType add_asset(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			asset a;
+			a.symbol = params.at(0).as_string();
+			a.precision = (asset_id_t)params.at(1).as_uint64();
+			fc::mutable_variant_object res;
+
+			if (chain->get_asset_by_symbol(a.symbol) != nullptr) {
+				res["result"] = false;
+				return res;
+			}
+			chain->add_asset(a);
+			res["result"] = true;
+			return res;
 		}
 
 		RpcResultType transfer(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			const auto& from_addr = params.at(0).as_string();
 			const auto& to_addr = params.at(1).as_string();
-			auto asset_id = (asset_id_t) params.at(2).as_uint64();
-			auto amount = (share_type) params.at(3).as_int64();
+			auto asset_id = (asset_id_t)params.at(2).as_uint64();
+			auto amount = (share_type)params.at(3).as_int64();
 			auto tx = std::make_shared<transaction>();
 			auto op = operations_helper::transfer(from_addr, to_addr, asset_id, amount);
 			tx->tx_time = fc::time_point_sec(fc::time_point::now());
@@ -56,7 +92,7 @@ namespace simplechain {
 		RpcResultType create_contract_from_file(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			auto caller_addr = params.at(0).as_string();
 			auto contract_filepath = params.at(1).as_string();
-			auto gas_limit = params.at(2) .as_uint64();
+			auto gas_limit = params.at(2).as_uint64();
 			auto gas_price = params.at(3).as_uint64();
 			auto tx = std::make_shared<transaction>();
 			auto op = operations_helper::create_contract_from_file(caller_addr, contract_filepath, gas_limit, gas_price);
@@ -79,7 +115,7 @@ namespace simplechain {
 			auto gas_price = params.at(3).as_uint64();
 
 			auto tx = std::make_shared<transaction>();
-			
+
 			const auto& contract_str = fc::base64_decode(contract_base64);
 			std::vector<char> contract_buf(contract_str.size());
 			memcpy(contract_buf.data(), contract_str.data(), contract_str.size());
@@ -123,7 +159,7 @@ namespace simplechain {
 			auto tx = std::make_shared<transaction>();
 			auto op = operations_helper::invoke_contract(caller_addr, contract_address, api_name, api_args, gas_limit, gas_price);
 			op.deposit_amount = deposit_amount;
-			op.deposit_asset_id = (asset_id_t) deposit_asset_id;
+			op.deposit_asset_id = (asset_id_t)deposit_asset_id;
 			tx->operations.push_back(op);
 			tx->tx_time = fc::time_point_sec(fc::time_point::now());
 
@@ -147,7 +183,7 @@ namespace simplechain {
 			auto api_name = params.at(2).as_string();
 			params_assert(params.at(3).is_array());
 			auto api_args_json = params.at(3).as<fc::variants>();
-			auto deposit_asset_id = (asset_id_t) params.at(4).as_uint64();
+			auto deposit_asset_id = (asset_id_t)params.at(4).as_uint64();
 			auto deposit_amount = params.at(5).as_uint64();
 
 			std::vector<std::string> api_args;
@@ -158,7 +194,7 @@ namespace simplechain {
 			auto tx = std::make_shared<transaction>();
 			auto op = operations_helper::invoke_contract(caller_addr, contract_address, api_name, api_args, 10000000);
 			op.deposit_amount = deposit_amount;
-			op.deposit_asset_id = (asset_id_t) deposit_asset_id;
+			op.deposit_asset_id = (asset_id_t)deposit_asset_id;
 			tx->operations.push_back(op);
 			tx->tx_time = fc::time_point_sec(fc::time_point::now());
 
@@ -166,11 +202,9 @@ namespace simplechain {
 			fc::mutable_variant_object res;
 			res["txid"] = tx->tx_hash();
 			if (op_result) {
-				contract_invoke_result* contract_result = (contract_invoke_result*) op_result.get();
+				contract_invoke_result* contract_result = (contract_invoke_result*)op_result.get();
 				res["api_result"] = contract_result->api_result;
 				res["exec_succeed"] = contract_result->exec_succeed;
-				if (!contract_result->exec_succeed)
-					res["error"] = contract_result->error;
 			}
 			return res;
 		}
@@ -178,7 +212,7 @@ namespace simplechain {
 		RpcResultType generate_block(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			int count = 1;
 			if (!params.empty()) {
-				count = (int) params.at(0).as_int64();
+				count = (int)params.at(0).as_int64();
 				if (count <= 0) {
 					throw uvm::core::UvmException("need generate at least 1 block");
 				}
@@ -233,7 +267,7 @@ namespace simplechain {
 			const auto& state = chain->get_state();
 			return state;
 		}
-		
+
 		RpcResultType list_accounts(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			const auto& accounts = chain->get_account_addresses();
 			fc::variant account_addresses;
@@ -290,13 +324,13 @@ namespace simplechain {
 
 
 		//---------------add debug rpc ----------------------------------------------------------
-		RpcResultType set_breakpoint(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {			
+		RpcResultType set_breakpoint(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			//fc::variant res;
 			fc::mutable_variant_object res;
 
 			auto contract_address = params.at(0).as_string();
 			auto line = params.at(1).as_uint64();
-			chain->add_breakpoint_in_last_debugger_state(contract_address,line);
+			chain->add_breakpoint_in_last_debugger_state(contract_address, line);
 
 			res["result"] = true;
 
@@ -315,14 +349,14 @@ namespace simplechain {
 				auto li = iter->second;
 				std::vector<uint32_t> vc;
 				std::copy(li.begin(), li.end(), std::back_inserter(vc));
-				fc::to_variant(vc, temp);			
-				res[iter->first] = temp;	
+				fc::to_variant(vc, temp);
+				res[iter->first] = temp;
 			}
-			
+
 			return res;
 		}
 
-		
+
 
 		RpcResultType remove_breakpoint_in_last_debugger_state(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			//fc::variant res;
@@ -380,18 +414,18 @@ namespace simplechain {
 		RpcResultType view_localvars_in_last_debugger_state(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			const auto& localvars = chain->view_localvars_in_last_debugger_state();
 			fc::variant locs;
-			fc::to_variant(localvars, locs);	
+			fc::to_variant(localvars, locs);
 			return locs;
 		}
 
 		RpcResultType view_upvalues_in_last_debugger_state(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			const auto& upvalues = chain->view_upvalues_in_last_debugger_state();
 			fc::variant res;
-			
+
 			fc::to_variant(upvalues, res);
 			return res;
 		}
-		
+
 
 		RpcResultType view_debug_info(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			fc::mutable_variant_object res;
@@ -402,13 +436,13 @@ namespace simplechain {
 			res["apiname"] = stack.second;
 			return res;
 		}
-		
+
 
 		RpcResultType debugger_step_out(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			fc::mutable_variant_object res;
-			 chain->debugger_step_out();
-			 res["result"] = true;
-			 return res;
+			chain->debugger_step_out();
+			res["result"] = true;
+			return res;
 		}
 
 		RpcResultType debugger_step_over(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
@@ -431,7 +465,7 @@ namespace simplechain {
 			res["result"] = true;
 			return res;
 		}
-		
+
 		//input params: storage_name,fast_map_key,is_fast_map
 		RpcResultType view_current_contract_storage_value(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			fc::variant res;
@@ -450,8 +484,8 @@ namespace simplechain {
 		}
 
 		RpcResultType view_call_stack(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
-			fc::variant res;		
-			auto result = chain->view_call_stack();			
+			fc::variant res;
+			auto result = chain->view_call_stack();
 			fc::to_variant(result, res);
 			return res;
 		}

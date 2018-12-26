@@ -10,6 +10,15 @@ namespace simplechain {
 		}
 	}
 
+	std::shared_ptr<register_account_operation_evaluator::operation_type::result_type> register_account_operation_evaluator::do_evaluate(const operation_type& op) {
+		return std::make_shared<void_evaluate_result>();
+	}
+	std::shared_ptr<register_account_operation_evaluator::operation_type::result_type> register_account_operation_evaluator::do_apply(const operation_type& op) {
+		auto result = do_evaluate(op);
+		get_chain()->register_account(op.account_address, op.pubkey_hex);
+		return result;
+	}
+
 	std::shared_ptr<min_operation_evaluator::operation_type::result_type> min_operation_evaluator::do_evaluate(const operation_type& op) {
 		auto asset_item = get_chain()->get_asset(op.asset_id);
 		params_assert(asset_item != nullptr);
