@@ -2451,7 +2451,8 @@ struct UvmStorageValue lua_type_to_storage_value_type_with_nested(lua_State *L, 
         return storage_value;
     case LUA_TSTRING:
         storage_value.type = uvm::blockchain::StorageValueTypes::storage_value_string;
-        storage_value.value.string_value = const_cast<char*>(lua_tostring(L, index));
+        // storage_value.value.string_value = const_cast<char*>(lua_tostring(L, index));
+		storage_value.value.string_value = uvm::lua::lib::malloc_and_copy_string(L, lua_tostring(L, index));
         return storage_value;
     case LUA_TTABLE:
         try{
