@@ -1132,7 +1132,7 @@ namespace uvm
 				// fast_map_get(storage_name, key)
 				auto common_gas = 50;
 				if (uvm::lua::lib::get_lua_state_instructions_executed_count(L) > gas_penalty_threshold) {
-					uvm::lua::lib::increment_lvm_instructions_executed_count(L, 1000 * common_gas - 1);
+					uvm::lua::lib::increment_lvm_instructions_executed_count(L, 2 * common_gas - 1);
 				}
 				else {
 					uvm::lua::lib::increment_lvm_instructions_executed_count(L, common_gas - 1);
@@ -1154,7 +1154,7 @@ namespace uvm
 				// fast_map_set(storage, key, value)
 				auto common_gas = 100;
 				if (uvm::lua::lib::get_lua_state_instructions_executed_count(L) > gas_penalty_threshold) {
-					uvm::lua::lib::increment_lvm_instructions_executed_count(L, 1000 * common_gas - 1);
+					uvm::lua::lib::increment_lvm_instructions_executed_count(L, 2 * common_gas - 1);
 				}
 				else {
 					uvm::lua::lib::increment_lvm_instructions_executed_count(L, common_gas - 1);
