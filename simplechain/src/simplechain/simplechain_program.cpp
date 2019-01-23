@@ -79,6 +79,10 @@ int main(int argc, char** argv) {
 		std::cerr << e.what() << std::endl;
 		return 1;
 	}
+	catch (...) {
+		auto e = std::current_exception();
+		std::cerr << "some error happen" << std::endl;
+	}
 	return 0;
 }
 

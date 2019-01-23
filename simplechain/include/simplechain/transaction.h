@@ -15,9 +15,12 @@ namespace simplechain {
 	typedef fc::sha256 hash_t;
 
 	struct transaction {
+		int32_t tx_nonce;
 		fc::time_point_sec tx_time;
 		std::vector<operation> operations;
 
+		transaction();
+		virtual ~transaction() {};
 		hash_t digest() const;
 		std::string digest_str() const;
 		std::string tx_hash() const;
