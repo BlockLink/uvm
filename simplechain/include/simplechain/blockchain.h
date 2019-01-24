@@ -18,7 +18,7 @@
 #include <uvm/lobject.h>
 
 namespace simplechain {
-	typedef uint32_t balance_t;
+	typedef int64_t balance_t; //int64
 
 	class blockchain {
 		// TODO: local db and rollback
