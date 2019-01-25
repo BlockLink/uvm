@@ -398,6 +398,15 @@ void *lua_malloc(lua_State *L, size_t size)
         return p;
     }
     std::pair<ptrdiff_t, ptrdiff_t> last_pair;
+	// malloc after last position first, if not enough, malloc by binary search
+	if (L->malloc_pos + size <= LUA_MALLOC_TOTAL_SIZE) {
+		ptrdiff_t offset = L->malloc_pos;
+		void *p = (void*)((intptr_t)(L->malloc_buffer) + offset);
+		L->malloced_buffers->push_back(std::make_pair(offset, size));
+		L->malloc_pos += size;
+		return p;
+	}
+
     auto begin = L->malloced_buffers->begin();
     for (auto it = begin; it != L->malloced_buffers->end(); ++it)
     {
