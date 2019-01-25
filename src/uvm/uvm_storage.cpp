@@ -38,6 +38,7 @@ static struct UvmStorageValue get_last_storage_changed_value(lua_State *L, const
 {
 	struct UvmStorageValue nil_value;
 	nil_value.type = uvm::blockchain::StorageValueTypes::storage_value_null;
+	std::string contract_id_str(contract_id);
 	auto post_when_read_table = [&](UvmStorageValue value) {
 		if (lua_storage_is_table(value.type))
 		{
@@ -47,13 +48,13 @@ static struct UvmStorageValue get_last_storage_changed_value(lua_State *L, const
 			{
 				for (auto it = table_read_list->begin(); it != table_read_list->end(); ++it)
 				{
-					if (it->contract_id == std::string(contract_id) && it->key == key && it->fast_map_key==fast_map_key && it->is_fast_map == is_fast_map)
+					if (it->contract_id == contract_id_str && it->key == key && it->fast_map_key==fast_map_key && it->is_fast_map == is_fast_map)
 					{
 						return;
 					}
 				}
 				UvmStorageChangeItem change_item;
-				change_item.contract_id = contract_id;
+				change_item.contract_id = contract_id_str;
 				change_item.key = key;
 				change_item.fast_map_key = is_fast_map ? fast_map_key : "";
 				change_item.is_fast_map = is_fast_map;
@@ -77,7 +78,7 @@ static struct UvmStorageValue get_last_storage_changed_value(lua_State *L, const
 		UvmStorageChangeItem change_item;
 		change_item.before = value;
 		change_item.after = value;
-		change_item.contract_id = contract_id;
+		change_item.contract_id = contract_id_str;
 		change_item.key = key;
 		change_item.fast_map_key = is_fast_map ? fast_map_key : "";
 		change_item.is_fast_map = is_fast_map;
@@ -87,7 +88,7 @@ static struct UvmStorageValue get_last_storage_changed_value(lua_State *L, const
 	}
 	for (auto it = list->rbegin(); it != list->rend(); ++it)
 	{
-		if (it->contract_id == std::string(contract_id) && it->key == key && it->fast_map_key==fast_map_key && it->is_fast_map == is_fast_map)
+		if (it->contract_id == contract_id_str && it->key == key && it->fast_map_key==fast_map_key && it->is_fast_map == is_fast_map)
 			return it->after;
 	}
 	auto value = global_uvm_chain_api->get_storage_value_from_uvm_by_address(L, contract_id, key, fast_map_key, is_fast_map);

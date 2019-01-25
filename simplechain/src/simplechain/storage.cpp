@@ -87,7 +87,7 @@ namespace simplechain {
 	StorageDataType StorageDataType::get_storage_data_from_lua_storage(const UvmStorageValue& lua_storage)
 	{
 		auto storage_json = simplechain::uvm_storage_value_to_json(lua_storage);
-		StorageDataType storage_data(fc::json::to_string(storage_json));
+		StorageDataType storage_data(fc::json::to_string(storage_json, fc::json::legacy_generator));
 		return storage_data;
 	}
 
