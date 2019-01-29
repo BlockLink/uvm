@@ -28,6 +28,8 @@ set(SOURCES src/uvm/lapi.cpp
     src/uvm/linit.cpp
     src/uvm/liolib.cpp
     src/uvm/ljsonlib.cpp
+    src/uvm/ljsonlib2.cpp
+    src/uvm/json_reader.cpp
     src/uvm/ljsonrpclib.cpp
     src/uvm/llex.cpp
     src/uvm/lmathlib.cpp
