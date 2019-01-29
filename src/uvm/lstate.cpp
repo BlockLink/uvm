@@ -310,7 +310,8 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
     L->marked = luaC_white(g);
     L->malloc_buffer = malloc(LUA_MALLOC_TOTAL_SIZE);
     L->malloc_pos = 0;
-    L->malloced_buffers = new std::list<std::pair<ptrdiff_t, ptrdiff_t>>();
+    L->malloced_buffers = new std::vector<std::pair<ptrdiff_t, ptrdiff_t>>();
+	L->empty_buffers_positions = new std::unordered_map<size_t, bool>();
     memset(L->compile_error, 0x0, LUA_COMPILE_ERROR_MAX_LENGTH);
 	memset(L->runerror, 0x0, LUA_VM_EXCEPTION_STRNG_MAX_LENGTH);
     L->in = stdin;
@@ -366,6 +367,7 @@ LUA_API void lua_close(lua_State *L) {
     uvm::lua::lib::close_lua_state_values(L);
 	luaM_freearray(L, L->evalstack, L->evalstacksize);
     delete L->malloced_buffers;
+	delete L->empty_buffers_positions;
 	delete L->contract_table_addresses;
 	L->contract_table_addresses = nullptr;
     free(L->malloc_buffer);
@@ -398,6 +400,7 @@ void *lua_malloc(lua_State *L, size_t size)
         return p;
     }
     std::pair<ptrdiff_t, ptrdiff_t> last_pair;
+	size_t last_pair_pos;
 	// malloc after last position first, if not enough, malloc by binary search
 	if (L->malloc_pos + size <= LUA_MALLOC_TOTAL_SIZE) {
 		ptrdiff_t offset = L->malloc_pos;
@@ -407,31 +410,39 @@ void *lua_malloc(lua_State *L, size_t size)
 		return p;
 	}
 
-    auto begin = L->malloced_buffers->begin();
-    for (auto it = begin; it != L->malloced_buffers->end(); ++it)
-    {
-        if (it == begin)
-        {
-            if (it->first > (ptrdiff_t)size)
-            {
-                // can alloc memory before first block
-                ptrdiff_t offset = 0;
-                void *p = L->malloc_buffer;
-                L->malloced_buffers->insert(L->malloced_buffers->begin(), std::make_pair(offset, size));
-                return p;
-            }
-            last_pair = *it;
-            continue;
-        }
-        if (it->first >= last_pair.first + last_pair.second + (ptrdiff_t)size)
-        {
-            ptrdiff_t offset = last_pair.first + last_pair.second;
-            void *p = (void*)((intptr_t)(L->malloc_buffer) + offset);
-            L->malloced_buffers->insert(it, std::make_pair(offset, size));
-            return p;
-        }
-        last_pair = *it;
-    }
+	auto buffers_count = L->malloced_buffers->size();
+	// find place in empty spaces
+	for (auto& p : *L->empty_buffers_positions) {
+		auto buffer_pos = p.first;
+		auto& item = L->malloced_buffers->at(buffer_pos);
+		if (buffer_pos == buffers_count - 1) {
+			// last space is empty
+			if (item.first + size <= LUA_MALLOC_TOTAL_SIZE) {
+				item.second = size;
+				// update empty spaces
+				L->empty_buffers_positions->erase(buffer_pos);
+				auto offset = item.first;
+				void *p = (void*)((intptr_t)(L->malloc_buffer) + offset);
+				return p;
+			}
+		}
+		auto next_pos = buffer_pos + 1;
+		if (next_pos >= buffers_count) {
+			continue;
+		}
+		auto& next_item = L->malloced_buffers->at(next_pos);
+		if (next_item.first >= item.first + (ptrdiff_t)size)
+		{
+			// when before is empty item and have enough space
+			(*L->malloced_buffers)[buffer_pos].second = size;
+			// update empty_spaces
+			L->empty_buffers_positions->erase(buffer_pos);
+			auto offset = item.first;
+			void *p = (void*)((intptr_t)(L->malloc_buffer) + offset);
+			return p;
+		}
+	}
+    
     if (L->malloc_pos + size > LUA_MALLOC_TOTAL_SIZE)
     {
         L->force_stopping = true;
@@ -480,11 +491,19 @@ void lua_free(lua_State *L, void *address)
     if (offset < 0 || offset > LUA_MALLOC_TOTAL_SIZE)
         return;
     size_t offset_size = (size_t)offset;
-    for (auto it = L->malloced_buffers->begin(); it != L->malloced_buffers->end(); ++it)
+	// TODO: just put empty info in empty_buffers_positions
+	auto buffers_count = L->malloced_buffers->size();
+    for (auto it = 0; it < buffers_count; ++it)
     {
-        if (it->first == offset_size)
+		auto& item = L->malloced_buffers->at(it);
+        if (item.first == offset_size)
         {
-            L->malloced_buffers->erase(it);
+			// update item value(size to 0)
+			if (item.second != 0) {
+				// put position to empty_spaces if not exist. and remove it when updated to non-zero
+				(*L->empty_buffers_positions)[it] = true;
+			}
+			item.second = 0;
             return;
         }
     }

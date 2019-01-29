@@ -480,6 +480,13 @@ func simpleChainRPC(method string, params ...interface{}) (*simplejson.Json, err
 	if err != nil {
 		return nil, err
 	}
+	if(method == "get_tx_receipt") {
+		resJSONBytes, err := json.Marshal(resJSON)
+		if err != nil {
+			return nil, err
+		}
+		println("get_tx_receipt res: ", string(resJSONBytes))
+	}
 	return resJSON.Get("result"), nil
 }
 
@@ -591,7 +598,19 @@ func depositToPlasmaContract(caller string, plasmaContractAddress string, amount
 	txID = res.Get("txid").MustString()
 	simpleChainRPC("generate_block")
 	res, err = simpleChainRPC("get_tx_receipt", txID)
+	if err != nil {
+		println("error: ", err.Error())
+		return
+	}
 	deposit1TxReceipt := res
+	eventsArray, err := deposit1TxReceipt.Get("events").Array()
+	if err != nil {
+		return
+	}
+	if len(eventsArray) < 1 {
+		err = errors.New("not enough events of deposit to plasma contract tx")
+		return
+	}
 	coin1EventArg := deposit1TxReceipt.Get("events").GetIndex(0).Get("event_arg").MustString()
 	coin1EventArgJSON, _ := simplejson.NewJson([]byte(coin1EventArg))
 	coinSlotHex = coin1EventArgJSON.Get("slot").MustString()
