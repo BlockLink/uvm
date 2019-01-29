@@ -5,6 +5,7 @@
 #include <simplechain/address_helper.h>
 #include <iostream>
 #include <uvm/uvm_lib.h>
+#include <fc/io/json.hpp>
 
 namespace simplechain {
 	using namespace std;
@@ -100,11 +101,15 @@ namespace simplechain {
 					if (o.contract_api != "on_deposit_asset") {
 						throw uvm::core::UvmException("only can deposit to contract by call api on_deposit_asset");
 					}
-					if(!chain->get_asset(o.deposit_asset_id)) {
+					auto asset = chain->get_asset(o.deposit_asset_id);
+					if(!asset) {
 						throw uvm::core::UvmException(std::string("can't find asset #") + std::to_string(o.deposit_asset_id));
 					}
-					update_account_asset_balance(o.contract_address, o.deposit_asset_id, o.deposit_amount);
-					first_contract_arg = std::to_string(o.deposit_amount) + "," + std::to_string(o.deposit_asset_id);
+					fc::mutable_variant_object depositArgs;
+					depositArgs["num"] = o.deposit_amount;
+					depositArgs["symbol"] = asset->symbol;
+					depositArgs["param"] = first_contract_arg;
+					first_contract_arg = fc::json::to_string(depositArgs);
 				}
 				else {
 					if (std::find(uvm::lua::lib::contract_special_api_names.begin(), uvm::lua::lib::contract_special_api_names.end(), o.contract_api) != uvm::lua::lib::contract_special_api_names.end()) {
@@ -112,11 +117,17 @@ namespace simplechain {
 					}
 				}
 				std::string result_json_str;
+				if (o.deposit_amount > 0) {
+					update_account_asset_balance(o.contract_address, o.deposit_asset_id, o.deposit_amount);
+				}
 				engine->execute_contract_api_by_address(o.contract_address, o.contract_api, first_contract_arg, &result_json_str);
 				invoke_contract_result.api_result = result_json_str;
 			}
 			catch (std::exception &e)
 			{
+				if (o.deposit_amount > 0) {
+					update_account_asset_balance(o.contract_address, o.deposit_asset_id, (0 - (o.deposit_amount)));
+				}
 				throw uvm::core::UvmException(e.what());
 			}
 
@@ -126,6 +137,7 @@ namespace simplechain {
 			auto gas_count = gas_used;
 			invoke_contract_result.exec_succeed = true;
 			invoke_contract_result.gas_used = gas_count;
+
 		}
 		catch (const std::exception& e)
 		{

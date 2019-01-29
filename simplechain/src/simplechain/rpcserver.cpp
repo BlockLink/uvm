@@ -29,7 +29,8 @@ namespace simplechain {
 		{ "get_contract_info", &get_contract_info },
 		{ "get_account_balances", &get_account_balances },
 		{ "get_contract_storages", &get_contract_storages },
-		{ "get_storage", &get_storage }
+		{ "get_storage", &get_storage },
+		{ "add_asset", &add_asset }
 	};
 
 	RpcServer::RpcServer(blockchain* chain, int port)

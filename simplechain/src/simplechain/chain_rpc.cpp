@@ -286,5 +286,20 @@ namespace simplechain {
 			return res;
 		}
 
+		RpcResultType add_asset(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			asset a;
+			a.symbol = params.at(0).as_string();
+			a.precision = (asset_id_t)params.at(1).as_uint64();
+			fc::mutable_variant_object res;
+
+			if (chain->get_asset_by_symbol(a.symbol) != nullptr) {
+				res["result"] = false;
+				return res;
+			}
+			chain->add_asset(a);
+			res["result"] = true;
+			return res;
+		}
+
 	}
 }

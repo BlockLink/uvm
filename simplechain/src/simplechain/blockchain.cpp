@@ -250,7 +250,9 @@ namespace simplechain {
 
 	void blockchain::accept_transaction_to_mempool(const transaction& tx) {
 		for (const auto& item : tx_mempool) {
-			FC_ASSERT(item.tx_hash() != tx.tx_hash());
+			if (item.tx_hash() == tx.tx_hash()) {
+				return;
+			}
 		}
 		tx_mempool.push_back(tx);
 	}

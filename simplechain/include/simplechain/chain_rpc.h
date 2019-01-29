@@ -36,6 +36,8 @@ namespace simplechain {
 
 		// mint(caller_address: string, asset_id: int, amount: int)
 		RpcResultType mint(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		// add_asset(asset_symbol: string, precision: int)
+		RpcResultType add_asset(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		// transfer(from_address: string, to_address: string, asset_id: int, amount: int)
 		RpcResultType transfer(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		// create_contract_from_file(caller_address: string, contract_filepath: string, gas_limit: int, gas_price: int)

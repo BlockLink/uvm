@@ -2588,7 +2588,7 @@ static bool is_uvm_array_table(UvmTableMapP map) {
 					break;
 				}
 			}
-			catch (std::exception e)
+			catch (...)
 			{
 				has_wrong_array_format = true;
 				break;
