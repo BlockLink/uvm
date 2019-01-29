@@ -1029,6 +1029,37 @@ func TestSimpleChainContractChangeOtherContractProperties(t *testing.T) {
 
 }
 
+
+func TestManyObjects(t *testing.T) {
+	cmd := execCommandBackground(simpleChainPath)
+	assert.True(t, cmd != nil)
+	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
+	defer func() {
+		kill(cmd)
+	}()
+	var res *simplejson.Json
+	var err error
+	caller1 := "SPLtest1"
+
+	_, compileErr := execCommand(uvmCompilerPath, "-g", "../../test_contracts/test_many_objects.lua")
+	assert.Equal(t, compileErr, "")
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("test_many_objects.lua.gpc"), 50000, 10)
+	if err != nil {
+		println(err.Error())
+	}
+	assert.True(t, err == nil)
+	contract1Addr := res.Get("contract_address").MustString()
+	fmt.Printf("contract address: %s\n", contract1Addr)
+	simpleChainRPC("generate_block")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "hello", []string{" "}, 0, 0)
+	println(res)
+	if err != nil {
+		println("error: ", err.Error())
+	}
+}
+
+
 func TestCallContractManyTimes(t *testing.T) {
 	cmd := execCommandBackground(simpleChainPath)
 	assert.True(t, cmd != nil)

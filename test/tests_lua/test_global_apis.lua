@@ -11,7 +11,7 @@ end
 function M:start(arg: string)
     let now = get_chain_now()
     let valid = is_valid_address(arg)
-    let validContract = is_valid_contract_address(arg)
+    let validContract = is_valid_contract_address("CON" .. arg)
     let systemAssetSymbol = get_system_asset_symbol()
     let blockNum = get_header_block_num()
     let precision = get_system_asset_precision()

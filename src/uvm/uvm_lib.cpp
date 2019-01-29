@@ -1570,13 +1570,19 @@ end
                 {
                     return;
                 }
-
+				char* str_value = nullptr;
+				if (type == LUA_STATE_VALUE_STRING) {
+					str_value = uvm::lua::lib::malloc_and_copy_string(L, value.string_value);
+					if (!str_value) {
+						return;
+					}
+				}
                 L_V1 map = create_value_map_for_lua_state(L);
                 UvmStateValueNode node_v;
                 node_v.type = type;
                 node_v.value = value;
-                if (node_v.type == LUA_STATE_VALUE_STRING)
-                    node_v.value.string_value = uvm::lua::lib::malloc_and_copy_string(L, value.string_value);
+				if (node_v.type == LUA_STATE_VALUE_STRING)
+					node_v.value.string_value = str_value;
                 std::string key_str(key);
                 map->erase(key_str);
                 map->insert(std::make_pair(key_str, node_v));
@@ -1999,6 +2005,9 @@ end
             char *malloc_managed_string(lua_State *L, size_t size, const char *init_data)
             {
                 char *data = (char *)lua_malloc(L, size);
+				if (!data) {
+					return nullptr;
+				}
 				memset(data, 0x0, size);
 				if(nullptr != init_data)
 					memcpy(data, init_data, strlen(init_data));
@@ -2112,6 +2121,8 @@ end
 				const char *api_name, const char *arg1, std::string *result_json_string)
             {
                 auto contract_address = malloc_managed_string(L, CONTRACT_ID_MAX_LENGTH + 1);
+				if (!contract_address)
+					return LUA_ERRRUN;
                 memset(contract_address, 0x0, CONTRACT_ID_MAX_LENGTH + 1);
                 size_t address_size = 0;
                 uvm::lua::api::global_uvm_chain_api->get_contract_address_by_name(L, contract_name, contract_address, &address_size);
@@ -2129,6 +2140,8 @@ end
             {
                 UvmStateValue value;
                 auto str = malloc_managed_string(L, strlen(contract_address) + 1);
+				if (!str)
+					return LUA_ERRRUN;
                 memset(str, 0x0, strlen(contract_address) + 1);
                 strncpy(str, contract_address, strlen(contract_address));
                 value.string_value = str;

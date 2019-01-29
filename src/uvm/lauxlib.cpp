@@ -1263,7 +1263,12 @@ static bool lua_get_contract_apis_direct(lua_State *L, UvmModuleByteStream *stre
             }
 			for(const auto &item : contract_apis_set)
 			{
-				contract_apis[apis_count] = (char*)lua_malloc(L, (item.length() + 1) * sizeof(char));
+				auto api_str = (char*)lua_malloc(L, (item.length() + 1) * sizeof(char));
+				if (!api_str) {
+					global_uvm_chain_api->throw_exception(L, UVM_API_MEMORY_ERROR, "uvm out of memory");
+					return false;
+				}
+				contract_apis[apis_count] = api_str;
 				memset(contract_apis[apis_count], 0x0, (item.length() + 1) * sizeof(char));
 				memcpy(contract_apis[apis_count], item.c_str(), sizeof(char) * (item.length() + 1));
 				contract_apis[apis_count][item.length()] = '\0';
@@ -1531,7 +1536,13 @@ int luaL_import_contract_module_from_address(lua_State *L)
                 }
                 if (strcmp(key, "locals") == 0)
                     continue;
-                contract_apis[apis_count] = (char*)lua_malloc(L, (strlen(key) + 1) * sizeof(char));
+				auto api_str = (char*)lua_malloc(L, (strlen(key) + 1) * sizeof(char));
+				if (!api_str) {
+					global_uvm_chain_api->throw_exception(L, UVM_API_MEMORY_ERROR, "vm out of memory");
+					uvm::lua::lib::notify_lua_state_stop(L);
+					return 0;
+				}
+				contract_apis[apis_count] = api_str;
 				memset(contract_apis[apis_count], 0x0, (strlen(key) + 1) * sizeof(char));
                 if (!contract_apis[apis_count])
                 {
@@ -1820,7 +1831,12 @@ int luaL_import_contract_module(lua_State *L)
                     uvm::lua::lib::notify_lua_state_stop(L);
                     return 0;
                 }
-                contract_apis[apis_count] = (char*)lua_malloc(L, (strlen(key) + 1) * sizeof(char));
+				auto api_str = (char*)lua_malloc(L, (strlen(key) + 1) * sizeof(char));
+				if (!api_str) {
+					uvm::lua::lib::notify_lua_state_stop(L);
+					return 0;
+				}
+				contract_apis[apis_count] = api_str;
 				memset(contract_apis[apis_count], 0x0, (strlen(key) + 1) * sizeof(char));
                 memcpy(contract_apis[apis_count], key, sizeof(char) * (strlen(key) + 1));
 				contract_apis[apis_count][strlen(key)] = '\0';
@@ -2093,6 +2109,8 @@ LUA_API int lua_execute_contract_api(lua_State *L, const char *contract_name,
 	const char *api_name, const char *arg1, std::string *result_json_string)
 {
 	auto contract_address = uvm::lua::lib::malloc_managed_string(L, CONTRACT_ID_MAX_LENGTH + 1);
+	if (!contract_address)
+		return LUA_ERRRUN;
 	memset(contract_address, 0x0, CONTRACT_ID_MAX_LENGTH + 1);
 	size_t address_size = 0;
 	global_uvm_chain_api->get_contract_address_by_name(L, contract_name, contract_address, &address_size);
@@ -2449,24 +2467,32 @@ struct UvmStorageValue lua_type_to_storage_value_type_with_nested(lua_State *L, 
         storage_value.type = uvm::blockchain::StorageValueTypes::storage_value_number;
         storage_value.value.number_value = lua_tonumber(L, index);
         return storage_value;
-    case LUA_TSTRING:
-        storage_value.type = uvm::blockchain::StorageValueTypes::storage_value_string;
-        // storage_value.value.string_value = const_cast<char*>(lua_tostring(L, index));
-		storage_value.value.string_value = uvm::lua::lib::malloc_and_copy_string(L, lua_tostring(L, index));
-        return storage_value;
-    case LUA_TTABLE:
-        try{
-            lua_len(L, index);
-        }
-        catch (...)
-        {
-            storage_value.type = uvm::blockchain::StorageValueTypes::storage_value_null;
-            storage_value.value.int_value = 0;
-            return storage_value;
-        }
-        len = (size_t)lua_tointegerx(L, -1, nullptr);
-        lua_pop(L, 1);
-		if(len < 0 || len > INT32_MAX)
+	case LUA_TSTRING: {
+		auto str_value = uvm::lua::lib::malloc_and_copy_string(L, lua_tostring(L, index));
+		if (!str_value) {
+			storage_value.type = uvm::blockchain::StorageValueTypes::storage_value_null;
+			L->force_stopping = true;
+			return storage_value;
+		}
+		storage_value.type = uvm::blockchain::StorageValueTypes::storage_value_string;
+		// storage_value.value.string_value = const_cast<char*>(lua_tostring(L, index));
+		storage_value.value.string_value = str_value;
+
+		return storage_value;
+	}
+	case LUA_TTABLE: {
+		try {
+			lua_len(L, index);
+		}
+		catch (...)
+		{
+			storage_value.type = uvm::blockchain::StorageValueTypes::storage_value_null;
+			storage_value.value.int_value = 0;
+			return storage_value;
+		}
+		len = (size_t)lua_tointegerx(L, -1, nullptr);
+		lua_pop(L, 1);
+		if (len < 0 || len > INT32_MAX)
 		{
 			// too big table
 			storage_value.type = uvm::blockchain::StorageValueTypes::storage_value_null;
@@ -2474,11 +2500,12 @@ struct UvmStorageValue lua_type_to_storage_value_type_with_nested(lua_State *L, 
 			return storage_value;
 		}
 		// FIXME: change by sub item value type
-        storage_value.type = uvm::blockchain::StorageValueTypes::storage_value_unknown_table;
-        if (len > 0)
-            storage_value.type = uvm::blockchain::StorageValueTypes::storage_value_unknown_array;
-        storage_value.value.table_value = lua_table_to_map_with_nested(L, index, jsons, recur_depth+1);
-        return storage_value;
+		storage_value.type = uvm::blockchain::StorageValueTypes::storage_value_unknown_table;
+		if (len > 0)
+			storage_value.type = uvm::blockchain::StorageValueTypes::storage_value_unknown_array;
+		storage_value.value.table_value = lua_table_to_map_with_nested(L, index, jsons, recur_depth + 1);
+		return storage_value;
+	}
     case LUA_TUSERDATA:
 	{
 		auto addr = lua_touserdata(L, index);
@@ -2551,6 +2578,9 @@ bool lua_table_to_map_traverser_with_nested(lua_State *L, void *ud, size_t len, 
         std::string addr_str = std::to_string((intptr_t) addr);
 		addr_str = "address";
 		char *addr_s = (char*)lua_malloc(L, (1 + addr_str.length()) * sizeof(char));
+		if (!addr_s) {
+			return false;
+		}
         memcpy(addr_s, addr_str.c_str(), (1 + addr_str.length()) * sizeof(char));
         value.value.string_value = addr_s;
     }
