@@ -6,6 +6,7 @@ let a2 = json.loads(a1)
 let a3 = json.dumps(123)
 let a4 = json.loads(a3)
 if a4 ~= 123 then
+    print("a4=", a4)
     error("error when json dumps/loads 123")
 end
 let a5 = json.dumps({name: "hello"})
