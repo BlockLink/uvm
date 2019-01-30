@@ -311,7 +311,7 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
     L->malloc_buffer = malloc(LUA_MALLOC_TOTAL_SIZE);
     L->malloc_pos = 0;
     L->malloced_buffers = new std::vector<std::pair<ptrdiff_t, ptrdiff_t>>();
-	L->empty_buffers_positions = new std::unordered_map<size_t, bool>();
+	L->empty_buffers_positions = new std::map<size_t, bool>();
     memset(L->compile_error, 0x0, LUA_COMPILE_ERROR_MAX_LENGTH);
 	memset(L->runerror, 0x0, LUA_VM_EXCEPTION_STRNG_MAX_LENGTH);
     L->in = stdin;

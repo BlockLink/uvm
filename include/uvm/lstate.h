@@ -209,7 +209,7 @@ struct lua_State {
     void *malloc_buffer; // malloc enough memory for the whole lua_state scope beforehand, and malloc/free in the buffer
     ptrdiff_t malloc_pos; // used buffer size in malloc_buffer
     std::vector<std::pair<ptrdiff_t, ptrdiff_t>> *malloced_buffers;
-	std::unordered_map<size_t, bool> *empty_buffers_positions; // position-in-malloced_buffers => true
+	std::map<size_t, bool> *empty_buffers_positions; // position-in-malloced_buffers => true
     char compile_error[LUA_COMPILE_ERROR_MAX_LENGTH];
 	char runerror[LUA_VM_EXCEPTION_STRNG_MAX_LENGTH];
     FILE *in;
