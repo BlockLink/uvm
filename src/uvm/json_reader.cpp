@@ -234,14 +234,7 @@ bool Json_Reader::parse(lua_State *L, std::string& str,UvmStorageValue* root) {
 				addError("extra data after json object", token, current_);
 			}
 			else {
-				auto jsonType = currentValue()->type;
-				if (jsonType != StorageValueTypes::storage_value_unknown_array && jsonType != StorageValueTypes::storage_value_unknown_table) {
-					addError("A valid JSON document must be either an array or an object value.", token, current_);
-					ok = false;
-				}
-				else {
-					*root = nodes_.top();  //parse scuccess
-				}
+				*root = nodes_.top();  //parse scuccess
 			}
 		}
 		else {
