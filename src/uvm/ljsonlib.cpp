@@ -341,10 +341,25 @@ static int json_to_lua(lua_State *L)
         return 0;
     if (!lua_isstring(L, 1))
         return 0;
-    auto json_str = luaL_checkstring(L, 1);
+    std::string json_str(luaL_checkstring(L, 1));
+	auto json_str_size = json_str.size();
+	size_t little_large_size = 10000;
+	size_t very_large_size = 100000;
+	if (json_str_size > little_large_size) {
+		auto json_gas_punishment_fork_height = global_uvm_chain_api->get_fork_height("JSON_GAS_PUNISHMENT");
+		if (json_gas_punishment_fork_height >= 0 && global_uvm_chain_api->get_header_block_num(L) >= json_gas_punishment_fork_height) {
+			auto common_extra_gas = 10 * json_str_size;
+			if (json_str_size > little_large_size) {
+				uvm::lua::lib::increment_lvm_instructions_executed_count(L, common_extra_gas - 1);
+			}
+			else if (json_str_size > very_large_size) {
+				uvm::lua::lib::increment_lvm_instructions_executed_count(L, 10 * common_extra_gas - 1);
+			}
+		}
+	}
     uvm::lua::lib::UvmStateScope scope;
     auto token_parser = std::make_shared<UvmTokenParser>(scope.L());
-    token_parser->parse(std::string(json_str));
+    token_parser->parse(json_str);
     token_parser->reset_position();
     bool result = false;
     auto value = tokens_to_lua_value(L, token_parser.get(), &result);
@@ -361,6 +376,21 @@ static int lua_to_json(lua_State *L)
     if (lua_gettop(L) < 1)
         return 0;
     auto value = luaL_tojsonstring(L, 1, nullptr);
+	auto json_str_size = strlen(value);
+	size_t little_large_size = 10000;
+	size_t very_large_size = 100000;
+	if (json_str_size > little_large_size) {
+		auto json_gas_punishment_fork_height = global_uvm_chain_api->get_fork_height("JSON_GAS_PUNISHMENT");
+		if (json_gas_punishment_fork_height >= 0 && global_uvm_chain_api->get_header_block_num(L) >= json_gas_punishment_fork_height) {
+			auto common_extra_gas = 10 * json_str_size;
+			if (json_str_size > little_large_size) {
+				uvm::lua::lib::increment_lvm_instructions_executed_count(L, common_extra_gas - 1);
+			}
+			else if (json_str_size > very_large_size) {
+				uvm::lua::lib::increment_lvm_instructions_executed_count(L, 10 * common_extra_gas - 1);
+			}
+		}
+	}
     lua_pushstring(L, value);
     return 1;
 }

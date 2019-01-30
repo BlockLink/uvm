@@ -40,8 +40,22 @@ static int json_to_lua(lua_State *L)
 		return 0;
 	if (!lua_isstring(L, 1))
 		return 0;
-	auto json_str = std::string(luaL_checkstring(L, 1));
-	//uvm::lua::lib::UvmStateScope scope;
+	std::string json_str(luaL_checkstring(L, 1));
+	auto json_str_size = json_str.size();
+	size_t little_large_size = 10000;
+	size_t very_large_size = 100000;
+	if (json_str_size > little_large_size) {
+		auto json_gas_punishment_fork_height = global_uvm_chain_api->get_fork_height("JSON_GAS_PUNISHMENT");
+		if (json_gas_punishment_fork_height >= 0 && global_uvm_chain_api->get_header_block_num(L) >= json_gas_punishment_fork_height) {
+			auto common_extra_gas = 10 * json_str_size;
+			if (json_str_size > little_large_size) {
+				uvm::lua::lib::increment_lvm_instructions_executed_count(L, common_extra_gas - 1);
+			}
+			else if (json_str_size > very_large_size) {
+				uvm::lua::lib::increment_lvm_instructions_executed_count(L, 10 * common_extra_gas - 1);
+			}
+		}
+	}
 	auto json_parser = std::make_shared<Json_Reader>();
 	UvmStorageValue root;
 	if (json_parser->parse(L, json_str, &root)) {
@@ -60,8 +74,22 @@ static int lua_to_json(lua_State *L)
 	if (lua_gettop(L) < 1)
 		return 0;
 	auto value = luaL_tojsonstring(L, 1, nullptr);
+	auto json_str_size = strlen(value);
+	size_t little_large_size = 10000;
+	size_t very_large_size = 100000;
+	if (json_str_size > little_large_size) {
+		auto json_gas_punishment_fork_height = global_uvm_chain_api->get_fork_height("JSON_GAS_PUNISHMENT");
+		if (json_gas_punishment_fork_height >= 0 && global_uvm_chain_api->get_header_block_num(L) >= json_gas_punishment_fork_height) {
+			auto common_extra_gas = 10 * json_str_size;
+			if (json_str_size > little_large_size) {
+				uvm::lua::lib::increment_lvm_instructions_executed_count(L, common_extra_gas - 1);
+			}
+			else if (json_str_size > very_large_size) {
+				uvm::lua::lib::increment_lvm_instructions_executed_count(L, 10 * common_extra_gas - 1);
+			}
+		}
+	}
 	lua_pushstring(L, value);
-	//printf("jsonlib2:%s",value);
 	return 1;
 }
 

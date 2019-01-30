@@ -809,4 +809,8 @@ namespace simplechain {
 				return "address";
 			}
 
+			int64_t SimpleChainUvmChainApi::get_fork_height(const std::string& fork_key) {
+				return -1;
+			}
+
 }

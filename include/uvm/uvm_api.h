@@ -587,6 +587,10 @@ namespace uvm {
 			virtual std::string ripemd160_hex(const std::string& hex_string) = 0;
 
 			virtual std::string get_address_role(lua_State* L, const std::string& addr) = 0;
+
+			// when fork height < 0, not has this fork
+			virtual int64_t get_fork_height(const std::string& fork_key) = 0;
+
           };
 
 
