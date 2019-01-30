@@ -170,6 +170,7 @@ namespace simplechain {
 				contract_invoke_result* contract_result = (contract_invoke_result*)op_result.get();
 				res["api_result"] = contract_result->api_result;
 				res["exec_succeed"] = contract_result->exec_succeed;
+				res["gas_used"] = contract_result->gas_used;
 				if (!contract_result->exec_succeed)
 					res["error"] = contract_result->error;
 			}

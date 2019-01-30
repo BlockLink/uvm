@@ -141,10 +141,11 @@ namespace simplechain {
 					}
 				}
 				std::string result_json_str;
-				engine->execute_contract_api_by_address(o.contract_address, o.contract_api, first_contract_arg, &result_json_str); //execute fail will throw e
 				if (o.deposit_amount > 0) {
 					update_account_asset_balance(o.contract_address, o.deposit_asset_id, o.deposit_amount);
 				}
+				engine->execute_contract_api_by_address(o.contract_address, o.contract_api, first_contract_arg, &result_json_str); //execute fail will throw e
+				
 				invoke_contract_result.api_result = result_json_str;
 			}
 			catch (std::exception &e)
