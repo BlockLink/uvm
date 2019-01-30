@@ -322,7 +322,6 @@ namespace simplechain {
 			return res;
 		}
 
-
 		//---------------add debug rpc ----------------------------------------------------------
 		RpcResultType set_breakpoint(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			//fc::variant res;

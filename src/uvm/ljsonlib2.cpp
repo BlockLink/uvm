@@ -40,11 +40,11 @@ static int json_to_lua(lua_State *L)
 		return 0;
 	if (!lua_isstring(L, 1))
 		return 0;
-	auto json_str = luaL_checkstring(L, 1);
+	auto json_str = std::string(luaL_checkstring(L, 1));
 	//uvm::lua::lib::UvmStateScope scope;
 	auto json_parser = std::make_shared<Json_Reader>();
 	UvmStorageValue root;
-	if (json_parser->parse(L, std::string(json_str), &root)) {
+	if (json_parser->parse(L, json_str, &root)) {
 		lua_push_storage_value(L, root);
 		return 1;
 	}
@@ -61,7 +61,7 @@ static int lua_to_json(lua_State *L)
 		return 0;
 	auto value = luaL_tojsonstring(L, 1, nullptr);
 	lua_pushstring(L, value);
-	printf("jsonlib2:%s",value);
+	// printf("jsonlib2:%s",value);
 	return 1;
 }
 

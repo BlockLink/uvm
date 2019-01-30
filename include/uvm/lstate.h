@@ -14,6 +14,7 @@
 #include <map>
 #include <stack>
 #include <cstddef>
+#include <unordered_map>
 
 #include "uvm/lua.h"
 
