@@ -21,6 +21,7 @@
 
 #include "uvm/lauxlib.h"
 #include "uvm/lualib.h"
+#include <uvm/lobject.h>
 
 using uvm::lua::api::global_uvm_chain_api;
 
@@ -890,85 +891,6 @@ static int str_gsub(lua_State *L) {
 ** =======================================================
 */
 
-#if !defined(lua_number2strx)	/* { */
-
-/*
-** Hexadecimal floating-point formatter
-*/
-
-#include <locale.h>
-#include <math.h>
-
-#define SIZELENMOD	(sizeof(LUA_NUMBER_FRMLEN)/sizeof(char))
-
-
-/*
-** Number of bits that goes into the first digit. It can be any value
-** between 1 and 4; the following definition tries to align the number
-** to nibble boundaries by making what is left after that first digit a
-** multiple of 4.
-*/
-#define L_NBFD		((l_mathlim(MANT_DIG) - 1)%4 + 1)
-
-
-/*
-** Add integer part of 'x' to buffer and return new 'x'
-*/
-static lua_Number adddigit(char *buff, int n, lua_Number x) {
-    lua_Number dd = l_mathop(floor)(x);  /* get integer part from 'x' */
-    int d = (int)dd;
-    buff[n] = (d < 10 ? d + '0' : d - 10 + 'a');  /* add to buffer */
-    return x - dd;  /* return what is left */
-}
-
-
-static int num2straux(char *buff, int sz, lua_Number x) {
-    if (x != x || x == HUGE_VAL || x == -HUGE_VAL)  /* inf or NaN? */
-        return l_sprintf(buff, sz, LUA_NUMBER_FMT, x);  /* equal to '%g' */
-    else if (x == 0) {  /* can be -0... */
-        /* create "0" or "-0" followed by exponent */
-        return l_sprintf(buff, sz, LUA_NUMBER_FMT "x0p+0", x);
-    }
-    else {
-        int e;
-        lua_Number m = l_mathop(frexp)(x, &e);  /* 'x' fraction and exponent */
-        int n = 0;  /* character count */
-        if (m < 0) {  /* is number negative? */
-            buff[n++] = '-';  /* add signal */
-            m = -m;  /* make it positive */
-        }
-        buff[n++] = '0'; buff[n++] = 'x';  /* add "0x" */
-        m = adddigit(buff, n++, m * (1 << L_NBFD));  /* add first digit */
-        e -= L_NBFD;  /* this digit goes before the radix point */
-        if (m > 0) {  /* more digits? */
-            buff[n++] = lua_getlocaledecpoint();  /* add radix point */
-            do {  /* add as many digits as needed */
-                m = adddigit(buff, n++, m * 16);
-            } while (m > 0);
-        }
-        n += l_sprintf(buff + n, sz - n, "p%+d", e);  /* add exponent */
-        lua_assert(n < sz);
-        return n;
-    }
-}
-
-
-static int lua_number2strx(lua_State *L, char *buff, int sz,
-    const char *fmt, lua_Number x) {
-    int n = num2straux(buff, sz, x);
-    if (fmt[SIZELENMOD] == 'A') {
-        int i;
-        for (i = 0; i < n; i++)
-            buff[i] = toupper(uchar(buff[i]));
-    }
-    else if (fmt[SIZELENMOD] != 'a')
-        luaL_error(L, "modifiers for format '%%a'/'%%A' not implemented");
-    return n;
-}
-
-#endif				/* } */
-
-
 /*
 ** Maximum size of each formatted item. This maximum size is produced
 ** by format('%.99f', -maxfloat), and is equal to 99 + 3 ('-', '.',
@@ -1078,11 +1000,6 @@ static int str_format(lua_State *L) {
                 nb = l_sprintf(buff, MAX_ITEM, form, n);
                 break;
             }
-            case 'a': case 'A':
-                addlenmod(form, LUA_NUMBER_FRMLEN);
-                nb = lua_number2strx(L, buff, MAX_ITEM, form,
-                    luaL_checknumber(L, arg));
-                break;
             case 'e': case 'E': case 'f':
             case 'g': case 'G': {
                 addlenmod(form, LUA_NUMBER_FRMLEN);
