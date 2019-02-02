@@ -5,6 +5,7 @@
 #include <simplechain/address_helper.h>
 #include <iostream>
 #include <uvm/uvm_lib.h>
+#include <fc/io/json.hpp>
 
 #include <fc/io/json.hpp>
 
@@ -125,7 +126,7 @@ namespace simplechain {
 						throw uvm::core::UvmException("only can deposit to contract by call api on_deposit_asset");
 					}
 					auto asset = chain->get_asset(o.deposit_asset_id);
-					if (!asset) {
+					if(!asset) {
 						throw uvm::core::UvmException(std::string("can't find asset #") + std::to_string(o.deposit_asset_id));
 					}
 					fc::mutable_variant_object depositArgs;
@@ -133,7 +134,6 @@ namespace simplechain {
 					depositArgs["symbol"] = asset->symbol;
 					depositArgs["param"] = first_contract_arg;
 					first_contract_arg = fc::json::to_string(depositArgs);
-					//first_contract_arg = std::to_string(o.deposit_amount) + "," + std::to_string(o.deposit_asset_id);
 				}
 				else {
 					if (std::find(uvm::lua::lib::contract_special_api_names.begin(), uvm::lua::lib::contract_special_api_names.end(), o.contract_api) != uvm::lua::lib::contract_special_api_names.end()) {
@@ -151,7 +151,7 @@ namespace simplechain {
 			catch (std::exception &e)
 			{
 				if (o.deposit_amount > 0) {
-					update_account_asset_balance(o.contract_address, o.deposit_asset_id, (0-(o.deposit_amount)));
+					update_account_asset_balance(o.contract_address, o.deposit_asset_id, (0 - (o.deposit_amount)));
 				}
 				throw uvm::core::UvmException(e.what());
 			}
@@ -167,9 +167,6 @@ namespace simplechain {
 				last_contract_engine_for_debugger = engine;
 
 			}
-			//if (engine->vm_state() & lua_VMState::LVM_STATE_BREAK) {
-			//	last_contract_engine_for_debugger = engine;
-			//}
 		}
 		catch (const std::exception& e)
 		{

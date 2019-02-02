@@ -11,8 +11,10 @@ namespace simplechain {
 	using namespace rpc;
 
 	static std::map<std::string, RpcHandlerType> rpc_methods = {
+
 	{ "mint", &mint },
 	{ "add_asset", &add_asset },
+	{ "register_account", &register_account },
 	{ "transfer", &transfer },
 	{ "create_contract_from_file", &create_contract_from_file },
 	{ "create_contract", &create_contract },

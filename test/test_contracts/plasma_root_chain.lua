@@ -324,9 +324,9 @@ end
 
 -- arg format: amount,assetSymbol
 function M:on_deposit_asset(arg: string)
-    let parsed = parse_at_least_args(arg, 2, "arg need format: amount,assetSymbol")
-    let amount = tointeger(parsed[1]) 
-    let uid = tostring(parsed[2])   
+    let parsed = json.loads(arg)
+    let amount = tointeger(parsed.num) 
+    let uid = tostring(parsed.symbol)   
     let from_caller = get_from_address()
     let from = from_caller
     create_coin(self, from, uid, amount, amount)

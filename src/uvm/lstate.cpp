@@ -322,7 +322,12 @@ static size_t align8(size_t s) {
 
 void *lua_malloc(lua_State *L, size_t size)
 {
-	return L->gc_state->gc_malloc(size);
+	auto p = L->gc_state->gc_malloc(size);
+    if(!p) {
+        uvm::lua::lib::notify_lua_state_stop(L);
+        return nullptr;
+    }
+    return p;
 }
 
 void* lua_realloc(lua_State *L, void* addr, size_t old_size, size_t new_size)
