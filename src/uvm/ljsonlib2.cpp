@@ -61,7 +61,7 @@ static int lua_to_json(lua_State *L)
 		return 0;
 	auto value = luaL_tojsonstring(L, 1, nullptr);
 	lua_pushstring(L, value);
-	printf("jsonlib2:%s",value);
+	//printf("jsonlib2:%s",value);
 	return 1;
 }
 
