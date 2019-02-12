@@ -29,4 +29,4 @@ namespace simplechain {
 	};
 }
 
-FC_REFLECT(simplechain::transaction, (tx_time)(operations))
+FC_REFLECT(simplechain::transaction, (tx_nonce)(tx_time)(operations))
