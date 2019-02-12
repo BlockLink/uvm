@@ -119,9 +119,9 @@ namespace uvm {
 
 			std::map<std::string, TValue> view_localvars(lua_State* L) const;
 			std::map<std::string, TValue> view_upvalues(lua_State* L) const;
-			TValue ExecuteContext::view_contract_storage_value(lua_State* L, const char *name, const char* fast_map_key, bool is_fast_map) const;
+			TValue view_contract_storage_value(lua_State* L, const char *name, const char* fast_map_key, bool is_fast_map) const;
 			uint32_t current_line() const;
-			std::vector<std::string> ExecuteContext::view_call_stack(lua_State* L) const;
+			std::vector<std::string> view_call_stack(lua_State* L) const;
 		};
 	}
 }
