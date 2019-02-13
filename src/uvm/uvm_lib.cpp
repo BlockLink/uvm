@@ -1173,6 +1173,64 @@ namespace uvm
 				return 0;
 			}
 
+			static int uvm_core_lib_pairs_by_keys_func_loader(lua_State *L)
+			{
+				lua_getglobal(L, "__real_pairs_by_keys_func");
+				bool exist = !lua_isnil(L, -1) && (lua_isfunction(L, -1) || lua_iscfunction(L, -1));
+				lua_pop(L, 1);
+				if (exist)
+					return 0;
+				// pairsByKeys' iterate order is number first(than string), short string first(than long string), little ASCII string first
+				const char *code = R"END(
+function __real_pairs_by_keys_func(t)
+	local hashes = {}  
+	local n = nil
+	local int_key_size = 0;
+	local int_hashes = {}
+    for n in __old_pairs(t) do
+		if type(n) == 'number' then
+			int_key_size = int_key_size + 1
+			int_hashes[#int_hashes+1] = n
+		else
+			hashes[#hashes+1] = tostring(n)
+		end
+    end  
+	table.sort(int_hashes)
+    table.sort(hashes)  
+	local k = 0
+	while k < #hashes do
+		k = k + 1
+	end
+    local i = 0  
+    return function()  
+        i = i + 1  
+		if i <= int_key_size then
+			return int_hashes[i], t[int_hashes[i]]
+		end
+        return hashes[i-int_key_size], t[hashes[i-int_key_size]] 
+    end  
+end
+)END";
+				luaL_dostring(L, code);
+				return 0;
+			}
+
+			/*
+			function pairsByKeys(t)
+			uvm_core_lib_pairs_by_keys_func_loader()
+			return __real_pairs_by_keys_func(t)
+			end
+			*/
+			static int uvm_core_lib_pairs_by_keys(lua_State *L)
+			{
+				lua_getglobal(L, "uvm_core_lib_pairs_by_keys_func_loader");
+				lua_call(L, 0, 0);
+				lua_getglobal(L, "__real_pairs_by_keys_func");
+				lua_pushvalue(L, 1);
+				lua_call(L, 1, 1);
+				return 1;
+			}
+
             lua_State *create_lua_state(bool use_contract)
             {
                 lua_State *L = luaL_newstate();
@@ -1235,6 +1293,19 @@ namespace uvm
 
 				add_global_c_function(L, "fast_map_get", &fast_map_get);
 				add_global_c_function(L, "fast_map_set", &fast_map_set);
+
+				/*
+				__old_pairs = pairs
+				pairs = pairsByKeys
+				*/
+				lua_pushinteger(L, 0);
+				lua_setglobal(L, "__real_pairs_by_keys_func");
+				add_global_c_function(L, "uvm_core_lib_pairs_by_keys_func_loader", &uvm_core_lib_pairs_by_keys_func_loader);
+				lua_getglobal(L, "pairs");
+				lua_setglobal(L, "__old_pairs");
+				lua_pushcfunction(L, &uvm_core_lib_pairs_by_keys);
+				lua_setglobal(L, "pairs");
+				//------------------------------------------------------------
 
 				add_global_c_function(L, "hex_to_bytes", hex_to_bytes);
 				add_global_c_function(L, "bytes_to_hex", bytes_to_hex);
