@@ -636,6 +636,10 @@ namespace uvm {
 				return "address";
 			}
 
+			int64_t DemoUvmChainApi::get_fork_height(const std::string& fork_key) {
+				return -1;
+			}
+
 		}
 	}
 }

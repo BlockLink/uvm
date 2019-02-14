@@ -16,6 +16,9 @@
 
 #include "cborcpp/encoder.h"
 #include "cborcpp/exceptions.h"
+#include <iomanip>
+#include <string>
+#include <sstream>
 
 using namespace cbor;
 
@@ -78,6 +81,14 @@ void encoder::write_type_value(int major_type, uint64_t value) {
     }
 }
 
+void encoder::write_type_value(int major_type, CborDoubleValue value) {
+	std::stringstream ss;
+	ss << std::setprecision(std::numeric_limits<double>::digits10 + 2) << std::fixed << value;
+	std::string value_str = ss.str();
+	write_type_value(major_type, (unsigned int)value_str.size());
+	_out->put_bytes((const unsigned char *)value_str.c_str(), (int)value_str.size());
+}
+
 void encoder::write_int(uint32_t value) {
     write_type_value(0, value);
 }
@@ -130,8 +141,13 @@ void encoder::write_tag(const unsigned int tag) {
     write_type_value(6, tag);
 }
 
-void encoder::write_special(int special) {
-    write_type_value(7, (unsigned int) special);
+//void encoder::write_special(int special) {
+//    write_type_value(7, (unsigned int) special);
+//}
+
+// float major type as special type
+void encoder::write_float64(CborDoubleValue value) {
+	write_type_value(7, value);
 }
 
 void encoder::write_bool(bool value) {
@@ -150,7 +166,7 @@ void encoder::write_undefined() {
     _out->put_byte((unsigned char) 0xf7);
 }
 
-void encoder::write_cbor_object(CborObjectP value) {
+void encoder::write_cbor_object(const CborObject* value) {
 	if (!value)
 		return;
 	switch (value->object_type()) {
@@ -167,10 +183,13 @@ void encoder::write_cbor_object(CborObjectP value) {
 		write_int(value->as_int());
 		return;
 	case CborObjectType::COT_EXTRA_INT:
-		write_int(value->as<uint64_t>());
+		write_int(value->as<cbor::CborExtraIntValue>());
 		return;
 	case CborObjectType::COT_STRING:
 		write_string(value->as_string());
+		return;
+	case CborObjectType::COT_FLOAT:
+		write_float64(value->as_float64());
 		return;
 	case CborObjectType::COT_BYTES: {
 		const auto& bytes = value->as_bytes();
@@ -183,17 +202,17 @@ void encoder::write_cbor_object(CborObjectP value) {
 	case CborObjectType::COT_EXTRA_TAG:
 		write_tag(value->as<uint64_t>());
 		return;
-	case CborObjectType::COT_SPECIAL:
+	/*case CborObjectType::COT_SPECIAL:
 		write_special(value->as_special());
 		return;
 	case CborObjectType::COT_EXTRA_SPECIAL:
 		write_special(value->as<uint64_t>());
-		return;
+		return;*/
 	case CborObjectType::COT_ARRAY: {
 		const auto& array_value = value->as_array();
 		write_array(array_value.size());
 		for (const auto& item : array_value) {
-			write_cbor_object(item);
+			write_cbor_object(item.get());
 		}
 		return;
 	}
@@ -202,7 +221,7 @@ void encoder::write_cbor_object(CborObjectP value) {
 		write_map(map_value.size());
 		for (const auto& p : map_value) {
 			write_string(p.first);
-			write_cbor_object(p.second);
+			write_cbor_object(p.second.get());
 		}
 		return;
 	}

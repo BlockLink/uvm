@@ -393,6 +393,7 @@ LUAI_FUNC const char *luaO_pushvfstring(lua_State *L, const char *fmt,
 LUAI_FUNC const char *luaO_pushfstring(lua_State *L, const char *fmt, ...);
 LUAI_FUNC void luaO_chunkid(char *out, const char *source, size_t len);
 
+LUAI_FUNC size_t lua_number2str_impl(char* s, size_t sz, lua_Number n);
 
 
 unsigned int luaS_hash(const char *str, size_t l, unsigned int seed);
