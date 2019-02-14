@@ -11,7 +11,7 @@ using namespace simplechain;
 
 int main(int argc, char** argv) {
 	std::cout << "Hello, simplechain based on uvm" << std::endl;
-	cbor_diff::test_cbor_diff();
+	// cbor_diff::test_cbor_diff();
 	try {
 		auto chain = std::make_shared<simplechain::blockchain>();
 
