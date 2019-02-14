@@ -4,13 +4,14 @@
 #include <uvm/uvm_lutil.h>
 #include <fc/crypto/hex.hpp>
 #include <cbor_diff/cbor_diff.h>
+#include <cbor_diff/cbor_diff_tests.h>
 
 using namespace simplechain;
 #ifndef RUN_BOOST_TESTS
 
 int main(int argc, char** argv) {
 	std::cout << "Hello, simplechain based on uvm" << std::endl;
-
+	cbor_diff::test_cbor_diff();
 	try {
 		auto chain = std::make_shared<simplechain::blockchain>();
 
