@@ -1,11 +1,14 @@
 #pragma once
 
 #include <boost/variant.hpp>
+#include <fc/variant.hpp>
+#include <fc/static_variant.hpp>
+#include <fc/fwd_impl.hpp>
 #include <vector>
 #include <map>
 #include <memory>
 #include <algorithm>
-#include "cborcpp/exceptions.h"
+#include <cborcpp/exceptions.h>
 
 namespace cbor {
 	enum CborObjectType {
@@ -16,19 +19,24 @@ namespace cbor {
 		COT_ARRAY,
 		COT_MAP,
 		COT_TAG,
-		COT_SPECIAL,
+
+		COT_FLOAT,
+		// COT_SPECIAL,
+
 		COT_UNDEFINED,
 		COT_NULL,
 		COT_ERROR,
 		COT_EXTRA_INT,
 		COT_EXTRA_TAG,
-		COT_EXTRA_SPECIAL
+		//COT_EXTRA_SPECIAL,
+
 	};
 	struct CborObject;
 	typedef std::shared_ptr<CborObject> CborObjectP;
 	typedef bool CborBoolValue;
 	typedef int64_t CborIntValue;
 	typedef uint32_t CborTagValue;
+	typedef double CborDoubleValue;
 	typedef std::vector<char> CborBytesValue;
 	typedef std::vector<CborObjectP> CborArrayValue;
 	typedef std::map<std::string, CborObjectP, std::less<std::string>> CborMapValue;
@@ -36,8 +44,9 @@ namespace cbor {
 	typedef std::string CborErrorValue;
 	typedef uint64_t CborExtraIntValue;
 	typedef uint32_t CborSpecialValue;
-	typedef uint64_t CborExtraSpecialValue;
-	typedef boost::variant<CborBoolValue, CborIntValue, CborExtraIntValue, CborTagValue, CborStringValue, CborBytesValue, CborArrayValue, CborMapValue> CborObjectValue;
+	//typedef uint64_t CborExtraSpecialValue;
+	typedef fc::static_variant<CborBoolValue, CborIntValue, CborExtraIntValue, CborDoubleValue, CborTagValue, CborStringValue, CborBytesValue,
+		CborArrayValue, CborMapValue> CborObjectValue;
 
 	struct CborObject {
 		CborObjectType type;
@@ -47,7 +56,7 @@ namespace cbor {
 
 		template <typename T>
 		const T& as() const {
-			return boost::get<T>(value);
+			return value.get<T>();
 		}
 
 		inline bool is_null() const {
@@ -59,8 +68,17 @@ namespace cbor {
 		inline bool is_int() const {
 			return COT_INT == type;
 		}
+		inline bool is_extra_int() const {
+			return COT_EXTRA_INT == type;
+		}
+		inline bool is_integer() const {
+			return is_int() || is_extra_int();
+		}
 		inline bool is_string() const {
 			return COT_STRING == type;
+		}
+		inline bool is_float() const {
+			return COT_FLOAT == type;
 		}
 		inline bool is_bytes() const {
 			return COT_BYTES == type;
@@ -77,9 +95,9 @@ namespace cbor {
 		inline bool is_tag() const {
 			return COT_TAG == type;
 		}
-		inline bool is_special() const {
+		/*inline bool is_special() const {
 			return COT_SPECIAL == type;
-		}
+		}*/
 		inline CborObjectType object_type() const {
 			return type;
 		}
@@ -88,6 +106,9 @@ namespace cbor {
 		}
 		inline const CborIntValue& as_int() const {
 			return as<CborIntValue>();
+		}
+		inline const CborExtraIntValue as_extra_int() const {
+			return as<CborExtraIntValue>();
 		}
 		inline const CborTagValue& as_tag() const {
 			return as<CborTagValue>();
@@ -107,20 +128,29 @@ namespace cbor {
 		inline const CborStringValue& as_string() const {
 			return as<CborStringValue>();
 		}
+		inline const CborDoubleValue& as_float64() const {
+			return as<CborDoubleValue>();
+		}
 
+		std::string str() const;
+
+		static CborObjectP from(const CborObjectValue& value);
 
 		static CborObjectP from_int(CborIntValue value);
 		static CborObjectP from_bool(CborBoolValue value);
 		static CborObjectP from_bytes(const CborBytesValue& value);
+		static CborObjectP from_float64(const CborDoubleValue& value);
 		static CborObjectP from_string(const std::string& value);
 		static CborObjectP create_array(size_t size);
+		static CborObjectP create_array(const CborArrayValue& items);
 		static CborObjectP create_map(size_t size);
+		static CborObjectP create_map(const CborMapValue& items);
 		static CborObjectP from_tag(CborTagValue value);
 		static CborObjectP create_undefined();
 		static CborObjectP create_null();
-		static CborObjectP from_special(uint32_t value);
+		// static CborObjectP from_special(uint32_t value);
 		static CborObjectP from_extra_integer(uint64_t value, bool sign);
 		static CborObjectP from_extra_tag(uint64_t value);
-		static CborObjectP from_extra_special(uint64_t value);
+		// static CborObjectP from_extra_special(uint64_t value);
 	};
 }

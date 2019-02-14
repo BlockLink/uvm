@@ -447,7 +447,7 @@ namespace uvm
 					}
 					cbor::output_dynamic output;
 					cbor::encoder encoder(output);
-					encoder.write_cbor_object(cbor_object);
+					encoder.write_cbor_object(cbor_object.get());
 					const auto& output_hex = output.hex();
 					lua_pushstring(L, output_hex.c_str());
 					return 1;
