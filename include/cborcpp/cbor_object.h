@@ -3,7 +3,6 @@
 #include <boost/variant.hpp>
 #include <fc/variant.hpp>
 #include <fc/static_variant.hpp>
-#include <fc/fwd_impl.hpp>
 #include <vector>
 #include <map>
 #include <memory>
