@@ -1,6 +1,7 @@
 #include <cbor_diff/cbor_diff_tests.h>
 #include <cborcpp/cbor.h>
 #include <cbor_diff/cbor_diff.h>
+#include <jsondiff/jsondiff.h>
 
 namespace cbor_diff {
 
@@ -9,7 +10,15 @@ namespace cbor_diff {
 	using namespace cbor_diff;
 
 	void test_cbor_diff() {
-
+		{
+			double a = 1.2345678901;
+			auto json_encoded = jsondiff::json_dumps(a);
+			auto a_encoded = cbor_encode(CborObject::from_float64(a));
+			auto json_decoded = jsondiff::json_loads(json_encoded).as_double();
+			auto a_decoded = cbor_decode(a_encoded);
+			auto cbor_decoded_value = a_decoded->as_float64();
+			printf("a: %.10f, a_encoded: %s, json_encoded: %s, json_decoded: %.10f, a_decoded: %.10f", a, a_encoded, json_encoded, json_decoded, cbor_decoded_value);
+		}
 		{
 			CborDiff differ;
 			auto a = CborObject::from_int(123);
