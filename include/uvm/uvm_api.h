@@ -66,7 +66,7 @@
 #define CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT 50
 
 // use jsondiff or cbor_diff to diff storage
-#define USE_CBOR_DIFF true
+#define USE_CBOR_DIFF false
 
 // ，register_object_in_pool
 enum UvmOutsideObjectTypes
