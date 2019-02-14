@@ -22,6 +22,8 @@
 #include <uvm/lua.h>
 #include <jsondiff/jsondiff.h>
 #include <jsondiff/exceptions.h>
+#include <cborcpp/cbor.h>
+#include <cbor_diff/cbor_diff.h>
 
 #define LOG_INFO(...)  fprintf(stderr, "[INFO] " ##__VA_ARGS__)
 
@@ -60,8 +62,11 @@
 // storagerecord
 #define CONTRACT_STORAGE_PROPERTIES_MAX_COUNT 256
 
-// uvmAPIAPI
+// uvm API
 #define CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT 50
+
+// use jsondiff or cbor_diff to diff storage
+#define USE_CBOR_DIFF true
 
 // ，register_object_in_pool
 enum UvmOutsideObjectTypes
@@ -409,6 +414,7 @@ typedef struct UvmStorageChangeItem
     std::string contract_id;
     std::string key;
 	jsondiff::DiffResult diff;
+	cbor_diff::DiffResult cbor_diff;
 	std::string fast_map_key;
 	bool is_fast_map = false;
     struct UvmStorageValue before;
@@ -437,6 +443,9 @@ bool lua_push_storage_value(lua_State *L, const UvmStorageValue &value);
 
 UvmStorageValue json_to_uvm_storage_value(lua_State *L, jsondiff::JsonValue json_value);
 jsondiff::JsonValue uvm_storage_value_to_json(UvmStorageValue value);
+
+UvmStorageValue cbor_to_uvm_storage_value(lua_State *L, cbor::CborObject* cbor_value);
+cbor::CborObjectP uvm_storage_value_to_cbor(UvmStorageValue value);
 
 typedef std::unordered_map<std::string, UvmStorageChangeItem> ContractChangesMap;
 
