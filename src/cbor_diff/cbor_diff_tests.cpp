@@ -2,6 +2,7 @@
 #include <cborcpp/cbor.h>
 #include <cbor_diff/cbor_diff.h>
 #include <jsondiff/jsondiff.h>
+#include <iostream>
 
 namespace cbor_diff {
 
