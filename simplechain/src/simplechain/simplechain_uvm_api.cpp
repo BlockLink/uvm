@@ -809,12 +809,20 @@ namespace simplechain {
 				return "address";
 			}
 
-			int64_t SimpleChainUvmChainApi::get_fork_height(const std::string& fork_key) {
+			int64_t SimpleChainUvmChainApi::get_fork_height(lua_State* L, const std::string& fork_key) {
 				return -1;
 			}
 
-			bool SimpleChainUvmChainApi::use_cbor_diff() const {
-				return true;
+			bool SimpleChainUvmChainApi::use_cbor_diff(lua_State* L) const {
+				if (1 == L->cbor_diff_state) {
+					return true;
+				}
+				else if (2 == L->cbor_diff_state) {
+					return false;
+				}
+				auto result = true;
+				L->cbor_diff_state = result ? 1 : 2; // cache it
+				return result;
 			}
 
 }
