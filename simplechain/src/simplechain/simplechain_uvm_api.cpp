@@ -813,4 +813,8 @@ namespace simplechain {
 				return -1;
 			}
 
+			bool SimpleChainUvmChainApi::use_cbor_diff() const {
+				return true;
+			}
+
 }

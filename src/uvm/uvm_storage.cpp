@@ -509,7 +509,7 @@ static UvmStorageChangeItem diff_storage_change_if_is_table(lua_State *L, UvmSto
 		return change_item;
 	try
 	{
-		if (USE_CBOR_DIFF) {
+		if (global_uvm_chain_api->use_cbor_diff()) {
 			const auto &before_cbor = uvm_storage_value_to_cbor(change_item.before);
 			const auto &after_cbor = uvm_storage_value_to_cbor(change_item.after);
 			cbor_diff::CborDiff differ;

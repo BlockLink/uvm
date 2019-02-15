@@ -547,6 +547,10 @@ namespace uvm {
 				return -1;
 			}
 
+			bool DemoUvmChainApi::use_cbor_diff() const {
+				return true;
+			}
+
 		}
 	}
 }

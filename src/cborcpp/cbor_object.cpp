@@ -41,7 +41,7 @@ namespace cbor {
 		{
 			const auto& items = as_map();
 			std::stringstream ss;
-			ss << "[";
+			ss << "{";
 			auto begin = items.begin();
 			for (auto it = items.begin(); it != items.end();it++) {
 				if (it != begin) {
@@ -49,7 +49,7 @@ namespace cbor {
 				}
 				ss << it->first << ": " << it->second->str();
 			}
-			ss << "]";
+			ss << "}";
 			return ss.str();
 		}
 		default:
