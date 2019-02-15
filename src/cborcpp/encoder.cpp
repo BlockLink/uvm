@@ -183,7 +183,7 @@ void encoder::write_cbor_object(const CborObject* value) {
 		write_int(value->as_int());
 		return;
 	case CborObjectType::COT_EXTRA_INT:
-		write_int(value->as<cbor::CborExtraIntValue>());
+		write_int(value->as_extra_int());
 		return;
 	case CborObjectType::COT_STRING:
 		write_string(value->as_string());

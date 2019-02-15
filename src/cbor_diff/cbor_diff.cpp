@@ -153,7 +153,7 @@ namespace cbor_diff {
 					continue;
 				}
 				auto op_item = diff_item[0]->as_string();
-				auto pos = diff_item[1]->as_int();
+				auto pos = diff_item[1]->is_int() ? diff_item[1]->as_int() : diff_item[1]->as_extra_int();
 				auto inner_diff_json = diff_item[2];
 				// FIXME； 一个array有多项变化的时候， diff里的索引是用原始对象的index，所以这里应该找出 pos => old_json中同值的pos
 				if (op_item == std::string("+"))
@@ -435,7 +435,7 @@ namespace cbor_diff {
 				if (diff_item.size() != 3)
 					throw CborDiffException("diffjson format error for array diff");
 				auto op_item = diff_item[0]->as_string();
-				auto pos = diff_item[1]->as_int();
+				auto pos = diff_item[1]->is_int() ? diff_item[1]->as_int() : diff_item[1]->as_extra_int();
 				auto inner_diff_json = diff_item[2];
 				// FIXME； 一个array有多项变化的时候， diff里的索引是用原始对象的index，所以这里应该找出 pos => old_json中同值的pos
 				if (op_item == std::string("+"))
@@ -541,7 +541,7 @@ namespace cbor_diff {
 				if (diff_item.size() != 3)
 					throw CborDiffException("diffjson format error for array diff");
 				auto op_item = diff_item[0]->as_string();
-				auto pos = diff_item[1]->as_int(); // pos是old的pos， FIXME： 新旧对象的pos不一定一样
+				auto pos = diff_item[1]->is_int() ? diff_item[1]->as_int() : diff_item[1]->as_extra_int(); // pos是old的pos， FIXME： 新旧对象的pos不一定一样
 				auto inner_diff_json = diff_item[2];
 				// FIXME； 一个array有多项变化的时候， diff里的索引是用原始对象的index，所以这里应该找出 pos => old_json中同值的pos
 				if (op_item == std::string("-"))
