@@ -167,6 +167,8 @@ namespace simplechain {
 
 		virtual int64_t get_fork_height(const std::string& fork_key) override;
 
+		virtual bool use_cbor_diff() const override;
+
       };
 
 }
