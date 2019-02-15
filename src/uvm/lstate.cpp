@@ -349,6 +349,8 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
 	L->evalstack = luaM_newvector(L, L->evalstacksize, TValue);
 	L->evalstacktop = L->evalstack;
 
+	L->cbor_diff_state = 0;
+
 	L->allow_contract_modify = 0;
 	L->contract_table_addresses = new std::list<intptr_t>();
 

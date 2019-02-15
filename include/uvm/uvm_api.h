@@ -595,10 +595,10 @@ namespace uvm {
 			virtual std::string get_address_role(lua_State* L, const std::string& addr) = 0;
 
 			// when fork height < 0, not has this fork
-			virtual int64_t get_fork_height(const std::string& fork_key) = 0;
+			virtual int64_t get_fork_height(lua_State* L, const std::string& fork_key) = 0;
 
 			// whether use cbor diff in storage diff
-			virtual bool use_cbor_diff() const = 0;
+			virtual bool use_cbor_diff(lua_State* L) const = 0;
 
           };
 
