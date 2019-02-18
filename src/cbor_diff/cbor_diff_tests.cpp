@@ -132,7 +132,7 @@ namespace cbor_diff {
 		{
 			// test big int and big double
 			auto a = CborObject::from_extra_integer(6000000000, true);
-			auto b = CborObject::from(1.23456789);
+			auto b = CborObject::from_float64(1.23456789);
 			const auto& a_json_str = cbor_encode(a);
 			const auto& b_json_str = cbor_encode(b);
 			auto a_loaded = cbor_decode(a_json_str);
