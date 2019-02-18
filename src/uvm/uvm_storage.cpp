@@ -189,7 +189,7 @@ UvmStorageValue cbor_to_uvm_storage_value(lua_State *L, cbor::CborObject* cbor_v
 	else if (cbor_value->is_int() || cbor_value->is_extra_int())
 	{
 		value.type = uvm::blockchain::StorageValueTypes::storage_value_int;
-		value.value.int_value = cbor_value->is_int() ? cbor_value->as_int() : cbor_value->as_extra_int();
+		value.value.int_value = cbor_value->force_as_int();
 		return value;
 	}
 	else if (cbor_value->is_float())

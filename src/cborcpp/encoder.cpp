@@ -97,6 +97,10 @@ void encoder::write_int(uint64_t value) {
     write_type_value(0, value);
 }
 
+void encoder::write_neg_int(uint64_t value) {
+	write_type_value(1, value);
+}
+
 void encoder::write_int(int64_t value) {
     if(value < 0) {
         write_type_value(1, (uint64_t) -(value+1));
@@ -183,7 +187,12 @@ void encoder::write_cbor_object(const CborObject* value) {
 		write_int(value->as_int());
 		return;
 	case CborObjectType::COT_EXTRA_INT:
-		write_int(value->as_extra_int());
+		if (value->is_positive_extra) {
+			write_int(value->as_extra_int());
+		}
+		else {
+			write_neg_int(value->as_extra_int());
+		}
 		return;
 	case CborObjectType::COT_STRING:
 		write_string(value->as_string());
@@ -200,7 +209,7 @@ void encoder::write_cbor_object(const CborObject* value) {
 		write_tag(value->as_tag());
 		return;
 	case CborObjectType::COT_EXTRA_TAG:
-		write_tag(value->as<uint64_t>());
+		write_tag(value->as_extra_tag());
 		return;
 	/*case CborObjectType::COT_SPECIAL:
 		write_special(value->as_special());
