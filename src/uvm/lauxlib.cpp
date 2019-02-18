@@ -2875,7 +2875,7 @@ LUALIB_API int luaL_push_cbor_as_json(lua_State* L, cbor::CborObjectP cbor_objec
 		lua_pushinteger(L, cbor_object->as_int());
 		return 1;
 	case cbor::CborObjectType::COT_EXTRA_INT:
-		lua_pushinteger(L, cbor_object->as<uint64_t>());
+		lua_pushinteger(L, cbor_object->as_extra_int());
 		return 1;
 	case cbor::CborObjectType::COT_STRING: {
 		const auto& str = cbor_object->as_string();

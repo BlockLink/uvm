@@ -109,6 +109,7 @@ namespace cbor {
 		inline const CborExtraIntValue as_extra_int() const {
 			return as<CborExtraIntValue>();
 		}
+		CborIntValue force_as_int() const;
 		inline const CborTagValue& as_tag() const {
 			return as<CborTagValue>();
 		}

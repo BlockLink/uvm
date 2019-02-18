@@ -5,26 +5,42 @@
 
 namespace cbor {
 
+	CborIntValue CborObject::force_as_int() const {
+		if (is_int()) {
+			return as_int();
+		}
+		else if (is_extra_int()) {
+			return static_cast<CborIntValue>(as_extra_int());
+		}
+		else {
+			FC_THROW_EXCEPTION(fc::assert_exception, "this cbor_object with can't be passed as int");
+		}
+	}
+
 	std::string CborObject::str() const {
-		switch (value.which()) {
-		case CborObjectValue::tag<CborBoolValue>::value:
+		switch (type) {
+		case COT_NULL:
+			return "null";
+		case COT_UNDEFINED:
+			return "undefined";
+		case COT_BOOL:
 			return as_bool() ? "true" : "false";
-		case CborObjectValue::tag<CborIntValue>::value:
+		case COT_INT:
 			return std::to_string(as_int());
-		case CborObjectValue::tag<CborExtraIntValue>::value:
+		case COT_EXTRA_INT:
 			return std::to_string(as_extra_int());
-		case CborObjectValue::tag<CborDoubleValue>::value:
+		case COT_FLOAT:
 			return std::to_string(as_float64());
-		case CborObjectValue::tag<CborTagValue>::value:
+		case COT_TAG:
 			return std::string("tag<") + std::to_string(as_tag()) + ">";
-		case CborObjectValue::tag<CborStringValue>::value:
+		case COT_STRING:
 			return as_string();
-		case CborObjectValue::tag<CborBytesValue>::value: {
+		case COT_BYTES: {
 			const auto& bytes = as_bytes();
 			const auto& hex = fc::to_hex(bytes);
 			return std::string("bytes<") + hex + ">";
 		}
-		case CborObjectValue::tag<CborArrayValue>::value: {
+		case COT_ARRAY: {
 			const auto& items = as_array();
 			std::stringstream ss;
 			ss << "[";
@@ -37,7 +53,7 @@ namespace cbor {
 			ss << "]";
 			return ss.str();
 		} break;
-		case CborObjectValue::tag<CborMapValue>::value:
+		case COT_MAP:
 		{
 			const auto& items = as_map();
 			std::stringstream ss;

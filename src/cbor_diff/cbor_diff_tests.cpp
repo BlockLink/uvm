@@ -2,6 +2,8 @@
 #include <cborcpp/cbor.h>
 #include <cbor_diff/cbor_diff.h>
 #include <jsondiff/jsondiff.h>
+#include <uvm/uvm_storage.h>
+#include <uvm/uvm_lib.h>
 #include <iostream>
 
 namespace cbor_diff {
@@ -130,7 +132,7 @@ namespace cbor_diff {
 		{
 			// test big int and big double
 			auto a = CborObject::from_extra_integer(6000000000, true);
-			auto b = CborObject::from(1.23456789);
+			auto b = CborObject::from_float64(1.23456789);
 			const auto& a_json_str = cbor_encode(a);
 			const auto& b_json_str = cbor_encode(b);
 			auto a_loaded = cbor_decode(a_json_str);
@@ -139,6 +141,32 @@ namespace cbor_diff {
 			assert(a_loaded->is_extra_int() && a_loaded->as_extra_int() == a->as_extra_int());
 			assert(b_loaded->is_float() && abs(b_loaded->as_float64() - b->as_float64()) < 0.0001);
 			std::cout << "big int and big double tests passed" << std::endl;
+		}
+		{
+			auto a = CborObject::from_extra_integer(6000000000, true);
+			auto b = CborObject::from_int(1234567890);
+			auto c = CborObject::from_int(100);
+			auto d = CborObject::create_null();
+			auto e = CborObject::from_bool(true);
+			auto f = CborObject::from_float64(1.23);
+			auto g = CborObject::from_string("hello");
+			lua_State *L = uvm::lua::lib::create_lua_state();
+			const auto& a_storage = cbor_to_uvm_storage_value(L, a.get());
+			const auto& b_storage = cbor_to_uvm_storage_value(L, b.get());
+			const auto& c_storage = cbor_to_uvm_storage_value(L, c.get());
+			const auto& d_storage = cbor_to_uvm_storage_value(L, d.get());
+			const auto& e_storage = cbor_to_uvm_storage_value(L, e.get());
+			const auto& f_storage = cbor_to_uvm_storage_value(L, f.get());
+			const auto& g_storage = cbor_to_uvm_storage_value(L, g.get());
+			auto a1 = uvm_storage_value_to_cbor(a_storage);
+			auto b1 = uvm_storage_value_to_cbor(b_storage);
+			auto c1 = uvm_storage_value_to_cbor(c_storage);
+			auto d1 = uvm_storage_value_to_cbor(d_storage);
+			auto e1 = uvm_storage_value_to_cbor(e_storage);
+			auto f1 = uvm_storage_value_to_cbor(f_storage);
+			auto g1 = uvm_storage_value_to_cbor(g_storage);
+			std::cout << "a1: " << a1->str() << " b1: " << b1->str() << " c1: " << c1->str() << std::endl;
+			std::cout << "d1: " << d1->str() << " e1: " << e1->str() << " f1: " << f1->str() << " g1: " << g1->str() << std::endl;
 		}
 	}
 }
