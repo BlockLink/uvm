@@ -32,7 +32,11 @@ decoder::~decoder() {
 static CborObjectP cbor_object_error(const std::string& error_msg) {
 	auto result = std::make_shared<CborObject>();
 	result->type = CborObjectType::COT_ERROR;
+#if defined(CBOR_OBJECT_USE_VARIANT)
 	result->value = error_msg;
+#else
+	result->value.string_val = error_msg;
+#endif
 	return result;
 }
 
@@ -52,7 +56,11 @@ static void put_decoded_value(CborObjectP& result, std::vector<CborObjectP>& str
 	}
 	auto last = structures_stack[old_structures_stack_size - 1];
 	if (last->type == COT_ARRAY) {
+#if defined(CBOR_OBJECT_USE_VARIANT)
 		auto& array_value = last->value.get<CborArrayValue>();
+#else
+		auto& array_value = last->value.array_val;
+#endif
 		array_value.push_back(value);
 		if (array_value.size() >= last->array_or_map_size) {
 			// full, pop from structure
@@ -66,8 +74,12 @@ static void put_decoded_value(CborObjectP& result, std::vector<CborObjectP>& str
 			if (map_key_temp->type != COT_STRING) {
 				throw cbor_decode_exception("invalid map key type");
 			}
-			const auto& key = map_key_temp->value.get<CborStringValue>();
+			const auto& key = map_key_temp->as_string();
+#if defined(CBOR_OBJECT_USE_VARIANT)
 			auto& map_value = last->value.get<CborMapValue>();
+#else
+			auto& map_value = last->value.map_val;
+#endif
 			map_value[key] = value;
 			if (map_value.size() >= last->array_or_map_size) {
 				// full, pop from structure

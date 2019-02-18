@@ -29,8 +29,8 @@ namespace cbor_diff {
 			b_map["a"] = CborObject::from_bool(true);
 			auto hello = CborObject::from_string("hello");
 			b_map["b"] = hello;
-			auto b = CborObject::from(b_map);
-			auto c = CborObject::from(1.23456789);
+			auto b = CborObject::create_map(b_map);
+			auto c = CborObject::from_float64(1.23456789);
 			auto origin = cbor_encode(a);
 			auto result = cbor_encode(b);
 			auto c_encoded = cbor_encode(c);
@@ -54,7 +54,7 @@ namespace cbor_diff {
 			b_map["a"] = CborObject::from_bool(true);
 			auto hello = CborObject::from_string("hello");
 			b_map["b"] = hello;
-			auto b = CborObject::from(b_map);
+			auto b = CborObject::create_map(b_map);
 			auto null_val = CborObject::create_null();
 			auto origin = null_val;
 			auto result = b;
@@ -150,6 +150,7 @@ namespace cbor_diff {
 			auto e = CborObject::from_bool(true);
 			auto f = CborObject::from_float64(1.23);
 			auto g = CborObject::from_string("hello");
+			auto h = CborObject::from_extra_integer(6000000000, false);
 			lua_State *L = uvm::lua::lib::create_lua_state();
 			const auto& a_storage = cbor_to_uvm_storage_value(L, a.get());
 			const auto& b_storage = cbor_to_uvm_storage_value(L, b.get());
@@ -158,6 +159,7 @@ namespace cbor_diff {
 			const auto& e_storage = cbor_to_uvm_storage_value(L, e.get());
 			const auto& f_storage = cbor_to_uvm_storage_value(L, f.get());
 			const auto& g_storage = cbor_to_uvm_storage_value(L, g.get());
+			const auto& h_storage = cbor_to_uvm_storage_value(L, h.get());
 			auto a1 = uvm_storage_value_to_cbor(a_storage);
 			auto b1 = uvm_storage_value_to_cbor(b_storage);
 			auto c1 = uvm_storage_value_to_cbor(c_storage);
@@ -165,8 +167,9 @@ namespace cbor_diff {
 			auto e1 = uvm_storage_value_to_cbor(e_storage);
 			auto f1 = uvm_storage_value_to_cbor(f_storage);
 			auto g1 = uvm_storage_value_to_cbor(g_storage);
+			auto h1 = uvm_storage_value_to_cbor(h_storage);
 			std::cout << "a1: " << a1->str() << " b1: " << b1->str() << " c1: " << c1->str() << std::endl;
-			std::cout << "d1: " << d1->str() << " e1: " << e1->str() << " f1: " << f1->str() << " g1: " << g1->str() << std::endl;
+			std::cout << "d1: " << d1->str() << " e1: " << e1->str() << " f1: " << f1->str() << " g1: " << g1->str() << " h1: " << h1->str() << std::endl;
 		}
 	}
 }

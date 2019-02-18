@@ -44,8 +44,25 @@ namespace cbor {
 	typedef uint64_t CborExtraIntValue;
 	typedef uint32_t CborSpecialValue;
 	//typedef uint64_t CborExtraSpecialValue;
+
+	// #define CBOR_OBJECT_USE_VARIANT
+
+#if defined(CBOR_OBJECT_USE_VARIANT)
 	typedef fc::static_variant<CborBoolValue, CborIntValue, CborExtraIntValue, CborDoubleValue, CborTagValue, CborStringValue, CborBytesValue,
 		CborArrayValue, CborMapValue> CborObjectValue;
+#else
+	typedef struct _CborObjectValue { // union if allow copy constrctor in union
+		CborBoolValue bool_val;
+		CborIntValue int_val;
+		CborExtraIntValue extra_int_val;
+		CborDoubleValue float64_val;
+		CborTagValue tag_or_special_val;
+		CborStringValue string_val;
+		CborBytesValue bytes_val;
+		CborArrayValue array_val;
+		CborMapValue map_val;
+	} CborObjectValue;
+#endif
 
 	struct CborObject {
 		CborObjectType type;
@@ -53,10 +70,12 @@ namespace cbor {
 		uint32_t array_or_map_size = 0;
 		bool is_positive_extra = false;
 
+#if defined(CBOR_OBJECT_USE_VARIANT)
 		template <typename T>
 		const T& as() const {
 			return value.get<T>();
 		}
+#endif
 
 		inline bool is_null() const {
 			return COT_NULL == type;
@@ -101,40 +120,88 @@ namespace cbor {
 			return type;
 		}
 		inline const CborBoolValue& as_bool() const {
+#if defined(CBOR_OBJECT_USE_VARIANT)
 			return as<CborBoolValue>();
+#else
+			return value.bool_val;
+#endif
 		}
 		inline const CborIntValue& as_int() const {
+#if defined(CBOR_OBJECT_USE_VARIANT)
 			return as<CborIntValue>();
+#else
+			return value.int_val;
+#endif
 		}
 		inline const CborExtraIntValue as_extra_int() const {
+#if defined(CBOR_OBJECT_USE_VARIANT)
 			return as<CborExtraIntValue>();
+#else
+			return value.extra_int_val;
+#endif
 		}
 		CborIntValue force_as_int() const;
+
 		inline const CborTagValue& as_tag() const {
+#if defined(CBOR_OBJECT_USE_VARIANT)
 			return as<CborTagValue>();
+#else
+			return value.tag_or_special_val;
+#endif
+		}
+		inline const CborTagValue& as_extra_tag() const {
+#if defined(CBOR_OBJECT_USE_VARIANT)
+			return as<CborExtraIntValue>();
+#else
+			return value.extra_int_val;
+#endif
 		}
 		inline const CborSpecialValue& as_special() const {
+#if defined(CBOR_OBJECT_USE_VARIANT)
 			return as<CborSpecialValue>();
+#else
+			return value.tag_or_special_val;
+#endif
 		}
 		inline const CborBytesValue& as_bytes() const {
+#if defined(CBOR_OBJECT_USE_VARIANT)
 			return as<CborBytesValue>();
+#else
+			return value.bytes_val;
+#endif
 		}
 		inline const CborArrayValue& as_array() const {
+#if defined(CBOR_OBJECT_USE_VARIANT)
 			return as<CborArrayValue>();
+#else
+			return value.array_val;
+#endif
 		}
 		inline const CborMapValue& as_map() const {
+#if defined(CBOR_OBJECT_USE_VARIANT)
 			return as<CborMapValue>();
+#else
+			return value.map_val;
+#endif
 		}
 		inline const CborStringValue& as_string() const {
+#if defined(CBOR_OBJECT_USE_VARIANT)
 			return as<CborStringValue>();
+#else
+			return value.string_val;
+#endif
 		}
 		inline const CborDoubleValue& as_float64() const {
+#if defined(CBOR_OBJECT_USE_VARIANT)
 			return as<CborDoubleValue>();
+#else
+			return value.float64_val;
+#endif
 		}
 
 		std::string str() const;
 
-		static CborObjectP from(const CborObjectValue& value);
+		//static CborObjectP from(const CborObjectValue& value);
 
 		static CborObjectP from_int(CborIntValue value);
 		static CborObjectP from_bool(CborBoolValue value);

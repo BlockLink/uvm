@@ -2796,7 +2796,11 @@ static cbor::CborObjectP uvm_json_item_to_cbor(const UvmStorageValue& value) {
 					return nullptr;
 				items.push_back(item);
 			}
+#if defined(CBOR_OBJECT_USE_VARIANT)
 			result->value = items;
+#else
+			result->value.array_val = items;
+#endif
 			return result;
 		}
 		else if (uvm::blockchain::is_any_table_storage_value_type(value.type)) {
@@ -2810,7 +2814,11 @@ static cbor::CborObjectP uvm_json_item_to_cbor(const UvmStorageValue& value) {
 					return nullptr;
 				items[key] = item;
 			}
+#if defined(CBOR_OBJECT_USE_VARIANT)
 			result->value = items;
+#else
+			result->value.map_val = items;
+#endif
 			return result;
 		}
 		else {
