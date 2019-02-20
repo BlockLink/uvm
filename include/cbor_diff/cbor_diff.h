@@ -10,9 +10,13 @@ namespace cbor_diff {
 #define CBORDIFF_KEY_OLD_VALUE "__old"
 #define CBORDIFF_KEY_NEW_VALUE "__new"
 
-	std::string cbor_encode(const cbor::CborObjectP value);
-	std::string cbor_encode(const cbor::CborObject& value);
-	cbor::CborObjectP cbor_decode(const std::string& hex_str);
+	std::string cbor_to_hex(const cbor::CborObjectP value);
+	std::string cbor_to_hex(const cbor::CborObject& value);
+	cbor::CborObjectP cbor_from_hex(const std::string& hex_str);
+
+	std::vector<char> cbor_encode(const cbor::CborObjectP value);
+	std::vector<char> cbor_encode(const cbor::CborObject& value);
+	cbor::CborObjectP cbor_decode(const std::vector<char>& input_bytes);
 
 	cbor::CborObjectP cbor_deep_clone(cbor::CborObject* object);
 
