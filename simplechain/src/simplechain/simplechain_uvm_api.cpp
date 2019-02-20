@@ -92,7 +92,7 @@ namespace simplechain {
 
 				UvmStateValue val_msg;
 				val_msg.string_value = msg;
-
+				printf("error: %s\n", msg);
 				uvm::lua::lib::set_lua_state_value(L, "exception_code", val_code, UvmStateValueType::LUA_STATE_VALUE_INT);
 				uvm::lua::lib::set_lua_state_value(L, "exception_msg", val_msg, UvmStateValueType::LUA_STATE_VALUE_STRING);
 			}

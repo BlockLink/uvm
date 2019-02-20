@@ -5,11 +5,13 @@
 #include <simplechain/block.h>
 #include <simplechain/blockchain.h>
 #include <simplechain/contract.h>
+#include <uvm/uvm_lib.h>
 #include <streambuf>
 #include <istream>
 #include <ostream>
 #include <boost/asio.hpp>
 #include <fc/io/json.hpp>
+#include <cbor_diff/cbor_diff.h>
 
 namespace simplechain {
 	namespace rpc {
@@ -282,7 +284,11 @@ namespace simplechain {
 			const auto& addr = params.at(0).as_string();
 			const auto& storage_name = params.at(1).as_string();
 			const auto& storage = chain->get_storage(addr, storage_name);
-			fc::variant res = fc::json::from_string(storage.as<std::string>());
+			auto storage_value = cbor_diff::cbor_decode(storage.storage_data);
+			auto scope = std::make_shared < uvm::lua::lib::UvmStateScope>();
+			auto uvm_storage_data = cbor_to_uvm_storage_value(scope->L(), storage_value.get());
+			auto storage_json = simplechain::uvm_storage_value_to_json(uvm_storage_data);
+			auto res = storage_json;
 			return res;
 		}
 

@@ -160,6 +160,7 @@ namespace simplechain {
 			const auto& cbor_null_bytes = cbor_diff::cbor_encode(cbor_null);
 			StorageDataType storage;
 			storage.storage_data = cbor_null_bytes;
+			return storage;
 			// std::string null_jsonstr("null");
 			// return StorageDataType(null_jsonstr);
 		}
@@ -169,6 +170,7 @@ namespace simplechain {
 			const auto& cbor_null_bytes = cbor_diff::cbor_encode(cbor_null);
 			StorageDataType storage;
 			storage.storage_data = cbor_null_bytes;
+			return storage;
 			// std::string null_jsonstr("null");
 			// return StorageDataType(null_jsonstr);
 		}
