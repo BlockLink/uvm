@@ -40,6 +40,8 @@ namespace cbor {
 
         void write_int(uint64_t value);
 
+		void write_neg_int(uint64_t value);
+
         void write_bytes(const unsigned char *data, unsigned int size);
 
         void write_string(const char *data, unsigned int size);

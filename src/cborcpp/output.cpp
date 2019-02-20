@@ -13,6 +13,12 @@ namespace cbor {
 		return result;
 	}
 
+	std::vector<char> output::chars() const {
+		std::vector<char> result(size());
+		memcpy(result.data(), data(), size());
+		return result;
+	}
+
 	std::string output::hex() const {
 		const auto& data_bytes = bytes();
 		std::string res;

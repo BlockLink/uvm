@@ -22,14 +22,14 @@ namespace cbor_diff {
 	}
 
 
-	std::string cbor_encode(const cbor::CborObject& value) {
+	std::string cbor_to_hex(const cbor::CborObject& value) {
 		cbor::output_dynamic output;
 		cbor::encoder encoder(output);
 		encoder.write_cbor_object(&value);
 		const auto& output_hex = output.hex();
 		return output_hex;
 	}
-	std::string cbor_encode(const cbor::CborObjectP value) {
+	std::string cbor_to_hex(const cbor::CborObjectP value) {
 		cbor::output_dynamic output;
 		cbor::encoder encoder(output);
 		encoder.write_cbor_object(value.get());
@@ -37,11 +37,34 @@ namespace cbor_diff {
 		return output_hex;
 	}
 
-	cbor::CborObjectP cbor_decode(const std::string& hex_str) {
+	cbor::CborObjectP cbor_from_hex(const std::string& hex_str) {
 		std::vector<char> input_bytes(hex_str.size() / 2);
 		if (fc::from_hex(hex_str, input_bytes.data(), input_bytes.size()) < input_bytes.size())
 			throw CborDiffException("invalid hex string");
 		cbor::input input(input_bytes.data(), input_bytes.size());
+		cbor::decoder decoder(input);
+		auto result_cbor = decoder.run();
+		return result_cbor;
+	}
+
+	std::vector<char> cbor_encode(const cbor::CborObject& value) {
+		cbor::output_dynamic output;
+		cbor::encoder encoder(output);
+		encoder.write_cbor_object(&value);
+		const auto& output_bytes = output.chars();
+		return output_bytes;
+	}
+	std::vector<char> cbor_encode(const cbor::CborObjectP value) {
+		cbor::output_dynamic output;
+		cbor::encoder encoder(output);
+		encoder.write_cbor_object(value.get());
+		const auto& output_bytes = output.chars();
+		return output_bytes;
+	}
+
+	cbor::CborObjectP cbor_decode(const std::vector<char>& input_bytes) {
+		std::vector<char> source(input_bytes);
+		cbor::input input(source.data(), source.size());
 		cbor::decoder decoder(input);
 		auto result_cbor = decoder.run();
 		return result_cbor;
@@ -101,7 +124,7 @@ namespace cbor_diff {
 		if (is_scalar_cbor_value_type(diff_cbor_type))
 		{
 			// 基本类型
-			ss << indents << " " << cbor_encode(_diff_value);
+			ss << indents << " " << _diff_value.str();
 			return ss.str();
 		}
 		else if (diff_cbor_type == cbor::COT_MAP)
@@ -153,7 +176,7 @@ namespace cbor_diff {
 					continue;
 				}
 				auto op_item = diff_item[0]->as_string();
-				auto pos = diff_item[1]->as_int();
+				auto pos = diff_item[1]->force_as_int();
 				auto inner_diff_json = diff_item[2];
 				// FIXME； 一个array有多项变化的时候， diff里的索引是用原始对象的index，所以这里应该找出 pos => old_json中同值的pos
 				if (op_item == std::string("+"))
@@ -164,7 +187,7 @@ namespace cbor_diff {
 				else if (op_item == std::string("-"))
 				{
 					// 删除元素
-					ss << indents << "\t-" << cbor_encode(inner_diff_json) << std::endl;
+					ss << indents << "\t-" << inner_diff_json->str() << std::endl;
 				}
 				else if (op_item == std::string("~"))
 				{
@@ -181,7 +204,7 @@ namespace cbor_diff {
 		}
 		else
 		{
-			ss << indents << cbor_encode(_diff_value);
+			ss << indents << _diff_value.str();
 			return ss.str();
 		}
 	}
@@ -196,7 +219,7 @@ namespace cbor_diff {
 	// CborDiff
 
 	DiffResultP CborDiff::diff_by_hex(const std::string &old_hex, const std::string &new_hex) {
-		return diff(cbor_decode(old_hex), cbor_decode(new_hex));
+		return diff(cbor_from_hex(old_hex), cbor_from_hex(new_hex));
 	}
 
 	// 如果参数是cbor hex字符串，不要直接用下面这个函数，而是cbor_decode为cbor对象后调用diff函数，或者直接调用diff_by_string函数
@@ -218,7 +241,7 @@ namespace cbor_diff {
 						cbor::CborMapValue result_json;
 						result_json[CBORDIFF_KEY_OLD_VALUE] = old_val;
 						result_json[CBORDIFF_KEY_NEW_VALUE] = new_val;
-						return std::make_shared<DiffResult>(*cbor::CborObject::from(result_json));
+						return std::make_shared<DiffResult>(*cbor::CborObject::create_map(result_json));
 					}
 					else {
 						// identical scalar values
@@ -229,7 +252,7 @@ namespace cbor_diff {
 					cbor::CborMapValue result_json;
 					result_json[CBORDIFF_KEY_OLD_VALUE] = old_val;
 					result_json[CBORDIFF_KEY_NEW_VALUE] = new_val;
-					return std::make_shared<DiffResult>(*cbor::CborObject::from(result_json));
+					return std::make_shared<DiffResult>(*cbor::CborObject::create_map(result_json));
 				}
 				else {
 					// identical scalar values
@@ -241,7 +264,7 @@ namespace cbor_diff {
 				cbor::CborMapValue result_json;
 				result_json[CBORDIFF_KEY_OLD_VALUE] = old_val;
 				result_json[CBORDIFF_KEY_NEW_VALUE] = new_val;
-				return std::make_shared<DiffResult>(*cbor::CborObject::from(result_json));
+				return std::make_shared<DiffResult>(*cbor::CborObject::create_map(result_json));
 			}
 			else
 			{
@@ -292,7 +315,7 @@ namespace cbor_diff {
 			}
 			if (diff_json.size() < 1)
 				return DiffResult::make_undefined_diff_result();
-			return std::make_shared<DiffResult>(*cbor::CborObject::from(diff_json));
+			return std::make_shared<DiffResult>(*cbor::CborObject::create_map(diff_json));
 		}
 		else if (old_json_type == cbor::COT_ARRAY)
 		{
@@ -325,7 +348,7 @@ namespace cbor_diff {
 					item_diff.push_back(cbor::CborObject::from_string("-"));
 					item_diff.push_back(cbor::CborObject::from_int(i));
 					item_diff.push_back(a_array[i]);
-					diff_json.push_back(cbor::CborObject::from(item_diff));
+					diff_json.push_back(cbor::CborObject::create_array(item_diff));
 				}
 				else
 				{
@@ -337,7 +360,7 @@ namespace cbor_diff {
 					item_diff.push_back(cbor::CborObject::from_string("~"));
 					item_diff.push_back(cbor::CborObject::from_int(i));
 					item_diff.push_back(std::make_shared<cbor::CborObject>(item_value_diff->value()));
-					diff_json.push_back(cbor::CborObject::from(item_diff));
+					diff_json.push_back(cbor::CborObject::create_array(item_diff));
 				}
 			}
 			for (size_t i = a_array.size(); i < b_array.size(); i++)
@@ -347,22 +370,22 @@ namespace cbor_diff {
 				item_diff.push_back(cbor::CborObject::from_string("+"));
 				item_diff.push_back(cbor::CborObject::from_int(i));
 				item_diff.push_back(b_array[i]);
-				diff_json.push_back(cbor::CborObject::from(item_diff));
+				diff_json.push_back(cbor::CborObject::create_array(item_diff));
 			}
 			if (diff_json.size() < 1)
 			{
 				return DiffResult::make_undefined_diff_result();
 			}
-			return std::make_shared<DiffResult>(*cbor::CborObject::from(diff_json));
+			return std::make_shared<DiffResult>(*cbor::CborObject::create_array(diff_json));
 		}
 		else
 		{
-			throw CborDiffException(std::string("not supported json value type to diff ") + cbor_encode(old_val));
+			throw CborDiffException(std::string("not supported json value type to diff ") + old_val->str());
 		}
 	}
 
 	cbor::CborObjectP CborDiff::patch_by_string(const std::string& old_hex, DiffResultP diff_info) {
-		auto old_val = cbor_decode(old_hex);
+		auto old_val = cbor_from_hex(old_hex);
 		return patch(old_val, diff_info);
 	}
 
@@ -418,7 +441,7 @@ namespace cbor_diff {
 				auto sub_item_new = patch(old_json_obj.at(key), std::make_shared<DiffResult>(*diff_item));
 				result_obj[key] = sub_item_new;
 			}
-			return cbor::CborObject::from(result_obj);
+			return cbor::CborObject::create_map(result_obj);
 		}
 		else if (old_json_type == cbor::COT_ARRAY)
 		{
@@ -435,7 +458,7 @@ namespace cbor_diff {
 				if (diff_item.size() != 3)
 					throw CborDiffException("diffjson format error for array diff");
 				auto op_item = diff_item[0]->as_string();
-				auto pos = diff_item[1]->as_int();
+				auto pos = diff_item[1]->force_as_int();
 				auto inner_diff_json = diff_item[2];
 				// FIXME； 一个array有多项变化的时候， diff里的索引是用原始对象的index，所以这里应该找出 pos => old_json中同值的pos
 				if (op_item == std::string("+"))
@@ -459,17 +482,17 @@ namespace cbor_diff {
 					throw CborDiffException(std::string("not supported diff array op now: ") + op_item);
 				}
 			}
-			return cbor::CborObject::from(result_array);
+			return cbor::CborObject::create_array(result_array);
 		}
 		else
 		{
-			throw CborDiffException(std::string("not supported json value type to merge patch ") + cbor_encode(old_val));
+			throw CborDiffException(std::string("not supported json value type to merge patch ") + old_val->str());
 		}
 		return result;
 	}
 
 	cbor::CborObjectP CborDiff::rollback_by_string(const std::string& new_hex, DiffResultP diff_info) {
-		return rollback(cbor_decode(new_hex), diff_info);
+		return rollback(cbor_from_hex(new_hex), diff_info);
 	}
 
 	// 从新版本使用diff回滚到旧版本
@@ -524,7 +547,7 @@ namespace cbor_diff {
 				auto sub_item_new = rollback(new_json_obj.at(key), std::make_shared<DiffResult>(*diff_item));
 				result_obj[key] = sub_item_new;
 			}
-			return cbor::CborObject::from(result_obj);
+			return cbor::CborObject::create_map(result_obj);
 		}
 		else if (new_json_type == cbor::COT_ARRAY)
 		{
@@ -541,7 +564,7 @@ namespace cbor_diff {
 				if (diff_item.size() != 3)
 					throw CborDiffException("diffjson format error for array diff");
 				auto op_item = diff_item[0]->as_string();
-				auto pos = diff_item[1]->as_int(); // pos是old的pos， FIXME： 新旧对象的pos不一定一样
+				auto pos = diff_item[1]->force_as_int(); // pos是old的pos， FIXME： 新旧对象的pos不一定一样
 				auto inner_diff_json = diff_item[2];
 				// FIXME； 一个array有多项变化的时候， diff里的索引是用原始对象的index，所以这里应该找出 pos => old_json中同值的pos
 				if (op_item == std::string("-"))
@@ -565,11 +588,11 @@ namespace cbor_diff {
 					throw CborDiffException(std::string("not supported diff array op now: ") + op_item);
 				}
 			}
-			return cbor::CborObject::from(result_array);
+			return cbor::CborObject::create_array(result_array);
 		}
 		else
 		{
-			throw CborDiffException(std::string("not supported json value type to rollback diff from ") + cbor_encode(new_val));
+			throw CborDiffException(std::string("not supported json value type to rollback diff from ") + cbor_to_hex(new_val));
 		}
 		return result;
 	}

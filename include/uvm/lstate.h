@@ -217,6 +217,8 @@ struct lua_State : vmgc::GcObject {
 	std::stack<contract_info_stack_entry>* using_contract_id_stack;
 	OpCode call_op_msg;
 	uint32_t ci_depth;
+    
+	int cbor_diff_state; // 0: not_set, 1: true, 2: false
 
 	inline lua_State() :tt_(LUA_TTHREAD) {}
 	virtual ~lua_State() {}

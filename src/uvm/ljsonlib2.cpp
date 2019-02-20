@@ -45,7 +45,7 @@ static int json_to_lua(lua_State *L)
 	size_t little_large_size = 10000;
 	size_t very_large_size = 100000;
 	if (json_str_size > little_large_size) {
-		auto json_gas_punishment_fork_height = global_uvm_chain_api->get_fork_height("JSON_GAS_PUNISHMENT");
+		auto json_gas_punishment_fork_height = global_uvm_chain_api->get_fork_height(L, "JSON_GAS_PUNISHMENT");
 		if (json_gas_punishment_fork_height >= 0 && global_uvm_chain_api->get_header_block_num(L) >= json_gas_punishment_fork_height) {
 			auto common_extra_gas = 10 * json_str_size;
 			if (json_str_size > little_large_size) {
@@ -78,7 +78,7 @@ static int lua_to_json(lua_State *L)
 	size_t little_large_size = 10000;
 	size_t very_large_size = 100000;
 	if (json_str_size > little_large_size) {
-		auto json_gas_punishment_fork_height = global_uvm_chain_api->get_fork_height("JSON_GAS_PUNISHMENT");
+		auto json_gas_punishment_fork_height = global_uvm_chain_api->get_fork_height(L, "JSON_GAS_PUNISHMENT");
 		if (json_gas_punishment_fork_height >= 0 && global_uvm_chain_api->get_header_block_num(L) >= json_gas_punishment_fork_height) {
 			auto common_extra_gas = 10 * json_str_size;
 			if (json_str_size > little_large_size) {

@@ -189,7 +189,7 @@ UvmStorageValue cbor_to_uvm_storage_value(lua_State *L, cbor::CborObject* cbor_v
 	else if (cbor_value->is_int() || cbor_value->is_extra_int())
 	{
 		value.type = uvm::blockchain::StorageValueTypes::storage_value_int;
-		value.value.int_value = cbor_value->is_int() ? cbor_value->as_int() : cbor_value->as_extra_int();
+		value.value.int_value = cbor_value->force_as_int();
 		return value;
 	}
 	else if (cbor_value->is_float())
@@ -501,7 +501,7 @@ UvmStorageValue json_to_uvm_storage_value(lua_State *L, jsondiff::JsonValue json
 	}
 }
 
-static UvmStorageChangeItem diff_storage_change_if_is_table(lua_State *L, UvmStorageChangeItem change_item)
+static UvmStorageChangeItem diff_storage_change_if_is_table(lua_State *L, UvmStorageChangeItem change_item, bool use_cbor_diff)
 {
 	if (!lua_storage_is_table(change_item.after.type))
 		return change_item;
@@ -509,7 +509,7 @@ static UvmStorageChangeItem diff_storage_change_if_is_table(lua_State *L, UvmSto
 		return change_item;
 	try
 	{
-		if (USE_CBOR_DIFF) {
+		if (use_cbor_diff) {
 			const auto &before_cbor = uvm_storage_value_to_cbor(change_item.before);
 			const auto &after_cbor = uvm_storage_value_to_cbor(change_item.after);
 			cbor_diff::CborDiff differ;
@@ -560,6 +560,7 @@ bool luaL_commit_storage_changes(lua_State *L)
 		}
 		return false;
 	}
+	auto use_cbor_diff = global_uvm_chain_api->use_cbor_diff(L);
 	// merge changes
 	std::unordered_map<std::string, std::shared_ptr<std::unordered_map<std::string, UvmStorageChangeItem>>> changes; // contract_id => (storage_unique_key => change_item)
 	UvmStorageTableReadList *table_read_list = get_or_init_storage_table_read_list(L);
@@ -733,7 +734,7 @@ bool luaL_commit_storage_changes(lua_State *L)
 				else if (lua_storage_is_table(it2->second.before.type) && it2->second.before.value.table_value->size()>0)
 					it2->second.after.type = it2->second.before.type;
 				// just save table diff
-				it2->second = diff_storage_change_if_is_table(L, it2->second);
+				it2->second = diff_storage_change_if_is_table(L, it2->second, use_cbor_diff);
 			}
 			// check storage changes and the corresponding types of compile-time contracts, and modify the type of commit
 			if (!is_in_starting_contract_init)
@@ -1032,14 +1033,14 @@ namespace uvm {
 			auto after = arg2;
 			if (!is_fast_map && after.type == uvm::blockchain::StorageValueTypes::storage_value_null)
 			{
-				global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, (name_str + "storage can't change to nil").c_str());
+				global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, (name_str + " storage can't change to nil").c_str());
 				uvm::lua::lib::notify_lua_state_stop(L);
 				return 0;
 			}
 			if (!is_fast_map && (before.type != uvm::blockchain::StorageValueTypes::storage_value_null
 				&& (before.type != after.type && !lua_storage_is_table(before.type))))
 			{
-				global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, (std::string(name) + "storage can't change type").c_str());
+				global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, (std::string(name) + " storage can't change type").c_str());
 				uvm::lua::lib::notify_lua_state_stop(L);
 				return 0;
 			}

@@ -289,6 +289,8 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
 	L->state = lua_VMState::LVM_STATE_NONE;
 	L->allow_debug = false;
 	L->breakpoints = new std::map<std::string, std::list<uint32_t> >();
+    
+	L->cbor_diff_state = 0;
 
 	L->allow_contract_modify = 0;
 	L->contract_table_addresses = new std::list<intptr_t>();
