@@ -2,9 +2,12 @@
 #include <fc/io/json.hpp>
 #include <uvm/uvm_lib.h>
 #include <map>
+#include <cborcpp/cbor.h>
+#include <cbor_diff/cbor_diff.h>
 
 namespace simplechain {
 	using namespace uvm::blockchain;
+	using namespace ::cbor_diff;
 
 	fc::variant uvm_storage_value_to_json(UvmStorageValue value)
 	{
@@ -86,8 +89,11 @@ namespace simplechain {
 
 	StorageDataType StorageDataType::get_storage_data_from_lua_storage(const UvmStorageValue& lua_storage)
 	{
-		auto storage_json = simplechain::uvm_storage_value_to_json(lua_storage);
-		StorageDataType storage_data(fc::json::to_string(storage_json, fc::json::legacy_generator));
+		// auto storage_json = uvm_storage_value_to_json(lua_storage);
+		// StorageDataType storage_data(jsondiff::json_dumps(storage_json));
+		auto storage_cbor = uvm_storage_value_to_cbor(lua_storage);
+		// printf("lua to storage data: %s\n", storage_cbor->str().c_str());
+		StorageDataType storage_data(cbor_diff::cbor_encode(storage_cbor));
 		return storage_data;
 	}
 
@@ -228,8 +234,12 @@ namespace simplechain {
 
 	UvmStorageValue StorageDataType::create_lua_storage_from_storage_data(lua_State *L, const StorageDataType& storage)
 	{
-		auto json_value = json_from_str(storage.as<std::string>());
-		auto value = simplechain::json_to_uvm_storage_value(L, json_value);
+		const auto& storage_str = storage.as<std::string>();
+		auto cbor_value = cbor_decode(storage_str);
+		// printf("storage value: %s\n", cbor_value->str().c_str());
+		// auto json_value = json_from_str(storage_str);
+		// auto value = json_to_uvm_storage_value(L, json_value);
+		const auto& value = cbor_to_uvm_storage_value(L, cbor_value.get());
 		return value;
 	}
 
