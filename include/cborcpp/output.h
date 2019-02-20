@@ -27,6 +27,7 @@ namespace cbor {
         virtual unsigned int size() const = 0;
 
 		virtual std::vector<unsigned char> bytes() const;
+		virtual std::vector<char> chars() const;
 
 		virtual std::string hex() const;
 

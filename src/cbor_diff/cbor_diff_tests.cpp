@@ -31,12 +31,12 @@ namespace cbor_diff {
 			b_map["b"] = hello;
 			auto b = CborObject::create_map(b_map);
 			auto c = CborObject::from_float64(1.23456789);
-			auto origin = cbor_encode(a);
-			auto result = cbor_encode(b);
-			auto c_encoded = cbor_encode(c);
-			auto a_decoded = cbor_decode(origin);
-			auto b_decoded = cbor_decode(result);
-			auto c_decoded = cbor_decode(c_encoded);
+			auto origin = cbor_to_hex(a);
+			auto result = cbor_to_hex(b);
+			auto c_encoded = cbor_to_hex(c);
+			auto a_decoded = cbor_from_hex(origin);
+			auto b_decoded = cbor_from_hex(result);
+			auto c_decoded = cbor_from_hex(c_encoded);
 			cout << "origin: " << origin << " result: " << result << " c: " << c << endl;
 			cout << "a_decoded: " << a_decoded->as_int() << endl;
 			cout << "c_decoded: " << c_decoded->as_float64() << endl;
@@ -45,7 +45,7 @@ namespace cbor_diff {
 			std::cout << diff_result_str << std::endl;
 			auto patched = differ.patch_by_string(origin, diff_result);
 			std::cout << "patched: " << patched->str() << std::endl;
-			assert(cbor_encode(patched) == cbor_encode(cbor_decode(result)));
+			assert(cbor_to_hex(patched) == cbor_to_hex(cbor_from_hex(result)));
 		}
 		{
 			CborDiff differ;
@@ -63,11 +63,11 @@ namespace cbor_diff {
 			std::cout << diff_result_str << std::endl;
 			auto patched = differ.patch(origin, diff_result);
 			std::cout << "patched: " << patched->str() << std::endl;
-			assert(cbor_encode(patched) == cbor_encode(result));
+			assert(cbor_to_hex(patched) == cbor_to_hex(result));
 
 			auto rollbacked = differ.rollback(result, diff_result);
-			std::cout << "rollbacked: " << cbor_encode(rollbacked) << std::endl;
-			assert(cbor_encode(rollbacked) == cbor_encode(origin));
+			std::cout << "rollbacked: " << cbor_to_hex(rollbacked) << std::endl;
+			assert(cbor_to_hex(rollbacked) == cbor_to_hex(origin));
 		}
 		{
 			CborDiff differ;

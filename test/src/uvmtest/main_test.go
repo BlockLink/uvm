@@ -480,7 +480,7 @@ func simpleChainRPC(method string, params ...interface{}) (*simplejson.Json, err
 	if err != nil {
 		return nil, err
 	}
-	if(method == "get_tx_receipt") {
+	if method == "get_tx_receipt" {
 		resJSONBytes, err := json.Marshal(resJSON)
 		if err != nil {
 			return nil, err
@@ -1048,7 +1048,6 @@ func TestSimpleChainContractChangeOtherContractProperties(t *testing.T) {
 
 }
 
-
 func TestManyObjects(t *testing.T) {
 	cmd := execCommandBackground(simpleChainPath)
 	assert.True(t, cmd != nil)
@@ -1070,14 +1069,13 @@ func TestManyObjects(t *testing.T) {
 	contract1Addr := res.Get("contract_address").MustString()
 	fmt.Printf("contract address: %s\n", contract1Addr)
 	simpleChainRPC("generate_block")
-	
+
 	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "hello", []string{" "}, 0, 0)
 	println(res)
 	if err != nil {
 		println("error: ", err.Error())
 	}
 }
-
 
 func TestCallContractManyTimes(t *testing.T) {
 	cmd := execCommandBackground(simpleChainPath)

@@ -1026,14 +1026,14 @@ namespace uvm {
 			auto after = arg2;
 			if (!is_fast_map && after.type == uvm::blockchain::StorageValueTypes::storage_value_null)
 			{
-				global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, (name_str + "storage can't change to nil").c_str());
+				global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, (name_str + " storage can't change to nil").c_str());
 				uvm::lua::lib::notify_lua_state_stop(L);
 				return 0;
 			}
 			if (!is_fast_map && (before.type != uvm::blockchain::StorageValueTypes::storage_value_null
 				&& (before.type != after.type && !lua_storage_is_table(before.type))))
 			{
-				global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, (std::string(name) + "storage can't change type").c_str());
+				global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, (std::string(name) + " storage can't change type").c_str());
 				uvm::lua::lib::notify_lua_state_stop(L);
 				return 0;
 			}

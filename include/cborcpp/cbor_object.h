@@ -119,14 +119,14 @@ namespace cbor {
 		inline CborObjectType object_type() const {
 			return type;
 		}
-		inline const CborBoolValue& as_bool() const {
+		inline const CborBoolValue as_bool() const {
 #if defined(CBOR_OBJECT_USE_VARIANT)
 			return as<CborBoolValue>();
 #else
 			return value.bool_val;
 #endif
 		}
-		inline const CborIntValue& as_int() const {
+		inline const CborIntValue as_int() const {
 #if defined(CBOR_OBJECT_USE_VARIANT)
 			return as<CborIntValue>();
 #else
@@ -142,14 +142,14 @@ namespace cbor {
 		}
 		CborIntValue force_as_int() const;
 
-		inline const CborTagValue& as_tag() const {
+		inline const CborTagValue as_tag() const {
 #if defined(CBOR_OBJECT_USE_VARIANT)
 			return as<CborTagValue>();
 #else
 			return value.tag_or_special_val;
 #endif
 		}
-		inline const CborTagValue& as_extra_tag() const {
+		inline const CborExtraIntValue as_extra_tag() const {
 #if defined(CBOR_OBJECT_USE_VARIANT)
 			return as<CborExtraIntValue>();
 #else
@@ -191,7 +191,7 @@ namespace cbor {
 			return value.string_val;
 #endif
 		}
-		inline const CborDoubleValue& as_float64() const {
+		inline const CborDoubleValue as_float64() const {
 #if defined(CBOR_OBJECT_USE_VARIANT)
 			return as<CborDoubleValue>();
 #else

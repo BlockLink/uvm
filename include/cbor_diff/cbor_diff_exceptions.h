@@ -54,7 +54,7 @@ namespace cbor_diff {
 		}
 		inline virtual void dynamic_rethrow_exception()const
 		{
-			cbor_diff::CborDiffException::dynamic_rethrow_exception();
+			throw this;
 		}
 	};
 }
