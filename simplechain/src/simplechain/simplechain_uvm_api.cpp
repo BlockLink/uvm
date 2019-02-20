@@ -462,6 +462,15 @@ namespace simplechain {
 					return null_storage;
 				}
 			}
+
+			static std::vector<char> json_to_chars(const jsondiff::JsonValue& json_value)
+			{
+				const auto &json_str = jsondiff::json_dumps(json_value);
+				std::vector<char> data(json_str.size() + 1);
+				memcpy(data.data(), json_str.c_str(), json_str.size());
+				data[json_str.size()] = '\0';
+				return data;
+			}
 			
 			bool SimpleChainUvmChainApi::commit_storage_changes_to_uvm(lua_State *L, AllContractsChangesMap &changes)
 			{
@@ -496,15 +505,13 @@ namespace simplechain {
 							auto cbor_storage_after = uvm_storage_value_to_cbor(con_chg_iter->second.after);
 							con_chg_iter->second.cbor_diff = *(differ.diff(cbor_storage_before, cbor_storage_after));
 							auto cbor_diff_value = std::make_shared<cbor::CborObject>(con_chg_iter->second.cbor_diff.value());
-							const auto& cbor_diff_hex = cbor_diff::cbor_encode(cbor_diff_value);
-							std::vector<char> cbor_diff_chars(cbor_diff_hex.size() / 2);
-							fc::from_hex(cbor_diff_hex, cbor_diff_chars.data(), cbor_diff_chars.size());
+							const auto& cbor_diff_chars = cbor_diff::cbor_encode(cbor_diff_value);
 							storage_change.storage_diff.storage_data = cbor_diff_chars;
 							storage_change.after = storage_after;
 							contract_storage_change[contract_name] = storage_change;
 							nested_changes[contract_name] = cbor_diff_value;
 						}
-						/*else {
+						else {
 							
 							const auto& json_storage_before = simplechain::uvm_storage_value_to_json(con_chg_iter->second.before);
 							const auto& json_storage_after = simplechain::uvm_storage_value_to_json(con_chg_iter->second.after);
@@ -514,7 +521,7 @@ namespace simplechain {
 							contract_storage_change[contract_name] = storage_change;
 							json_nested_changes[contract_name] = con_chg_iter->second.diff.value();
 							
-						}*/
+						}
 
 					}
 					// count gas by changes size
