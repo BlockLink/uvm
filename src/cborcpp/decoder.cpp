@@ -17,6 +17,7 @@
 #include "cborcpp/decoder.h"
 
 #include <limits.h>
+#include <fc/string.hpp>
 
 using namespace cbor;
 
@@ -512,7 +513,7 @@ CborObjectP decoder::run() {
 				_in->get_bytes(data.data(), _currentLength);
 				_state = STATE_TYPE;
 				std::string str(data.data(), (size_t)_currentLength);
-				CborDoubleValue value = std::stod(str);
+				CborDoubleValue value = fc::to_double(str); // std::stod(str);
 				put_decoded_value(result, structures_stack, iter_in_map_key, map_key_temp, CborObject::from_float64(value));
 			}
 			else break;
