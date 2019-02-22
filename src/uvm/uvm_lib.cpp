@@ -1746,7 +1746,7 @@ end
 					{
 						is_importing_contract = false;
 						// LOADK
-						if(getOpMode(o) == UOP_LOADK)
+						if(UOP_LOADK == o)
 						{
 							int idx = MYK(INDEXK(bx));
 							int idx_in_kst = -idx - 1;
@@ -1765,7 +1765,7 @@ end
 					{
 						is_importing_contract_address = false;
 						// LOADK
-						if (getOpMode(o) == UOP_LOADK)
+						if (UOP_LOADK == o)
 						{
 							int idx = MYK(INDEXK(bx));
 							int idx_in_kst = -idx - 1;
