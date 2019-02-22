@@ -8,6 +8,22 @@
 const std::string NaN_str = "NaN";
 
 static uint64_t uint64_pow(uint64_t a, int p) {
+    if(a==10) {
+        switch (p) {
+            case 0: return 1;
+            case 1: return 10;
+            case 2: return 100;
+            case 3: return 1000;
+            case 4: return 10000;
+            case 5: return 100000;
+            case 6: return 1000000;
+            case 7: return 10000000L;
+            case 8: return 100000000L;
+            case 9: return 1000000000L;
+            case 16: return 10000000000000000L;
+            default: {}
+        }
+    }
 	return static_cast<uint64_t >(std::pow(static_cast<uint64_t>(a), p));
 }
 
@@ -433,8 +449,9 @@ std::string safe_number_to_string(const SafeNumber& a) {
 		ss << "-";
 	}
 	// x = p.q
-	auto p = static_cast<uint64_t>(val.x / uint64_pow(10, val.e));
-	auto q = val.x - p*uint64_pow(10, val.e);
+	auto e10 = uint64_pow(10, val.e);
+	auto p = static_cast<uint64_t>(val.x / e10);
+	auto q = val.x % e10;
 	ss << p;
 	if(q>0) {
 		ss << "." << q;
