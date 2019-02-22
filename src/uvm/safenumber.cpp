@@ -421,7 +421,7 @@ SafeNumber safe_number_div(const SafeNumber& a, const SafeNumber& b) {
 	// Let the result be SafeNumber r, initial value is r.x = 0, r.e = -1
 	uint64_t rx = 0; // r.x
 	int32_t re = -1; // r.e
-	// r.x = r.x* 10 + big_a/big_b, big_a = (big_a % big_b) * 10, r.e += 1, Repeat this step until r.e >= 8 or big_a == 0 or rx > largest_x
+	// r.x = r.x* 10 + big_a/big_b, big_a = (big_a % big_b) * 10, r.e += 1, Repeat this step until r.e >= 16 or big_a == 0 or rx > largest_x
 	do {
 		const auto& divmod = simple_uint128_divmod(big_a, big_b);
 		rx = rx * 10 + divmod.first.low; // ignore overflowed value
