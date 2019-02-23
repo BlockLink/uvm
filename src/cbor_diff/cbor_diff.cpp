@@ -212,6 +212,7 @@ namespace cbor_diff {
 	std::shared_ptr<DiffResult> DiffResult::make_undefined_diff_result() {
 		auto result = std::make_shared<DiffResult>();
 		result->_is_undefined = true;
+		result->_diff_value = *cbor::CborObject::create_undefined();
 		return result;
 	}
 

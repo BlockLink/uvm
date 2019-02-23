@@ -5,6 +5,16 @@
 
 namespace cbor {
 
+	CborObject::CborObject()
+	: type(COT_NULL), array_or_map_size(0), is_positive_extra(false){
+		value.bool_val = 0;
+	}
+
+	CborObject::CborObject(const CborObject& other)
+	: type(other.type), value(other.value), array_or_map_size(other.array_or_map_size), is_positive_extra(other.is_positive_extra) {
+
+	}
+
 	CborIntValue CborObject::force_as_int() const {
 		if (is_int()) {
 			return as_int();
