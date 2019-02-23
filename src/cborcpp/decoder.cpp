@@ -513,6 +513,10 @@ CborObjectP decoder::run() {
 				_in->get_bytes(data.data(), _currentLength);
 				_state = STATE_TYPE;
 				std::string str(data.data(), (size_t)_currentLength);
+				size_t fixed_size = 30;
+				if (str.size() < fixed_size) {
+					_in->skip_bytes(fixed_size - str.size());
+				}
 				CborDoubleValue value = fc::to_double(str); // std::stod(str);
 				put_decoded_value(result, structures_stack, iter_in_map_key, map_key_temp, CborObject::from_float64(value));
 			}
