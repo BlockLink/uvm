@@ -27,40 +27,55 @@ static int math_abs(lua_State *L) {
         if (n < 0) n = (lua_Integer)(0u - (lua_Unsigned)n);
         lua_pushinteger(L, n);
     }
-    else
-        lua_pushnumber(L, l_mathop(fabs)(luaL_checknumber(L, 1)));
+	else {
+		auto n = luaL_checknumber(L, 1);
+		auto n_value = std::stod(safe_number_to_string(n));
+		lua_pushnumber(L, l_mathop(fabs)(n_value));
+	}
     return 1;
 }
 
 static int math_sin(lua_State *L) {
-    lua_pushnumber(L, l_mathop(sin)(luaL_checknumber(L, 1)));
+	auto n = luaL_checknumber(L, 1);
+	auto n_value = std::stod(safe_number_to_string(n));
+    lua_pushnumber(L, l_mathop(sin)(n_value));
     return 1;
 }
 
 static int math_cos(lua_State *L) {
-    lua_pushnumber(L, l_mathop(cos)(luaL_checknumber(L, 1)));
+	auto n = luaL_checknumber(L, 1);
+	auto n_value = std::stod(safe_number_to_string(n));
+    lua_pushnumber(L, l_mathop(cos)(n_value));
     return 1;
 }
 
 static int math_tan(lua_State *L) {
-    lua_pushnumber(L, l_mathop(tan)(luaL_checknumber(L, 1)));
+	auto n = luaL_checknumber(L, 1);
+	auto n_value = std::stod(safe_number_to_string(n));
+    lua_pushnumber(L, l_mathop(tan)(n_value));
     return 1;
 }
 
 static int math_asin(lua_State *L) {
-    lua_pushnumber(L, l_mathop(asin)(luaL_checknumber(L, 1)));
+	auto n = luaL_checknumber(L, 1);
+	auto n_value = std::stod(safe_number_to_string(n));
+    lua_pushnumber(L, l_mathop(asin)(n_value));
     return 1;
 }
 
 static int math_acos(lua_State *L) {
-    lua_pushnumber(L, l_mathop(acos)(luaL_checknumber(L, 1)));
+	auto n = luaL_checknumber(L, 1);
+	auto n_value = std::stod(safe_number_to_string(n));
+    lua_pushnumber(L, l_mathop(acos)(n_value));
     return 1;
 }
 
 static int math_atan(lua_State *L) {
     lua_Number y = luaL_checknumber(L, 1);
-    lua_Number x = luaL_optnumber(L, 2, 1);
-    lua_pushnumber(L, l_mathop(atan2)(y, x));
+    lua_Number x = luaL_optnumber(L, 2, safe_number_create(1));
+	auto y_value = std::stod(safe_number_to_string(y));
+	auto x_value = std::stod(safe_number_to_string(x));
+    lua_pushnumber(L, l_mathop(atan2)(y_value, x_value));
     return 1;
 }
 
@@ -91,8 +106,8 @@ static int math_floor(lua_State *L) {
     if (lua_isinteger(L, 1))
         lua_settop(L, 1);  /* integer is its own floor */
     else {
-        lua_Number d = l_mathop(floor)(luaL_checknumber(L, 1));
-        pushnumint(L, d);
+        auto d = l_mathop(floor)(std::stod(safe_number_to_string(luaL_checknumber(L, 1))));
+        pushnumint(L, safe_number_create(std::to_string(d)));
     }
     return 1;
 }
@@ -102,26 +117,32 @@ static int math_ceil(lua_State *L) {
     if (lua_isinteger(L, 1))
         lua_settop(L, 1);  /* integer is its own ceil */
     else {
-        lua_Number d = l_mathop(ceil)(luaL_checknumber(L, 1));
-        pushnumint(L, d);
+        auto d = l_mathop(ceil)(std::stod(safe_number_to_string(luaL_checknumber(L, 1))));
+        pushnumint(L, safe_number_create(std::to_string(d)));
     }
     return 1;
 }
 
 
 static int math_fmod(lua_State *L) {
-    if (lua_isinteger(L, 1) && lua_isinteger(L, 2)) {
-        lua_Integer d = lua_tointeger(L, 2);
-        if ((lua_Unsigned)d + 1u <= 1u) {  /* special cases: -1 or 0 */
-            luaL_argcheck(L, d != 0, 2, "zero");
-            lua_pushinteger(L, 0);  /* avoid overflow with 0x80000... / -1 */
-        }
-        else
-            lua_pushinteger(L, lua_tointeger(L, 1) % d);
-    }
-    else
-        lua_pushnumber(L, l_mathop(fmod)(luaL_checknumber(L, 1),
-        luaL_checknumber(L, 2)));
+	if (lua_isinteger(L, 1) && lua_isinteger(L, 2)) {
+		lua_Integer d = lua_tointeger(L, 2);
+		if ((lua_Unsigned)d + 1u <= 1u) {  /* special cases: -1 or 0 */
+			luaL_argcheck(L, d != 0, 2, "zero");
+			lua_pushinteger(L, 0);  /* avoid overflow with 0x80000... / -1 */
+		}
+		else
+			lua_pushinteger(L, lua_tointeger(L, 1) % d);
+	}
+	else {
+		const auto& arg1 = luaL_checknumber(L, 1);
+		const auto& arg2 = luaL_checknumber(L, 2);
+		auto arg1_v = std::stod(safe_number_to_string(arg1));
+		auto arg2_v = std::stod(safe_number_to_string(arg2));
+		auto fmod_v = l_mathop(fmod)(arg1_v, arg2_v);
+		lua_pushnumber(L, fmod_v);
+		luaL_checknumber(L, 2);
+	}
     return 1;
 }
 
@@ -138,18 +159,21 @@ static int math_modf(lua_State *L) {
     }
     else {
         lua_Number n = luaL_checknumber(L, 1);
+		auto nv = std::stod(safe_number_to_string(n));
         /* integer part (rounds toward zero) */
-        lua_Number ip = (n < 0) ? l_mathop(ceil)(n) : l_mathop(floor)(n);
+        lua_Number ip = safe_number_create(std::to_string((safe_number_lt(n, safe_number_zero())) ? l_mathop(ceil)(nv) : l_mathop(floor)(nv)));
         pushnumint(L, ip);
         /* fractional part (test needed for inf/-inf) */
-        lua_pushnumber(L, (n == ip) ? l_mathop(0.0) : (n - ip));
+        lua_pushnumber(L, (safe_number_eq(n, ip)) ? safe_number_zero() : safe_number_minus(n, ip));
     }
     return 2;
 }
 
 
 static int math_sqrt(lua_State *L) {
-    lua_pushnumber(L, l_mathop(sqrt)(luaL_checknumber(L, 1)));
+	const auto& n = luaL_checknumber(L, 1);
+	auto nv = std::stod(safe_number_to_string(n));
+    lua_pushnumber(L, l_mathop(sqrt)(nv));
     return 1;
 }
 
@@ -165,31 +189,35 @@ static int math_log(lua_State *L) {
     lua_Number x = luaL_checknumber(L, 1);
     lua_Number res;
     if (lua_isnoneornil(L, 2))
-        res = l_mathop(log)(x);
+        res = safe_number_create(l_mathop(log)(std::stod(safe_number_to_string(x))));
     else {
         lua_Number base = luaL_checknumber(L, 2);
 #if !defined(LUA_USE_C89)
         if (base == 2.0) res = l_mathop(log2)(x); else
 #endif
-            if (base == 10.0) res = l_mathop(log10)(x);
-            else res = l_mathop(log)(x) / l_mathop(log)(base);
+            if (safe_number_eq(base, safe_number_create(10))) res = safe_number_create(std::to_string(l_mathop(log10)(std::stod(safe_number_to_string(x)))));
+            else res = safe_number_create(std::to_string(l_mathop(log)(std::stod(safe_number_to_string(x))) / l_mathop(log)(std::stod(safe_number_to_string(base)))));
     }
     lua_pushnumber(L, res);
     return 1;
 }
 
 static int math_exp(lua_State *L) {
-    lua_pushnumber(L, l_mathop(exp)(luaL_checknumber(L, 1)));
+    lua_pushnumber(L, l_mathop(exp)(std::stod(safe_number_to_string(luaL_checknumber(L, 1)))));
     return 1;
 }
 
 static int math_deg(lua_State *L) {
-    lua_pushnumber(L, luaL_checknumber(L, 1) * (l_mathop(180.0) / PI));
+	const auto& n = luaL_checknumber(L, 1);
+	auto nd = std::stod(safe_number_to_string(n));
+    lua_pushnumber(L, safe_number_create(nd * (l_mathop(180.0) / PI)));
     return 1;
 }
 
 static int math_rad(lua_State *L) {
-    lua_pushnumber(L, luaL_checknumber(L, 1) * (PI / l_mathop(180.0)));
+	const auto& n = luaL_checknumber(L, 1);
+	auto nd = std::stod(safe_number_to_string(n));
+    lua_pushnumber(L, safe_number_create(nd * (PI / l_mathop(180.0))));
     return 1;
 }
 

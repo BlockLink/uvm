@@ -755,7 +755,7 @@ static int validop(int op, TValue *v1, TValue *v2) {
         return (tointeger(v1, &i) && tointeger(v2, &i));
     }
     case LUA_OPDIV: case LUA_OPIDIV: case LUA_OPMOD:  /* division by 0 */
-        return (nvalue(v2) != 0);
+        return (safe_number_ne(nvalue(v2), safe_number_zero()));
     default: return 1;  /* everything else is valid */
     }
 }
@@ -775,7 +775,7 @@ static int constfolding(FuncState *fs, int op, expdesc *e1, expdesc *e2) {
     }
     else {  /* folds neither NaN nor 0.0 (to avoid collapsing with -0.0) */
         lua_Number n = fltvalue(&res);
-        if (luai_numisnan(n) || n == 0)
+        if (safe_number_invalid(n) || safe_number_is_zero(n))
             return 0;
         e1->k = VKFLT;
         e1->u.nval = n;

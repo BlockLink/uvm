@@ -146,7 +146,7 @@ LUA_API lua_CFunction lua_atpanic(lua_State *L, lua_CFunction panicf) {
 
 
 LUA_API const lua_Number *lua_version(lua_State *L) {
-    static const lua_Number version = LUA_VERSION_NUM;
+    static const lua_Number version = safe_number_create(true, LUA_VERSION_NUM, 0);
     if (L == nullptr) return &version;
     else return state_G(L)->version;
 }
@@ -351,7 +351,7 @@ LUA_API lua_Number lua_tonumberx(lua_State *L, int idx, int *pisnum) {
     const TValue *o = index2addr(L, idx);
     int isnum = tonumber(o, &n);
     if (!isnum)
-        n = 0;  /* call to 'tonumber' may change 'n' even if it fails */
+        n = safe_number_zero();  /* call to 'tonumber' may change 'n' even if it fails */
     if (pisnum) *pisnum = isnum;
     return n;
 }
@@ -464,6 +464,10 @@ LUA_API void lua_pushnumber(lua_State *L, lua_Number n) {
     setfltvalue(L->top, n);
     api_incr_top(L);
     lua_unlock(L);
+}
+
+LUA_API void lua_pushnumber(lua_State *L, LUA_NUMBER n) {
+	lua_pushnumber(L, safe_number_create(std::to_string(n)));
 }
 
 

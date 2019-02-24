@@ -345,7 +345,7 @@ typedef struct UvmStorageValue
     {
 	    if(type == uvm::blockchain::StorageValueTypes::storage_value_number)
 	    {
-			value.int_value = (lua_Integer)value.number_value;
+			value.int_value = safe_number_to_int64(value.number_value);
 			type = uvm::blockchain::StorageValueTypes::storage_value_int;
 	    }
     }
@@ -355,7 +355,7 @@ typedef struct UvmStorageValue
     {
 		if (type == uvm::blockchain::StorageValueTypes::storage_value_int)
 		{
-			value.number_value = (lua_Number)value.int_value;
+			value.number_value = safe_number_create(true, value.int_value, 0);
 			type = uvm::blockchain::StorageValueTypes::storage_value_number;
 		}
     }
@@ -375,7 +375,7 @@ typedef struct UvmStorageValue
         case uvm::blockchain::StorageValueTypes::storage_value_int:
             return value.int_value == other.value.int_value;
         case uvm::blockchain::StorageValueTypes::storage_value_number:
-            return value.number_value == other.value.number_value;
+            return safe_number_to_string(value.number_value) == safe_number_to_string(other.value.number_value);
         case uvm::blockchain::StorageValueTypes::storage_value_bool:
             return value.bool_value == other.value.bool_value;
             return value.userdata_value == other.value.userdata_value;

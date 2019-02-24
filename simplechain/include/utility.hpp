@@ -1,5 +1,4 @@
-#ifndef SIMPLE_WEB_UTILITY_HPP
-#define SIMPLE_WEB_UTILITY_HPP
+#pragma once
 
 #include "status_code.hpp"
 #include <atomic>
@@ -10,9 +9,11 @@
 #include <unordered_map>
 
 #if __cplusplus > 201402L || (defined(_MSC_VER) && _MSC_VER >= 1913)
-#include <string_view>
+// #include <string_view>
+#include <boost/utility/string_ref.hpp>
 namespace SimpleWeb {
-  using string_view = std::string_view;
+  // using string_view = std::string_view;
+	using string_view = boost::string_ref;
 }
 #elif !defined(USE_STANDALONE_ASIO)
 #include <boost/utility/string_ref.hpp>
@@ -360,4 +361,3 @@ namespace SimpleWeb {
   };
 } // namespace SimpleWeb
 
-#endif // SIMPLE_WEB_UTILITY_HPP

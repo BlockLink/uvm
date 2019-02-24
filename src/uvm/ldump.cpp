@@ -61,7 +61,8 @@ static void DumpInt(int32_t x, DumpState *D) {
 
 
 static void DumpNumber(lua_Number x, DumpState *D) {
-    DumpVar(x, D);
+	LUA_NUMBER xv = std::stod(safe_number_to_string(x));
+    DumpVar(xv, D);
 }
 
 
@@ -196,7 +197,7 @@ static void DumpHeader(DumpState *D) {
     DumpByte(sizeof(lua_Integer), D);
     DumpByte(sizeof(lua_Number), D);
     DumpInteger(LUAC_INT, D);
-    DumpNumber(LUAC_NUM, D);
+    DumpNumber(safe_number_create(LUAC_NUM_STR), D);
 }
 
 

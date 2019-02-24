@@ -400,10 +400,10 @@ namespace uvm
 							const auto& value = map->at(key);
 							unsigned char byte_value;
 							if (value.type == uvm::blockchain::StorageValueTypes::storage_value_int) {
-								byte_value = (unsigned char)value.value.int_value;
+								byte_value = (unsigned char)value.value.int_value; // endian bug here
 							}
 							else if (value.type == uvm::blockchain::StorageValueTypes::storage_value_number) {
-								byte_value = (unsigned char)value.value.number_value;
+								byte_value = (unsigned char)std::stod(safe_number_to_string(value.value.number_value)); // endian bug here
 							}
 							else {
 								uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,

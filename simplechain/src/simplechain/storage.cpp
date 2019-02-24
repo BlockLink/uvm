@@ -20,7 +20,7 @@ namespace simplechain {
 		case uvm::blockchain::StorageValueTypes::storage_value_int:
 			return value.value.int_value;
 		case uvm::blockchain::StorageValueTypes::storage_value_number:
-			return value.value.number_value;
+			return std::stod(safe_number_to_string(value.value.number_value));
 		case uvm::blockchain::StorageValueTypes::storage_value_string:
 			return std::string(value.value.string_value);
 		case uvm::blockchain::StorageValueTypes::storage_value_bool_array:
@@ -137,7 +137,7 @@ namespace simplechain {
 		else if (json_value.is_numeric())
 		{
 			value.type = uvm::blockchain::StorageValueTypes::storage_value_number;
-			value.value.number_value = json_value.as_double();
+			value.value.number_value = safe_number_create(std::to_string(json_value.as_double()));
 			return value;
 		}
 		else if (json_value.is_string())

@@ -1311,12 +1311,12 @@ static int str_pack(lua_State *L) {
             break;
         }
         case Kfloat: {  /* floating-point options */
-            volatile Ftypes u;
+            Ftypes u;
             char *buff = luaL_prepbuffsize(&b, size);
             lua_Number n = luaL_checknumber(L, arg);  /* get argument */
-            if (size == sizeof(u.f)) u.f = (float)n;  /* copy it into 'u' */
-            else if (size == sizeof(u.d)) u.d = (double)n;
-            else u.n = n;
+            if (size == sizeof(u.f)) u.f = std::stof(safe_number_to_string(n));  /* copy it into 'u' */
+            else if (size == sizeof(u.d)) u.d = std::stof(safe_number_to_string(n));
+            else u.n = safe_number_create(n.sign, n.x, n.e);
             /* move 'u' to final result, correcting endianness if needed */
             copywithendian(buff, u.buff, size, h.islittle);
             luaL_addsize(&b, size);
@@ -1451,11 +1451,11 @@ static int str_unpack(lua_State *L) {
             break;
         }
         case Kfloat: {
-            volatile Ftypes u;
+            Ftypes u;
             lua_Number num;
             copywithendian(u.buff, data + pos, size, h.islittle);
-            if (size == sizeof(u.f)) num = (lua_Number)u.f;
-            else if (size == sizeof(u.d)) num = (lua_Number)u.d;
+            if (size == sizeof(u.f)) num = safe_number_create(std::to_string(u.f));
+            else if (size == sizeof(u.d)) num = safe_number_create(std::to_string(u.d));
             else num = u.n;
             lua_pushnumber(L, num);
             break;

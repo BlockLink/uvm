@@ -547,13 +547,18 @@ bool Json_Reader::decodeInteger(Token& token, UvmStorageValue* intVal) {
 }
 
 bool Json_Reader::decodeDouble(Token& token, UvmStorageValue* doubleVal) {
-	lua_Number value = 0;
 	std::string buffer(token.start_, token.end_);
 	std::istringstream is(buffer);
-	if (!(is >> value))
+	std::string raw_value;
+	if (!(is >> raw_value))
 		return addError("'" + std::string(token.start_, token.end_) +
 			"' is not a number.", token, current_);
 	doubleVal->type = StorageValueTypes::storage_value_number;
+	lua_Number value = safe_number_create(raw_value);
+	if (!safe_number_is_valid(value)) {
+		return addError("'" + std::string(token.start_, token.end_) +
+			"' is not a number.", token, current_);
+	}
 	doubleVal->value.number_value = value;
 	return true;
 }

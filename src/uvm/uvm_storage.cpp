@@ -195,7 +195,7 @@ UvmStorageValue cbor_to_uvm_storage_value(lua_State *L, cbor::CborObject* cbor_v
 	else if (cbor_value->is_float())
 	{
 		value.type = uvm::blockchain::StorageValueTypes::storage_value_number;
-		value.value.number_value = cbor_value->as_float64();
+		value.value.number_value = safe_number_create(std::to_string(cbor_value->as_float64()));
 		return value;
 	}
 	else if (cbor_value->is_string())
@@ -302,7 +302,7 @@ cbor::CborObjectP uvm_storage_value_to_cbor(UvmStorageValue value) {
 	case uvm::blockchain::StorageValueTypes::storage_value_int:
 		return CborObject::from_int(value.value.int_value);
 	case uvm::blockchain::StorageValueTypes::storage_value_number:
-		return CborObject::from_float64(value.value.number_value);
+		return CborObject::from_float64(std::stod(safe_number_to_string(value.value.number_value)));
 	case uvm::blockchain::StorageValueTypes::storage_value_string:
 		return CborObject::from_string(value.value.string_value);
 	case uvm::blockchain::StorageValueTypes::storage_value_bool_array:
@@ -347,7 +347,7 @@ jsondiff::JsonValue uvm_storage_value_to_json(UvmStorageValue value)
 	case uvm::blockchain::StorageValueTypes::storage_value_int:
 		return value.value.int_value;
 	case uvm::blockchain::StorageValueTypes::storage_value_number:
-		return value.value.number_value;
+		return std::stod(safe_number_to_string(value.value.number_value));
 	case uvm::blockchain::StorageValueTypes::storage_value_string:
 		return std::string(value.value.string_value);
 	case uvm::blockchain::StorageValueTypes::storage_value_bool_array:
@@ -405,7 +405,7 @@ UvmStorageValue json_to_uvm_storage_value(lua_State *L, jsondiff::JsonValue json
 	else if (json_value.is_numeric())
 	{
 		value.type = uvm::blockchain::StorageValueTypes::storage_value_number;
-		value.value.number_value = json_value.as_double();
+		value.value.number_value = safe_number_create(std::to_string(json_value.as_double()));
 		return value;
 	}
 	else if (json_value.is_string())
@@ -711,13 +711,13 @@ bool luaL_commit_storage_changes(lua_State *L)
 						&& storage_info_in_chain == uvm::blockchain::StorageValueTypes::storage_value_int)
 					{
 						p1.second.after.type = uvm::blockchain::StorageValueTypes::storage_value_int;
-						p1.second.after.value.int_value = (lua_Integer)p1.second.after.value.number_value;
+						p1.second.after.value.int_value = safe_number_to_int64(p1.second.after.value.number_value);
 					}
 					else if (p1.second.after.type == uvm::blockchain::StorageValueTypes::storage_value_int
 						&& storage_info_in_chain == uvm::blockchain::StorageValueTypes::storage_value_number)
 					{
 						p1.second.after.type = uvm::blockchain::StorageValueTypes::storage_value_number;
-						p1.second.after.value.number_value = (lua_Number)p1.second.after.value.int_value;
+						p1.second.after.value.number_value = safe_number_create(p1.second.after.value.int_value);
 					}
 				}
 			}
@@ -778,13 +778,13 @@ bool luaL_commit_storage_changes(lua_State *L)
 						&& storage_info_in_chain == uvm::blockchain::StorageValueTypes::storage_value_int)
 					{
 						it2->second.after.type = uvm::blockchain::StorageValueTypes::storage_value_int;
-						it2->second.after.value.int_value = (lua_Integer)it2->second.after.value.number_value;
+						it2->second.after.value.int_value = safe_number_to_int64(it2->second.after.value.number_value);
 					}
 					else if (it2->second.after.type == uvm::blockchain::StorageValueTypes::storage_value_int
 						&& storage_info_in_chain == uvm::blockchain::StorageValueTypes::storage_value_number)
 					{
 						it2->second.after.type = uvm::blockchain::StorageValueTypes::storage_value_number;
-						it2->second.after.value.number_value = (lua_Number)it2->second.after.value.int_value;
+						it2->second.after.value.number_value = safe_number_create(it2->second.after.value.int_value);
 					}
 				}
 			}
@@ -824,7 +824,7 @@ bool luaL_commit_storage_changes(lua_State *L)
 					continue;
 				}
 				else if (it2->second.after.type == uvm::blockchain::StorageValueTypes::storage_value_number
-					&& abs(it2->second.after.value.number_value - it2->second.before.value.number_value) < 0.0000001)
+					&& abs(std::stod(safe_number_to_string(it2->second.after.value.number_value)) - std::stod(safe_number_to_string(it2->second.before.value.number_value))) < 0.0000001)
 				{
 					it2 = it->second->erase(it2);
 					continue;

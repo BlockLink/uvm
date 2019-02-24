@@ -118,7 +118,7 @@ static int luaB_todouble(lua_State *L)
         s = lua_tolstring(L, 1, &l);
         luaL_argcheck(L, 2 <= base && base <= 36, 2, "base out of range");
         if (b_str2int(s, (int)base, &n) == s + l) {
-            lua_pushnumber(L, (lua_Number)n);
+            lua_pushnumber(L, safe_number_create(n));
             return 1;
         }  /* else not a number */
     }  /* else not a number */
@@ -174,7 +174,7 @@ static int luaB_tointeger(lua_State *L)
 	else if(res > 0 && lua_isnumber(L, -1))
 	{
 		lua_Number number_result = luaL_checknumber(L, -1);
-		auto int_result = (lua_Integer)number_result;
+		auto int_result = safe_number_to_int64(number_result);
 		lua_pop(L, 1);
 		lua_pushinteger(L, int_result);
 		return 1;
@@ -288,7 +288,7 @@ static int luaB_collectgarbage(lua_State *L) {
     switch (o) {
     case LUA_GCCOUNT: {
         int b = lua_gc(L, LUA_GCCOUNTB, 0);
-        lua_pushnumber(L, (lua_Number)res + ((lua_Number)b / 1024));
+        lua_pushnumber(L, safe_number_create(std::to_string(res + ((LUA_NUMBER)b / 1024))));
         return 1;
     }
     case LUA_GCSTEP: case LUA_GCISRUNNING: {

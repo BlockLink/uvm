@@ -83,7 +83,7 @@ using uvm::lua::api::global_uvm_chain_api;
 int luaV_tonumber_(const TValue *obj, lua_Number *n) {
     TValue v;
     if (ttisinteger(obj)) {
-        *n = cast_num(ivalue(obj));
+        *n = safe_number_create(ivalue(obj));
         return 1;
     }
     else if (cvt2num(obj) &&  /* string convertible to number? */
@@ -108,11 +108,12 @@ int luaV_tointeger(const TValue *obj, lua_Integer *p, int mode) {
 again:
     if (ttisfloat(obj)) {
         lua_Number n = fltvalue(obj);
-        lua_Number f = l_floor(n);
-        if (n != f) {  /* not an integral value? */
-            if (mode == 0) return 0;  /* fails if mode demands integral value */
-            else if (mode > 1)  /* needs ceil? */
-                f += 1;  /* convert floor to ceil (remember: n != f) */
+		auto nv = std::stod(safe_number_to_string(n));
+        lua_Number f = safe_number_create(std::to_string(l_floor(nv)));
+        if (safe_number_ne(n, f)) {  /* not an integral value? */
+			if (mode == 0) return 0;  /* fails if mode demands integral value */
+			else if (mode > 1)  /* needs ceil? */
+				f = safe_number_add(f, safe_number_create(1));  /* convert floor to ceil (remember: n != f) */
         }
         return lua_numbertointeger(f, p);
     }
@@ -152,7 +153,7 @@ static int forlimit(const TValue *obj, lua_Integer *p, lua_Integer step,
         lua_Number n;  /* try to convert to float */
         if (!tonumber(obj, &n)) /* cannot convert to float? */
             return 0;  /* not a number */
-        if (luai_numlt(0, n)) {  /* if true, float is larger than max integer */
+        if (safe_number_lt(safe_number_zero(), n)) {  /* if true, float is larger than max integer */
             *p = LUA_MAXINTEGER;
             if (step < 0) *stopnow = 1;
         }
@@ -308,17 +309,18 @@ static int l_c_str_cmp(const char *l, const char *r)
 ** in false.
 */
 static int LTintfloat(lua_Integer i, lua_Number f) {
+	auto fv = std::stod(safe_number_to_string(f));
 #if defined(l_intfitsf)
     if (!l_intfitsf(i)) {
-        if (f >= -cast_num(LUA_MININTEGER))  /* -minint == maxint + 1 */
+        if (fv >= -LUA_MININTEGER)  /* -minint == maxint + 1 */
             return 1;  /* f >= maxint + 1 > i */
-        else if (f > cast_num(LUA_MININTEGER))  /* minint < f <= maxint ? */
-            return (i < lua_cast(lua_Integer, f));  /* compare them as integers */
+        else if (fv > LUA_MININTEGER)  /* minint < f <= maxint ? */
+            return (i < safe_number_to_int64(f));  /* compare them as integers */
         else  /* f <= minint <= i (or 'f' is NaN)  -->  not(i < f) */
             return 0;
     }
 #endif
-    return luai_numlt(cast_num(i), f);  /* compare them as floats */
+    return safe_number_lt(safe_number_create(i), f);  /* compare them as floats */
 }
 
 
@@ -327,17 +329,18 @@ static int LTintfloat(lua_Integer i, lua_Number f) {
 ** See comments on previous function.
 */
 static int LEintfloat(lua_Integer i, lua_Number f) {
+	auto fv = std::stod(safe_number_to_string(f));
 #if defined(l_intfitsf)
     if (!l_intfitsf(i)) {
-        if (f >= -cast_num(LUA_MININTEGER))  /* -minint == maxint + 1 */
+        if (fv >= -LUA_MININTEGER)  /* -minint == maxint + 1 */
             return 1;  /* f >= maxint + 1 > i */
-        else if (f >= cast_num(LUA_MININTEGER))  /* minint <= f <= maxint ? */
-            return (i <= lua_cast(lua_Integer, f));  /* compare them as integers */
+        else if (fv >= LUA_MININTEGER)  /* minint <= f <= maxint ? */
+            return safe_number_lte(safe_number_create(i), safe_number_create(safe_number_to_int64(f)));  /* compare them as integers */
         else  /* f < minint <= i (or 'f' is NaN)  -->  not(i <= f) */
             return 0;
     }
 #endif
-    return luai_numle(cast_num(i), f);  /* compare them as floats */
+    return safe_number_lte(safe_number_create(i), f);  /* compare them as floats */
 }
 
 
@@ -355,8 +358,8 @@ static int LTnum(const TValue *l, const TValue *r) {
     else {
         lua_Number lf = fltvalue(l);  /* 'l' must be float */
         if (ttisfloat(r))
-            return luai_numlt(lf, fltvalue(r));  /* both are float */
-        else if (luai_numisnan(lf))  /* 'r' is int and 'l' is float */
+            return safe_number_lt(lf, fltvalue(r));  /* both are float */
+        else if (safe_number_invalid(lf))  /* 'r' is int and 'l' is float */
             return 0;  /* NaN < i is always false */
         else  /* without NaN, (l < r)  <-->  not(r <= l) */
             return !LEintfloat(ivalue(r), lf);  /* not (r <= l) ? */
@@ -378,8 +381,8 @@ static int LEnum(const TValue *l, const TValue *r) {
     else {
         lua_Number lf = fltvalue(l);  /* 'l' must be float */
         if (ttisfloat(r))
-            return luai_numle(lf, fltvalue(r));  /* both are float */
-        else if (luai_numisnan(lf))  /* 'r' is int and 'l' is float */
+            return safe_number_lte(lf, fltvalue(r));  /* both are float */
+        else if (safe_number_invalid(lf))  /* 'r' is int and 'l' is float */
             return 0;  /*  NaN <= i is always false */
         else  /* without NaN, (l <= r)  <-->  not(r < l) */
             return !LTintfloat(ivalue(r), lf);  /* not (r < l) ? */
@@ -399,12 +402,12 @@ int luaV_lessthan(lua_State *L, const TValue *l, const TValue *r) {
 	else if (ttisstring(l) && ttisnumber(r))
 	{
 		auto lstr = svalue(l);
-		auto rstr = std::to_string(ttisinteger(r) ? ivalue(r) : fltvalue(r));
+		auto rstr = ttisinteger(r) ? std::to_string(ivalue(r)) : safe_number_to_string(fltvalue(r));
 		return l_c_str_cmp(lstr, rstr.c_str());
 	}
 	else if(ttisnumber(l) && ttisstring(r))
 	{
-		auto lstr = std::to_string(ttisinteger(l) ? ivalue(l) : fltvalue(l));
+		auto lstr = ttisinteger(l) ? std::to_string(ivalue(l)) : safe_number_to_string(fltvalue(l));
 		auto rstr = svalue(r);
 		return l_c_str_cmp(lstr.c_str(), rstr);
 	}
@@ -431,12 +434,12 @@ int luaV_lessequal(lua_State *L, const TValue *l, const TValue *r) {
 	else if(ttisstring(l) && ttisnumber(r))
 	{
 		auto lstr = svalue(l);
-		auto rstr = std::to_string(ttisinteger(r) ? ivalue(r) : fltvalue(r));
+		auto rstr = ttisinteger(r) ? std::to_string(ivalue(r)) : safe_number_to_string(fltvalue(r));
 		return l_c_str_cmp(lstr, rstr.c_str()) <= 0;
 	}
 	else if(ttisnumber(l) && ttisstring(r))
 	{
-		auto lstr = std::to_string(ttisinteger(l) ? ivalue(l) : fltvalue(l));
+		auto lstr = ttisinteger(l) ? std::to_string(ivalue(l)) : safe_number_to_string(fltvalue(l));
 		auto rstr = svalue(r);
 		return l_c_str_cmp(lstr.c_str(), rstr) <= 0;
 	}
@@ -471,7 +474,7 @@ int luaV_equalobj(lua_State *L, const TValue *t1, const TValue *t2) {
     switch (ttype(t1)) {
     case LUA_TNIL: return 1;
     case LUA_TNUMINT: return (ivalue(t1) == ivalue(t2));
-    case LUA_TNUMFLT: return luai_numeq(fltvalue(t1), fltvalue(t2));
+    case LUA_TNUMFLT: return safe_number_eq(fltvalue(t1), fltvalue(t2));
     case LUA_TBOOLEAN: return bvalue(t1) == bvalue(t2);  /* true must be 1 !! */
     case LUA_TLIGHTUSERDATA: return pvalue(t1) == pvalue(t2);
     case LUA_TLCF: return fvalue(t1) == fvalue(t2);
@@ -1074,7 +1077,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                     setivalue(ra, intop(+, ib, ic));
                 }
                 else if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
-                    setfltvalue(ra, luai_numadd(L, nb, nc));
+                    setfltvalue(ra, safe_number_add(nb, nc));
                 }
                 else {
 					luaG_runerror(L, "+ can only accept numbers");
@@ -1091,7 +1094,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                     setivalue(ra, intop(-, ib, ic));
                 }
                 else if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
-                    setfltvalue(ra, luai_numsub(L, nb, nc));
+                    setfltvalue(ra, safe_number_minus(nb, nc));
                 }
                 else {
 					luaG_runerror(L, "- can only accept numbers");
@@ -1108,7 +1111,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                     setivalue(ra, intop(*, ib, ic));
                 }
                 else if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
-                    setfltvalue(ra, luai_nummul(L, nb, nc));
+                    setfltvalue(ra, safe_number_multiply(nb, nc));
                 }
                 else {
 					luaG_runerror(L, "* can only accept numbers");
@@ -1121,7 +1124,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                 TValue *rc = RKC(i);
                 lua_Number nb; lua_Number nc;
                 if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
-                    setfltvalue(ra, luai_numdiv(L, nb, nc));
+                    setfltvalue(ra, safe_number_div(nb, nc));
                 }
                 else {
 					luaG_runerror(L, "/ can only accept numbers");
@@ -1204,7 +1207,11 @@ newframe:  /* reentry point when frame changes (call/return) */
                 }
                 else if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
                     lua_Number m;
-                    luai_nummod(L, nb, nc, m);
+					LUA_NUMBER mv;
+					auto nbv = std::stod(safe_number_to_string(nb));
+					auto ncv = std::stod(safe_number_to_string(nc));
+                    luai_nummod(L, nbv, ncv, mv);
+					m = safe_number_create(std::to_string(mv));
                     setfltvalue(ra, m);
                 }
                 else {
@@ -1222,7 +1229,8 @@ newframe:  /* reentry point when frame changes (call/return) */
                     setivalue(ra, luaV_div(L, ib, ic));
                 }
                 else if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
-                    setfltvalue(ra, luai_numidiv(L, nb, nc));
+					const auto& idiv_result = safe_number_div(nb, nc);
+                    setfltvalue(ra, safe_number_create(safe_number_to_int64(idiv_result)));
                 }
                 else {
 					luaG_runerror(L, "// can only accept numbers");
@@ -1235,7 +1243,10 @@ newframe:  /* reentry point when frame changes (call/return) */
                 TValue *rc = RKC(i);
                 lua_Number nb; lua_Number nc;
                 if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
-                    setfltvalue(ra, luai_numpow(L, nb, nc));
+					// pow only accept integers
+					auto nb_int = safe_number_to_int64(nb);
+					auto nc_int = safe_number_to_int64(nc);
+                    setfltvalue(ra, safe_number_create(luai_numpow(L, nb_int, nc_int)));
                 }
                 else {
 					luaG_runerror(L, "^ can only accept numbers");
@@ -1251,7 +1262,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                     setivalue(ra, intop(-, 0, ib));
                 }
                 else if (tonumber(rb, &nb)) {
-                    setfltvalue(ra, luai_numunm(L, nb));
+                    setfltvalue(ra, safe_number_neg(nb));
                 }
                 else {
 					luaG_runerror(L, "-<exp> can only accept numbers");
@@ -1436,10 +1447,10 @@ newframe:  /* reentry point when frame changes (call/return) */
                 }
                 else {  /* floating loop */
                     lua_Number step = fltvalue(ra + 2);
-                    lua_Number idx = luai_numadd(L, fltvalue(ra), step); /* inc. index */
+                    lua_Number idx = safe_number_add(fltvalue(ra), step); /* inc. index */
                     lua_Number limit = fltvalue(ra + 1);
-                    if (luai_numlt(0, step) ? luai_numle(idx, limit)
-                        : luai_numle(limit, idx)) {
+                    if (safe_number_lt(safe_number_zero(), step) ? safe_number_lte(idx, limit)
+                        : safe_number_lte(limit, idx)) {
                         ci->u.l.savedpc += GETARG_sBx(i);  /* jump back */
                         chgfltvalue(ra, idx);  /* update internal index... */
                         setfltvalue(ra + 3, idx);  /* ...and external index */
@@ -1470,7 +1481,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                     setfltvalue(pstep, nstep);
                     if (!tonumber(init, &ninit))
                         luaG_runerror(L, "'for' initial value must be a number");
-                    setfltvalue(init, luai_numsub(L, ninit, nstep));
+                    setfltvalue(init, safe_number_minus(ninit, nstep));
                 }
                 ci->u.l.savedpc += GETARG_sBx(i);
                 vmbreak;

@@ -2374,7 +2374,7 @@ LUALIB_API const char *luaL_tolstring(lua_State *L, int idx, size_t *len) {
             }
             else {
               auto value = lua_tonumber(L, idx);
-              std::string s = std::to_string(value);
+              std::string s = safe_number_to_string(value);
               lua_pushfstring(L, "%s", s.c_str());
             }
             break;
@@ -2561,7 +2561,7 @@ bool lua_table_to_map_traverser_with_nested(lua_State *L, void *ud, size_t len, 
 	else if (lua_isinteger(L, -2))
 		key = std::to_string(lua_tointeger(L, -2));
 	else if (key_type == LUA_TNUMFLT || key_type == LUA_TNUMINT || key_type == LUA_TNUMBER)
-		key = std::to_string(lua_tonumber(L, -2));
+		key = safe_number_to_string(lua_tonumber(L, -2));
 	else if (key_type == LUA_TSTRING)
         key = std::string(lua_tostring(L, -2));
     else 
@@ -2694,7 +2694,7 @@ static void luatablemap_to_json_stream(UvmTableMapP map, uvm::util::stringbuffer
             ss.put(value.value.int_value);
             break;
 		case uvm::blockchain::StorageValueTypes::storage_value_number:
-            ss.put(value.value.number_value);
+            ss.put(safe_number_to_string(value.value.number_value));
             break;
 		case uvm::blockchain::StorageValueTypes::storage_value_string:
         {
@@ -2786,7 +2786,7 @@ static cbor::CborObjectP uvm_json_item_to_cbor(const UvmStorageValue& value) {
 		return cbor::CborObject::from_bool(value.value.bool_value);
 	case uvm::blockchain::StorageValueTypes::storage_value_number:
 	{
-		auto int_value = (lua_Integer)value.value.number_value;
+		auto int_value = safe_number_to_int64(value.value.number_value);
 		return cbor::CborObject::from_int(int_value);
 	}
 	case uvm::blockchain::StorageValueTypes::storage_value_string:
@@ -2843,7 +2843,7 @@ LUALIB_API cbor::CborObjectP luaL_to_cbor(lua_State* L, int idx) {
 		if (lua_isinteger(L, idx))
 			return cbor::CborObject::from_int(luaL_checkinteger(L, idx));
 		else {
-			auto int_value = (lua_Integer)lua_tonumber(L, idx);
+			auto int_value = safe_number_to_int64(lua_tonumber(L, idx));
 			return cbor::CborObject::from_int(int_value);
 		}
 	}
@@ -3135,9 +3135,9 @@ LUALIB_API void luaL_checkversion_(lua_State *L, lua_Number ver, size_t sz) {
         luaL_error(L, "core and library have incompatible numeric types");
     if (v != lua_version(nullptr))
         luaL_error(L, "multiple Lua VMs detected");
-    else if (*v != ver)
+    else if (safe_number_ne(*v, ver))
         luaL_error(L, "version mismatch: app. needs %f, Lua core provides %f",
-        ver, *v);
+        ver, std::stod(safe_number_to_string(*v)));
 }
 
 

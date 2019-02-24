@@ -76,8 +76,9 @@ static int LoadInt(LoadState *S) {
 
 
 static lua_Number LoadNumber(LoadState *S) {
-    lua_Number x;
-    LoadVar(S, x);
+	LUA_NUMBER xv;
+    LoadVar(S, xv);
+	lua_Number x = safe_number_create(std::to_string(xv));
     return x;
 }
 
@@ -294,7 +295,7 @@ static void checkHeader(LoadState *S) {
     checksize(S, lua_Number);
     if (LoadInteger(S) != LUAC_INT)
         error(S, "endianness mismatch in");
-    if (LoadNumber(S) != LUAC_NUM)
+    if (safe_number_ne(LoadNumber(S), safe_number_create(LUAC_NUM_STR)))
         error(S, "float format mismatch in");
 }
 

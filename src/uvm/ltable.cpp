@@ -105,7 +105,7 @@ static const Node dummynode_ = {
 static int l_hashfloat(lua_Number n) {
     int i;
     lua_Integer ni;
-    n = l_mathop(frexp)(n, &i) * -cast_num(INT_MIN);
+    n = safe_number_multiply(safe_number_create(std::to_string(l_mathop(frexp)(std::stod(safe_number_to_string(n)), &i))), safe_number_create(-INT_MIN));
     if (!lua_numbertointeger(n, &ni)) {  /* is 'n' inf/-inf/NaN? */
         lua_assert(luai_numisnan(n) || l_mathop(fabs)(n) == cast_num(HUGE_VAL));
         return 0;
@@ -199,11 +199,11 @@ static std::string lua_value_to_str(const TValue *key)
 	}
 	else if (ttisinteger(key))
 	{
-		return std::to_string((lua_Integer)nvalue(key));
+		return std::to_string(safe_number_to_int64(nvalue(key)));
 	}
 	else if (ttisnumber(key))
 	{
-		return std::to_string(nvalue(key));
+		return safe_number_to_string(nvalue(key));
 	}
 	else
 		return "";
@@ -583,7 +583,7 @@ TValue *luaH_newkey(lua_State *L, Table *t, const TValue *key) {
             setivalue(&aux, k);
             key = &aux;  /* insert it as an integer */
         }
-        else if (luai_numisnan(fltvalue(key)))
+        else if (safe_number_invalid(fltvalue(key)))
             luaG_runerror(L, "table index is NaN");
     }
     mp = mainposition(t, key);

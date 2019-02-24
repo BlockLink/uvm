@@ -442,10 +442,7 @@ LUA_CDIR"loadall.dll;" ".\\?.dll"
 ** has an exact representation as a float; MAXINTEGER may not have one,
 ** and therefore its conversion to float may have an ill-defined value.)
 */
-#define lua_numbertointeger(n,p) \
-  ((n) >= (LUA_NUMBER)(LUA_MININTEGER) && \
-   (n) < -(LUA_NUMBER)(LUA_MININTEGER) && \
-      (*(p) = (LUA_INTEGER)(n), 1))
+#define lua_numbertointeger(n,p) (*(p) = safe_number_to_int64(n))
 
 
 /* now the variable definitions */
@@ -606,8 +603,8 @@ LUA_CDIR"loadall.dll;" ".\\?.dll"
 #if defined(LUA_USE_C89) || (defined(HUGE_VAL) && !defined(HUGE_VALF))
 #undef l_mathop  /* variants not available */
 #undef lua_str2number
-#define l_mathop(op)		(lua_Number)op  /* no variant */
-#define lua_str2number(s,p)	((lua_Number)strtod((s), (p)))
+#define l_mathop(op)		(LUA_NUMBER)op  /* no variant */
+#define lua_str2number(s,p)	((LUA_NUMBER)strtod((s), (p)))
 #endif
 
 

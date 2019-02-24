@@ -67,8 +67,9 @@ static UvmStorageValue tokens_to_lua_value(lua_State *L, UvmTokenParser *token_p
             auto token_str = token.token;
             std::stringstream ss;
             ss << token_str;
-            lua_Number token_num = 0;
-            ss >> token_num;
+			std::string token_num_str;
+            ss >> token_num_str;
+			lua_Number token_num = safe_number_create(token_num_str);
             UvmStorageValue value;
             value.type = uvm::blockchain::StorageValueTypes::storage_value_number;
             value.value.number_value = token_num;
