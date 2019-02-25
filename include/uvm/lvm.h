@@ -12,12 +12,7 @@
 #include "uvm/lobject.h"
 #include "uvm/ltm.h"
 
-
-#if !defined(LUA_NOCVTN2S)
 #define cvt2str(o)	ttisnumber(o)
-#else
-#define cvt2str(o)	0	/* no conversion from numbers to strings */
-#endif
 
 
 #if !defined(LUA_NOCVTS2N)

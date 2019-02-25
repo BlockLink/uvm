@@ -11,6 +11,7 @@
 #include <jsondiff/jsondiff.h>
 #include <jsondiff/exceptions.h>
 #include <uvm/uvm_lib.h>
+#include <uvm/uvm_lutil.h>
 
 using uvm::lua::api::global_uvm_chain_api;
 
@@ -195,7 +196,7 @@ UvmStorageValue cbor_to_uvm_storage_value(lua_State *L, cbor::CborObject* cbor_v
 	else if (cbor_value->is_float())
 	{
 		value.type = uvm::blockchain::StorageValueTypes::storage_value_number;
-		value.value.number_value = safe_number_create(std::to_string(cbor_value->as_float64()));
+		value.value.number_value = cbor_value->as_float64();
 		return value;
 	}
 	else if (cbor_value->is_string())
@@ -291,6 +292,7 @@ UvmStorageValue cbor_to_uvm_storage_value(lua_State *L, cbor::CborObject* cbor_v
 		throw cbor::CborException("not supported cbor value type");
 	}
 }
+
 cbor::CborObjectP uvm_storage_value_to_cbor(UvmStorageValue value) {
 	using namespace cbor;
 	switch (value.type)
@@ -302,7 +304,7 @@ cbor::CborObjectP uvm_storage_value_to_cbor(UvmStorageValue value) {
 	case uvm::blockchain::StorageValueTypes::storage_value_int:
 		return CborObject::from_int(value.value.int_value);
 	case uvm::blockchain::StorageValueTypes::storage_value_number:
-		return CborObject::from_float64(std::stod(safe_number_to_string(value.value.number_value)));
+		return CborObject::from_float64(value.value.number_value);
 	case uvm::blockchain::StorageValueTypes::storage_value_string:
 		return CborObject::from_string(value.value.string_value);
 	case uvm::blockchain::StorageValueTypes::storage_value_bool_array:
@@ -824,7 +826,7 @@ bool luaL_commit_storage_changes(lua_State *L)
 					continue;
 				}
 				else if (it2->second.after.type == uvm::blockchain::StorageValueTypes::storage_value_number
-					&& abs(std::stod(safe_number_to_string(it2->second.after.value.number_value)) - std::stod(safe_number_to_string(it2->second.before.value.number_value))) < 0.0000001)
+					&& safe_number_lt(safe_number_abs(safe_number_minus(it2->second.after.value.number_value, it2->second.before.value.number_value)), safe_number_create("0.0000001")))
 				{
 					it2 = it->second->erase(it2);
 					continue;

@@ -466,10 +466,6 @@ LUA_API void lua_pushnumber(lua_State *L, lua_Number n) {
     lua_unlock(L);
 }
 
-LUA_API void lua_pushnumber(lua_State *L, LUA_NUMBER n) {
-	lua_pushnumber(L, safe_number_create(std::to_string(n)));
-}
-
 
 LUA_API void lua_pushinteger(lua_State *L, lua_Integer n) {
     lua_lock(L);

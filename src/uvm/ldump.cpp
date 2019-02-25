@@ -61,6 +61,7 @@ static void DumpInt(int32_t x, DumpState *D) {
 
 
 static void DumpNumber(lua_Number x, DumpState *D) {
+	// TODO: change number format in bytecode or accept bytes to parse to SafeNumber
 	LUA_NUMBER xv = std::stod(safe_number_to_string(x));
     DumpVar(xv, D);
 }

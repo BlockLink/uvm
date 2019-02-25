@@ -14,9 +14,9 @@ namespace cbor_diff {
 
 	void test_cbor_diff() {
 		{
-			double a = 1.2345678901;
+			auto a = "1.2345678901";
 			auto json_encoded = jsondiff::json_dumps(a);
-			auto a_encoded = cbor_encode(CborObject::from_float64(a));
+			auto a_encoded = cbor_encode(CborObject::from_float64(safe_number_create(a)));
 			auto json_decoded = jsondiff::json_loads(json_encoded).as_double();
 			auto a_decoded = cbor_decode(a_encoded);
 			auto cbor_decoded_value = a_decoded->as_float64();
@@ -30,7 +30,7 @@ namespace cbor_diff {
 			auto hello = CborObject::from_string("hello");
 			b_map["b"] = hello;
 			auto b = CborObject::create_map(b_map);
-			auto c = CborObject::from_float64(1.23456789);
+			auto c = CborObject::from_float64(safe_number_create("1.23456789"));
 			auto origin = cbor_to_hex(a);
 			auto result = cbor_to_hex(b);
 			auto c_encoded = cbor_to_hex(c);
@@ -39,7 +39,7 @@ namespace cbor_diff {
 			auto c_decoded = cbor_from_hex(c_encoded);
 			cout << "origin: " << origin << " result: " << result << " c: " << c << endl;
 			cout << "a_decoded: " << a_decoded->as_int() << endl;
-			cout << "c_decoded: " << c_decoded->as_float64() << endl;
+			cout << "c_decoded: " << std::to_string(c_decoded->as_float64()) << endl;
 			auto diff_result = differ.diff_by_hex(std::string(origin), std::string(result));
 			auto diff_result_str = diff_result->pretty_str();
 			std::cout << diff_result_str << std::endl;
@@ -132,14 +132,14 @@ namespace cbor_diff {
 		{
 			// test big int and big double
 			auto a = CborObject::from_extra_integer(6000000000, true);
-			auto b = CborObject::from_float64(1.23456789);
+			auto b = CborObject::from_float64(safe_number_create("1.23456789"));
 			const auto& a_json_str = cbor_encode(a);
 			const auto& b_json_str = cbor_encode(b);
 			auto a_loaded = cbor_decode(a_json_str);
 			auto b_loaded = cbor_decode(b_json_str);
 			auto a_type = a_loaded->object_type();
 			assert(a_loaded->is_extra_int() && a_loaded->as_extra_int() == a->as_extra_int());
-			assert(b_loaded->is_float() && abs(b_loaded->as_float64() - b->as_float64()) < 0.0001);
+			assert(b_loaded->is_float() && safe_number_eq(b_loaded->as_float64(), b->as_float64()));
 			std::cout << "big int and big double tests passed" << std::endl;
 		}
 		{
@@ -148,7 +148,7 @@ namespace cbor_diff {
 			auto c = CborObject::from_int(100);
 			auto d = CborObject::create_null();
 			auto e = CborObject::from_bool(true);
-			auto f = CborObject::from_float64(1.23);
+			auto f = CborObject::from_float64(safe_number_create("1.23"));
 			auto g = CborObject::from_string("hello");
 			auto h = CborObject::from_extra_integer(6000000000, false);
 			lua_State *L = uvm::lua::lib::create_lua_state();

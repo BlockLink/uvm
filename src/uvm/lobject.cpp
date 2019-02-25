@@ -193,58 +193,58 @@ static int isneg(const char **s) {
    even with single floats) */
 #define MAXSIGDIG	30
 
-/*
-** convert an hexadecimal numeric string to a number, following
-** C99 specification for 'strtod'
-*/
-static lua_Number lua_strx2number(const char *s, char **endptr) {
-    int dot = lua_getlocaledecpoint();
-    lua_Number r = safe_number_zero();  /* result (accumulator) */
-    int sigdig = 0;  /* number of significant digits */
-    int nosigdig = 0;  /* number of non-significant digits */
-    int e = 0;  /* exponent correction */
-    int neg;  /* 1 if number is negative */
-    int hasdot = 0;  /* true after seen a dot */
-    *endptr = lua_cast(char *, s);  /* nothing is valid yet */
-    while (lisspace(cast_uchar(*s))) s++;  /* skip initial spaces */
-    neg = isneg(&s);  /* check signal */
-    if (!(*s == '0' && (*(s + 1) == 'x' || *(s + 1) == 'X')))  /* check '0x' */
-        return safe_number_zero();  /* invalid format (no '0x') */
-    for (s += 2;; s++) {  /* skip '0x' and read numeral */
-        if (*s == dot) {
-            if (hasdot) break;  /* second dot? stop loop */
-            else hasdot = 1;
-        }
-        else if (lisxdigit(cast_uchar(*s))) {
-            if (sigdig == 0 && *s == '0')  /* non-significant digit (zero)? */
-                nosigdig++;
-            else if (++sigdig <= MAXSIGDIG)  /* can read it without overflow? */
-                r = safe_number_add((safe_number_multiply(r, cast_num(safe_number_create(16)))), safe_number_create(luaO_hexavalue(*s)));
-            else e++; /* too many digits; ignore, but still count for exponent */
-            if (hasdot) e--;  /* decimal digit? correct exponent */
-        }
-        else break;  /* neither a dot nor a digit */
-    }
-    if (nosigdig + sigdig == 0)  /* no digits? */
-        return safe_number_zero();  /* invalid format */
-    *endptr = lua_cast(char *, s);  /* valid up to here */
-    e *= 4;  /* each digit multiplies/divides value by 2^4 */
-    if (*s == 'p' || *s == 'P') {  /* exponent part? */
-        int exp1 = 0;  /* exponent value */
-        int neg1;  /* exponent signal */
-        s++;  /* skip 'p' */
-        neg1 = isneg(&s);  /* signal */
-        if (!lisdigit(cast_uchar(*s)))
-            return safe_number_zero();  /* invalid; must have at least one digit */
-        while (lisdigit(cast_uchar(*s)))  /* read exponent */
-            exp1 = exp1 * 10 + *(s++) - '0';
-        if (neg1) exp1 = -exp1;
-        e += exp1;
-        *endptr = lua_cast(char *, s);  /* valid up to here */
-    }
-    if (neg) r = safe_number_neg(r);
-    return safe_number_create(std::to_string(l_mathop(ldexp)(std::stod(safe_number_to_string(r)), e)));
-}
+///*
+//** convert an hexadecimal numeric string to a number, following
+//** C99 specification for 'strtod'
+//*/
+//static lua_Number lua_strx2number(const char *s, char **endptr) {
+//    int dot = lua_getlocaledecpoint();
+//    lua_Number r = safe_number_zero();  /* result (accumulator) */
+//    int sigdig = 0;  /* number of significant digits */
+//    int nosigdig = 0;  /* number of non-significant digits */
+//    int e = 0;  /* exponent correction */
+//    int neg;  /* 1 if number is negative */
+//    int hasdot = 0;  /* true after seen a dot */
+//    *endptr = lua_cast(char *, s);  /* nothing is valid yet */
+//    while (lisspace(cast_uchar(*s))) s++;  /* skip initial spaces */
+//    neg = isneg(&s);  /* check signal */
+//    if (!(*s == '0' && (*(s + 1) == 'x' || *(s + 1) == 'X')))  /* check '0x' */
+//        return safe_number_zero();  /* invalid format (no '0x') */
+//    for (s += 2;; s++) {  /* skip '0x' and read numeral */
+//        if (*s == dot) {
+//            if (hasdot) break;  /* second dot? stop loop */
+//            else hasdot = 1;
+//        }
+//        else if (lisxdigit(cast_uchar(*s))) {
+//            if (sigdig == 0 && *s == '0')  /* non-significant digit (zero)? */
+//                nosigdig++;
+//            else if (++sigdig <= MAXSIGDIG)  /* can read it without overflow? */
+//                r = safe_number_add((safe_number_multiply(r, cast_num(safe_number_create(16)))), safe_number_create(luaO_hexavalue(*s)));
+//            else e++; /* too many digits; ignore, but still count for exponent */
+//            if (hasdot) e--;  /* decimal digit? correct exponent */
+//        }
+//        else break;  /* neither a dot nor a digit */
+//    }
+//    if (nosigdig + sigdig == 0)  /* no digits? */
+//        return safe_number_zero();  /* invalid format */
+//    *endptr = lua_cast(char *, s);  /* valid up to here */
+//    e *= 4;  /* each digit multiplies/divides value by 2^4 */
+//    if (*s == 'p' || *s == 'P') {  /* exponent part? */
+//        int exp1 = 0;  /* exponent value */
+//        int neg1;  /* exponent signal */
+//        s++;  /* skip 'p' */
+//        neg1 = isneg(&s);  /* signal */
+//        if (!lisdigit(cast_uchar(*s)))
+//            return safe_number_zero();  /* invalid; must have at least one digit */
+//        while (lisdigit(cast_uchar(*s)))  /* read exponent */
+//            exp1 = exp1 * 10 + *(s++) - '0';
+//        if (neg1) exp1 = -exp1;
+//        e += exp1;
+//        *endptr = lua_cast(char *, s);  /* valid up to here */
+//    }
+//    if (neg) r = safe_number_neg(r);
+//    return safe_number_create(std::to_string(l_mathop(ldexp)(std::stod(safe_number_to_string(r)), e)));
+//}
 
 #endif
 /* }====================================================== */
@@ -254,8 +254,8 @@ static const char *l_str2d(const char *s, lua_Number *result) {
     char *endptr;
     if (strpbrk(s, "nN"))  /* reject 'inf' and 'nan' */
         return nullptr;
-    else if (strpbrk(s, "xX"))  /* hex? */
-        *result = lua_strx2number(s, &endptr);
+    //else if (strpbrk(s, "xX"))  /* hex? */
+    //    *result = lua_strx2number(s, &endptr);
     else
         *result = safe_number_create(std::to_string(lua_str2number(s, &endptr)));
     if (endptr == s) return nullptr;  /* nothing recognized */
@@ -330,7 +330,8 @@ int luaO_utf8esc(char *buff, unsigned long x) {
 #define MAXNUMBER2STR	50
 
 size_t lua_number2str_impl(char* s, size_t sz, lua_Number n) {
-	return l_sprintf(s, sz, LUA_NUMBER_FMT, n);
+	auto n_str = std::to_string(n);
+	return l_sprintf(s, sz, "%s", n_str.c_str()); // LUA_NUMBER_FMT
 }
 
 /*

@@ -58,7 +58,7 @@ namespace cbor {
 			else
 				return std::string("-") + std::to_string(extra_int_val);
 		} case COT_FLOAT:
-			return std::to_string(as_float64());
+			return safe_number_to_string(as_float64());
 		case COT_TAG:
 			return std::string("tag<") + std::to_string(as_tag()) + ">";
 		case COT_STRING:

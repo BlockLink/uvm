@@ -229,7 +229,7 @@ LUA_API int   (lua_compare)(lua_State *L, int idx1, int idx2, int op);
 */
 LUA_API void        (lua_pushnil)(lua_State *L);
 LUA_API void        (lua_pushnumber)(lua_State *L, lua_Number n);
-LUA_API void lua_pushnumber(lua_State *L, LUA_NUMBER n);
+//LUA_API void lua_pushnumber(lua_State *L, LUA_NUMBER n);
 LUA_API void        (lua_pushinteger)(lua_State *L, lua_Integer n);
 LUA_API const char *(lua_pushlstring)(lua_State *L, const char *s, size_t len);
 LUA_API const char *(lua_pushstring)(lua_State *L, const char *s);

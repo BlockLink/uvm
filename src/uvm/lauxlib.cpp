@@ -2557,7 +2557,7 @@ bool lua_table_to_map_traverser_with_nested(lua_State *L, void *ud, size_t len, 
     std::string key;
 	auto key_type = lua_type(L, -2);
 	if (key_type == LUA_TBOOLEAN)
-		key = std::to_string(lua_toboolean(L, -2));
+		key = lua_toboolean(L, -2) ? "true": "false";
 	else if (lua_isinteger(L, -2))
 		key = std::to_string(lua_tointeger(L, -2));
 	else if (key_type == LUA_TNUMFLT || key_type == LUA_TNUMINT || key_type == LUA_TNUMBER)
@@ -2735,8 +2735,10 @@ static const char *tojsonstring_with_nested(lua_State *L, int idx, size_t *len, 
         case LUA_TNUMBER: {
             if (lua_isinteger(L, idx))
                 lua_pushfstring(L, "%I", lua_tointeger(L, idx));
-            else
-                lua_pushfstring(L, "%f", lua_tonumber(L, idx));
+			else {
+				auto n_str = std::to_string(lua_tonumber(L, idx));
+				lua_pushfstring(L, "%s", n_str.c_str());
+			}
             break;
         }
         case LUA_TSTRING:
@@ -3136,8 +3138,8 @@ LUALIB_API void luaL_checkversion_(lua_State *L, lua_Number ver, size_t sz) {
     if (v != lua_version(nullptr))
         luaL_error(L, "multiple Lua VMs detected");
     else if (safe_number_ne(*v, ver))
-        luaL_error(L, "version mismatch: app. needs %f, Lua core provides %f",
-        ver, std::stod(safe_number_to_string(*v)));
+        luaL_error(L, "version mismatch: app. needs %f, Lua core provides %s",
+        ver, safe_number_to_string(*v));
 }
 
 

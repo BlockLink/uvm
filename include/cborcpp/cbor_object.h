@@ -7,6 +7,7 @@
 #include <map>
 #include <memory>
 #include <algorithm>
+#include <uvm/safenumber.h>
 #include <cborcpp/exceptions.h>
 
 namespace cbor {
@@ -35,7 +36,7 @@ namespace cbor {
 	typedef bool CborBoolValue;
 	typedef int64_t CborIntValue;
 	typedef uint32_t CborTagValue;
-	typedef double CborDoubleValue;
+	typedef ::SafeNumber CborDoubleValue;
 	typedef std::vector<char> CborBytesValue;
 	typedef std::vector<CborObjectP> CborArrayValue;
 	typedef std::map<std::string, CborObjectP, std::less<std::string>> CborMapValue;

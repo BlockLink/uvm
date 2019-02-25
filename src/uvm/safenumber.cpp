@@ -456,6 +456,23 @@ SafeNumber safe_number_div(const SafeNumber& a, const SafeNumber& b) {
 	return safe_number_create(sign, rx, static_cast<uint32_t>(re));
 }
 
+SafeNumber safe_number_mod(const SafeNumber& a, const SafeNumber& b) {
+	const auto& div_result = safe_number_div(a, b);
+	const auto& mod_result = safe_number_minus(a, safe_number_multiply(b, div_result));
+	return mod_result;
+}
+
+SafeNumber safe_number_abs(const SafeNumber& a) {
+	const auto& r = a.sign ? a : safe_number_neg(a);
+	return r;
+}
+
+namespace std {
+	std::string to_string(const SafeNumber& value) {
+		return safe_number_to_string(value);
+	}
+}
+
 // tostring(a)
 std::string safe_number_to_string(const SafeNumber& a) {
 	const auto& val = compress_number(a);

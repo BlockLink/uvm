@@ -82,9 +82,9 @@ void encoder::write_type_value(int major_type, uint64_t value) {
 }
 
 void encoder::write_type_value(int major_type, CborDoubleValue value) {
-	std::stringstream ss;
-	ss << std::setprecision(std::numeric_limits<double>::digits10 + 2) << std::fixed << value;
-	std::string value_str = ss.str();
+	// std::stringstream ss;
+	// ss << std::setprecision(std::numeric_limits<double>::digits10 + 2) << std::fixed << value;
+	std::string value_str = std::to_string(value);
 	size_t fixed_size = 30; // save float as type + array_size + array_chars + (fixed_size-len(array) count of 0)
 	write_type_value(major_type, (unsigned int)value_str.size());
 	_out->put_bytes((const unsigned char *)value_str.c_str(), (int)value_str.size());

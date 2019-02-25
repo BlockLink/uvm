@@ -108,14 +108,10 @@ int luaV_tointeger(const TValue *obj, lua_Integer *p, int mode) {
 again:
     if (ttisfloat(obj)) {
         lua_Number n = fltvalue(obj);
-		auto nv = std::stod(safe_number_to_string(n));
-        lua_Number f = safe_number_create(std::to_string(l_floor(nv)));
-        if (safe_number_ne(n, f)) {  /* not an integral value? */
-			if (mode == 0) return 0;  /* fails if mode demands integral value */
-			else if (mode > 1)  /* needs ceil? */
-				f = safe_number_add(f, safe_number_create(1));  /* convert floor to ceil (remember: n != f) */
-        }
-        return lua_numbertointeger(f, p);
+		if (safe_number_invalid(n)) {
+			return (*p) = 0;
+		}
+        return lua_numbertointeger(n, p);
     }
     else if (ttisinteger(obj)) {
         *p = ivalue(obj);
@@ -309,18 +305,11 @@ static int l_c_str_cmp(const char *l, const char *r)
 ** in false.
 */
 static int LTintfloat(lua_Integer i, lua_Number f) {
-	auto fv = std::stod(safe_number_to_string(f));
-#if defined(l_intfitsf)
-    if (!l_intfitsf(i)) {
-        if (fv >= -LUA_MININTEGER)  /* -minint == maxint + 1 */
-            return 1;  /* f >= maxint + 1 > i */
-        else if (fv > LUA_MININTEGER)  /* minint < f <= maxint ? */
-            return (i < safe_number_to_int64(f));  /* compare them as integers */
-        else  /* f <= minint <= i (or 'f' is NaN)  -->  not(i < f) */
-            return 0;
-    }
-#endif
-    return safe_number_lt(safe_number_create(i), f);  /* compare them as floats */
+	if (i > 99999999)
+		return false;
+	if (i < -99999999)
+		return true;
+	return safe_number_lt(safe_number_create(i), f);
 }
 
 
@@ -329,18 +318,11 @@ static int LTintfloat(lua_Integer i, lua_Number f) {
 ** See comments on previous function.
 */
 static int LEintfloat(lua_Integer i, lua_Number f) {
-	auto fv = std::stod(safe_number_to_string(f));
-#if defined(l_intfitsf)
-    if (!l_intfitsf(i)) {
-        if (fv >= -LUA_MININTEGER)  /* -minint == maxint + 1 */
-            return 1;  /* f >= maxint + 1 > i */
-        else if (fv >= LUA_MININTEGER)  /* minint <= f <= maxint ? */
-            return safe_number_lte(safe_number_create(i), safe_number_create(safe_number_to_int64(f)));  /* compare them as integers */
-        else  /* f < minint <= i (or 'f' is NaN)  -->  not(i <= f) */
-            return 0;
-    }
-#endif
-    return safe_number_lte(safe_number_create(i), f);  /* compare them as floats */
+	if (i > 99999999)
+		return false;
+	if (i < -99999999)
+		return true;
+	return safe_number_lte(safe_number_create(i), f);
 }
 
 
@@ -352,8 +334,10 @@ static int LTnum(const TValue *l, const TValue *r) {
         lua_Integer li = ivalue(l);
         if (ttisinteger(r))
             return li < ivalue(r);  /* both are integers */
-        else  /* 'l' is int and 'r' is float */
-            return LTintfloat(li, fltvalue(r));  /* l < r ? */
+		else  /* 'l' is int and 'r' is float */
+		{
+			return LTintfloat(li, fltvalue(r));  /* l < r ? */
+		}
     }
     else {
         lua_Number lf = fltvalue(l);  /* 'l' must be float */
@@ -1206,12 +1190,8 @@ newframe:  /* reentry point when frame changes (call/return) */
                     setivalue(ra, luaV_mod(L, ib, ic));
                 }
                 else if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
-                    lua_Number m;
-					LUA_NUMBER mv;
-					auto nbv = std::stod(safe_number_to_string(nb));
-					auto ncv = std::stod(safe_number_to_string(nc));
-                    luai_nummod(L, nbv, ncv, mv);
-					m = safe_number_create(std::to_string(mv));
+					const auto& div_result = safe_number_div(nb, nc);
+					auto m = safe_number_minus(nb, safe_number_multiply(div_result, nc));
                     setfltvalue(ra, m);
                 }
                 else {

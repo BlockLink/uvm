@@ -79,6 +79,16 @@ SafeNumber safe_number_multiply(const SafeNumber& a, const SafeNumber& b);
 // a / b
 SafeNumber safe_number_div(const SafeNumber& a, const SafeNumber& b);
 
+// a % b
+SafeNumber safe_number_mod(const SafeNumber& a, const SafeNumber& b);
+
+// abs(a)
+SafeNumber safe_number_abs(const SafeNumber& a);
+
+namespace std {
+	std::string to_string(const SafeNumber& value);
+}
+
 // tostring(a)
 std::string safe_number_to_string(const SafeNumber& a);
 

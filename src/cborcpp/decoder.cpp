@@ -517,7 +517,7 @@ CborObjectP decoder::run() {
 				if (str.size() < fixed_size) {
 					_in->skip_bytes(fixed_size - str.size());
 				}
-				CborDoubleValue value = fc::to_double(str); // std::stod(str);
+				const CborDoubleValue& value = safe_number_create(str);
 				put_decoded_value(result, structures_stack, iter_in_map_key, map_key_temp, CborObject::from_float64(value));
 			}
 			else break;
