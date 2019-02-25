@@ -18,6 +18,15 @@
 #include <uvm/uvm_lib.h>
 #include <boost/filesystem/path.hpp>
 
+#if defined(_MSC_VER) && _MSC_VER >= 1915
+FILE _iob[] = { *stdin, *stdout, *stderr };
+
+extern "C" FILE * __cdecl __iob_func(void)
+{
+	return _iob;
+}
+#endif
+
 
 #if !defined(LUA_PROMPT)
 #define LUA_PROMPT		"> "

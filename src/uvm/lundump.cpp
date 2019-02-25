@@ -292,7 +292,7 @@ static void checkHeader(LoadState *S) {
     checksize(S, LUA_SIZE_T_TYPE);
     checksize(S, Instruction);
     checksize(S, lua_Integer);
-    checksize(S, lua_Number);
+    checksize(S, LUA_NUMBER);
     if (LoadInteger(S) != LUAC_INT)
         error(S, "endianness mismatch in");
     if (safe_number_ne(LoadNumber(S), safe_number_create(LUAC_NUM_STR)))

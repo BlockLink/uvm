@@ -134,7 +134,10 @@ namespace simplechain {
 						return gas_count > gas_limit;
 					}
 					return 0;
-				}FC_CAPTURE_AND_LOG((0))
+				}
+				catch (const std::exception& e) {
+					throw e;
+				}
 			}
 
 			static std::shared_ptr<uvm::blockchain::Code> get_contract_code_by_id(evaluate_state* evaluator, const std::string& contract_id) {
@@ -149,7 +152,10 @@ namespace simplechain {
 						}
 					}
 					return nullptr;
-				}FC_CAPTURE_AND_LOG((contract_id))
+				}
+				catch (const std::exception& e) {
+					throw e;
+				}
 			}
 
 			static std::shared_ptr<uvm::blockchain::Code> get_contract_code_by_name(evaluate_state* evaluator, const std::string& contract_name) {
@@ -164,7 +170,10 @@ namespace simplechain {
 						}
 					}
 					return nullptr;
-				}FC_CAPTURE_AND_LOG((contract_name))
+				}
+				catch (const std::exception& e) {
+					throw e;
+				}
 			}
 
 			static void put_contract_storage_changes_to_evaluator(evaluate_state* evaluator, const std::string& contract_id, const contract_storage_changes_type& changes) {
@@ -172,7 +181,10 @@ namespace simplechain {
 					if (evaluator) {
 						evaluator->set_contract_storage_changes(contract_id, changes);
 					}
-				}FC_CAPTURE_AND_LOG((contract_id))
+				}
+				catch (const std::exception& e) {
+					throw e;
+				}
 			}
 			static std::shared_ptr<UvmContractInfo> get_contract_info_by_id(evaluate_state* evaluator, const std::string& contract_id) {
 				try {
@@ -190,7 +202,10 @@ namespace simplechain {
 						}
 					}
 					return nullptr;
-				}FC_CAPTURE_AND_LOG((contract_id))
+				}
+				catch (const std::exception& e) {
+					throw e;
+				}
 			}
 
 			static std::shared_ptr<contract_object> get_contract_object_by_name(evaluate_state* evaluator, const std::string& contract_name) {
@@ -200,7 +215,10 @@ namespace simplechain {
 						return contract;
 					}
 					return nullptr;
-				}FC_CAPTURE_AND_LOG((contract_name))
+				}
+				catch (const std::exception& e) {
+					throw e;
+				}
 
 			}
 
@@ -722,23 +740,23 @@ namespace simplechain {
 					}
 					return 0;
 				}
-				catch (const fc::exception& e)
-				{
-					switch (e.code())
-					{
-					case 30028://invalid_address
-						return -2;
-						//case 31003://unknown_balance_entry
-						//    return -3;
-					case 31303:
-						return -1;
-					default:
-						L->force_stopping = true;
-						L->exit_code = LUA_API_INTERNAL_ERROR;
-						return -4;
-						break;
-					}
-				}
+				//catch (const fc::exception& e)
+				//{
+				//	switch (e.code())
+				//	{
+				//	case 30028://invalid_address
+				//		return -2;
+				//		//case 31003://unknown_balance_entry
+				//		//    return -3;
+				//	case 31303:
+				//		return -1;
+				//	default:
+				//		L->force_stopping = true;
+				//		L->exit_code = LUA_API_INTERNAL_ERROR;
+				//		return -4;
+				//		break;
+				//	}
+				//}
 				catch (...) {
 					L->force_stopping = true;
 					L->exit_code = LUA_API_INTERNAL_ERROR;

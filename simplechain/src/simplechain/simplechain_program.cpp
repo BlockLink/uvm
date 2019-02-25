@@ -6,6 +6,15 @@
 #include <cbor_diff/cbor_diff.h>
 #include <cbor_diff/cbor_diff_tests.h>
 
+#if defined(_MSC_VER) && _MSC_VER >= 1915
+FILE _iob[] = { *stdin, *stdout, *stderr };
+
+extern "C" FILE * __cdecl __iob_func(void)
+{
+	return _iob;
+}
+#endif
+
 using namespace simplechain;
 #ifndef RUN_BOOST_TESTS
 

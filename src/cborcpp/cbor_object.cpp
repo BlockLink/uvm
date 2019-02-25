@@ -35,7 +35,8 @@ namespace cbor {
 			}
 		}
 		else {
-			FC_THROW_EXCEPTION(fc::assert_exception, "this cbor_object with can't be passed as int");
+			throw cbor::CborException("this cbor_object with can't be passed as int");
+			// FC_THROW_EXCEPTION(fc::assert_exception, "this cbor_object with can't be passed as int");
 		}
 	}
 

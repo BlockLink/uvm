@@ -361,8 +361,10 @@ free(storage_buf); \
 
 	uvm::blockchain::Code ContractHelper::load_contract_from_file(const fc::path &path)
 	{
-		if (!fc::exists(path))
-			FC_THROW_EXCEPTION(fc::file_not_found_exception, "Script file not found!");
+		if (!fc::exists(path)) {
+			throw uvm::core::UvmException("Script file not found!");
+			// FC_THROW_EXCEPTION(fc::file_not_found_exception, "Script file not found!");
+		}
 		string file = path.string();
 		FILE* f = fopen(file.c_str(), "rb");
 		fseek(f, 0, SEEK_END);
