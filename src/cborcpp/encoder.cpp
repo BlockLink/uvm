@@ -161,7 +161,7 @@ void encoder::write_float64(CborDoubleValue value) {
 }
 
 void encoder::write_bool(bool value) {
-    if (value == true) {
+    if (value) {
         _out->put_byte((unsigned char) 0xf5);
     } else {
         _out->put_byte((unsigned char) 0xf4);
