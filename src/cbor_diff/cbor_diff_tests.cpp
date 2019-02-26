@@ -2,6 +2,8 @@
 #include <cborcpp/cbor.h>
 #include <cbor_diff/cbor_diff.h>
 #include <jsondiff/jsondiff.h>
+#include <uvm/uvm_storage.h>
+#include <uvm/uvm_lib.h>
 #include <iostream>
 
 namespace cbor_diff {
@@ -27,14 +29,14 @@ namespace cbor_diff {
 			b_map["a"] = CborObject::from_bool(true);
 			auto hello = CborObject::from_string("hello");
 			b_map["b"] = hello;
-			auto b = CborObject::from(b_map);
-			auto c = CborObject::from(1.23456789);
-			auto origin = cbor_encode(a);
-			auto result = cbor_encode(b);
-			auto c_encoded = cbor_encode(c);
-			auto a_decoded = cbor_decode(origin);
-			auto b_decoded = cbor_decode(result);
-			auto c_decoded = cbor_decode(c_encoded);
+			auto b = CborObject::create_map(b_map);
+			auto c = CborObject::from_float64(1.23456789);
+			auto origin = cbor_to_hex(a);
+			auto result = cbor_to_hex(b);
+			auto c_encoded = cbor_to_hex(c);
+			auto a_decoded = cbor_from_hex(origin);
+			auto b_decoded = cbor_from_hex(result);
+			auto c_decoded = cbor_from_hex(c_encoded);
 			cout << "origin: " << origin << " result: " << result << " c: " << c << endl;
 			cout << "a_decoded: " << a_decoded->as_int() << endl;
 			cout << "c_decoded: " << c_decoded->as_float64() << endl;
@@ -43,7 +45,7 @@ namespace cbor_diff {
 			std::cout << diff_result_str << std::endl;
 			auto patched = differ.patch_by_string(origin, diff_result);
 			std::cout << "patched: " << patched->str() << std::endl;
-			assert(cbor_encode(patched) == cbor_encode(cbor_decode(result)));
+			assert(cbor_to_hex(patched) == cbor_to_hex(cbor_from_hex(result)));
 		}
 		{
 			CborDiff differ;
@@ -52,7 +54,7 @@ namespace cbor_diff {
 			b_map["a"] = CborObject::from_bool(true);
 			auto hello = CborObject::from_string("hello");
 			b_map["b"] = hello;
-			auto b = CborObject::from(b_map);
+			auto b = CborObject::create_map(b_map);
 			auto null_val = CborObject::create_null();
 			auto origin = null_val;
 			auto result = b;
@@ -61,11 +63,11 @@ namespace cbor_diff {
 			std::cout << diff_result_str << std::endl;
 			auto patched = differ.patch(origin, diff_result);
 			std::cout << "patched: " << patched->str() << std::endl;
-			assert(cbor_encode(patched) == cbor_encode(result));
+			assert(cbor_to_hex(patched) == cbor_to_hex(result));
 
 			auto rollbacked = differ.rollback(result, diff_result);
-			std::cout << "rollbacked: " << cbor_encode(rollbacked) << std::endl;
-			assert(cbor_encode(rollbacked) == cbor_encode(origin));
+			std::cout << "rollbacked: " << cbor_to_hex(rollbacked) << std::endl;
+			assert(cbor_to_hex(rollbacked) == cbor_to_hex(origin));
 		}
 		{
 			CborDiff differ;
@@ -130,7 +132,7 @@ namespace cbor_diff {
 		{
 			// test big int and big double
 			auto a = CborObject::from_extra_integer(6000000000, true);
-			auto b = CborObject::from(1.23456789);
+			auto b = CborObject::from_float64(1.23456789);
 			const auto& a_json_str = cbor_encode(a);
 			const auto& b_json_str = cbor_encode(b);
 			auto a_loaded = cbor_decode(a_json_str);
@@ -139,6 +141,35 @@ namespace cbor_diff {
 			assert(a_loaded->is_extra_int() && a_loaded->as_extra_int() == a->as_extra_int());
 			assert(b_loaded->is_float() && abs(b_loaded->as_float64() - b->as_float64()) < 0.0001);
 			std::cout << "big int and big double tests passed" << std::endl;
+		}
+		{
+			auto a = CborObject::from_extra_integer(6000000000, true);
+			auto b = CborObject::from_int(1234567890);
+			auto c = CborObject::from_int(100);
+			auto d = CborObject::create_null();
+			auto e = CborObject::from_bool(true);
+			auto f = CborObject::from_float64(1.23);
+			auto g = CborObject::from_string("hello");
+			auto h = CborObject::from_extra_integer(6000000000, false);
+			lua_State *L = uvm::lua::lib::create_lua_state();
+			const auto& a_storage = cbor_to_uvm_storage_value(L, a.get());
+			const auto& b_storage = cbor_to_uvm_storage_value(L, b.get());
+			const auto& c_storage = cbor_to_uvm_storage_value(L, c.get());
+			const auto& d_storage = cbor_to_uvm_storage_value(L, d.get());
+			const auto& e_storage = cbor_to_uvm_storage_value(L, e.get());
+			const auto& f_storage = cbor_to_uvm_storage_value(L, f.get());
+			const auto& g_storage = cbor_to_uvm_storage_value(L, g.get());
+			const auto& h_storage = cbor_to_uvm_storage_value(L, h.get());
+			auto a1 = uvm_storage_value_to_cbor(a_storage);
+			auto b1 = uvm_storage_value_to_cbor(b_storage);
+			auto c1 = uvm_storage_value_to_cbor(c_storage);
+			auto d1 = uvm_storage_value_to_cbor(d_storage);
+			auto e1 = uvm_storage_value_to_cbor(e_storage);
+			auto f1 = uvm_storage_value_to_cbor(f_storage);
+			auto g1 = uvm_storage_value_to_cbor(g_storage);
+			auto h1 = uvm_storage_value_to_cbor(h_storage);
+			std::cout << "a1: " << a1->str() << " b1: " << b1->str() << " c1: " << c1->str() << std::endl;
+			std::cout << "d1: " << d1->str() << " e1: " << e1->str() << " f1: " << f1->str() << " g1: " << g1->str() << " h1: " << h1->str() << std::endl;
 		}
 	}
 }

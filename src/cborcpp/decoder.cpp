@@ -17,6 +17,7 @@
 #include "cborcpp/decoder.h"
 
 #include <limits.h>
+#include <fc/string.hpp>
 
 using namespace cbor;
 
@@ -32,7 +33,11 @@ decoder::~decoder() {
 static CborObjectP cbor_object_error(const std::string& error_msg) {
 	auto result = std::make_shared<CborObject>();
 	result->type = CborObjectType::COT_ERROR;
+#if defined(CBOR_OBJECT_USE_VARIANT)
 	result->value = error_msg;
+#else
+	result->value.string_val = error_msg;
+#endif
 	return result;
 }
 
@@ -52,7 +57,11 @@ static void put_decoded_value(CborObjectP& result, std::vector<CborObjectP>& str
 	}
 	auto last = structures_stack[old_structures_stack_size - 1];
 	if (last->type == COT_ARRAY) {
+#if defined(CBOR_OBJECT_USE_VARIANT)
 		auto& array_value = last->value.get<CborArrayValue>();
+#else
+		auto& array_value = last->value.array_val;
+#endif
 		array_value.push_back(value);
 		if (array_value.size() >= last->array_or_map_size) {
 			// full, pop from structure
@@ -66,8 +75,12 @@ static void put_decoded_value(CborObjectP& result, std::vector<CborObjectP>& str
 			if (map_key_temp->type != COT_STRING) {
 				throw cbor_decode_exception("invalid map key type");
 			}
-			const auto& key = map_key_temp->value.get<CborStringValue>();
+			const auto& key = map_key_temp->as_string();
+#if defined(CBOR_OBJECT_USE_VARIANT)
 			auto& map_value = last->value.get<CborMapValue>();
+#else
+			auto& map_value = last->value.map_val;
+#endif
 			map_value[key] = value;
 			if (map_value.size() >= last->array_or_map_size) {
 				// full, pop from structure
@@ -500,7 +513,11 @@ CborObjectP decoder::run() {
 				_in->get_bytes(data.data(), _currentLength);
 				_state = STATE_TYPE;
 				std::string str(data.data(), (size_t)_currentLength);
-				CborDoubleValue value = std::stod(str);
+				size_t fixed_size = 30;
+				if (str.size() < fixed_size) {
+					_in->skip_bytes(fixed_size - str.size());
+				}
+				CborDoubleValue value = fc::to_double(str); // std::stod(str);
 				put_decoded_value(result, structures_stack, iter_in_map_key, map_key_temp, CborObject::from_float64(value));
 			}
 			else break;

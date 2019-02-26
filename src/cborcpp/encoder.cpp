@@ -85,8 +85,14 @@ void encoder::write_type_value(int major_type, CborDoubleValue value) {
 	std::stringstream ss;
 	ss << std::setprecision(std::numeric_limits<double>::digits10 + 2) << std::fixed << value;
 	std::string value_str = ss.str();
+	size_t fixed_size = 30; // save float as type + array_size + array_chars + (fixed_size-len(array) count of 0)
 	write_type_value(major_type, (unsigned int)value_str.size());
 	_out->put_bytes((const unsigned char *)value_str.c_str(), (int)value_str.size());
+	if (value_str.size() < fixed_size) {
+		std::vector<char> zeros(fixed_size - value_str.size());
+		memset(zeros.data(), 0x00, zeros.size());
+		_out->put_bytes((const unsigned char *) zeros.data(), zeros.size());
+	}
 }
 
 void encoder::write_int(uint32_t value) {
@@ -95,6 +101,10 @@ void encoder::write_int(uint32_t value) {
 
 void encoder::write_int(uint64_t value) {
     write_type_value(0, value);
+}
+
+void encoder::write_neg_int(uint64_t value) {
+	write_type_value(1, value);
 }
 
 void encoder::write_int(int64_t value) {
@@ -151,7 +161,7 @@ void encoder::write_float64(CborDoubleValue value) {
 }
 
 void encoder::write_bool(bool value) {
-    if (value == true) {
+    if (value) {
         _out->put_byte((unsigned char) 0xf5);
     } else {
         _out->put_byte((unsigned char) 0xf4);
@@ -183,7 +193,12 @@ void encoder::write_cbor_object(const CborObject* value) {
 		write_int(value->as_int());
 		return;
 	case CborObjectType::COT_EXTRA_INT:
-		write_int(value->as<cbor::CborExtraIntValue>());
+		if (value->is_positive_extra) {
+			write_int(value->as_extra_int());
+		}
+		else {
+			write_neg_int(value->as_extra_int());
+		}
 		return;
 	case CborObjectType::COT_STRING:
 		write_string(value->as_string());
@@ -200,7 +215,7 @@ void encoder::write_cbor_object(const CborObject* value) {
 		write_tag(value->as_tag());
 		return;
 	case CborObjectType::COT_EXTRA_TAG:
-		write_tag(value->as<uint64_t>());
+		write_tag(value->as_extra_tag());
 		return;
 	/*case CborObjectType::COT_SPECIAL:
 		write_special(value->as_special());

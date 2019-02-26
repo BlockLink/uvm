@@ -69,3 +69,7 @@ void input::get_bytes(void *to, int count) {
     memcpy(to, _data + _offset, count);
     _offset += count;
 }
+
+void input::skip_bytes(int count) {
+	_offset += count;
+}

@@ -225,6 +225,8 @@ struct lua_State {
 	StkId evalstack; //for calulate
 	StkId evalstacktop;//first free slot
 	int evalstacksize;
+
+	int cbor_diff_state; // 0: not_set, 1: true, 2: false
 };
 
 void *lua_malloc(lua_State *L, size_t size);

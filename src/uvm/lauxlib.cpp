@@ -57,6 +57,7 @@ using uvm::lua::api::global_uvm_chain_api;
 #define LEVELS1	10	/* size of the first part of the stack */
 #define LEVELS2	11	/* size of the second part of the stack */
 
+// #define CHECK_CONTRACT_GLOBAL_CHANGE true
 
 
 /*
@@ -1464,9 +1465,11 @@ int luaL_import_contract_module_from_address(lua_State *L)
     /* else must load package */
     lua_pop(L, 1);  /* remove 'getfield' result */
 
+#if defined(CHECK_CONTRACT_GLOBAL_CHANGE)
     size_t global_size_before = luaL_count_global_variables(L);
     std::list<std::string> global_vars_before;
     luaL_get_global_variables(L, &global_vars_before);
+#endif
 
     // check whether the contract existed
     bool exists;
@@ -1616,6 +1619,7 @@ int luaL_import_contract_module_from_address(lua_State *L)
                     }
                 }
                 // check _G size whether change
+#if defined(CHECK_CONTRACT_GLOBAL_CHANGE)
                 size_t global_size_after = luaL_count_global_variables(L);
                 std::list<std::string> global_vars_after;
                 luaL_get_global_variables(L, &global_vars_after);
@@ -1633,6 +1637,7 @@ int luaL_import_contract_module_from_address(lua_State *L)
                     uvm::lua::lib::notify_lua_state_stop(L);
                     return 0;
                 }
+#endif
             }
             else
             {
@@ -1740,9 +1745,11 @@ int luaL_import_contract_module(lua_State *L)
     /* else must load package */
     lua_pop(L, 1);  /* remove 'getfield' result */
 
+#if defined(CHECK_CONTRACT_GLOBAL_CHANGE)
     size_t global_size_before = luaL_count_global_variables(L);
     std::list<std::string> global_vars_before;
     luaL_get_global_variables(L, &global_vars_before);
+#endif
 
     // check whether the contract existed
     bool exists;
@@ -1887,6 +1894,7 @@ int luaL_import_contract_module(lua_State *L)
                         return 0;
                     }
                 }
+#if defined(CHECK_CONTRACT_GLOBAL_CHANGE)
                 // check _G size whether change
                 size_t global_size_after = luaL_count_global_variables(L);
                 std::list<std::string> global_vars_after;
@@ -1898,6 +1906,7 @@ int luaL_import_contract_module(lua_State *L)
                     uvm::lua::lib::notify_lua_state_stop(L);
                     return 0;
                 }
+#endif
             }
             else
             {
@@ -2796,7 +2805,11 @@ static cbor::CborObjectP uvm_json_item_to_cbor(const UvmStorageValue& value) {
 					return nullptr;
 				items.push_back(item);
 			}
+#if defined(CBOR_OBJECT_USE_VARIANT)
 			result->value = items;
+#else
+			result->value.array_val = items;
+#endif
 			return result;
 		}
 		else if (uvm::blockchain::is_any_table_storage_value_type(value.type)) {
@@ -2810,7 +2823,11 @@ static cbor::CborObjectP uvm_json_item_to_cbor(const UvmStorageValue& value) {
 					return nullptr;
 				items[key] = item;
 			}
+#if defined(CBOR_OBJECT_USE_VARIANT)
 			result->value = items;
+#else
+			result->value.map_val = items;
+#endif
 			return result;
 		}
 		else {
@@ -2875,7 +2892,7 @@ LUALIB_API int luaL_push_cbor_as_json(lua_State* L, cbor::CborObjectP cbor_objec
 		lua_pushinteger(L, cbor_object->as_int());
 		return 1;
 	case cbor::CborObjectType::COT_EXTRA_INT:
-		lua_pushinteger(L, cbor_object->as<uint64_t>());
+		lua_pushinteger(L, cbor_object->as_extra_int());
 		return 1;
 	case cbor::CborObjectType::COT_STRING: {
 		const auto& str = cbor_object->as_string();
