@@ -113,7 +113,7 @@ static lua_Number numarith(lua_State *L, int op, lua_Number v1,
 		auto v2_num = safe_number_to_int64(v2);
 		return safe_number_create(std::pow(v1_num, v2_num));
 	}
-    case LUA_OPIDIV: return safe_number_create(safe_number_to_int64(safe_number_div(v1, v2)));
+    case LUA_OPIDIV: return safe_number_idiv(v1, v2);
     case LUA_OPUNM: return safe_number_neg(v1);
     case LUA_OPMOD: {
 		auto v1_num = safe_number_to_int64(v1);

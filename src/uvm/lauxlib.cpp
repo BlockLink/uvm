@@ -2374,7 +2374,7 @@ LUALIB_API const char *luaL_tolstring(lua_State *L, int idx, size_t *len) {
             }
             else {
               auto value = lua_tonumber(L, idx);
-              std::string s = safe_number_to_string(value);
+              std::string s = std::to_string(value);
               lua_pushfstring(L, "%s", s.c_str());
             }
             break;

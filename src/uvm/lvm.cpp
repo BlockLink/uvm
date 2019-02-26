@@ -1190,8 +1190,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                     setivalue(ra, luaV_mod(L, ib, ic));
                 }
                 else if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
-					const auto& div_result = safe_number_div(nb, nc);
-					auto m = safe_number_minus(nb, safe_number_multiply(div_result, nc));
+					const auto& m = safe_number_mod(nb, nc);
                     setfltvalue(ra, m);
                 }
                 else {
@@ -1209,7 +1208,7 @@ newframe:  /* reentry point when frame changes (call/return) */
                     setivalue(ra, luaV_div(L, ib, ic));
                 }
                 else if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
-					const auto& idiv_result = safe_number_div(nb, nc);
+					const auto& idiv_result = safe_number_idiv(nb, nc);
                     setfltvalue(ra, safe_number_create(safe_number_to_int64(idiv_result)));
                 }
                 else {

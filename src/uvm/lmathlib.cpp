@@ -97,8 +97,7 @@ static int math_fmod(lua_State *L) {
 	else {
 		const auto& arg1 = luaL_checknumber(L, 1);
 		const auto& arg2 = luaL_checknumber(L, 2);
-		const auto& div_result = safe_number_div(arg1, arg2);
-		const auto& mod_result = safe_number_minus(arg1, safe_number_multiply(div_result, arg2));
+		const auto& mod_result = safe_number_mod(arg1, arg2);
 		lua_pushnumber(L, mod_result);
 		luaL_checknumber(L, 2);
 	}
