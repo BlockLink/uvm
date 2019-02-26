@@ -21,20 +21,6 @@
 #undef PI
 #define PI	(l_mathop(3.141592653589793238462643383279502884))
 
-
-#if !defined(l_rand)		/* { */
-#if defined(LUA_USE_POSIX)
-#define l_rand()	random()
-#define l_srand(x)	srandom(x)
-#define L_RANDMAX	2147483647	/* (2^31 - 1), following POSIX */
-#else
-#define l_rand()	rand()
-#define l_srand(x)	srand(x)
-#define L_RANDMAX	RAND_MAX
-#endif
-#endif				/* } */
-
-
 static int math_abs(lua_State *L) {
     if (lua_isinteger(L, 1)) {
         lua_Integer n = lua_tointeger(L, 1);
@@ -234,48 +220,6 @@ static int math_max(lua_State *L) {
     lua_pushvalue(L, imax);
     return 1;
 }
-
-/*
-** This function uses 'double' (instead of 'lua_Number') to ensure that
-** all bits from 'l_rand' can be represented, and that 'RANDMAX + 1.0'
-** will keep full precision (ensuring that 'r' is always less than 1.0.)
-*/
-static int math_random(lua_State *L) {
-    lua_Integer low, up;
-    double r = (double)l_rand() * (1.0 / ((double)L_RANDMAX + 1.0));
-    switch (lua_gettop(L)) {  /* check number of arguments */
-    case 0: {  /* no arguments */
-        lua_pushnumber(L, (lua_Number)r);  /* Number between 0 and 1 */
-        return 1;
-    }
-    case 1: {  /* only upper limit */
-        low = 1;
-        up = luaL_checkinteger(L, 1);
-        break;
-    }
-    case 2: {  /* lower and upper limits */
-        low = luaL_checkinteger(L, 1);
-        up = luaL_checkinteger(L, 2);
-        break;
-    }
-    default: return luaL_error(L, "wrong number of arguments");
-    }
-    /* random integer in the interval [low, up] */
-    luaL_argcheck(L, low <= up, 1, "interval is empty");
-    luaL_argcheck(L, low >= 0 || up <= LUA_MAXINTEGER + low, 1,
-        "interval too large");
-    r *= (double)(up - low) + 1.0;
-    lua_pushinteger(L, (lua_Integer)r + low);
-    return 1;
-}
-
-
-static int math_randomseed(lua_State *L) {
-    l_srand((unsigned int)(lua_Integer)luaL_checknumber(L, 1));
-    (void)l_rand(); /* discard first value to avoid undesirable correlations */
-    return 0;
-}
-
 
 static int math_type(lua_State *L) {
     if (lua_type(L, 1) == LUA_TNUMBER) {

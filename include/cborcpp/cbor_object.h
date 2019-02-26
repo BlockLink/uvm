@@ -70,6 +70,10 @@ namespace cbor {
 		uint32_t array_or_map_size = 0;
 		bool is_positive_extra = false;
 
+		CborObject();
+		CborObject(const CborObject& other);
+		~CborObject() {}
+
 #if defined(CBOR_OBJECT_USE_VARIANT)
 		template <typename T>
 		const T& as() const {
