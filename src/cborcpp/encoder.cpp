@@ -85,7 +85,7 @@ void encoder::write_type_value(int major_type, CborDoubleValue value) {
 	std::stringstream ss;
 	ss << std::setprecision(std::numeric_limits<double>::digits10 + 2) << std::fixed << value;
 	std::string value_str = ss.str();
-	size_t fixed_size = 30; // save float as type + array_size + array_chars + (fixed_size-len(array) count of 0)
+	size_t fixed_size = CBOR_ENCODE_DOUBLE_STRING_SIZE; // save float as type + array_size + array_chars + (fixed_size-len(array) count of 0)
 	write_type_value(major_type, (unsigned int)value_str.size());
 	_out->put_bytes((const unsigned char *)value_str.c_str(), (int)value_str.size());
 	if (value_str.size() < fixed_size) {

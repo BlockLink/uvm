@@ -45,6 +45,8 @@ namespace cbor {
 	typedef uint32_t CborSpecialValue;
 	//typedef uint64_t CborExtraSpecialValue;
 
+#define CBOR_ENCODE_DOUBLE_STRING_SIZE 40
+
 	// #define CBOR_OBJECT_USE_VARIANT
 
 #if defined(CBOR_OBJECT_USE_VARIANT)
