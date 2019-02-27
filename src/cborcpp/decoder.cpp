@@ -513,7 +513,7 @@ CborObjectP decoder::run() {
 				_in->get_bytes(data.data(), _currentLength);
 				_state = STATE_TYPE;
 				std::string str(data.data(), (size_t)_currentLength);
-				size_t fixed_size = 30;
+				size_t fixed_size = CBOR_ENCODE_DOUBLE_STRING_SIZE;
 				if (str.size() < fixed_size) {
 					_in->skip_bytes(fixed_size - str.size());
 				}
