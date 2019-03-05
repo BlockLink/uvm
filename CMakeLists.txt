@@ -59,8 +59,6 @@ set(SOURCES src/uvm/lapi.cpp
     src/uvm/uvm_state_scope.cpp
     src/uvm/uvm_storage.cpp
     src/uvm/uvm_tokenparser.cpp
-    
-    src/uvm/safenumber.cpp
 
 	src/cborcpp/cbor_object.cpp
 	src/cborcpp/decoder.cpp
