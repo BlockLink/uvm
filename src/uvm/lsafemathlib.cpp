@@ -14,12 +14,14 @@
 #include <boost/algorithm/hex.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <uvm/uvm_lutil.h>
+#include <safenumber/safenumber.h>
 //#include <boost/multiprecision/cpp_dec_float.hpp>
 //#include <boost/multiprecision/mpfi.hpp>
 //#include <boost/multiprecision/mpfr.hpp>
 
 // bigint stores as { hex: hex string, type: 'bigint' }
 // bignumber stores as { value: base10 string, type: 'bignumber' }
+// safenumber stores as {value: base10 string, type: 'safenumber' }
 
 typedef boost::multiprecision::int512_t sm_bigint;
 //typedef boost::multiprecision::mpf_float sm_bigdecimal;
@@ -775,6 +777,488 @@ static int safemath_max(lua_State *L) {
 //	return 1;
 //}
 
+static void push_safenumber(lua_State *L, const SafeNumber& value) {
+	const auto& value_str = std::to_string(value);
+	lua_newtable(L);
+	lua_pushstring(L, value_str.c_str());
+	lua_setfield(L, -2, "value");
+	lua_pushstring(L, "safenumber");
+	lua_setfield(L, -2, "type");
+}
+
+static int safemath_safe_number_create(lua_State *L) {
+	if (lua_gettop(L) < 1) {
+		luaL_argcheck(L, false, 1, "argument is empty");
+		return 0;
+	}
+	std::string value_str;
+	if (lua_isinteger(L, 1)) {
+		lua_Integer n = lua_tointeger(L, 1);
+		std::string value_str;
+		value_str = std::to_string(n);
+	}
+	else if (lua_isstring(L, 1)) {
+		std::string int_str = luaL_checkstring(L, 1);
+		value_str = int_str;
+	}
+	else {
+		luaL_argcheck(L, false, 1, "first argument must be integer or base10 string");
+		return 0;
+	}
+	SafeNumber sn_value;
+	try {
+		sn_value = safe_number_create(value_str);
+	}
+	catch (const std::exception& e) {
+		lua_pushnil(L);
+		return 1;
+	}
+	push_safenumber(L, sn_value);
+	return 1;
+}
+
+static bool is_valid_safe_number(lua_State *L, int index, SafeNumber& sn_value) {
+	if ((index > 0 && lua_gettop(L) < index) || (index < 0 && lua_gettop(L) < -index) || index == 0) {
+		return false;
+	}
+	if (!lua_istable(L, index)) {
+		return false;
+	}
+	lua_getfield(L, index, "type");
+	if (lua_isnil(L, -1) || !lua_isstring(L, -1) || strcmp("safenumber", luaL_checkstring(L, -1)) != 0) {
+		lua_pop(L, 1);
+		return false;
+	}
+	lua_pop(L, 1);
+	lua_getfield(L, index, "value");
+	if (lua_isnil(L, -1) || !lua_isstring(L, -1) || strlen(luaL_checkstring(L, -1)) < 1) {
+		lua_pop(L, 1);
+		return false;
+	}
+	std::string value_str = luaL_checkstring(L, -1);
+	lua_pop(L, 1);
+	try {
+		sn_value = safe_number_create(value_str);
+		return true;
+	}
+	catch (...) {
+		return false;
+	}
+}
+
+static int safemath_safe_number_gt(lua_State *L) {
+	SafeNumber a{};
+	SafeNumber b{};
+	if (!is_valid_safe_number(L, 1, a)) {
+		luaL_argcheck(L, false, 1, "first argument must be SafeNumber value");
+		return 0;
+	}
+	if (!is_valid_safe_number(L, 2, b)) {
+		luaL_argcheck(L, false, 2, "second argument must be SafeNumber value");
+		return 0;
+	}
+	bool result;
+	try {
+		result = safe_number_gt(a, b);
+	}
+	catch (...) {
+		lua_pushboolean(L, false);
+		return 1;
+	}
+	lua_pushboolean(L, result);
+	return 1;
+}
+
+static int safemath_safe_number_gte(lua_State *L) {
+	SafeNumber a{};
+	SafeNumber b{};
+	if (!is_valid_safe_number(L, 1, a)) {
+		luaL_argcheck(L, false, 1, "first argument must be SafeNumber value");
+		return 0;
+	}
+	if (!is_valid_safe_number(L, 2, b)) {
+		luaL_argcheck(L, false, 2, "second argument must be SafeNumber value");
+		return 0;
+	}
+	bool result;
+	try {
+		result = safe_number_gte(a, b);
+	}
+	catch (...) {
+		lua_pushboolean(L, false);
+		return 1;
+	}
+	lua_pushboolean(L, result);
+	return 1;
+}
+
+static int safemath_safe_number_lt(lua_State *L) {
+	SafeNumber a{};
+	SafeNumber b{};
+	if (!is_valid_safe_number(L, 1, a)) {
+		luaL_argcheck(L, false, 1, "first argument must be SafeNumber value");
+		return 0;
+	}
+	if (!is_valid_safe_number(L, 2, b)) {
+		luaL_argcheck(L, false, 2, "second argument must be SafeNumber value");
+		return 0;
+	}
+	bool result;
+	try {
+		result = safe_number_lt(a, b);
+	}
+	catch (...) {
+		lua_pushboolean(L, false);
+		return 1;
+	}
+	lua_pushboolean(L, result);
+	return 1;
+}
+
+static int safemath_safe_number_lte(lua_State *L) {
+	SafeNumber a{};
+	SafeNumber b{};
+	if (!is_valid_safe_number(L, 1, a)) {
+		luaL_argcheck(L, false, 1, "first argument must be SafeNumber value");
+		return 0;
+	}
+	if (!is_valid_safe_number(L, 2, b)) {
+		luaL_argcheck(L, false, 2, "second argument must be SafeNumber value");
+		return 0;
+	}
+	bool result;
+	try {
+		result = safe_number_lte(a, b);
+	}
+	catch (...) {
+		lua_pushboolean(L, false);
+		return 1;
+	}
+	lua_pushboolean(L, result);
+	return 1;
+}
+
+static int safemath_safe_number_eq(lua_State *L) {
+	SafeNumber a{};
+	SafeNumber b{};
+	if (!is_valid_safe_number(L, 1, a)) {
+		luaL_argcheck(L, false, 1, "first argument must be SafeNumber value");
+		return 0;
+	}
+	if (!is_valid_safe_number(L, 2, b)) {
+		luaL_argcheck(L, false, 2, "second argument must be SafeNumber value");
+		return 0;
+	}
+	bool result;
+	try {
+		result = safe_number_eq(a, b);
+	}
+	catch (...) {
+		lua_pushboolean(L, false);
+		return 1;
+	}
+	lua_pushboolean(L, result);
+	return 1;
+}
+
+static int safemath_safe_number_ne(lua_State *L) {
+	SafeNumber a{};
+	SafeNumber b{};
+	if (!is_valid_safe_number(L, 1, a)) {
+		luaL_argcheck(L, false, 1, "first argument must be SafeNumber value");
+		return 0;
+	}
+	if (!is_valid_safe_number(L, 2, b)) {
+		luaL_argcheck(L, false, 2, "second argument must be SafeNumber value");
+		return 0;
+	}
+	bool result;
+	try {
+		result = safe_number_ne(a, b);
+	}
+	catch (...) {
+		lua_pushboolean(L, false);
+		return 1;
+	}
+	lua_pushboolean(L, result);
+	return 1;
+}
+
+static int safemath_safe_number_add(lua_State *L) {
+	SafeNumber a{};
+	SafeNumber b{};
+	if (!is_valid_safe_number(L, 1, a)) {
+		luaL_argcheck(L, false, 1, "first argument must be SafeNumber value");
+		return 0;
+	}
+	if (lua_isinteger(L, 2)) {
+		try {
+			b = safe_number_create(luaL_checkinteger(L, 2));
+		}
+		catch (...) {
+			luaL_argcheck(L, false, 2, "second argument must be SafeNumber/integer value");
+			return 0;
+		}
+	}
+	else {
+		if (!is_valid_safe_number(L, 2, b)) {
+			luaL_argcheck(L, false, 2, "second argument must be SafeNumber/integer value");
+			return 0;
+		}
+	}
+	SafeNumber result{};
+	try {
+		result = safe_number_add(a, b);
+	}
+	catch (...) {
+		lua_pushnil(L);
+		return 1;
+	}
+	push_safenumber(L, result);
+	return 1;
+}
+
+static int safemath_safe_number_minus(lua_State *L) {
+	SafeNumber a{};
+	SafeNumber b{};
+	if (!is_valid_safe_number(L, 1, a)) {
+		luaL_argcheck(L, false, 1, "first argument must be SafeNumber value");
+		return 0;
+	}
+	if (lua_isinteger(L, 2)) {
+		try {
+			b = safe_number_create(luaL_checkinteger(L, 2));
+		}
+		catch (...) {
+			luaL_argcheck(L, false, 2, "second argument must be SafeNumber/integer value");
+			return 0;
+		}
+	}
+	else {
+		if (!is_valid_safe_number(L, 2, b)) {
+			luaL_argcheck(L, false, 2, "second argument must be SafeNumber/integer value");
+			return 0;
+		}
+	}
+	SafeNumber result{};
+	try {
+		result = safe_number_minus(a, b);
+	}
+	catch (...) {
+		lua_pushnil(L);
+		return 1;
+	}
+	push_safenumber(L, result);
+	return 1;
+}
+
+static int safemath_safe_number_neg(lua_State *L) {
+	SafeNumber a{};
+	if (!is_valid_safe_number(L, 1, a)) {
+		luaL_argcheck(L, false, 1, "first argument must be SafeNumber value");
+		return 0;
+	}
+	SafeNumber result{};
+	try {
+		result = safe_number_neg(a);
+	}
+	catch (...) {
+		lua_pushnil(L);
+		return 1;
+	}
+	push_safenumber(L, result);
+	return 1;
+}
+
+static int safemath_safe_number_multiply(lua_State *L) {
+	SafeNumber a{};
+	SafeNumber b{};
+	if (!is_valid_safe_number(L, 1, a)) {
+		luaL_argcheck(L, false, 1, "first argument must be SafeNumber value");
+		return 0;
+	}
+	if (lua_isinteger(L, 2)) {
+		try {
+			b = safe_number_create(luaL_checkinteger(L, 2));
+		}
+		catch (...) {
+			luaL_argcheck(L, false, 2, "second argument must be SafeNumber/integer value");
+			return 0;
+		}
+	}
+	else {
+		if (!is_valid_safe_number(L, 2, b)) {
+			luaL_argcheck(L, false, 2, "second argument must be SafeNumber/integer value");
+			return 0;
+		}
+	}
+	SafeNumber result{};
+	try {
+		result = safe_number_multiply(a, b);
+	}
+	catch (...) {
+		lua_pushnil(L);
+		return 1;
+	}
+	push_safenumber(L, result);
+	return 1;
+}
+
+static int safemath_safe_number_mod(lua_State *L) {
+	SafeNumber a{};
+	SafeNumber b{};
+	if (!is_valid_safe_number(L, 1, a)) {
+		luaL_argcheck(L, false, 1, "first argument must be SafeNumber value");
+		return 0;
+	}
+	if (lua_isinteger(L, 2)) {
+		try {
+			b = safe_number_create(luaL_checkinteger(L, 2));
+		}
+		catch (...) {
+			luaL_argcheck(L, false, 2, "second argument must be SafeNumber/integer value");
+			return 0;
+		}
+	}
+	else {
+		if (!is_valid_safe_number(L, 2, b)) {
+			luaL_argcheck(L, false, 2, "second argument must be SafeNumber/integer value");
+			return 0;
+		}
+	}
+	SafeNumber result{};
+	try {
+		result = safe_number_mod(a, b);
+	}
+	catch (...) {
+		lua_pushnil(L);
+		return 1;
+	}
+	push_safenumber(L, result);
+	return 1;
+}
+
+static int safemath_safe_number_abs(lua_State *L) {
+	SafeNumber a{};
+	if (!is_valid_safe_number(L, 1, a)) {
+		luaL_argcheck(L, false, 1, "first argument must be SafeNumber value");
+		return 0;
+	}
+	SafeNumber result{};
+	try {
+		result = safe_number_abs(a);
+	}
+	catch (...) {
+		lua_pushnil(L);
+		return 1;
+	}
+	push_safenumber(L, result);
+	return 1;
+}
+
+static int safemath_safe_number_div(lua_State *L) {
+	SafeNumber a{};
+	SafeNumber b{};
+	if (!is_valid_safe_number(L, 1, a)) {
+		luaL_argcheck(L, false, 1, "first argument must be SafeNumber value");
+		return 0;
+	}
+	if (lua_isinteger(L, 2)) {
+		try {
+			b = safe_number_create(luaL_checkinteger(L, 2));
+		}
+		catch (...) {
+			luaL_argcheck(L, false, 2, "second argument must be SafeNumber/integer value");
+			return 0;
+		}
+	}
+	else {
+		if (!is_valid_safe_number(L, 2, b)) {
+			luaL_argcheck(L, false, 2, "second argument must be SafeNumber/integer value");
+			return 0;
+		}
+	}
+	SafeNumber result{};
+	try {
+		result = safe_number_div(a, b);
+	}
+	catch (...) {
+		lua_pushnil(L);
+		return 1;
+	}
+	push_safenumber(L, result);
+	return 1;
+}
+
+static int safemath_safe_number_idiv(lua_State *L) {
+	SafeNumber a{};
+	SafeNumber b{};
+	if (!is_valid_safe_number(L, 1, a)) {
+		luaL_argcheck(L, false, 1, "first argument must be SafeNumber value");
+		return 0;
+	}
+	if (lua_isinteger(L, 2)) {
+		try {
+			b = safe_number_create(luaL_checkinteger(L, 2));
+		}
+		catch (...) {
+			luaL_argcheck(L, false, 2, "second argument must be SafeNumber/integer value");
+			return 0;
+		}
+	}
+	else {
+		if (!is_valid_safe_number(L, 2, b)) {
+			luaL_argcheck(L, false, 2, "second argument must be SafeNumber/integer value");
+			return 0;
+		}
+	}
+	SafeNumber result{};
+	try {
+		result = safe_number_idiv(a, b);
+	}
+	catch (...) {
+		lua_pushnil(L);
+		return 1;
+	}
+	push_safenumber(L, result);
+	return 1;
+}
+
+static int safemath_safe_number_to_string(lua_State *L) {
+	SafeNumber a{};
+	if (!is_valid_safe_number(L, 1, a)) {
+		luaL_argcheck(L, false, 1, "first argument must be SafeNumber value");
+		return 0;
+	}
+	std::string result;
+	try {
+		result = std::to_string(a);
+	}
+	catch (...) {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_pushstring(L, result.c_str());
+	return 1;
+}
+
+static int safemath_safe_number_to_int64(lua_State *L) {
+	SafeNumber a{};
+	if (!is_valid_safe_number(L, 1, a)) {
+		luaL_argcheck(L, false, 1, "first argument must be SafeNumber value");
+		return 0;
+	}
+	lua_Integer result;
+	try {
+		result = safe_number_to_int64(a);
+	}
+	catch (...) {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_pushinteger(L, result);
+	return 1;
+}
 
 static const luaL_Reg safemathlib[] = {
 	{ "bigint", safemath_bigint },
@@ -806,6 +1290,25 @@ static const luaL_Reg safemathlib[] = {
 	{ "toint", safemath_toint },
 	{ "tohex", safemath_tohex },
 	{ "tostring", safemath_tostring },
+
+	{ "safenumber", safemath_safe_number_create },
+	{ "number_add", safemath_safe_number_add },
+	{ "number_minus", safemath_safe_number_minus },
+	{ "number_multiply", safemath_safe_number_multiply },
+	{ "number_div", safemath_safe_number_div },
+	{ "number_idiv", safemath_safe_number_idiv },
+	{ "number_abs", safemath_safe_number_abs },
+	{ "number_neg", safemath_safe_number_neg },
+	{ "number_gt", safemath_safe_number_gt },
+	{ "number_gte", safemath_safe_number_gte },
+	{ "number_lt", safemath_safe_number_lt },
+	{ "number_lte", safemath_safe_number_lte },
+	{ "number_eq", safemath_safe_number_eq },
+	{ "number_ne", safemath_safe_number_ne },
+	{ "number_tostring", safemath_safe_number_to_string },
+	{ "number_toint", safemath_safe_number_to_int64 },
+	{ "number_mod", safemath_safe_number_mod },
+
 	{ nullptr, nullptr }
 };
 

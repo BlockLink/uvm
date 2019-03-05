@@ -8,7 +8,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(CMAKE_CXX_FLAGS "-std=c++11 -D_DARWIN_C_SOURCE -Wno-invalid-partial-specialization")
 endif()
 
-file(GLOB HEADERS "include/uvm/*.h" "include/cborcpp/*.h" "include/cbor_diff/*.h" "../jsondiff/jsondiff-cpp/include/jsondiff/*.h")
+file(GLOB HEADERS "include/uvm/*.h" "include/cborcpp/*.h" "include/cbor_diff/*.h" "include/safenumber/*.h" "../jsondiff/jsondiff-cpp/include/jsondiff/*.h")
 
 set(SOURCES src/uvm/lapi.cpp
     src/uvm/lauxlib.cpp
@@ -73,6 +73,8 @@ set(SOURCES src/uvm/lapi.cpp
 	src/cbor_diff/cbor_diff.cpp
 	src/cbor_diff/cbor_diff_tests.cpp
 	src/cbor_diff/helper.cpp
+
+	src/safenumber/safenumber.cpp
 )
 
 find_package(OpenSSL REQUIRED)

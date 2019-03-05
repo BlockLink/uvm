@@ -30,6 +30,7 @@
     <ClCompile Include="src\cbor_diff\cbor_diff.cpp" />
     <ClCompile Include="src\cbor_diff\cbor_diff_tests.cpp" />
     <ClCompile Include="src\cbor_diff\helper.cpp" />
+    <ClCompile Include="src\safenumber\safenumber.cpp" />
     <ClCompile Include="src\uvm\json_reader.cpp" />
     <ClCompile Include="src\uvm\ljsonlib2.cpp" />
     <ClCompile Include="src\uvm\lsafemathlib.cpp" />
@@ -95,6 +96,7 @@
     <ClInclude Include="include\cbor_diff\cbor_diff_exceptions.h" />
     <ClInclude Include="include\cbor_diff\cbor_diff_tests.h" />
     <ClInclude Include="include\cbor_diff\helper.h" />
+    <ClInclude Include="include\safenumber\safenumber.h" />
     <ClInclude Include="include\uvm\exceptions.h" />
     <ClInclude Include="include\uvm\json_reader.h" />
     <ClInclude Include="include\uvm\safenumber.h" />
