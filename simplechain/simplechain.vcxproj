@@ -136,6 +136,7 @@
     <ClCompile Include="src\simplechain\contract_object.cpp" />
     <ClCompile Include="src\simplechain\db.cpp" />
     <ClCompile Include="src\simplechain\evaluate_state.cpp" />
+    <ClCompile Include="src\simplechain\native_contract.cpp" />
     <ClCompile Include="src\simplechain\operations_helper.cpp" />
     <ClCompile Include="src\simplechain\rpcserver.cpp" />
     <ClCompile Include="src\simplechain\simplechain_program.cpp" />
@@ -150,6 +151,7 @@
     <ClInclude Include="include\client_http.hpp" />
     <ClInclude Include="include\crypto.hpp" />
     <ClInclude Include="include\Keccak.hpp" />
+    <ClInclude Include="include\simplechain\native_contract.h" />
     <ClInclude Include="include\server_http.hpp" />
     <ClInclude Include="include\simplechain\address_helper.h" />
     <ClInclude Include="include\simplechain\asset.h" />

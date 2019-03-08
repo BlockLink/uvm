@@ -3,6 +3,7 @@
 #include <simplechain/contract_object.h>
 #include <simplechain/blockchain.h>
 #include <simplechain/address_helper.h>
+#include <simplechain/native_contract.h>
 #include <iostream>
 #include <uvm/uvm_lib.h>
 #include <fc/io/json.hpp>
@@ -74,6 +75,68 @@ namespace simplechain {
 		invoke_contract_result.set_failed();
 	}
 
+	// native_contract_create_evaluator methods
+	std::shared_ptr<native_contract_create_evaluator::operation_type::result_type> native_contract_create_evaluator::do_evaluate(const operation_type& o) {
+		
+		int exception_code = 0;
+		string exception_msg;
+		bool has_error = false;
+		try {
+			auto origin_op = o;
+			auto limit = o.gas_limit;
+			if (limit < 0 || limit == 0)
+				throw uvm::core::UvmException("invalid_contract_gas_limit");
+			gas_limit = limit;
+			invoke_contract_result.reset();
+			std::string contract_address = o.calculate_contract_id();
+			contract_object contract;
+			contract.native_contract_key = o.template_key;
+			contract.contract_address = contract_address;
+			contract.owner_address = o.caller_address;
+			contract.create_time = o.op_time;
+			contract.registered_block = get_chain()->latest_block().block_number + 1;
+			contract.type_of_contract = contract_type::native_contract;
+
+			auto native_contract = native_contract_finder::create_native_contract_by_key(this, o.template_key, contract_address);
+			FC_ASSERT(native_contract);
+
+			store_contract(contract_address, contract);
+			try
+			{
+				invoke_contract_result = native_contract->invoke("init", "");
+			}
+			catch (std::exception &e)
+			{
+				throw uvm::core::UvmException(e.what());
+			}
+
+			gas_used = invoke_contract_result.gas_used;
+			FC_ASSERT(gas_used <= gas_limit && gas_used > 0, "costs of execution can be only between 0 and init_cost");
+
+			auto gas_count = gas_used;
+			invoke_contract_result.exec_succeed = true;
+			invoke_contract_result.gas_used = gas_count;
+		}
+		catch (const std::exception& e)
+		{
+			has_error = true;
+			undo_contract_effected();
+			std::cerr << e.what() << std::endl;
+			invoke_contract_result.error = e.what();
+		}
+		return std::make_shared<contract_invoke_result>(invoke_contract_result);
+	}
+	std::shared_ptr<native_contract_create_evaluator::operation_type::result_type> native_contract_create_evaluator::do_apply(const operation_type& op) {
+		auto result = do_evaluate(op);
+		result->apply_pendings(get_chain(), get_current_tx()->tx_hash());
+		return result;
+	}
+
+	void native_contract_create_evaluator::undo_contract_effected()
+	{
+		invoke_contract_result.set_failed();
+	}
+
 	// contract_invoke_evaluator methods
 	std::shared_ptr<contract_invoke_evaluator::operation_type::result_type> contract_invoke_evaluator::do_evaluate(const operation_type& o) {
 		ContractEngineBuilder builder;
@@ -120,8 +183,21 @@ namespace simplechain {
 				if (o.deposit_amount > 0) {
 					update_account_asset_balance(o.contract_address, o.deposit_asset_id, o.deposit_amount);
 				}
-				engine->execute_contract_api_by_address(o.contract_address, o.contract_api, first_contract_arg, &result_json_str);
-				invoke_contract_result.api_result = result_json_str;
+				// TODO: find contract
+				auto contract = get_contract_by_address(o.contract_address);
+				FC_ASSERT(contract);
+				if (contract->native_contract_key.empty()) {
+					engine->execute_contract_api_by_address(o.contract_address, o.contract_api, first_contract_arg, &result_json_str);
+					invoke_contract_result.api_result = result_json_str;
+					gas_used = engine->gas_used();
+				}
+				else {
+					// native contract
+					auto native_contract = native_contract_finder::create_native_contract_by_key(this, contract->native_contract_key, o.contract_address);
+					FC_ASSERT(native_contract);
+					invoke_contract_result = native_contract->invoke(o.contract_api, first_contract_arg);
+					gas_used = invoke_contract_result.gas_used;
+				}
 			}
 			catch (std::exception &e)
 			{
@@ -131,7 +207,6 @@ namespace simplechain {
 				throw uvm::core::UvmException(e.what());
 			}
 
-			gas_used = engine->gas_used();
 			FC_ASSERT(gas_used <= gas_limit && gas_used > 0, "costs of execution can be only between 0 and init_cost");
 
 			auto gas_count = gas_used;
