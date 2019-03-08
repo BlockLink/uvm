@@ -6,6 +6,7 @@
 #include <vector>
 #include <unordered_map>
 #include <memory>
+#include <set>
 
 #include <uvm/uvm_storage.h>
 #include <jsondiff/jsondiff.h>
@@ -589,7 +590,9 @@ bool luaL_commit_storage_changes(lua_State *L)
 				{
 					auto after_value = lua_type_to_storage_value_type(L, -1, 0);
 					// check whether changelist has this property's change item. only read value if not exist
-					change_item.after = after_value;
+					//if (change_item.after.type != uvm::blockchain::StorageValueTypes::storage_value_null) {
+						change_item.after = after_value;
+					//}
 					// FIXME: eg. a= {}, storage.a = a, a['name'] = 123, storage.a = {}   How to deal with the above circumstances?  maybe it will help to treat the storage as a table
 					//if (!has_property_changed_in_changelist(list, change_item.contract_id, change_item.key))
 					// {
@@ -603,10 +606,15 @@ bool luaL_commit_storage_changes(lua_State *L)
 			}
 			table_read_list->clear();
 		}
+		std::set<std::string> null_keys_changed;
 		for (auto it = list->begin(); it != list->end(); ++it)
 		{
 			UvmStorageChangeItem change_item = *it;
 			const auto& change_item_full_key = change_item.full_key();
+			if (global_uvm_chain_api->use_cbor_diff(L)) {
+				if (change_item.is_fast_map && null_keys_changed.find(change_item_full_key) != null_keys_changed.end())
+					continue;
+			}
 			auto found = changes.find(change_item.contract_id);
 			if (found != changes.end())
 			{
@@ -628,6 +636,8 @@ bool luaL_commit_storage_changes(lua_State *L)
 				contract_changes->insert(contract_changes->end(), std::make_pair(change_item_full_key, change_item));
 				changes.insert(changes.end(), std::make_pair(change_item.contract_id, contract_changes));
 			}
+			if(change_item.after.type == uvm::blockchain::StorageValueTypes::storage_value_null)
+				null_keys_changed.insert(change_item_full_key);
 		}
 	}
 	else
