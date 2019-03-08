@@ -3,6 +3,8 @@
 #include <boost/variant.hpp>
 #include <fc/variant.hpp>
 #include <fc/static_variant.hpp>
+#include <fc/variant_object.hpp>
+#include <fc/variant.hpp>
 #include <vector>
 #include <map>
 #include <memory>
@@ -206,6 +208,8 @@ namespace cbor {
 		}
 
 		std::string str() const;
+
+		fc::variant to_json() const;
 
 		//static CborObjectP from(const CborObjectValue& value);
 
