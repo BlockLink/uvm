@@ -42,7 +42,10 @@ namespace simplechain {
 
 		void set_contract_storage(const std::string& contract_address, const std::string& storage_name, const StorageDataType& value);
 		void set_contract_storage(const std::string& contract_address, const std::string& storage_name, cbor::CborObjectP cbor_value);
+		void fast_map_set(const std::string& contract_address, const std::string& storage_name, const std::string& key, cbor::CborObjectP cbor_value);
 		StorageDataType get_contract_storage(const std::string& contract_address, const std::string& storage_name) const;
+		cbor::CborObjectP get_contract_storage_cbor(const std::string& contract_address, const std::string& storage_name) const;
+		cbor::CborObjectP fast_map_get(const std::string& contract_address, const std::string& storage_name, const std::string& key) const;
 		std::string get_string_contract_storage(const std::string& contract_address, const std::string& storage_name) const;
 		int64_t get_int_contract_storage(const std::string& contract_address, const std::string& storage_name) const;
 

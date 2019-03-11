@@ -58,6 +58,11 @@ namespace simplechain {
 		return set_contract_storage(contract_address, storage_name, value);
 	}
 
+	void native_contract_interface::fast_map_set(const std::string& contract_address, const std::string& storage_name, const std::string& key, cbor::CborObjectP cbor_value) {
+		std::string full_key = storage_name + "." + key;
+		set_contract_storage(contract_address, full_key, cbor_value);
+	}
+
 	StorageDataType native_contract_interface::get_contract_storage(const std::string& contract_address, const std::string& storage_name) const
 	{
 		if (_contract_invoke_result.storage_changes.find(contract_address) == _contract_invoke_result.storage_changes.end())
@@ -72,18 +77,26 @@ namespace simplechain {
 		return storage_changes.at(storage_name).after;
 	}
 
-	std::string native_contract_interface::get_string_contract_storage(const std::string& contract_address, const std::string& storage_name) const {
+	cbor::CborObjectP native_contract_interface::get_contract_storage_cbor(const std::string& contract_address, const std::string& storage_name) const {
 		const auto& data = get_contract_storage(contract_address, storage_name);
-		auto cbor_data = cbor_decode(data.storage_data);
+		return cbor_decode(data.storage_data);
+	}
+
+	std::string native_contract_interface::get_string_contract_storage(const std::string& contract_address, const std::string& storage_name) const {
+		auto cbor_data = get_contract_storage_cbor(contract_address, storage_name);
 		if (!cbor_data->is_string()) {
 			throw_error(std::string("invalid string contract storage ") + contract_address + "." + storage_name);
 		}
 		return cbor_data->as_string();
 	}
 
+	cbor::CborObjectP native_contract_interface::fast_map_get(const std::string& contract_address, const std::string& storage_name, const std::string& key) const {
+		std::string full_key = storage_name + "." + key;
+		return get_contract_storage_cbor(contract_address, full_key);
+	}
+
 	int64_t native_contract_interface::get_int_contract_storage(const std::string& contract_address, const std::string& storage_name) const {
-		const auto& data = get_contract_storage(contract_address, storage_name);
-		auto cbor_data = cbor_decode(data.storage_data);
+		auto cbor_data = get_contract_storage_cbor(contract_address, storage_name);
 		if (!cbor_data->is_integer()) {
 			throw_error(std::string("invalid int contract storage ") + contract_address + "." + storage_name);
 		}
@@ -201,15 +214,13 @@ namespace simplechain {
 
 	cbor::CborMapValue token_native_contract::get_storage_users()
 	{
-		auto users_storage = get_contract_storage(contract_id, "users");
-		auto users = cbor_decode(users_storage.storage_data);
+		auto users = get_contract_storage_cbor(contract_id, "users");
 		return users->as_map();
 	}
 
 	cbor::CborMapValue token_native_contract::get_storage_allowed()
 	{
-		auto allowed_storage = get_contract_storage(contract_id, "allowed");
-		auto allowed = cbor_decode(allowed_storage.storage_data);
+		auto allowed = get_contract_storage_cbor(contract_id, "allowed");
 		return allowed->as_map();
 	}
 
