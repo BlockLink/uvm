@@ -29,13 +29,14 @@ namespace simplechain {
 			chain->generate_block();
 
 			cout << "token contract inited" << endl;
-			size_t count = 500;
+			size_t count = 10000;
 			for (size_t i = 0; i < count; i++) {
 				auto tx3 = std::make_shared<transaction>();
 				tx3->operations.push_back(operations_helper::invoke_contract(caller_addr, contract1_addr, "transfer", std::vector<std::string>{caller2_addr + "," + std::to_string(i + 1)}));
 				tx3->tx_time = fc::time_point_sec(fc::time_point::now());
 				chain->accept_transaction_to_mempool(*tx3);
 			}
+			cout << "start generate block" << endl;
 			auto start_time = fc::time_point_sec(fc::time_point::now());
 			chain->generate_block();
 			

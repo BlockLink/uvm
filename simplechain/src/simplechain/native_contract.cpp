@@ -163,8 +163,8 @@ namespace simplechain {
 		set_contract_storage(contract_id, "symbol", CborObject::from_string(""));
 		set_contract_storage(contract_id, "supply", CborObject::from_int(0));
 		set_contract_storage(contract_id, "precision", CborObject::from_int(0));
-		set_contract_storage(contract_id, "users", CborObject::create_map(0));
-		set_contract_storage(contract_id, "allowed", CborObject::create_map(0));
+		// set_contract_storage(contract_id, "users", CborObject::create_map(0));
+		// set_contract_storage(contract_id, "allowed", CborObject::create_map(0));
 		set_contract_storage(contract_id, "state", CborObject::from_string(not_inited_state_of_token_contract));
 		auto caller_addr = caller_address_string();
 		FC_ASSERT(!caller_addr.empty(), "caller_address can't be empty");
@@ -212,7 +212,7 @@ namespace simplechain {
 		return precision;
 	}
 
-	cbor::CborMapValue token_native_contract::get_storage_users()
+	/*cbor::CborMapValue token_native_contract::get_storage_users()
 	{
 		auto users = get_contract_storage_cbor(contract_id, "users");
 		return users->as_map();
@@ -222,15 +222,22 @@ namespace simplechain {
 	{
 		auto allowed = get_contract_storage_cbor(contract_id, "allowed");
 		return allowed->as_map();
+	}*/
+
+	int64_t token_native_contract::get_balance_of_user(const string& owner_addr) const
+	{
+		auto user_balance_cbor = fast_map_get(contract_id, "users", owner_addr);
+		if (!user_balance_cbor->is_integer())
+			return 0;
+		return user_balance_cbor->force_as_int();
 	}
 
-	int64_t token_native_contract::get_balance_of_user(const string& owner_addr)
-	{
-		const auto& users = get_storage_users();
-		if (users.find(owner_addr) == users.end())
-			return 0;
-		auto user_balance_cbor = users.at(owner_addr);
-		return user_balance_cbor->force_as_int();
+	cbor::CborMapValue token_native_contract::get_allowed_of_user(const std::string& from_addr) const {
+		auto user_allowed = fast_map_get(contract_id, "allowed", from_addr);
+		if (!user_allowed->is_map()) {
+			return CborObject::create_map(0)->as_map();
+		}
+		return user_allowed->as_map();
 	}
 
 	std::string token_native_contract::get_from_address()
@@ -290,10 +297,11 @@ namespace simplechain {
 		set_contract_storage(contract_id, string("name"), CborObject::from_string(name));
 		set_contract_storage(contract_id, "symbol", CborObject::from_string(symbol));
 
-		cbor::CborMapValue users;
 		auto caller_addr = caller_address_string();
-		users[caller_addr] = cbor::CborObject::from_int(supply);
-		set_contract_storage(contract_id, string("users"), CborObject::create_map(users));
+		// cbor::CborMapValue users;
+		// users[caller_addr] = cbor::CborObject::from_int(supply);
+		// set_contract_storage(contract_id, string("users"), CborObject::create_map(users));
+		fast_map_set(contract_id, "users", caller_addr, CborObject::from_int(supply));
 		emit_event(contract_id, "Inited", supply_str);
 		return _contract_invoke_result;
 	}
@@ -346,7 +354,6 @@ namespace simplechain {
 	{
 		if (get_storage_state() != common_state_of_token_contract)
 			throw_error("this token contract state doesn't allow this api");
-		auto allowed = get_storage_allowed();
 		std::vector<string> parsed_args;
 		boost::split(parsed_args, api_arg, [](char c) {return c == ','; });
 		if (parsed_args.size() < 2)
@@ -356,13 +363,10 @@ namespace simplechain {
 		string authorizer_address = parsed_args[1];
 		boost::trim(authorizer_address);
 		int64_t approved_amount = 0;
-		if (allowed.find(authorizer_address) != allowed.end())
+		auto allowed_data = get_allowed_of_user(authorizer_address);
+		if (allowed_data.find(spender_address) != allowed_data.end())
 		{
-			auto allowed_data = allowed[authorizer_address]->as_map();
-			if (allowed_data.find(spender_address) != allowed_data.end())
-			{
-				approved_amount = allowed_data[spender_address]->force_as_int();
-			}
+			approved_amount = allowed_data[spender_address]->force_as_int();
 		}
 
 		_contract_invoke_result.api_result = std::to_string(approved_amount);
@@ -372,15 +376,10 @@ namespace simplechain {
 	{
 		if (get_storage_state() != common_state_of_token_contract)
 			throw_error("this token contract state doesn't allow this api");
-		auto allowed = get_storage_allowed();
 		string from_address = api_arg;
 		boost::trim(from_address);
 
-		cbor::CborMapValue allowed_data;
-		if (allowed.find(from_address) != allowed.end())
-		{
-			allowed_data = allowed[from_address]->as_map();
-		}
+		auto allowed_data = get_allowed_of_user(from_address);
 		auto allowed_data_cbor = CborObject::create_map(allowed_data);
 		auto allowed_data_json = allowed_data_cbor->to_json();
 		auto allowed_data_str = jsondiff::json_dumps(allowed_data_json);
@@ -407,19 +406,18 @@ namespace simplechain {
 			throw_error("argument format error, amount must be positive integer");
 
 		string from_addr = get_from_address();
-		auto users = get_storage_users();
-		if (users.find(from_addr) == users.end() || users[from_addr]->force_as_int() < amount)
+		auto from_user_balance = get_balance_of_user(from_addr);
+		if(from_user_balance < amount)
 			throw_error("you have not enoungh amount to transfer out");
-		auto from_addr_remain = users[from_addr]->force_as_int() - amount;
-		if (from_addr_remain > 0)
-			users[from_addr] = CborObject::from_int(from_addr_remain);
-		else
-			users.erase(from_addr);
-		int64_t to_amount = 0;
-		if (users.find(to_address) != users.end())
-			to_amount = users[to_address]->force_as_int();
-		users[to_address] = CborObject::from_int(to_amount + amount);
-		set_contract_storage(contract_id, string("users"), CborObject::create_map(users));
+		auto from_addr_remain = from_user_balance - amount;
+		if (from_addr_remain > 0) {
+			fast_map_set(contract_id, "users", from_addr, CborObject::from_int(from_addr_remain));
+		}
+		else {
+			fast_map_set(contract_id, "users", from_addr, CborObject::create_null());
+		}
+		auto to_amount = get_balance_of_user(to_address);
+		fast_map_set(contract_id, "users", to_address, CborObject::from_int(to_amount + amount));
 		jsondiff::JsonObject event_arg;
 		event_arg["from"] = from_addr;
 		event_arg["to"] = to_address;
@@ -445,18 +443,12 @@ namespace simplechain {
 		int64_t amount = std::stoll(amount_str);
 		if (amount <= 0)
 			throw_error("argument format error, amount must be positive integer");
-		auto allowed = get_storage_allowed();
-		cbor::CborMapValue allowed_data;
 		std::string contract_caller = get_from_address();
-		if (allowed.find(contract_caller) == allowed.end())
-			allowed_data = cbor::CborMapValue();
-		else
-		{
-			allowed_data = allowed[contract_caller]->as_map();
-		}
+		auto allowed_data = get_allowed_of_user(contract_caller);
 		allowed_data[spender_address] = CborObject::from_int(amount);
-		allowed[contract_caller] = CborObject::create_map(allowed_data);
-		set_contract_storage(contract_id, string("allowed"), CborObject::create_map(allowed));
+		if (allowed_data.size() > 1000)
+			throw_error("you approved to too many users");
+		fast_map_set(contract_id, "allowed", contract_caller, CborObject::create_map(allowed_data));
 		jsondiff::JsonObject event_arg;
 		event_arg["from"] = contract_caller;
 		event_arg["spender"] = spender_address;
@@ -485,41 +477,29 @@ namespace simplechain {
 		if (amount <= 0)
 			throw_error("argument format error, amount must be positive integer");
 
-		auto users = get_storage_users();
-		auto allowed = get_storage_allowed();
 		if (get_balance_of_user(from_address) < amount)
 		{
 			throw_error("fromAddress not have enough token to withdraw");
 		}
-		cbor::CborMapValue allowed_data;
-		if (allowed.find(from_address) == allowed.end())
-			throw_error("not enough approved amount to withdraw");
-		else
-		{
-			allowed_data = allowed[from_address]->as_map();
-		}
+		auto allowed_data = get_allowed_of_user(from_address);
 		auto contract_caller = get_from_address();
 		if (allowed_data.find(contract_caller) == allowed_data.end())
 			throw_error("not enough approved amount to withdraw");
 		auto approved_amount = allowed_data[contract_caller]->force_as_int();
 		if (approved_amount < amount)
 			throw_error("not enough approved amount to withdraw");
-		auto from_addr_remain = users[from_address]->force_as_int() - amount;
+		auto from_addr_remain = get_balance_of_user(from_address) - amount;
 		if (from_addr_remain > 0)
-			users[from_address] = cbor::CborObject::from_int(from_addr_remain);
+			fast_map_set(contract_id, "users", from_address, CborObject::from_int(from_addr_remain));
 		else
-			users.erase(from_address);
-		int64_t to_amount = 0;
-		if (users.find(to_address) != users.end())
-			to_amount = users[to_address]->force_as_int();
-		users[to_address] = cbor::CborObject::from_int(to_amount + amount);
-		set_contract_storage(contract_id, string("users"), CborObject::create_map(users));
+			fast_map_set(contract_id, "users", from_address, CborObject::create_null());
+		auto to_amount = get_balance_of_user(to_address);
+		fast_map_set(contract_id, "users", to_address, CborObject::from_int(to_amount + amount));
 
 		allowed_data[contract_caller] = cbor::CborObject::from_int(approved_amount - amount);
 		if (allowed_data[contract_caller]->force_as_int() == 0)
 			allowed_data.erase(contract_caller);
-		allowed[from_address] = CborObject::create_map(allowed_data);
-		set_contract_storage(contract_id, string("allowed"), CborObject::create_map(allowed));
+		fast_map_set(contract_id, "allowed", from_address, CborObject::create_map(allowed_data));
 
 		jsondiff::JsonObject event_arg;
 		event_arg["from"] = from_address;
