@@ -58,18 +58,36 @@ namespace simplechain {
 		return set_contract_storage(contract_address, storage_name, value);
 	}
 
-	StorageDataType native_contract_interface::get_contract_storage(const std::string& contract_address, const std::string& storage_name)
+	StorageDataType native_contract_interface::get_contract_storage(const std::string& contract_address, const std::string& storage_name) const
 	{
 		if (_contract_invoke_result.storage_changes.find(contract_address) == _contract_invoke_result.storage_changes.end())
 		{
 			return _evaluate->get_storage(contract_address, storage_name);
 		}
-		auto& storage_changes = _contract_invoke_result.storage_changes[contract_address];
+		auto& storage_changes = _contract_invoke_result.storage_changes.at(contract_address);
 		if (storage_changes.find(storage_name) == storage_changes.end())
 		{
 			return _evaluate->get_storage(contract_address, storage_name);
 		}
-		return storage_changes[storage_name].after;
+		return storage_changes.at(storage_name).after;
+	}
+
+	std::string native_contract_interface::get_string_contract_storage(const std::string& contract_address, const std::string& storage_name) const {
+		const auto& data = get_contract_storage(contract_address, storage_name);
+		auto cbor_data = cbor_decode(data.storage_data);
+		if (!cbor_data->is_string()) {
+			throw_error(std::string("invalid string contract storage ") + contract_address + "." + storage_name);
+		}
+		return cbor_data->as_string();
+	}
+
+	int64_t native_contract_interface::get_int_contract_storage(const std::string& contract_address, const std::string& storage_name) const {
+		const auto& data = get_contract_storage(contract_address, storage_name);
+		auto cbor_data = cbor_decode(data.storage_data);
+		if (!cbor_data->is_integer()) {
+			throw_error(std::string("invalid int contract storage ") + contract_address + "." + storage_name);
+		}
+		return cbor_data->force_as_int();
 	}
 
 	void native_contract_interface::emit_event(const std::string& contract_address, const std::string& event_name, const std::string& event_arg)
@@ -82,6 +100,26 @@ namespace simplechain {
 		info.block_num = 1 + _evaluate->get_chain()->head_block_number();
 
 		_contract_invoke_result.events.push_back(info);
+	}
+
+	uint64_t native_contract_interface::head_block_num() const {
+		return _evaluate->get_chain()->head_block_number();
+	}
+
+	std::string native_contract_interface::caller_address_string() const {
+		return _evaluate->caller_address;
+	}
+
+	address native_contract_interface::caller_address() const {
+		return _evaluate->caller_address;
+	}
+
+	void native_contract_interface::throw_error(const std::string& err) const {
+		FC_THROW_EXCEPTION(fc::assert_exception, err);
+	}
+
+	void native_contract_interface::add_gas(uint64_t gas) {
+		_contract_invoke_result.gas_used += gas;
 	}
 
 
@@ -108,74 +146,69 @@ namespace simplechain {
 
 	contract_invoke_result token_native_contract::init_api(const std::string& api_name, const std::string& api_arg)
 	{
-		set_contract_storage(contract_id, string("name"), CborObject::from_string(""));
-		set_contract_storage(contract_id, string("symbol"), CborObject::from_string(""));
-		set_contract_storage(contract_id, string("supply"), CborObject::from_int(0));
-		set_contract_storage(contract_id, string("precision"), CborObject::from_int(0));
-		set_contract_storage(contract_id, string("users"), CborObject::create_map(0));
-		set_contract_storage(contract_id, string("allowed"), CborObject::create_map(0));
-		set_contract_storage(contract_id, string("state"), CborObject::from_string(not_inited_state_of_token_contract));
-		auto caller_addr = _evaluate->caller_address;
-		FC_ASSERT(!caller_addr.empty());
-		set_contract_storage(contract_id, string("admin"), CborObject::from_string(caller_addr));
+		set_contract_storage(contract_id, "name", CborObject::from_string(""));
+		set_contract_storage(contract_id, "symbol", CborObject::from_string(""));
+		set_contract_storage(contract_id, "supply", CborObject::from_int(0));
+		set_contract_storage(contract_id, "precision", CborObject::from_int(0));
+		set_contract_storage(contract_id, "users", CborObject::create_map(0));
+		set_contract_storage(contract_id, "allowed", CborObject::create_map(0));
+		set_contract_storage(contract_id, "state", CborObject::from_string(not_inited_state_of_token_contract));
+		auto caller_addr = caller_address_string();
+		FC_ASSERT(!caller_addr.empty(), "caller_address can't be empty");
+		set_contract_storage(contract_id, "admin", CborObject::from_string(caller_addr));
 		return _contract_invoke_result;
 	}
 
 	string token_native_contract::check_admin()
 	{
-		auto caller_addr = _evaluate->caller_address;
-		auto admin_storage = get_contract_storage(contract_id, string("admin"));
-		auto admin = cbor_diff::cbor_decode(admin_storage.storage_data);
-		if (admin->is_string() && admin->as_string() == caller_addr)
-			return admin->as_string();
-		THROW_CONTRACT_ERROR("only admin can call this api");
+		auto caller_addr = caller_address_string();
+		const auto& admin = get_string_contract_storage(contract_id, "admin");
+		if (admin == caller_addr)
+			return admin;
+		throw_error("only admin can call this api");
+		return "";
 	}
 
 	string token_native_contract::get_storage_state()
 	{
-		auto state_storage = get_contract_storage(contract_id, string("state"));
-		auto state = cbor_decode(state_storage.storage_data);
-		return state->as_string();
+		const auto& state = get_string_contract_storage(contract_id, "state");
+		return state;
 	}
 
 	string token_native_contract::get_storage_token_name()
 	{
-		auto name_storage = get_contract_storage(contract_id, string("name"));
-		auto name = cbor_decode(name_storage.storage_data);
-		return name->as_string();
+		const auto& name = get_string_contract_storage(contract_id, "name");
+		return name;
 	}
 
 	string token_native_contract::get_storage_token_symbol()
 	{
-		auto symbol_storage = get_contract_storage(contract_id, string("symbol"));
-		auto symbol = cbor_decode(symbol_storage.storage_data);
-		return symbol->as_string();
+		const auto& symbol = get_string_contract_storage(contract_id, "symbol");
+		return symbol;
 	}
 
 
 	int64_t token_native_contract::get_storage_supply()
 	{
-		auto supply_storage = get_contract_storage(contract_id, string("supply"));
-		auto supply = cbor_decode(supply_storage.storage_data);
-		return supply->force_as_int();
+		auto supply = get_int_contract_storage(contract_id, "supply");
+		return supply;
 	}
 	int64_t token_native_contract::get_storage_precision()
 	{
-		auto precision_storage = get_contract_storage(contract_id, string("precision"));
-		auto precision = cbor_decode(precision_storage.storage_data);
-		return precision->force_as_int();
+		auto precision = get_int_contract_storage(contract_id, "precision");
+		return precision;
 	}
 
 	cbor::CborMapValue token_native_contract::get_storage_users()
 	{
-		auto users_storage = get_contract_storage(contract_id, string("users"));
+		auto users_storage = get_contract_storage(contract_id, "users");
 		auto users = cbor_decode(users_storage.storage_data);
 		return users->as_map();
 	}
 
 	cbor::CborMapValue token_native_contract::get_storage_allowed()
 	{
-		auto allowed_storage = get_contract_storage(contract_id, string("allowed"));
+		auto allowed_storage = get_contract_storage(contract_id, "allowed");
 		auto allowed = cbor_decode(allowed_storage.storage_data);
 		return allowed->as_map();
 	}
@@ -191,7 +224,7 @@ namespace simplechain {
 
 	std::string token_native_contract::get_from_address()
 	{
-		return _evaluate->caller_address; // FIXME: when get from_address, caller maybe other contract
+		return caller_address_string(); // FIXME: when get from_address, caller maybe other contract
 	}
 
 	static bool is_numeric(std::string number)
@@ -213,33 +246,33 @@ namespace simplechain {
 	{
 		check_admin();
 		if (get_storage_state() != not_inited_state_of_token_contract)
-			THROW_CONTRACT_ERROR("this token contract inited before");
+			throw_error("this token contract inited before");
 		std::vector<string> parsed_args;
 		boost::split(parsed_args, api_arg, [](char c) {return c == ','; });
 		if (parsed_args.size() < 4)
-			THROW_CONTRACT_ERROR("argument format error, need format: name,symbol,supply,precision");
+			throw_error("argument format error, need format: name,symbol,supply,precision");
 		string name = parsed_args[0];
 		boost::trim(name);
 		string symbol = parsed_args[1];
 		boost::trim(symbol);
 		if (name.empty() || symbol.empty())
-			THROW_CONTRACT_ERROR("argument format error, need format: name,symbol,supply,precision");
+			throw_error("argument format error, need format: name,symbol,supply,precision");
 		string supply_str = parsed_args[2];
 		if (!is_integral(supply_str))
-			THROW_CONTRACT_ERROR("argument format error, need format: name,symbol,supply,precision");
+			throw_error("argument format error, need format: name,symbol,supply,precision");
 		int64_t supply = std::stoll(supply_str);
 		if (supply <= 0)
-			THROW_CONTRACT_ERROR("argument format error, supply must be positive integer");
+			throw_error("argument format error, supply must be positive integer");
 		string precision_str = parsed_args[3];
 		if (!is_integral(precision_str))
-			THROW_CONTRACT_ERROR("argument format error, need format: name,symbol,supply,precision");
+			throw_error("argument format error, need format: name,symbol,supply,precision");
 		int64_t precision = std::stoll(precision_str);
 		if (precision <= 0)
-			THROW_CONTRACT_ERROR("argument format error, precision must be positive integer");
+			throw_error("argument format error, precision must be positive integer");
 		// allowedPrecisions = [1,10,100,1000,10000,100000,1000000,10000000,100000000]
 		std::vector<int64_t> allowed_precisions = { 1,10,100,1000,10000,100000,1000000,10000000,100000000 };
 		if (std::find(allowed_precisions.begin(), allowed_precisions.end(), precision) == allowed_precisions.end())
-			THROW_CONTRACT_ERROR("argument format error, precision must be any one of [1,10,100,1000,10000,100000,1000000,10000000,100000000]");
+			throw_error("argument format error, precision must be any one of [1,10,100,1000,10000,100000,1000000,10000000,100000000]");
 		set_contract_storage(contract_id, string("state"), CborObject::from_string(common_state_of_token_contract));
 		set_contract_storage(contract_id, string("precision"), CborObject::from_int(precision));
 		set_contract_storage(contract_id, string("supply"), CborObject::from_int(supply));
@@ -247,7 +280,7 @@ namespace simplechain {
 		set_contract_storage(contract_id, "symbol", CborObject::from_string(symbol));
 
 		cbor::CborMapValue users;
-		auto caller_addr = _evaluate->caller_address;
+		auto caller_addr = caller_address_string();
 		users[caller_addr] = cbor::CborObject::from_int(supply);
 		set_contract_storage(contract_id, string("users"), CborObject::create_map(users));
 		emit_event(contract_id, "Inited", supply_str);
@@ -257,7 +290,7 @@ namespace simplechain {
 	contract_invoke_result token_native_contract::balance_of_api(const std::string& api_name, const std::string& api_arg)
 	{
 		if (get_storage_state() != common_state_of_token_contract)
-			THROW_CONTRACT_ERROR("this token contract state doesn't allow transfer");
+			throw_error("this token contract state doesn't allow transfer");
 		std::string owner_addr = api_arg;
 		auto amount = get_balance_of_user(owner_addr);
 		_contract_invoke_result.api_result = std::to_string(amount);
@@ -301,12 +334,12 @@ namespace simplechain {
 	contract_invoke_result token_native_contract::approved_balance_from_api(const std::string& api_name, const std::string& api_arg)
 	{
 		if (get_storage_state() != common_state_of_token_contract)
-			THROW_CONTRACT_ERROR("this token contract state doesn't allow this api");
+			throw_error("this token contract state doesn't allow this api");
 		auto allowed = get_storage_allowed();
 		std::vector<string> parsed_args;
 		boost::split(parsed_args, api_arg, [](char c) {return c == ','; });
 		if (parsed_args.size() < 2)
-			THROW_CONTRACT_ERROR("argument format error, need format: spenderAddress, authorizerAddress");
+			throw_error("argument format error, need format: spenderAddress, authorizerAddress");
 		string spender_address = parsed_args[0];
 		boost::trim(spender_address);
 		string authorizer_address = parsed_args[1];
@@ -327,7 +360,7 @@ namespace simplechain {
 	contract_invoke_result token_native_contract::all_approved_from_user_api(const std::string& api_name, const std::string& api_arg)
 	{
 		if (get_storage_state() != common_state_of_token_contract)
-			THROW_CONTRACT_ERROR("this token contract state doesn't allow this api");
+			throw_error("this token contract state doesn't allow this api");
 		auto allowed = get_storage_allowed();
 		string from_address = api_arg;
 		boost::trim(from_address);
@@ -347,25 +380,25 @@ namespace simplechain {
 	contract_invoke_result token_native_contract::transfer_api(const std::string& api_name, const std::string& api_arg)
 	{
 		if (get_storage_state() != common_state_of_token_contract)
-			THROW_CONTRACT_ERROR("this token contract state doesn't allow transfer");
+			throw_error("this token contract state doesn't allow transfer");
 		std::vector<string> parsed_args;
 		boost::split(parsed_args, api_arg, [](char c) {return c == ','; });
 		if (parsed_args.size() < 2)
-			THROW_CONTRACT_ERROR("argument format error, need format: toAddress,amount(with precision, integer)");
+			throw_error("argument format error, need format: toAddress,amount(with precision, integer)");
 		string to_address = parsed_args[0];
 		boost::trim(to_address);
 		string amount_str = parsed_args[1];
 		boost::trim(amount_str);
 		if (!is_integral(amount_str))
-			THROW_CONTRACT_ERROR("argument format error, amount must be positive integer");
+			throw_error("argument format error, amount must be positive integer");
 		int64_t amount = std::stoll(amount_str);
 		if (amount <= 0)
-			THROW_CONTRACT_ERROR("argument format error, amount must be positive integer");
+			throw_error("argument format error, amount must be positive integer");
 
 		string from_addr = get_from_address();
 		auto users = get_storage_users();
 		if (users.find(from_addr) == users.end() || users[from_addr]->force_as_int() < amount)
-			THROW_CONTRACT_ERROR("you have not enoungh amount to transfer out");
+			throw_error("you have not enoungh amount to transfer out");
 		auto from_addr_remain = users[from_addr]->force_as_int() - amount;
 		if (from_addr_remain > 0)
 			users[from_addr] = CborObject::from_int(from_addr_remain);
@@ -387,20 +420,20 @@ namespace simplechain {
 	contract_invoke_result token_native_contract::approve_api(const std::string& api_name, const std::string& api_arg)
 	{
 		if (get_storage_state() != common_state_of_token_contract)
-			THROW_CONTRACT_ERROR("this token contract state doesn't allow approve");
+			throw_error("this token contract state doesn't allow approve");
 		std::vector<string> parsed_args;
 		boost::split(parsed_args, api_arg, [](char c) {return c == ','; });
 		if (parsed_args.size() < 2)
-			THROW_CONTRACT_ERROR("argument format error, need format: spenderAddress, amount(with precision, integer)");
+			throw_error("argument format error, need format: spenderAddress, amount(with precision, integer)");
 		string spender_address = parsed_args[0];
 		boost::trim(spender_address);
 		string amount_str = parsed_args[1];
 		boost::trim(amount_str);
 		if (!is_integral(amount_str))
-			THROW_CONTRACT_ERROR("argument format error, amount must be positive integer");
+			throw_error("argument format error, amount must be positive integer");
 		int64_t amount = std::stoll(amount_str);
 		if (amount <= 0)
-			THROW_CONTRACT_ERROR("argument format error, amount must be positive integer");
+			throw_error("argument format error, amount must be positive integer");
 		auto allowed = get_storage_allowed();
 		cbor::CborMapValue allowed_data;
 		std::string contract_caller = get_from_address();
@@ -424,11 +457,11 @@ namespace simplechain {
 	contract_invoke_result token_native_contract::transfer_from_api(const std::string& api_name, const std::string& api_arg)
 	{
 		if (get_storage_state() != common_state_of_token_contract)
-			THROW_CONTRACT_ERROR("this token contract state doesn't allow transferFrom");
+			throw_error("this token contract state doesn't allow transferFrom");
 		std::vector<string> parsed_args;
 		boost::split(parsed_args, api_arg, [](char c) {return c == ','; });
 		if (parsed_args.size() < 3)
-			THROW_CONTRACT_ERROR("argument format error, need format:fromAddress, toAddress, amount(with precision, integer)");
+			throw_error("argument format error, need format:fromAddress, toAddress, amount(with precision, integer)");
 		string from_address = parsed_args[0];
 		boost::trim(from_address);
 		string to_address = parsed_args[1];
@@ -436,30 +469,30 @@ namespace simplechain {
 		string amount_str = parsed_args[2];
 		boost::trim(amount_str);
 		if (!is_integral(amount_str))
-			THROW_CONTRACT_ERROR("argument format error, amount must be positive integer");
+			throw_error("argument format error, amount must be positive integer");
 		int64_t amount = std::stoll(amount_str);
 		if (amount <= 0)
-			THROW_CONTRACT_ERROR("argument format error, amount must be positive integer");
+			throw_error("argument format error, amount must be positive integer");
 
 		auto users = get_storage_users();
 		auto allowed = get_storage_allowed();
 		if (get_balance_of_user(from_address) < amount)
 		{
-			THROW_CONTRACT_ERROR("fromAddress not have enough token to withdraw");
+			throw_error("fromAddress not have enough token to withdraw");
 		}
 		cbor::CborMapValue allowed_data;
 		if (allowed.find(from_address) == allowed.end())
-			THROW_CONTRACT_ERROR("not enough approved amount to withdraw");
+			throw_error("not enough approved amount to withdraw");
 		else
 		{
 			allowed_data = allowed[from_address]->as_map();
 		}
 		auto contract_caller = get_from_address();
 		if (allowed_data.find(contract_caller) == allowed_data.end())
-			THROW_CONTRACT_ERROR("not enough approved amount to withdraw");
+			throw_error("not enough approved amount to withdraw");
 		auto approved_amount = allowed_data[contract_caller]->force_as_int();
 		if (approved_amount < amount)
-			THROW_CONTRACT_ERROR("not enough approved amount to withdraw");
+			throw_error("not enough approved amount to withdraw");
 		auto from_addr_remain = users[from_address]->force_as_int() - amount;
 		if (from_addr_remain > 0)
 			users[from_address] = cbor::CborObject::from_int(from_addr_remain);
@@ -505,10 +538,13 @@ namespace simplechain {
 		if (apis.find(api_name) != apis.end())
 		{
 			contract_invoke_result res = apis[api_name](api_name, api_arg);
-			res.invoker = _evaluate->caller_address;
+			res.invoker = caller_address();
+			add_gas(gas_count_for_api_invoke(api_name));
+			res.gas_used = _contract_invoke_result.gas_used;
 			return res;
 		}
-		THROW_CONTRACT_ERROR("token api not found");
+		throw_error("token api not found");
+		return contract_invoke_result{};
 	}
 
 	bool native_contract_finder::has_native_contract_with_key(const std::string& key)

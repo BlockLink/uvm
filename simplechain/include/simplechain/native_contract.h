@@ -42,8 +42,18 @@ namespace simplechain {
 
 		void set_contract_storage(const std::string& contract_address, const std::string& storage_name, const StorageDataType& value);
 		void set_contract_storage(const std::string& contract_address, const std::string& storage_name, cbor::CborObjectP cbor_value);
-		StorageDataType get_contract_storage(const std::string& contract_address, const std::string& storage_name);
+		StorageDataType get_contract_storage(const std::string& contract_address, const std::string& storage_name) const;
+		std::string get_string_contract_storage(const std::string& contract_address, const std::string& storage_name) const;
+		int64_t get_int_contract_storage(const std::string& contract_address, const std::string& storage_name) const;
+
 		void emit_event(const std::string& contract_address, const std::string& event_name, const std::string& event_arg);
+
+		uint64_t head_block_num() const;
+		std::string caller_address_string() const;
+		address caller_address() const;
+		void throw_error(const std::string& err) const;
+
+		void add_gas(uint64_t gas);
 	};
 
 	// this is native contract for token

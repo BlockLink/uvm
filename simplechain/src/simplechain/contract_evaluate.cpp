@@ -84,7 +84,7 @@ namespace simplechain {
 		try {
 			auto origin_op = o;
 			auto limit = o.gas_limit;
-			if (limit < 0 || limit == 0)
+			if (limit <= 0)
 				throw uvm::core::UvmException("invalid_contract_gas_limit");
 			gas_limit = limit;
 			invoke_contract_result.reset();
@@ -97,15 +97,19 @@ namespace simplechain {
 			contract.registered_block = get_chain()->latest_block().block_number + 1;
 			contract.type_of_contract = contract_type::native_contract;
 
+			this->caller_address = o.caller_address;
+
 			auto native_contract = native_contract_finder::create_native_contract_by_key(this, o.template_key, contract_address);
 			FC_ASSERT(native_contract);
 
 			store_contract(contract_address, contract);
 			try
 			{
-				invoke_contract_result = native_contract->invoke("init", "");
+				auto native_result = native_contract->invoke("init", "");
+				native_result.new_contracts = invoke_contract_result.new_contracts;
+				invoke_contract_result = native_result;
 			}
-			catch (std::exception &e)
+			catch (const std::exception &e)
 			{
 				throw uvm::core::UvmException(e.what());
 			}
@@ -139,22 +143,16 @@ namespace simplechain {
 
 	// contract_invoke_evaluator methods
 	std::shared_ptr<contract_invoke_evaluator::operation_type::result_type> contract_invoke_evaluator::do_evaluate(const operation_type& o) {
-		ContractEngineBuilder builder;
-		auto engine = builder.build();
 		int exception_code = 0;
 		string exception_msg;
 		bool has_error = false;
 		try {
-			FC_ASSERT(helper::is_valid_contract_address(o.contract_address));
+			FC_ASSERT(helper::is_valid_contract_address(o.contract_address), "invalid contract address");
 			auto origin_op = o;
-			engine->set_caller(o.caller_address, o.caller_address);
-			engine->set_state_pointer_value("invoke_evaluate_state", this);
-			engine->clear_exceptions();
 			auto limit = o.gas_limit;
-			if (limit < 0 || limit == 0)
+			if (limit <= 0)
 				throw uvm::core::UvmException("invalid_contract_gas_limit");
 			gas_limit = limit;
-			engine->set_gas_limit(limit);
 			invoke_contract_result.reset();
 			try
 			{
@@ -183,16 +181,22 @@ namespace simplechain {
 				if (o.deposit_amount > 0) {
 					update_account_asset_balance(o.contract_address, o.deposit_asset_id, o.deposit_amount);
 				}
-				// TODO: find contract
 				auto contract = get_contract_by_address(o.contract_address);
-				FC_ASSERT(contract);
+				FC_ASSERT(contract, "Can't find contract by address");
 				if (contract->native_contract_key.empty()) {
+					ContractEngineBuilder builder;
+					auto engine = builder.build();
+					engine->set_caller(o.caller_address, o.caller_address);
+					engine->set_state_pointer_value("invoke_evaluate_state", this);
+					engine->clear_exceptions();
+					engine->set_gas_limit(limit);
 					engine->execute_contract_api_by_address(o.contract_address, o.contract_api, first_contract_arg, &result_json_str);
 					invoke_contract_result.api_result = result_json_str;
 					gas_used = engine->gas_used();
 				}
 				else {
 					// native contract
+					this->caller_address = o.caller_address;
 					auto native_contract = native_contract_finder::create_native_contract_by_key(this, contract->native_contract_key, o.contract_address);
 					FC_ASSERT(native_contract);
 					invoke_contract_result = native_contract->invoke(o.contract_api, first_contract_arg);
