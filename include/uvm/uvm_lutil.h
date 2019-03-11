@@ -3,6 +3,7 @@
 #include <uvm/lprefix.h>
 #include <boost/asio/buffer.hpp>
 #include <boost/variant.hpp>
+#include <fc/variant.hpp>
 
 #include <setjmp.h>
 #include <stdlib.h>
@@ -251,6 +252,8 @@ namespace uvm
 		std::string unhex(const std::string& int_str);
 		std::string hex(const std::string& hex_str);
 		std::string convert_pre(int old_base, int new_base, std::string source_str);
+
+		std::string json_ordered_dumps(const fc::variant& value);
 
 	} // end namespace uvm::util
 } // end namespace uvm

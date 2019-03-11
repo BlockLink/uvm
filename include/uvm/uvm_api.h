@@ -600,6 +600,10 @@ namespace uvm {
 			// whether use cbor diff in storage diff
 			virtual bool use_cbor_diff(lua_State* L) const = 0;
 
+			virtual bool use_fast_map_set_nil(lua_State *L) const {
+				return use_cbor_diff(L);
+			}
+
           };
 
 

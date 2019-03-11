@@ -611,7 +611,7 @@ bool luaL_commit_storage_changes(lua_State *L)
 		{
 			UvmStorageChangeItem change_item = *it;
 			const auto& change_item_full_key = change_item.full_key();
-			if (global_uvm_chain_api->use_cbor_diff(L)) {
+			if (global_uvm_chain_api->use_fast_map_set_nil(L)) {
 				if (change_item.is_fast_map && null_keys_changed.find(change_item_full_key) != null_keys_changed.end())
 					continue;
 			}
