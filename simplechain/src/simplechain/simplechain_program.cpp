@@ -5,6 +5,7 @@
 #include <fc/crypto/hex.hpp>
 #include <cbor_diff/cbor_diff.h>
 #include <cbor_diff/cbor_diff_tests.h>
+#include <simplechain/native_contract_tests.h>
 
 using namespace simplechain;
 #ifndef RUN_BOOST_TESTS
@@ -12,6 +13,8 @@ using namespace simplechain;
 int main(int argc, char** argv) {
 	std::cout << "Hello, simplechain based on uvm" << std::endl;
 	// cbor_diff::test_cbor_diff();
+	// cbor_diff::test_cbor_json();
+	// test_token_native_contract();
 	try {
 		auto chain = std::make_shared<simplechain::blockchain>();
 

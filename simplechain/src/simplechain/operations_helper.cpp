@@ -33,6 +33,17 @@ namespace simplechain {
 		return op;
 	}
 
+	native_contract_create_operation operations_helper::create_native_contract(const std::string& caller_addr, const std::string& template_key,
+		gas_count_type gas_limit, gas_price_type gas_price) {
+		native_contract_create_operation op;
+		op.caller_address = caller_addr;
+		op.template_key = template_key;
+		op.gas_limit = gas_limit;
+		op.gas_price = gas_price;
+		op.op_time = fc::time_point_sec(fc::time_point::now());
+		return op;
+	}
+
 	contract_create_operation operations_helper::create_contract(const std::string& caller_addr, const uvm::blockchain::Code& contract_code,
 		gas_count_type gas_limit, gas_price_type gas_price) {
 		contract_create_operation op;

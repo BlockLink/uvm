@@ -30,6 +30,27 @@ namespace simplechain {
 		return std::string(SIMPLECHAIN_CONTRACT_ADDRESS_PREFIX) + id;
 	}
 
+	native_contract_create_operation::native_contract_create_operation()
+		: type(operation_type_enum::CONTRACT_CREATE),
+		gas_price(0),
+		gas_limit(0) {}
+
+	native_contract_create_operation::~native_contract_create_operation() {
+
+	}
+	std::string native_contract_create_operation::calculate_contract_id() const
+	{
+		std::string id;
+		fc::sha256::encoder enc;
+		FC_ASSERT(!template_key.empty());
+
+		std::pair<std::string, fc::time_point_sec> info_to_digest(template_key, op_time);
+		fc::raw::pack(enc, info_to_digest);
+
+		id = fc::ripemd160::hash(enc.result()).str();
+		return std::string(SIMPLECHAIN_CONTRACT_ADDRESS_PREFIX) + id;
+	}
+
 	contract_invoke_operation::contract_invoke_operation()
 	: type(operation_type_enum::CONTRACT_INVOKE),
 	  gas_price(0),

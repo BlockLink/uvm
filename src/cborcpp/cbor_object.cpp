@@ -39,6 +39,59 @@ namespace cbor {
 		}
 	}
 
+	fc::variant CborObject::to_json() const {
+		switch (type) {
+		case COT_NULL:
+			return fc::variant();
+		case COT_UNDEFINED:
+			return fc::variant();
+		case COT_BOOL:
+			return as_bool() ? true : false;
+		case COT_INT:
+			return as_int();
+		case COT_EXTRA_INT: {
+			auto extra_int_val = as_extra_int();
+			auto is_pos = this->is_positive_extra;
+			if (is_pos)
+				return extra_int_val;
+			else {
+				int64_t result_val = static_cast<int64_t>(extra_int_val);
+				result_val = -result_val;
+				return result_val;
+			}
+		} case COT_FLOAT:
+			return as_float64();
+		case COT_TAG:
+			return as_tag();
+		case COT_STRING:
+			return as_string();
+		case COT_BYTES: {
+			const auto& bytes = as_bytes();
+			const auto& hex = fc::to_hex(bytes);
+			return hex;
+		}
+		case COT_ARRAY: {
+			fc::variants arr;
+			const auto& items = as_array();
+			for (size_t i = 0; i < items.size(); i++) {
+				arr.push_back(items[i]->to_json());
+			}
+			return arr;
+		} break;
+		case COT_MAP:
+		{
+			fc::mutable_variant_object obj;
+			const auto& items = as_map();
+			for (auto it = items.begin(); it != items.end(); it++) {
+				obj[it->first] = it->second->to_json();
+			}
+			return obj;
+		}
+		default:
+			throw cbor::CborException(std::string("not supported cbor object type ") + std::to_string(type));
+		}
+	}
+
 	std::string CborObject::str() const {
 		switch (type) {
 		case COT_NULL:
