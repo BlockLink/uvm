@@ -836,10 +836,14 @@ int64_t safe_number_to_int64(const SafeNumber& a) {
 		return 0;
 	}
 	int64_t result = 0;
-	if(a.e > 0) {
+	if (a.e > 0) {
 		auto ax_divmod = simple_uint128_divmod(a.x, simple_uint128_create(0, uint64_pow(10, a.e)));
 		auto tmp_uint128 = ax_divmod.div_result;
 		int64_t tmp = (static_cast<int64_t>(tmp_uint128.low) << 1) >> 1;
+		result = a.sign ? tmp : -tmp;
+	}
+	else {
+		int64_t tmp = (static_cast<int64_t>(a.x.low) << 1) >> 1;
 		result = a.sign ? tmp : -tmp;
 	}
 	return result;
