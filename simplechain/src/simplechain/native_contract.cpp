@@ -109,7 +109,7 @@ namespace simplechain {
 		info.event_name = event_name;
 		info.event_arg = event_arg;
 		//info.caller_addr = caller_address->address_to_string();
-		info.block_num = 1 + _evaluate->get_chain()->head_block_number();
+		info.block_num = 1 + head_block_num();
 
 		_contract_invoke_result.events.push_back(info);
 	}
