@@ -842,6 +842,10 @@ int64_t safe_number_to_int64(const SafeNumber& a) {
 		int64_t tmp = (static_cast<int64_t>(tmp_uint128.low) << 1) >> 1;
 		result = a.sign ? tmp : -tmp;
 	}
+	else {
+		int64_t tmp = (static_cast<int64_t>(a.x.low) << 1) >> 1;
+		result = a.sign ? tmp : -tmp;
+	}
 	return result;
 }
 
