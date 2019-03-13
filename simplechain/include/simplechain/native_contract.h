@@ -15,7 +15,7 @@
 
 namespace simplechain {
 
-	class native_contract_interface
+	class abstract_native_contract
 	{
 	protected:
 		evaluate_state* _evaluate;
@@ -23,8 +23,11 @@ namespace simplechain {
 	public:
 		std::string contract_id;
 
-		native_contract_interface(evaluate_state* evaluate, const std::string& _contract_id) : _evaluate(evaluate), contract_id(_contract_id) {}
-		virtual ~native_contract_interface() {}
+		abstract_native_contract() : _evaluate(nullptr), contract_id("") {}
+		abstract_native_contract(evaluate_state* evaluate, const std::string& _contract_id) : _evaluate(evaluate), contract_id(_contract_id) {}
+		virtual ~abstract_native_contract() {}
+
+		void init_config(evaluate_state* evaluate, const std::string& _contract_id);
 
 		// unique key to identify native contract
 		virtual std::string contract_key() const = 0;
@@ -34,6 +37,7 @@ namespace simplechain {
 
 		virtual contract_invoke_result invoke(const std::string& api_name, const std::string& api_arg) = 0;
 
+		virtual address contract_address() const;
 		virtual uint64_t gas_count_for_api_invoke(const std::string& api_name) const
 		{
 			return 100; // now all native api call requires 100 gas count
@@ -57,13 +61,14 @@ namespace simplechain {
 		void throw_error(const std::string& err) const;
 
 		void add_gas(uint64_t gas);
+		void set_invoke_result_caller();
 	};
 
 	class native_contract_finder
 	{
 	public:
 		static bool has_native_contract_with_key(const std::string& key);
-		static std::shared_ptr<native_contract_interface> create_native_contract_by_key(evaluate_state* evaluate, const std::string& key, const address& contract_address);
+		static std::shared_ptr<abstract_native_contract> create_native_contract_by_key(evaluate_state* evaluate, const std::string& key, const address& contract_address);
 
 	};
 

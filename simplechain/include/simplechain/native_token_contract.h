@@ -3,16 +3,15 @@
 
 namespace simplechain {
 	// this is native contract for token
-	class token_native_contract : public native_contract_interface
+	class token_native_contract : public abstract_native_contract
 	{
 	public:
 		static std::string native_contract_key() { return "token"; }
 
-		token_native_contract(evaluate_state* evaluate, const address& _contract_id) : native_contract_interface(evaluate, _contract_id) {}
+		token_native_contract() {}
 		virtual ~token_native_contract() {}
 
 		virtual std::string contract_key() const;
-		virtual address contract_address() const;
 		virtual std::set<std::string> apis() const;
 		virtual std::set<std::string> offline_apis() const;
 		virtual std::set<std::string> events() const;
