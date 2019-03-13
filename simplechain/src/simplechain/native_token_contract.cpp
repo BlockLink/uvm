@@ -27,26 +27,24 @@ namespace simplechain {
 	static const std::string not_inited_state_of_token_contract = "NOT_INITED";
 	static const std::string common_state_of_token_contract = "COMMON";
 
-	contract_invoke_result token_native_contract::init_api(const std::string& api_name, const std::string& api_arg)
+	void token_native_contract::init_api(const std::string& api_name, const std::string& api_arg)
 	{
-		const auto& cur_contract_id = contract_address();
-		set_contract_storage(cur_contract_id, "name", CborObject::from_string(""));
-		set_contract_storage(cur_contract_id, "symbol", CborObject::from_string(""));
-		set_contract_storage(cur_contract_id, "supply", CborObject::from_int(0));
-		set_contract_storage(cur_contract_id, "precision", CborObject::from_int(0));
+		set_current_contract_storage("name", CborObject::from_string(""));
+		set_current_contract_storage("symbol", CborObject::from_string(""));
+		set_current_contract_storage("supply", CborObject::from_int(0));
+		set_current_contract_storage("precision", CborObject::from_int(0));
 		// fast map storages: users, allowed
-		set_contract_storage(cur_contract_id, "state", CborObject::from_string(not_inited_state_of_token_contract));
+		set_current_contract_storage("state", CborObject::from_string(not_inited_state_of_token_contract));
 		auto caller_addr = caller_address_string();
 		FC_ASSERT(!caller_addr.empty(), "caller_address can't be empty");
-		set_contract_storage(cur_contract_id, "admin", CborObject::from_string(caller_addr));
-		return _contract_invoke_result;
+		set_current_contract_storage("admin", CborObject::from_string(caller_addr));
+		return;
 	}
 
 	std::string token_native_contract::check_admin()
 	{
 		const auto& caller_addr = caller_address_string();
-		const auto& cur_contract_id = contract_address();
-		const auto& admin = get_string_contract_storage(cur_contract_id, "admin");
+		const auto& admin = get_string_current_contract_storage("admin");
 		if (admin == caller_addr)
 			return admin;
 		throw_error("only admin can call this api");
@@ -55,51 +53,44 @@ namespace simplechain {
 
 	std::string token_native_contract::get_storage_state()
 	{
-		const auto& cur_contract_id = contract_address();
-		const auto& state = get_string_contract_storage(cur_contract_id, "state");
+		const auto& state = get_string_current_contract_storage("state");
 		return state;
 	}
 
 	std::string token_native_contract::get_storage_token_name()
 	{
-		const auto& cur_contract_id = contract_address();
-		const auto& name = get_string_contract_storage(cur_contract_id, "name");
+		const auto& name = get_string_current_contract_storage("name");
 		return name;
 	}
 
 	std::string token_native_contract::get_storage_token_symbol()
 	{
-		const auto& cur_contract_id = contract_address();
-		const auto& symbol = get_string_contract_storage(cur_contract_id, "symbol");
+		const auto& symbol = get_string_current_contract_storage("symbol");
 		return symbol;
 	}
 
 
 	int64_t token_native_contract::get_storage_supply()
 	{
-		const auto& cur_contract_id = contract_address();
-		auto supply = get_int_contract_storage(cur_contract_id, "supply");
+		auto supply = get_int_current_contract_storage("supply");
 		return supply;
 	}
 	int64_t token_native_contract::get_storage_precision()
 	{
-		const auto& cur_contract_id = contract_address();
-		auto precision = get_int_contract_storage(cur_contract_id, "precision");
+		auto precision = get_int_current_contract_storage("precision");
 		return precision;
 	}
 
 	int64_t token_native_contract::get_balance_of_user(const std::string& owner_addr) const
 	{
-		const auto& cur_contract_id = contract_address();
-		auto user_balance_cbor = fast_map_get(cur_contract_id, "users", owner_addr);
+		auto user_balance_cbor = current_fast_map_get("users", owner_addr);
 		if (!user_balance_cbor->is_integer())
 			return 0;
 		return user_balance_cbor->force_as_int();
 	}
 
 	cbor::CborMapValue token_native_contract::get_allowed_of_user(const std::string& from_addr) const {
-		const auto& cur_contract_id = contract_address();
-		auto user_allowed = fast_map_get(cur_contract_id, "allowed", from_addr);
+		auto user_allowed = current_fast_map_get("allowed", from_addr);
 		if (!user_allowed->is_map()) {
 			return CborObject::create_map(0)->as_map();
 		}
@@ -126,7 +117,7 @@ namespace simplechain {
 	}
 
 	// arg format: name,symbol,supply,precision
-	contract_invoke_result token_native_contract::init_token_api(const std::string& api_name, const std::string& api_arg)
+	void token_native_contract::init_token_api(const std::string& api_name, const std::string& api_arg)
 	{
 		check_admin();
 		if (get_storage_state() != not_inited_state_of_token_contract)
@@ -156,64 +147,63 @@ namespace simplechain {
 		std::vector<int64_t> allowed_precisions = { 1,10,100,1000,10000,100000,1000000,10000000,100000000 };
 		if (std::find(allowed_precisions.begin(), allowed_precisions.end(), precision) == allowed_precisions.end())
 			throw_error("argument format error, precision must be any one of [1,10,100,1000,10000,100000,1000000,10000000,100000000]");
-		const auto& cur_contract_id = contract_address();
-		set_contract_storage(cur_contract_id, "state", CborObject::from_string(common_state_of_token_contract));
-		set_contract_storage(cur_contract_id, "precision", CborObject::from_int(precision));
-		set_contract_storage(cur_contract_id, "supply", CborObject::from_int(supply));
-		set_contract_storage(cur_contract_id, "name", CborObject::from_string(name));
-		set_contract_storage(cur_contract_id, "symbol", CborObject::from_string(symbol));
+		set_current_contract_storage("state", CborObject::from_string(common_state_of_token_contract));
+		set_current_contract_storage("precision", CborObject::from_int(precision));
+		set_current_contract_storage("supply", CborObject::from_int(supply));
+		set_current_contract_storage("name", CborObject::from_string(name));
+		set_current_contract_storage("symbol", CborObject::from_string(symbol));
 
 		auto caller_addr = caller_address_string();
-		fast_map_set(cur_contract_id, "users", caller_addr, CborObject::from_int(supply));
-		emit_event(cur_contract_id, "Inited", supply_str);
-		return _contract_invoke_result;
+		current_fast_map_set("users", caller_addr, CborObject::from_int(supply));
+		emit_event("Inited", supply_str);
+		return;
 	}
 
-	contract_invoke_result token_native_contract::balance_of_api(const std::string& api_name, const std::string& api_arg)
+	void token_native_contract::balance_of_api(const std::string& api_name, const std::string& api_arg)
 	{
 		if (get_storage_state() != common_state_of_token_contract)
 			throw_error("this token contract state doesn't allow transfer");
 		std::string owner_addr = api_arg;
 		auto amount = get_balance_of_user(owner_addr);
-		_contract_invoke_result.api_result = std::to_string(amount);
-		return _contract_invoke_result;
+		get_result()->api_result = std::to_string(amount);
+		return;
 	}
 
-	contract_invoke_result token_native_contract::state_api(const std::string& api_name, const std::string& api_arg)
+	void token_native_contract::state_api(const std::string& api_name, const std::string& api_arg)
 	{
 		const auto& state = get_storage_state();
-		_contract_invoke_result.api_result = state;
-		return _contract_invoke_result;
+		get_result()->api_result = state;
+		return;
 	}
 
-	contract_invoke_result token_native_contract::token_name_api(const std::string& api_name, const std::string& api_arg)
+	void token_native_contract::token_name_api(const std::string& api_name, const std::string& api_arg)
 	{
 		const auto& token_name = get_storage_token_name();
-		_contract_invoke_result.api_result = token_name;
-		return _contract_invoke_result;
+		get_result()->api_result = token_name;
+		return;
 	}
 
-	contract_invoke_result token_native_contract::token_symbol_api(const std::string& api_name, const std::string& api_arg)
+	void token_native_contract::token_symbol_api(const std::string& api_name, const std::string& api_arg)
 	{
 		const auto& token_symbol = get_storage_token_symbol();
-		_contract_invoke_result.api_result = token_symbol;
-		return _contract_invoke_result;
+		get_result()->api_result = token_symbol;
+		return;
 	}
 
-	contract_invoke_result token_native_contract::supply_api(const std::string& api_name, const std::string& api_arg)
+	void token_native_contract::supply_api(const std::string& api_name, const std::string& api_arg)
 	{
 		auto supply = get_storage_supply();
-		_contract_invoke_result.api_result = std::to_string(supply);
-		return _contract_invoke_result;
+		get_result()->api_result = std::to_string(supply);
+		return;
 	}
-	contract_invoke_result token_native_contract::precision_api(const std::string& api_name, const std::string& api_arg)
+	void token_native_contract::precision_api(const std::string& api_name, const std::string& api_arg)
 	{
 		auto precision = get_storage_precision();
-		_contract_invoke_result.api_result = std::to_string(precision);
-		return _contract_invoke_result;
+		get_result()->api_result = std::to_string(precision);
+		return;
 	}
 
-	contract_invoke_result token_native_contract::approved_balance_from_api(const std::string& api_name, const std::string& api_arg)
+	void token_native_contract::approved_balance_from_api(const std::string& api_name, const std::string& api_arg)
 	{
 		if (get_storage_state() != common_state_of_token_contract)
 			throw_error("this token contract state doesn't allow this api");
@@ -232,10 +222,10 @@ namespace simplechain {
 			approved_amount = allowed_data[spender_address]->force_as_int();
 		}
 
-		_contract_invoke_result.api_result = std::to_string(approved_amount);
-		return _contract_invoke_result;
+		get_result()->api_result = std::to_string(approved_amount);
+		return;
 	}
-	contract_invoke_result token_native_contract::all_approved_from_user_api(const std::string& api_name, const std::string& api_arg)
+	void token_native_contract::all_approved_from_user_api(const std::string& api_name, const std::string& api_arg)
 	{
 		if (get_storage_state() != common_state_of_token_contract)
 			throw_error("this token contract state doesn't allow this api");
@@ -246,11 +236,11 @@ namespace simplechain {
 		auto allowed_data_cbor = CborObject::create_map(allowed_data);
 		auto allowed_data_json = allowed_data_cbor->to_json();
 		auto allowed_data_str = uvm::util::json_ordered_dumps(allowed_data_json);
-		_contract_invoke_result.api_result = allowed_data_str;
-		return _contract_invoke_result;
+		get_result()->api_result = allowed_data_str;
+		return;
 	}
 
-	contract_invoke_result token_native_contract::transfer_api(const std::string& api_name, const std::string& api_arg)
+	void token_native_contract::transfer_api(const std::string& api_name, const std::string& api_arg)
 	{
 		if (get_storage_state() != common_state_of_token_contract)
 			throw_error("this token contract state doesn't allow transfer");
@@ -273,24 +263,23 @@ namespace simplechain {
 		if (from_user_balance < amount)
 			throw_error("you have not enoungh amount to transfer out");
 		auto from_addr_remain = from_user_balance - amount;
-		const auto& cur_contract_id = contract_address();
 		if (from_addr_remain > 0) {
-			fast_map_set(cur_contract_id, "users", from_addr, CborObject::from_int(from_addr_remain));
+			current_fast_map_set("users", from_addr, CborObject::from_int(from_addr_remain));
 		}
 		else {
-			fast_map_set(cur_contract_id, "users", from_addr, CborObject::create_null());
+			current_fast_map_set("users", from_addr, CborObject::create_null());
 		}
 		auto to_amount = get_balance_of_user(to_address);
-		fast_map_set(cur_contract_id, "users", to_address, CborObject::from_int(to_amount + amount));
+		current_fast_map_set("users", to_address, CborObject::from_int(to_amount + amount));
 		jsondiff::JsonObject event_arg;
 		event_arg["from"] = from_addr;
 		event_arg["to"] = to_address;
 		event_arg["amount"] = amount;
-		emit_event(cur_contract_id, "Transfer", uvm::util::json_ordered_dumps(event_arg));
-		return _contract_invoke_result;
+		emit_event("Transfer", uvm::util::json_ordered_dumps(event_arg));
+		return;
 	}
 
-	contract_invoke_result token_native_contract::approve_api(const std::string& api_name, const std::string& api_arg)
+	void token_native_contract::approve_api(const std::string& api_name, const std::string& api_arg)
 	{
 		if (get_storage_state() != common_state_of_token_contract)
 			throw_error("this token contract state doesn't allow approve");
@@ -312,17 +301,16 @@ namespace simplechain {
 		allowed_data[spender_address] = CborObject::from_int(amount);
 		if (allowed_data.size() > 1000)
 			throw_error("you approved to too many users");
-		const auto& cur_contract_id = contract_address();
-		fast_map_set(cur_contract_id, "allowed", contract_caller, CborObject::create_map(allowed_data));
+		current_fast_map_set("allowed", contract_caller, CborObject::create_map(allowed_data));
 		jsondiff::JsonObject event_arg;
 		event_arg["from"] = contract_caller;
 		event_arg["spender"] = spender_address;
 		event_arg["amount"] = amount;
-		emit_event(cur_contract_id, "Approved", uvm::util::json_ordered_dumps(event_arg));
-		return _contract_invoke_result;
+		emit_event("Approved", uvm::util::json_ordered_dumps(event_arg));
+		return;
 	}
 
-	contract_invoke_result token_native_contract::transfer_from_api(const std::string& api_name, const std::string& api_arg)
+	void token_native_contract::transfer_from_api(const std::string& api_name, const std::string& api_arg)
 	{
 		if (get_storage_state() != common_state_of_token_contract)
 			throw_error("this token contract state doesn't allow transferFrom");
@@ -354,30 +342,29 @@ namespace simplechain {
 		if (approved_amount < amount)
 			throw_error("not enough approved amount to withdraw");
 		auto from_addr_remain = get_balance_of_user(from_address) - amount;
-		const auto& cur_contract_id = contract_address();
 		if (from_addr_remain > 0)
-			fast_map_set(cur_contract_id, "users", from_address, CborObject::from_int(from_addr_remain));
+			current_fast_map_set("users", from_address, CborObject::from_int(from_addr_remain));
 		else
-			fast_map_set(cur_contract_id, "users", from_address, CborObject::create_null());
+			current_fast_map_set("users", from_address, CborObject::create_null());
 		auto to_amount = get_balance_of_user(to_address);
-		fast_map_set(cur_contract_id, "users", to_address, CborObject::from_int(to_amount + amount));
+		current_fast_map_set("users", to_address, CborObject::from_int(to_amount + amount));
 
 		allowed_data[contract_caller] = CborObject::from_int(approved_amount - amount);
 		if (allowed_data[contract_caller]->force_as_int() == 0)
 			allowed_data.erase(contract_caller);
-		fast_map_set(cur_contract_id, "allowed", from_address, CborObject::create_map(allowed_data));
+		current_fast_map_set("allowed", from_address, CborObject::create_map(allowed_data));
 
 		jsondiff::JsonObject event_arg;
 		event_arg["from"] = from_address;
 		event_arg["to"] = to_address;
 		event_arg["amount"] = amount;
-		emit_event(cur_contract_id, "Transfer", uvm::util::json_ordered_dumps(event_arg));
+		emit_event("Transfer", uvm::util::json_ordered_dumps(event_arg));
 
-		return _contract_invoke_result;
+		return;
 	}
 
-	contract_invoke_result token_native_contract::invoke(const std::string& api_name, const std::string& api_arg) {
-		std::map<std::string, std::function<contract_invoke_result(const std::string&, const std::string&)>> apis = {
+	void token_native_contract::invoke(const std::string& api_name, const std::string& api_arg) {
+		std::map<std::string, std::function<void(const std::string&, const std::string&)>> apis = {
 			{"init", std::bind(&token_native_contract::init_api, this, std::placeholders::_1, std::placeholders::_2)},
 			{"init_token", std::bind(&token_native_contract::init_token_api, this, std::placeholders::_1, std::placeholders::_2)},
 			{"transfer", std::bind(&token_native_contract::transfer_api, this, std::placeholders::_1, std::placeholders::_2)},
@@ -394,13 +381,12 @@ namespace simplechain {
 		};
 		if (apis.find(api_name) != apis.end())
 		{
-			_contract_invoke_result = apis[api_name](api_name, api_arg);
+			apis[api_name](api_name, api_arg);
 			set_invoke_result_caller();
 			add_gas(gas_count_for_api_invoke(api_name));
-			return _contract_invoke_result;
+			return;
 		}
 		throw_error("token api not found");
-		return _contract_invoke_result;
 	}
 
 }

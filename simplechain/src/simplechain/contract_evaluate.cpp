@@ -105,7 +105,8 @@ namespace simplechain {
 			store_contract(contract_address, contract);
 			try
 			{
-				auto native_result = native_contract->invoke("init", "");
+				native_contract->invoke("init", "");
+				auto native_result = *native_contract->get_result();
 				native_result.new_contracts = invoke_contract_result.new_contracts;
 				invoke_contract_result = native_result;
 			}
@@ -199,7 +200,8 @@ namespace simplechain {
 					this->caller_address = o.caller_address;
 					auto native_contract = native_contract_finder::create_native_contract_by_key(this, contract->native_contract_key, o.contract_address);
 					FC_ASSERT(native_contract);
-					invoke_contract_result = native_contract->invoke(o.contract_api, first_contract_arg);
+					native_contract->invoke(o.contract_api, first_contract_arg);
+					invoke_contract_result = *native_contract->get_result();
 					gas_used = invoke_contract_result.gas_used;
 				}
 			}

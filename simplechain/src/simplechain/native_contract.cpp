@@ -12,17 +12,12 @@ namespace simplechain {
 	using namespace cbor;
 	using namespace std;
 
-	void abstract_native_contract::init_config(evaluate_state* evaluate, const std::string& _contract_id) {
+	void native_contract_store::init_config(evaluate_state* evaluate, const std::string& _contract_id) {
 		this->_evaluate = evaluate;
 		this->contract_id = _contract_id;
 	}
 
-	bool abstract_native_contract::has_api(const std::string& api_name) const {
-		const auto& api_names = apis();
-		return api_names.find(api_name) != api_names.end();
-	}
-
-	void abstract_native_contract::set_contract_storage(const address& contract_address, const std::string& storage_name, const StorageDataType& value)
+	void native_contract_store::set_contract_storage(const address& contract_address, const std::string& storage_name, const StorageDataType& value)
 	{
 		if (_contract_invoke_result.storage_changes.find(contract_address) == _contract_invoke_result.storage_changes.end())
 		{
@@ -56,18 +51,18 @@ namespace simplechain {
 		}
 	}
 
-	void abstract_native_contract::set_contract_storage(const address& contract_address, const std::string& storage_name, cbor::CborObjectP cbor_value) {
+	void native_contract_store::set_contract_storage(const address& contract_address, const std::string& storage_name, cbor::CborObjectP cbor_value) {
 		StorageDataType value;
 		value.storage_data = cbor_encode(cbor_value);
 		return set_contract_storage(contract_address, storage_name, value);
 	}
 
-	void abstract_native_contract::fast_map_set(const address& contract_address, const std::string& storage_name, const std::string& key, cbor::CborObjectP cbor_value) {
+	void native_contract_store::fast_map_set(const address& contract_address, const std::string& storage_name, const std::string& key, cbor::CborObjectP cbor_value) {
 		std::string full_key = storage_name + "." + key;
 		set_contract_storage(contract_address, full_key, cbor_value);
 	}
 
-	StorageDataType abstract_native_contract::get_contract_storage(const address& contract_address, const std::string& storage_name) const
+	StorageDataType native_contract_store::get_contract_storage(const address& contract_address, const std::string& storage_name) const
 	{
 		if (_contract_invoke_result.storage_changes.find(contract_address) == _contract_invoke_result.storage_changes.end())
 		{
@@ -81,12 +76,12 @@ namespace simplechain {
 		return storage_changes.at(storage_name).after;
 	}
 
-	cbor::CborObjectP abstract_native_contract::get_contract_storage_cbor(const address& contract_address, const std::string& storage_name) const {
+	cbor::CborObjectP native_contract_store::get_contract_storage_cbor(const address& contract_address, const std::string& storage_name) const {
 		const auto& data = get_contract_storage(contract_address, storage_name);
 		return cbor_decode(data.storage_data);
 	}
 
-	std::string abstract_native_contract::get_string_contract_storage(const address& contract_address, const std::string& storage_name) const {
+	std::string native_contract_store::get_string_contract_storage(const address& contract_address, const std::string& storage_name) const {
 		auto cbor_data = get_contract_storage_cbor(contract_address, storage_name);
 		if (!cbor_data->is_string()) {
 			throw_error(std::string("invalid string contract storage ") + contract_address + "." + storage_name);
@@ -94,12 +89,12 @@ namespace simplechain {
 		return cbor_data->as_string();
 	}
 
-	cbor::CborObjectP abstract_native_contract::fast_map_get(const address& contract_address, const std::string& storage_name, const std::string& key) const {
+	cbor::CborObjectP native_contract_store::fast_map_get(const address& contract_address, const std::string& storage_name, const std::string& key) const {
 		std::string full_key = storage_name + "." + key;
 		return get_contract_storage_cbor(contract_address, full_key);
 	}
 
-	int64_t abstract_native_contract::get_int_contract_storage(const address& contract_address, const std::string& storage_name) const {
+	int64_t native_contract_store::get_int_contract_storage(const address& contract_address, const std::string& storage_name) const {
 		auto cbor_data = get_contract_storage_cbor(contract_address, storage_name);
 		if (!cbor_data->is_integer()) {
 			throw_error(std::string("invalid int contract storage ") + contract_address + "." + storage_name);
@@ -107,7 +102,7 @@ namespace simplechain {
 		return cbor_data->force_as_int();
 	}
 
-	void abstract_native_contract::emit_event(const address& contract_address, const std::string& event_name, const std::string& event_arg)
+	void native_contract_store::emit_event(const address& contract_address, const std::string& event_name, const std::string& event_arg)
 	{
 		FC_ASSERT(!event_name.empty());
 		contract_event_notify_info info;
@@ -119,31 +114,31 @@ namespace simplechain {
 		_contract_invoke_result.events.push_back(info);
 	}
 
-	uint64_t abstract_native_contract::head_block_num() const {
+	uint64_t native_contract_store::head_block_num() const {
 		return _evaluate->get_chain()->head_block_number();
 	}
 
-	std::string abstract_native_contract::caller_address_string() const {
+	std::string native_contract_store::caller_address_string() const {
 		return _evaluate->caller_address;
 	}
 
-	address abstract_native_contract::caller_address() const {
+	address native_contract_store::caller_address() const {
 		return _evaluate->caller_address;
 	}
 
-	address abstract_native_contract::contract_address() const {
+	address native_contract_store::contract_address() const {
 		return contract_id;
 	}
 
-	void abstract_native_contract::throw_error(const std::string& err) const {
+	void native_contract_store::throw_error(const std::string& err) const {
 		FC_THROW_EXCEPTION(fc::assert_exception, err);
 	}
 
-	void abstract_native_contract::add_gas(uint64_t gas) {
+	void native_contract_store::add_gas(uint64_t gas) {
 		_contract_invoke_result.gas_used += gas;
 	}
 
-	void abstract_native_contract::set_invoke_result_caller() {
+	void native_contract_store::set_invoke_result_caller() {
 		_contract_invoke_result.invoker = caller_address();
 	}
 
@@ -157,24 +152,26 @@ namespace simplechain {
 		};
 		return std::find(native_contract_keys.begin(), native_contract_keys.end(), key) != native_contract_keys.end();
 	}
-	shared_ptr<abstract_native_contract> native_contract_finder::create_native_contract_by_key(evaluate_state* evaluate, const std::string& key, const address& contract_address)
+	shared_ptr<native_contract_interface> native_contract_finder::create_native_contract_by_key(evaluate_state* evaluate, const std::string& key, const address& contract_address)
 	{
-		shared_ptr<abstract_native_contract> result;
+		auto store = std::make_shared<native_contract_store>();
+		store->init_config(evaluate, contract_address);
+
+		shared_ptr<native_contract_interface> result;
+
 		/*if (key == demo_native_contract::native_contract_key())
 		{
-			result = std::make_shared<demo_native_contract>();
+			result = std::make_shared<demo_native_contract>(store);
 		}
 		else */
 		if (key == token_native_contract::native_contract_key())
 		{
-			result = std::make_shared<token_native_contract>();
+			result = std::make_shared<token_native_contract>(store);
 		}
 		else
 		{
 			return nullptr;
 		}
-		if (result)
-			result->init_config(evaluate, contract_address);
 		return result;
 	}
 
