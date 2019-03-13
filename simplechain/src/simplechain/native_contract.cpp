@@ -1,16 +1,14 @@
 #include <simplechain/native_contract.h>
-#include <simplechain/native_token_contract.h>
+#include <native_contract/native_token_contract.h>
 #include <simplechain/blockchain.h>
 #include <boost/algorithm/string.hpp>
 #include <jsondiff/jsondiff.h>
 
 namespace simplechain {
-
-#define THROW_CONTRACT_ERROR(...) FC_ASSERT(false, __VA_ARGS__)
-
 	using namespace cbor_diff;
 	using namespace cbor;
 	using namespace std;
+	using namespace uvm::contract;
 
 	void native_contract_store::init_config(evaluate_state* evaluate, const std::string& _contract_id) {
 		this->_evaluate = evaluate;
