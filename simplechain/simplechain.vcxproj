@@ -138,7 +138,6 @@
     <ClCompile Include="src\simplechain\evaluate_state.cpp" />
     <ClCompile Include="src\simplechain\native_contract.cpp" />
     <ClCompile Include="src\simplechain\native_contract_tests.cpp" />
-    <ClCompile Include="src\simplechain\native_token_contract.cpp" />
     <ClCompile Include="src\simplechain\operations_helper.cpp" />
     <ClCompile Include="src\simplechain\rpcserver.cpp" />
     <ClCompile Include="src\simplechain\simplechain_program.cpp" />
@@ -174,7 +173,6 @@
     <ClInclude Include="include\simplechain\evaluate_state.h" />
     <ClInclude Include="include\simplechain\evaluator.h" />
     <ClInclude Include="include\simplechain\native_contract_tests.h" />
-    <ClInclude Include="include\simplechain\native_token_contract.h" />
     <ClInclude Include="include\simplechain\operation.h" />
     <ClInclude Include="include\simplechain\operations.h" />
     <ClInclude Include="include\simplechain\operations_helper.h" />
