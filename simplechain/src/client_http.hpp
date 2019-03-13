@@ -7,6 +7,7 @@
 #include <random>
 #include <unordered_set>
 #include <vector>
+#include <boost/utility/string_ref.hpp>
 
 #ifdef USE_STANDALONE_ASIO
 #include <asio.hpp>
@@ -267,7 +268,7 @@ namespace SimpleWeb {
 
     /// Asynchronous request where setting and/or running Client's io_service is required.
     /// Do not use concurrently with the synchronous request functions.
-    void request(const std::string &method, const std::string &path, string_view content,
+    void request(const std::string &method, const std::string &path, boost::string_view content,
                  std::function<void(std::shared_ptr<Response>, const error_code &)> &&request_callback_) {
       request(method, path, content, CaseInsensitiveMultimap(), std::move(request_callback_));
     }

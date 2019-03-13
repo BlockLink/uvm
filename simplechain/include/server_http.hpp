@@ -10,8 +10,9 @@
 #include <mutex>
 #include <sstream>
 #include <thread>
-#include <string_view>
+//#include <string_view>
 #include <unordered_set>
+#include <boost/utility/string_ref.hpp>
 
 #ifdef USE_STANDALONE_ASIO
 #include <asio.hpp>

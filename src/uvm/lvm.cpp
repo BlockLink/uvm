@@ -900,7 +900,8 @@ newframe:  /* reentry point when frame changes (call/return) */
           vmbreak;
         }
         Instruction i = *(ci->u.l.savedpc++);
-
+	
+	int line_in_proto = get_line_in_current_proto(ci, cl->p);
 #ifdef DEBUG
 	printf("%d\n", GET_OPCODE(i));
 #endif // DEBUG
