@@ -165,41 +165,41 @@ namespace simplechain {
 			throw_error("this token contract state doesn't allow transfer");
 		std::string owner_addr = api_arg;
 		auto amount = get_balance_of_user(owner_addr);
-		get_result()->api_result = std::to_string(amount);
+		set_api_result(std::to_string(amount));
 		return;
 	}
 
 	void token_native_contract::state_api(const std::string& api_name, const std::string& api_arg)
 	{
 		const auto& state = get_storage_state();
-		get_result()->api_result = state;
+		set_api_result(state);
 		return;
 	}
 
 	void token_native_contract::token_name_api(const std::string& api_name, const std::string& api_arg)
 	{
 		const auto& token_name = get_storage_token_name();
-		get_result()->api_result = token_name;
+		set_api_result(token_name);
 		return;
 	}
 
 	void token_native_contract::token_symbol_api(const std::string& api_name, const std::string& api_arg)
 	{
 		const auto& token_symbol = get_storage_token_symbol();
-		get_result()->api_result = token_symbol;
+		set_api_result(token_symbol);
 		return;
 	}
 
 	void token_native_contract::supply_api(const std::string& api_name, const std::string& api_arg)
 	{
 		auto supply = get_storage_supply();
-		get_result()->api_result = std::to_string(supply);
+		set_api_result(std::to_string(supply));
 		return;
 	}
 	void token_native_contract::precision_api(const std::string& api_name, const std::string& api_arg)
 	{
 		auto precision = get_storage_precision();
-		get_result()->api_result = std::to_string(precision);
+		set_api_result(std::to_string(precision));
 		return;
 	}
 
@@ -222,7 +222,7 @@ namespace simplechain {
 			approved_amount = allowed_data[spender_address]->force_as_int();
 		}
 
-		get_result()->api_result = std::to_string(approved_amount);
+		set_api_result(std::to_string(approved_amount));
 		return;
 	}
 	void token_native_contract::all_approved_from_user_api(const std::string& api_name, const std::string& api_arg)
@@ -236,7 +236,7 @@ namespace simplechain {
 		auto allowed_data_cbor = CborObject::create_map(allowed_data);
 		auto allowed_data_json = allowed_data_cbor->to_json();
 		auto allowed_data_str = uvm::util::json_ordered_dumps(allowed_data_json);
-		get_result()->api_result = allowed_data_str;
+		set_api_result(allowed_data_str);
 		return;
 	}
 

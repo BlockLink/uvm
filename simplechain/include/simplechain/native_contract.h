@@ -25,6 +25,7 @@ namespace simplechain {
 		virtual std::set<std::string> offline_apis() const = 0;
 		virtual std::set<std::string> events() const = 0;
 
+		// @throw std::exception
 		virtual void invoke(const std::string& api_name, const std::string& api_arg) = 0;
 
 		virtual uint64_t gas_count_for_api_invoke(const std::string& api_name) const {
@@ -38,39 +39,8 @@ namespace simplechain {
 
 		virtual std::shared_ptr<native_contract_interface> get_proxy() const = 0;
 
-		/*virtual void set_contract_storage(const address& contract_address, const std::string& storage_name, const StorageDataType& value) { 
-			get_proxy()->set_contract_storage(contract_address, storage_name, value);
-		}
-		virtual void set_contract_storage(const address& contract_address, const std::string& storage_name, cbor::CborObjectP cbor_value) {
-			get_proxy()->set_contract_storage(contract_address, storage_name, cbor_value);
-		}
-		virtual void fast_map_set(const address& contract_address, const std::string& storage_name, const std::string& key, cbor::CborObjectP cbor_value) {
-			return get_proxy()->fast_map_set(contract_address, storage_name, key, cbor_value);
-		}
-		virtual StorageDataType get_contract_storage(const address& contract_address, const std::string& storage_name) const {
-			return get_proxy()->get_contract_storage(contract_address, storage_name);
-		}
-		virtual cbor::CborObjectP get_contract_storage_cbor(const address& contract_address, const std::string& storage_name) const {
-			return get_proxy()->get_contract_storage_cbor(contract_address, storage_name);
-		}
-		virtual cbor::CborObjectP fast_map_get(const address& contract_address, const std::string& storage_name, const std::string& key) const {
-			return get_proxy()->fast_map_get(contract_address, storage_name, key);
-		}
-		virtual std::string get_string_contract_storage(const address& contract_address, const std::string& storage_name) const {
-			return get_proxy()->get_string_contract_storage(contract_address, storage_name);
-		}
-		virtual int64_t get_int_contract_storage(const address& contract_address, const std::string& storage_name) const {
-			return get_proxy()->get_int_contract_storage(contract_address, storage_name);
-		}
-
-		virtual void emit_event(const address& contract_address, const std::string& event_name, const std::string& event_arg) {
-			get_proxy()->emit_event(contract_address, event_name, event_arg);
-		}*/
 		virtual void current_fast_map_set(const std::string& storage_name, const std::string& key, cbor::CborObjectP cbor_value) {
 			get_proxy()->current_fast_map_set(storage_name, key, cbor_value);
-		}
-		virtual StorageDataType get_current_contract_storage(const std::string& storage_name) const {
-			return get_proxy()->get_current_contract_storage(storage_name);
 		}
 		virtual cbor::CborObjectP get_current_contract_storage_cbor(const std::string& storage_name) const {
 			return get_proxy()->get_current_contract_storage_cbor(storage_name);
@@ -107,8 +77,12 @@ namespace simplechain {
 		virtual void set_invoke_result_caller() {
 			get_proxy()->set_invoke_result_caller();
 		}
-		virtual contract_invoke_result* get_result() {
+		// @return contract_invoke_result*
+		virtual void* get_result() {
 			return get_proxy()->get_result();
+		}
+		virtual void set_api_result(const std::string& api_result) {
+			get_proxy()->set_api_result(api_result);
 		}
 	};
 
@@ -201,7 +175,10 @@ namespace simplechain {
 		virtual void add_gas(uint64_t gas);
 		virtual void set_invoke_result_caller();
 
-		virtual contract_invoke_result* get_result() { return &_contract_invoke_result; }
+		virtual void* get_result() { return &_contract_invoke_result; }
+		virtual void set_api_result(const std::string& api_result) {
+			_contract_invoke_result.api_result = api_result;
+		}
 	};
 
 	class native_contract_finder
