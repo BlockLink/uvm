@@ -15,7 +15,7 @@
 #include <chrono>
 #include <algorithm>
 #include <memory>
-#include <uvm/safenumber.h>
+#include <safenumber/safenumber.h>
 
 struct lua_State;
 

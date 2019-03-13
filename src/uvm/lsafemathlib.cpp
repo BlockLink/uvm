@@ -777,6 +777,7 @@ static int safemath_max(lua_State *L) {
 //	return 1;
 //}
 
+
 static void push_safenumber(lua_State *L, const SafeNumber& value) {
 	const auto& value_str = std::to_string(value);
 	lua_newtable(L);

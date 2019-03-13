@@ -7,7 +7,7 @@
 #include <map>
 #include <memory>
 #include <algorithm>
-#include <uvm/safenumber.h>
+#include <safenumber/safenumber.h>
 #include <cborcpp/exceptions.h>
 
 namespace cbor {

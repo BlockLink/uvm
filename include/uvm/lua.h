@@ -88,7 +88,7 @@ typedef struct lua_State lua_State;
 #define LUA_RIDX_GLOBALS	2
 #define LUA_RIDX_LAST		LUA_RIDX_GLOBALS
 
-#include <uvm/safenumber.h>
+#include <safenumber/safenumber.h>
 
 /* type of numbers in Lua */
 // typedef LUA_NUMBER lua_Number;
