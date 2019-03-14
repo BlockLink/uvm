@@ -78,7 +78,10 @@ static int LoadInt(LoadState *S) {
 static lua_Number LoadNumber(LoadState *S) {
 	LUA_NUMBER xv;
     LoadVar(S, xv);
-	lua_Number x = safe_number_create(std::to_string(xv));
+	char a[60] = { 0 };
+	sprintf(a,"%.16f", xv);
+	lua_Number x = safe_number_create(std::string(a));
+	//lua_Number x = safe_number_create(std::to_string(xv));
     return x;
 }
 

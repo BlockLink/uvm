@@ -3,8 +3,8 @@
 #include <string>
 
 struct SimpleUint128 {
-    uint64_t big;
-    uint64_t low;
+	uint64_t big;
+	uint64_t low;
 };
 
 SimpleUint128 simple_uint128_create(uint64_t big, uint64_t low);
@@ -46,8 +46,8 @@ SimpleUint128 simple_uint128_bit_or(const SimpleUint128& a, const SimpleUint128&
 SimpleUint128 simple_uint128_bit_reverse(const SimpleUint128& a);
 
 struct Uint128DivResult {
-    SimpleUint128 div_result;
-    SimpleUint128 mod_result;
+	SimpleUint128 div_result;
+	SimpleUint128 mod_result;
 };
 // a / b. return div result and mod result. may throw exception
 Uint128DivResult simple_uint128_divmod(const SimpleUint128& a, const SimpleUint128& b);
@@ -57,8 +57,8 @@ uint8_t simple_uint128_bits(const SimpleUint128& a);
 std::string simple_uint128_to_string(const SimpleUint128& a, uint8_t base, unsigned int len);
 
 struct SimpleUint256 {
-    SimpleUint128 big;
-    SimpleUint128 low;
+	SimpleUint128 big;
+	SimpleUint128 low;
 };
 
 SimpleUint256 simple_uint256_create(const SimpleUint128& big, const SimpleUint128& low);
@@ -86,8 +86,8 @@ SimpleUint256 simple_uint256_shift_right(const SimpleUint256& a, uint32_t b);
 SimpleUint256 simple_uint256_bit_and(const SimpleUint256& a, const SimpleUint256& b);
 
 struct Uint256DivResult {
-    SimpleUint256 div_result;
-    SimpleUint256 mod_result;
+	SimpleUint256 div_result;
+	SimpleUint256 mod_result;
 };
 // a / b. return div result and mod result. may throw exception
 Uint256DivResult simple_uint256_divmod(const SimpleUint256& a, const SimpleUint256& b);
@@ -97,11 +97,11 @@ uint8_t simple_uint256_bits(const SimpleUint256& a);
 std::string simple_uint256_to_string(const SimpleUint256& a, uint8_t base, unsigned int len);
 
 struct SafeNumber {
-    // sign(+/-) x * (10^-e)
-    bool valid; // isNaN
-    bool sign; // sign == true means positive
-    SimpleUint128 x; // in range [0, 10^32] when e > 0
-    uint32_t e; // in range [0, 16]. when e > 16 and x in [0, 10^32], this SafeNumber value will be zero
+	// sign(+/-) x * (10^-e)
+	bool valid; // isNaN
+	bool sign; // sign == true means positive
+	SimpleUint128 x; // in range [0, 10^32] when e > 0
+	uint32_t e; // in range [0, 16]. when e > 16 and x in [0, 10^32], this SafeNumber value will be zero
 };
 
 SafeNumber safe_number_zero();
@@ -153,9 +153,11 @@ SafeNumber safe_number_abs(const SafeNumber& a);
 // tostring(a)
 std::string safe_number_to_string(const SafeNumber& a);
 
-int64_t safe_number_to_int64(const SafeNumber& a);
+int64_t safe_number_to_int64(const SafeNumber& a); // 12.3 -> 12    -12.3 -> -12
 
-// a == b. a and b should both be compressed
+int64_t safe_number_to_int64_floor(const SafeNumber& a); //// 12.3 -> 12    -12.3 -> -13
+
+														 // a == b. a and b should both be compressed
 bool safe_number_eq(const SafeNumber& a, const SafeNumber& b);
 
 // a != b
@@ -175,7 +177,7 @@ bool safe_number_lte(const SafeNumber& a, const SafeNumber& b);
 
 
 namespace std {
-    std::string to_string(const SimpleUint128& value);
-    std::string to_string(const SimpleUint256& value);
-    std::string to_string(const SafeNumber& value);
+	std::string to_string(const SimpleUint128& value);
+	std::string to_string(const SimpleUint256& value);
+	std::string to_string(const SafeNumber& value);
 }

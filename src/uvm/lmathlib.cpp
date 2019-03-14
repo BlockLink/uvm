@@ -63,7 +63,7 @@ static int math_floor(lua_State *L) {
     if (lua_isinteger(L, 1))
         lua_settop(L, 1);  /* integer is its own floor */
     else {
-        auto d = safe_number_to_int64(luaL_checknumber(L, 1));
+        auto d = safe_number_to_int64_floor(luaL_checknumber(L, 1));
 		lua_pushinteger(L, d);
     }
     return 1;
