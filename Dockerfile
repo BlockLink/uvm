@@ -3,6 +3,7 @@ FROM ubuntu:16.04
 RUN apt-get update -y
 RUN apt-get install -y vim gcc autoconf cmake make automake libtool wget curl git
 RUN apt-get install -y libboost-all-dev libssl-dev g++ libcurl4-openssl-dev libleveldb-dev libreadline-dev
+
 RUN mkdir -p /code_deps
 WORKDIR /code_deps
 
@@ -33,15 +34,6 @@ RUN ./autogen.sh
 RUN ./configure
 RUN make
 RUN make install
-
-
-# install jsondiff-cpp
-WORKDIR /code
-RUN git submodule update --init --recursive
-WORKDIR /code/deps/jsondiff-cpp
-# RUN cmake -DCMAKE_BUILD_TYPE=Release .
-RUN cmake .
-RUN make
 
 # install golang environment for test
 WORKDIR /usr/local
