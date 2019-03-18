@@ -210,5 +210,4 @@ FakesAssemblies/
 /.vscode
 /test/src/uvmtest/go.mod
 /libfc.a
-/deps
 
