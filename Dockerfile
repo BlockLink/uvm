@@ -42,7 +42,7 @@ RUN tar -C /usr/local -xzf go1.12.1.linux-amd64.tar.gz
 RUN echo GOROOT=/usr/local/go >> /etc/.profile
 RUN echo GOPATH=/gohome >> /etc/.profile
 RUN echo PATH=$PATH:$GOROOT/bin:$GOPATH/bin
-RUN source /etc/.profile
+RUN bash /etc/.profile
 
 WORKDIR /code
 
