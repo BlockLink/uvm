@@ -3,6 +3,7 @@ version: '3'
 services:
   uvmbuild:
     build: .
+    image: uvmbuild_uvm
     command: /bin/bash
     tty: true
     volumes:
