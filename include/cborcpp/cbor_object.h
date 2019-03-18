@@ -3,6 +3,8 @@
 #include <boost/variant.hpp>
 #include <fc/variant.hpp>
 #include <fc/static_variant.hpp>
+#include <fc/variant_object.hpp>
+#include <fc/variant.hpp>
 #include <vector>
 #include <map>
 #include <memory>
@@ -45,6 +47,8 @@ namespace cbor {
 	typedef uint32_t CborSpecialValue;
 	//typedef uint64_t CborExtraSpecialValue;
 
+#define CBOR_ENCODE_DOUBLE_STRING_SIZE 40
+
 	// #define CBOR_OBJECT_USE_VARIANT
 
 #if defined(CBOR_OBJECT_USE_VARIANT)
@@ -69,6 +73,10 @@ namespace cbor {
 		CborObjectValue value;
 		uint32_t array_or_map_size = 0;
 		bool is_positive_extra = false;
+
+		CborObject();
+		CborObject(const CborObject& other);
+		~CborObject() {}
 
 #if defined(CBOR_OBJECT_USE_VARIANT)
 		template <typename T>
@@ -200,6 +208,8 @@ namespace cbor {
 		}
 
 		std::string str() const;
+
+		fc::variant to_json() const;
 
 		//static CborObjectP from(const CborObjectValue& value);
 

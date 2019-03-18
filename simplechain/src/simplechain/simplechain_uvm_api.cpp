@@ -101,6 +101,10 @@ namespace simplechain {
 				return (contract_create_evaluator*)uvm::lua::lib::get_lua_state_value(L, "register_evaluate_state").pointer_value;
 			}
 
+			static native_contract_create_evaluator* get_native_register_contract_evaluator(lua_State *L) {
+				return (native_contract_create_evaluator*)uvm::lua::lib::get_lua_state_value(L, "native_register_evaluate_state").pointer_value;
+			}
+
 			static contract_invoke_evaluator* get_invoke_contract_evaluator(lua_State *L) {
 				return (contract_invoke_evaluator*)uvm::lua::lib::get_lua_state_value(L, "invoke_evaluate_state").pointer_value;
 			}
@@ -109,6 +113,10 @@ namespace simplechain {
 				auto register_contract_evaluator = get_register_contract_evaluator(L);
 				if (register_contract_evaluator) {
 					return register_contract_evaluator;
+				}
+				auto native_register_contract_evaluator = get_native_register_contract_evaluator(L);
+				if (native_register_contract_evaluator) {
+					return native_register_contract_evaluator;
 				}
 				auto invoke_contract_evaluator = get_invoke_contract_evaluator(L);
 				if (invoke_contract_evaluator) {

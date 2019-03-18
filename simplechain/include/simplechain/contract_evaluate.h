@@ -21,6 +21,20 @@ namespace simplechain {
 		void undo_contract_effected();
 	};
 
+	class native_contract_create_evaluator : public evaluator<native_contract_create_evaluator>, public evaluate_state {
+	public:
+		typedef native_contract_create_operation operation_type;
+	public:
+		native_contract_create_evaluator(blockchain* chain_, transaction* tx_) : evaluate_state(chain_, tx_) {}
+		virtual ~native_contract_create_evaluator() {}
+
+		virtual std::shared_ptr<operation_type::result_type> do_evaluate(const operation_type& op) final;
+		virtual std::shared_ptr<operation_type::result_type> do_apply(const operation_type& op) final;
+
+	private:
+		void undo_contract_effected();
+	};
+
 	class contract_invoke_evaluator : public evaluator<contract_invoke_evaluator>, public evaluate_state {
 	public:
 		typedef contract_invoke_operation operation_type;

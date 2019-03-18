@@ -5,12 +5,42 @@
 #include <uvm/uvm_storage.h>
 #include <uvm/uvm_lib.h>
 #include <iostream>
+#include <fc/io/json.hpp>
 
 namespace cbor_diff {
 
 	using namespace std;
 	using namespace cbor;
 	using namespace cbor_diff;
+
+	void test_cbor_json() {
+		{
+			auto a1 = CborObject::create_map({
+				{ "foo", CborObject::from_int(42) },
+				{ "bar", CborObject::from_int(100) },
+				{ "boz", CborObject::create_array({
+				CborObject::from_int(1), CborObject::from_int(2),CborObject::from_int(3), CborObject::from_int(4), CborObject::from_int(5), CborObject::from_int(6)
+			}) },
+			{ "array", CborObject::create_array({
+				CborObject::from_int(1), CborObject::from_int(2),CborObject::from_int(3), CborObject::from_int(4), CborObject::from_int(5), CborObject::from_int(6)
+			}) },
+			{ "fubar", CborObject::create_map({
+				{ "kaboom", CborObject::create_map({
+					{ "note", CborObject::from_string("We're running dangerously low on metasyntatic variables here") },
+					{ "afoo", CborObject::create_map({
+						{ "abar", CborObject::from_string("raba") },
+						{ "aboz", CborObject::from_string("zoba") },
+						{ "afubar", CborObject::from_string("rabufa") }
+			}) },
+			{ "akaboom", CborObject::from_int(200) }
+			}) }
+			}) }
+				});
+			auto a1_json = a1->to_json();
+			auto a1_json_str = fc::json::to_pretty_string(a1_json);
+			cout << "a1 json: " << a1_json_str << endl;
+		}
+	}
 
 	void test_cbor_diff() {
 		{

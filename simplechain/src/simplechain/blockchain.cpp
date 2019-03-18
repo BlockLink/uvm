@@ -277,6 +277,9 @@ namespace simplechain {
 		case operation::tag<contract_invoke_operation>::value: {
 			return std::make_shared<contract_invoke_evaluator>(this, tx);
 		} break;
+		case operation::tag<native_contract_create_operation>::value: {
+			return std::make_shared<native_contract_create_evaluator>(this, tx);
+		} break;
 		default: {
 			auto err = std::string("unknown operation type ") + std::to_string(type) + " in blockchain::get_operation_evaluator";
 			throw uvm::core::UvmException(err.c_str());

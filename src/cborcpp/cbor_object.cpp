@@ -5,6 +5,16 @@
 
 namespace cbor {
 
+	CborObject::CborObject()
+	: type(COT_NULL), array_or_map_size(0), is_positive_extra(false){
+		value.bool_val = 0;
+	}
+
+	CborObject::CborObject(const CborObject& other)
+	: type(other.type), value(other.value), array_or_map_size(other.array_or_map_size), is_positive_extra(other.is_positive_extra) {
+
+	}
+
 	CborIntValue CborObject::force_as_int() const {
 		if (is_int()) {
 			return as_int();
@@ -26,6 +36,59 @@ namespace cbor {
 		}
 		else {
 			FC_THROW_EXCEPTION(fc::assert_exception, "this cbor_object with can't be passed as int");
+		}
+	}
+
+	fc::variant CborObject::to_json() const {
+		switch (type) {
+		case COT_NULL:
+			return fc::variant();
+		case COT_UNDEFINED:
+			return fc::variant();
+		case COT_BOOL:
+			return as_bool() ? true : false;
+		case COT_INT:
+			return as_int();
+		case COT_EXTRA_INT: {
+			auto extra_int_val = as_extra_int();
+			auto is_pos = this->is_positive_extra;
+			if (is_pos)
+				return extra_int_val;
+			else {
+				int64_t result_val = static_cast<int64_t>(extra_int_val);
+				result_val = -result_val;
+				return result_val;
+			}
+		} case COT_FLOAT:
+			return as_float64();
+		case COT_TAG:
+			return as_tag();
+		case COT_STRING:
+			return as_string();
+		case COT_BYTES: {
+			const auto& bytes = as_bytes();
+			const auto& hex = fc::to_hex(bytes);
+			return hex;
+		}
+		case COT_ARRAY: {
+			fc::variants arr;
+			const auto& items = as_array();
+			for (size_t i = 0; i < items.size(); i++) {
+				arr.push_back(items[i]->to_json());
+			}
+			return arr;
+		} break;
+		case COT_MAP:
+		{
+			fc::mutable_variant_object obj;
+			const auto& items = as_map();
+			for (auto it = items.begin(); it != items.end(); it++) {
+				obj[it->first] = it->second->to_json();
+			}
+			return obj;
+		}
+		default:
+			throw cbor::CborException(std::string("not supported cbor object type ") + std::to_string(type));
 		}
 	}
 

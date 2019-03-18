@@ -13,7 +13,8 @@ namespace simplechain {
 		mint_operation,
 		transfer_operation,
 		contract_create_operation,
-		contract_invoke_operation
+		contract_invoke_operation,
+		native_contract_create_operation
 	> operation;
 
 	struct op_wrapper
