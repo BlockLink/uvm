@@ -18,6 +18,7 @@ RUN make install
 
 
 # install fc
+WORKDIR /code_deps
 RUN git clone https://github.com/BlockLink/fc.git
 WORKDIR /code_deps/fc
 RUN git submodule update --init --recursive
