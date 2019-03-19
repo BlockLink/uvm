@@ -1,4 +1,5 @@
 #!/bin/bash
+source /etc/.profile
 go get github.com/2tvenom/cbor
 go get github.com/zoowii/ecdsatools
 go get github.com/zoowii/go_sparse_merkle_tree
