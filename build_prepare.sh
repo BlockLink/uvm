@@ -1,5 +1,5 @@
 #!/bin/bash
-docker-compose build 
+docker-compose pull # build
 container_id="uvm_uvmbuild_dev"
 project_dir=`pwd`
 image="blocklinkdev/uvmbuild_uvm:latest"
