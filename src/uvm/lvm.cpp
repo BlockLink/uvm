@@ -38,6 +38,7 @@
 #include <uvm/lvm.h>
 #include <uvm/uvm_api.h>
 #include <uvm/uvm_lib.h>
+#include <fc/log/logger.hpp>
 
 using uvm::lua::api::global_uvm_chain_api;
 
@@ -914,9 +915,7 @@ newframe:  /* reentry point when frame changes (call/return) */
         }
         Instruction i = *(ci->u.l.savedpc++);
 
-#ifdef DEBUG
-	printf("%d\n", GET_OPCODE(i));
-#endif // DEBUG
+	ilog("${opname}", ("opname", luaP_opnames[GET_OPCODE(i)]));
 
         StkId ra;
 
