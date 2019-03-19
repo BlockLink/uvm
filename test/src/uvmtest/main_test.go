@@ -36,7 +36,7 @@ func findUvmSinglePath() string {
 	if runtime.GOOS == "windows" {
 		return filepath.Join(uvmDir, "x64", "Debug", "uvm_single.exe")
 	}
-	return filepath.Join(uvmDir, "uvm_single")
+	return filepath.Join(uvmDir, "uvm_single_exec")
 }
 
 func findUvmCompilerPath() string {

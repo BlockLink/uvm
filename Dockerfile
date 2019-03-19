@@ -39,10 +39,10 @@ RUN make install
 WORKDIR /usr/local
 RUN wget https://dl.google.com/go/go1.12.1.linux-amd64.tar.gz
 RUN tar -C /usr/local -xzf go1.12.1.linux-amd64.tar.gz
-RUN echo GOROOT=/usr/local/go >> /etc/.profile
-RUN echo GOPATH=/gohome >> /etc/.profile
-RUN echo "PATH=$PATH:$GOROOT/bin:$GOPATH/bin" >> /etc/.profile
-RUN bash /etc/.profile
+
+ENV GOROOT /usr/local/go
+ENV GOPATH /gohome
+ENV PATH $PATH:/usr/local/go/bin:/gohome/bin
 
 WORKDIR /code
 
