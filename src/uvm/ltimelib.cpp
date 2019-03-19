@@ -93,7 +93,7 @@ static int time_tostr(lua_State *L)
 static const luaL_Reg timelib[] = {
     { "add", time_add },
     { "difftime", time_difftime },
-    { "tostr", time_tostr },
+    // { "tostr", time_tostr },
     { nullptr, nullptr }
 };
 
