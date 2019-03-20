@@ -12,6 +12,12 @@
 #include <boost/asio.hpp>
 #include <fc/io/json.hpp>
 #include <cbor_diff/cbor_diff.h>
+#include <fc/crypto/hex.hpp>
+#include <fc/crypto/sha256.hpp>
+#include <fc/crypto/base58.hpp>
+#include <fc/crypto/elliptic.hpp>
+#include <fc/crypto/ripemd160.hpp>
+
 
 namespace simplechain {
 	namespace rpc {
@@ -325,6 +331,57 @@ namespace simplechain {
 			}
 			chain->add_asset(a);
 			res["result"] = true;
+			return res;
+		}
+
+
+		RpcResultType generate_key(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			auto prik = fc::ecc::private_key::generate();
+			auto pubk = prik.get_public_key();
+			auto pubk_base58 = pubk.to_base58();
+			printf("pubk_base58:%s\n", pubk_base58.c_str());
+
+			auto dat = pubk.serialize();
+			auto addr = fc::ripemd160::hash(fc::sha512::hash(dat.data, sizeof(dat)));
+			std::string prefix = "HX";
+			unsigned char version = 0X35;
+			fc::array<char, 25> bin_addr;
+			memcpy((char*)&bin_addr, (char*)&version, sizeof(version));
+			memcpy((char*)&bin_addr + 1, (char*)&addr, sizeof(addr));
+			auto checksum = fc::ripemd160::hash((char*)&bin_addr, bin_addr.size() - 4);
+			memcpy(((char*)&bin_addr) + 21, (char*)&checksum._hash[0], 4);
+			auto address_str =  prefix + fc::to_base58(bin_addr.data, sizeof(bin_addr));
+
+			fc::mutable_variant_object res;
+
+			auto private_key_str = prik.get_secret().str();
+			res["private_key"] = private_key_str;
+			res["public_key_base58"] = pubk_base58;
+			res["address_HX"] = address_str;
+			return res;
+		}
+
+
+		RpcResultType sign_info(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			const auto& private_key_str = params.at(0).as_string();
+			const auto& info = params.at(1).as_string();
+
+			auto private_key = fc::ecc::private_key::regenerate(fc::sha256(private_key_str));
+
+			std::vector<char> tempchars(info.size());
+			memcpy(tempchars.data(), info.data(), info.size());
+			auto info_hex = fc::to_hex(tempchars);
+
+			fc::sha256 orderinfoDigest(info_hex);
+			auto sig = private_key.sign_compact(orderinfoDigest);
+
+			std::vector<char> chars(sig.size());
+			memcpy(chars.data(), sig.data, sig.size());
+			auto sig_hex = fc::to_hex(chars);
+			
+			fc::mutable_variant_object res;
+			res["digest_hex"] = orderinfoDigest.str();
+			res["sig_hex"] = sig_hex;
 			return res;
 		}
 
