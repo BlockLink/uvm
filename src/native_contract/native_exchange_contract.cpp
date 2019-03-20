@@ -3,6 +3,7 @@
 #include <jsondiff/jsondiff.h>
 #include <cbor_diff/cbor_diff.h>
 #include <uvm/uvm_lutil.h>
+#include <uvm/uvm_api.h>
 #include <fc/crypto/hex.hpp>
 
 #include <fc/crypto/sha256.hpp>
@@ -129,18 +130,15 @@ namespace uvm {
 			return end != 0 && *end == 0;
 		}
 
-		std::string getNormalAddress(const fc::ecc::public_key& pub) {
-			auto dat = pub.serialize();
-			auto addr = fc::ripemd160::hash(fc::sha512::hash(dat.data, sizeof(dat)));
-			std::string prefix = "HX";
-			unsigned char version = 0X35;
-			fc::array<char, 25> bin_addr;
-			memcpy((char*)&bin_addr, (char*)&version, sizeof(version));
-			memcpy((char*)&bin_addr + 1, (char*)&addr, sizeof(addr));
-			auto checksum = fc::ripemd160::hash((char*)&bin_addr, bin_addr.size() - 4);
-			memcpy(((char*)&bin_addr) + 21, (char*)&checksum._hash[0], 4);
-			return prefix + fc::to_base58(bin_addr.data, sizeof(bin_addr));
+		using uvm::lua::api::global_uvm_chain_api;
 
+		std::string getNormalAddress(const fc::ecc::public_key& pub) {
+			if (!global_uvm_chain_api) {
+				return "invalid global_uvm_chain_api";
+			}
+			else {
+				return global_uvm_chain_api->pubkey_to_address_string(pub);
+			}
 		}
 
 		//order: {orderInfo:{purchaseAsset:"HC",purchaseNum:20,payAsset:"HX",payNum:100,nounce:"13df",relayer:"HXsrsfsfe3",fee:0.0001},sig:"rsowor233",id:"gsewwsg"}

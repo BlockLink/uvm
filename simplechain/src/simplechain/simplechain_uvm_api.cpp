@@ -973,4 +973,17 @@ namespace simplechain {
 				return result;
 			}
 
+			std::string SimpleChainUvmChainApi::pubkey_to_address_string(const fc::ecc::public_key& pub) const {
+				auto dat = pub.serialize();
+				auto addr = fc::ripemd160::hash(fc::sha512::hash(dat.data, sizeof(dat)));
+				std::string prefix = "SL";
+				unsigned char version = 0X35;
+				fc::array<char, 25> bin_addr;
+				memcpy((char*)&bin_addr, (char*)&version, sizeof(version));
+				memcpy((char*)&bin_addr + 1, (char*)&addr, sizeof(addr));
+				auto checksum = fc::ripemd160::hash((char*)&bin_addr, bin_addr.size() - 4);
+				memcpy(((char*)&bin_addr) + 21, (char*)&checksum._hash[0], 4);
+				return prefix + fc::to_base58(bin_addr.data, sizeof(bin_addr));
+			}
+
 }

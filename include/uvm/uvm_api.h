@@ -24,6 +24,8 @@
 #include <jsondiff/exceptions.h>
 #include <cborcpp/cbor.h>
 #include <cbor_diff/cbor_diff.h>
+#include <fc/crypto/elliptic.hpp>
+#include <fc/crypto/base58.hpp>
 
 #define LOG_INFO(...)  fprintf(stderr, "[INFO] " ##__VA_ARGS__)
 
@@ -603,6 +605,8 @@ namespace uvm {
 			virtual bool use_fast_map_set_nil(lua_State *L) const {
 				return use_cbor_diff(L);
 			}
+
+			virtual std::string pubkey_to_address_string(const fc::ecc::public_key& pub) const = 0;
 
           };
 

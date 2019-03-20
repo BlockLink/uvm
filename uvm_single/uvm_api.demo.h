@@ -173,6 +173,8 @@ namespace uvm {
 
 		virtual bool use_cbor_diff(lua_State* L) const override;
 
+		virtual std::string pubkey_to_address_string(const fc::ecc::public_key& pub) const override;
+
       };
 
     }
