@@ -14,7 +14,7 @@ namespace simplechain {
 		{ "mint", &mint },
 		{ "transfer", &transfer },
 		{ "create_contract_from_file", &create_contract_from_file },
-	{ "create_native_contract", &create_native_contract },
+		{ "create_native_contract", &create_native_contract },
 		{ "create_contract", &create_contract },
 		{ "invoke_contract", &invoke_contract },
 		{ "invoke_contract_offline", &invoke_contract_offline },
@@ -31,7 +31,10 @@ namespace simplechain {
 		{ "get_account_balances", &get_account_balances },
 		{ "get_contract_storages", &get_contract_storages },
 		{ "get_storage", &get_storage },
-		{ "add_asset", &add_asset }
+		{ "add_asset", &add_asset },
+		{ "generate_key", &generate_key },
+		{ "sign_info", &sign_info }
+		
 	};
 
 	RpcServer::RpcServer(blockchain* chain, int port)
