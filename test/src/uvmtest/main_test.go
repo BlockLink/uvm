@@ -109,9 +109,9 @@ func execCommand(program string, args ...string) (string, string) {
 func execCommandBackground(program string, args ...string) *exec.Cmd {
 	cmd := exec.Command(program, args...)
 	var outb, errb bytes.Buffer
-        cmd.Stdin = os.Stdin
-        cmd.Stdout = &outb
-        cmd.Stderr = &errb
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = &outb
+	cmd.Stderr = &errb
 	err := cmd.Start()
 	if err != nil {
 		fmt.Printf("%v\n", err)
@@ -1141,4 +1141,43 @@ func TestCallContractManyTimes(t *testing.T) {
 		time.Sleep(time.Duration(1) * time.Second)
 	}
 	println("TestCallContractManyTimes")
+}
+
+func TestNativeTokenContract(t *testing.T) {
+	cmd := execCommandBackground(simpleChainPath)
+	assert.True(t, cmd != nil)
+	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
+	defer func() {
+		kill(cmd)
+	}()
+	time.Sleep(1 * time.Second)
+	var res *simplejson.Json
+	var err error
+	caller1 := "SPLtest1"
+	caller2 := "SPLtest2"
+
+	res, err = simpleChainRPC("create_native_contract", caller1, "token", 50000, 10)
+	assert.True(t, err == nil)
+	contract1Addr := res.Get("contract_address").MustString()
+	fmt.Printf("contract address: %s\n", contract1Addr)
+	simpleChainRPC("generate_block")
+
+	res, err = simpleChainRPC("get_contract_info", contract1Addr)
+	assert.True(t, err == nil)
+	assert.True(t, res.Get("owner_address").MustString() == caller1 && res.Get("contract_address").MustString() == contract1Addr)
+	simpleChainRPC("invoke_contract", caller1, contract1Addr, "init_token", []string{"test,TEST,10000,100"}, 0, 0, 50000, 10)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("get_storage", contract1Addr, "state")
+	assert.True(t, res.MustString() == "COMMON")
+	fmt.Printf("state after init_token of contract1 is: %s\n", res.MustString())
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "balanceOf", []string{caller1}, 0, 0)
+	assert.True(t, err == nil)
+	fmt.Printf("caller1 balance: %s\n", res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "10000")
+	simpleChainRPC("invoke_contract", caller1, contract1Addr, "transfer", []string{caller2 + "," + strconv.Itoa(100)}, 0, 0, 50000, 10)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "balanceOf", []string{caller2}, 0, 0)
+	assert.True(t, err == nil)
+	fmt.Printf("caller2 balance: %s\n", res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "100")
 }
