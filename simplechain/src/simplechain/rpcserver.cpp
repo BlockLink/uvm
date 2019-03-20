@@ -14,6 +14,7 @@ namespace simplechain {
 		{ "mint", &mint },
 		{ "transfer", &transfer },
 		{ "create_contract_from_file", &create_contract_from_file },
+	{ "create_native_contract", &create_native_contract },
 		{ "create_contract", &create_contract },
 		{ "invoke_contract", &invoke_contract },
 		{ "invoke_contract_offline", &invoke_contract_offline },

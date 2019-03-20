@@ -72,6 +72,26 @@ namespace simplechain {
 			res["txid"] = tx->tx_hash();
 			return res;
 		}
+		
+		RpcResultType create_native_contract(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			auto caller_addr = params.at(0).as_string();
+			auto contract_type = params.at(1).as_string();
+			auto gas_limit = params.at(2).as_uint64();
+			auto gas_price = params.at(3).as_uint64();
+			auto tx = std::make_shared<transaction>();
+			auto op = operations_helper::create_native_contract(caller_addr, contract_type);
+			tx->operations.push_back(op);
+			tx->tx_time = fc::time_point_sec(fc::time_point::now());
+			const auto& contract_addr = op.calculate_contract_id();
+
+			chain->evaluate_transaction(tx);
+			chain->accept_transaction_to_mempool(*tx);
+
+			fc::mutable_variant_object res;
+			res["contract_address"] = contract_addr;
+			res["txid"] = tx->tx_hash();
+			return res;
+		}
 		RpcResultType create_contract(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			auto caller_addr = params.at(0).as_string();
 			auto contract_base64 = params.at(1).as_string();

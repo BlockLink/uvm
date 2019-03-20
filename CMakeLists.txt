@@ -75,6 +75,7 @@ set(SOURCES src/uvm/lapi.cpp
 	src/safenumber/safenumber.cpp
 
 	src/native_contract/native_token_contract.cpp
+	src/native_contract/native_exchange_contract.cpp
 )
 
 find_package(OpenSSL REQUIRED)

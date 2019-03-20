@@ -29,6 +29,7 @@
     <ClCompile Include="src\cbor_diff\cbor_diff.cpp" />
     <ClCompile Include="src\cbor_diff\cbor_diff_tests.cpp" />
     <ClCompile Include="src\cbor_diff\helper.cpp" />
+    <ClCompile Include="src\native_contract\native_exchange_contract.cpp" />
     <ClCompile Include="src\native_contract\native_token_contract.cpp" />
     <ClCompile Include="src\safenumber\safenumber.cpp" />
     <ClCompile Include="src\uvm\json_reader.cpp" />
@@ -96,6 +97,7 @@
     <ClInclude Include="include\cbor_diff\cbor_diff_exceptions.h" />
     <ClInclude Include="include\cbor_diff\cbor_diff_tests.h" />
     <ClInclude Include="include\cbor_diff\helper.h" />
+    <ClInclude Include="include\native_contract\native_exchange_contract.h" />
     <ClInclude Include="include\native_contract\native_token_contract.h" />
     <ClInclude Include="include\safenumber\safenumber.h" />
     <ClInclude Include="include\uvm\exceptions.h" />
