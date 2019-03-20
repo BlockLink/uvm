@@ -551,6 +551,88 @@ func TestSimpleChainMintAndTransfer(t *testing.T) {
 	assert.True(t, balance2 == 300)
 }
 
+type TxEvent struct {
+	EventName string `json:"event_name"`
+	EventArg  string `json:"event_arg"`
+}
+
+func getTxReceiptEvents(txid string) (result []*TxEvent, err error) {
+	result = make([]*TxEvent, 0)
+	res, err := simpleChainRPC("get_tx_receipt", txid)
+	if err != nil {
+		return
+	}
+	eventsArrayJson := res.Get("events")
+	eventsBytes, err := eventsArrayJson.Encode()
+	if err != nil {
+		return
+	}
+	err = json.Unmarshal(eventsBytes, &result)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func testTokenContractInSimplechain(t *testing.T, contract1Addr string) {
+	caller1 := "SPLtest1"
+	caller2 := "SPLtest2"
+	caller3 := "SPLtest3"
+	var res *simplejson.Json
+	var err error
+	res, err = simpleChainRPC("get_contract_info", contract1Addr)
+	assert.True(t, err == nil)
+	assert.True(t, res.Get("owner_address").MustString() == caller1 && res.Get("contract_address").MustString() == contract1Addr)
+	simpleChainRPC("invoke_contract", caller1, contract1Addr, "init_token", []string{"test,TEST,10000,100"}, 0, 0, 50000, 10)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("get_storage", contract1Addr, "state")
+	assert.True(t, res.MustString() == "COMMON")
+	fmt.Printf("state after init_token of contract1 is: %s\n", res.MustString())
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "balanceOf", []string{caller1}, 0, 0)
+	assert.True(t, err == nil)
+	fmt.Printf("caller1 balance: %s\n", res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "10000")
+	res, err = simpleChainRPC("invoke_contract", caller1, contract1Addr, "transfer", []string{caller2 + "," + strconv.Itoa(100)}, 0, 0, 50000, 10)
+	assert.True(t, err == nil)
+	transferTxid := res.Get("txid").MustString()
+	println("transfer txid: ", transferTxid)
+	simpleChainRPC("generate_block")
+	// check emited event
+	res, err = simpleChainRPC("get_tx_receipt", transferTxid)
+	assert.True(t, err == nil)
+	transferEvents, err := getTxReceiptEvents(transferTxid)
+	assert.True(t, err == nil)
+	assert.True(t, len(transferEvents) == 1)
+	transferEvent := transferEvents[0]
+	assert.True(t, transferEvent.EventName == "Transfer")
+
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "balanceOf", []string{caller2}, 0, 0)
+	assert.True(t, err == nil)
+	fmt.Printf("caller2 balance: %s\n", res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "100")
+
+	// test approve and transferFrom
+	simpleChainRPC("invoke_contract", caller1, contract1Addr, "approve", []string{caller2 + "," + strconv.Itoa(30)}, 0, 0, 50000, 10)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "approvedBalanceFrom", []string{caller2 + "," + caller1}, 0, 0)
+	assert.True(t, err == nil)
+	fmt.Printf("caller2 approvedBalanceFrom caller1 balance: %s\n", res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "30")
+
+	simpleChainRPC("invoke_contract", caller2, contract1Addr, "transferFrom", []string{caller1 + "," + caller3 + "," + strconv.Itoa(12)}, 0, 0, 50000, 10)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "balanceOf", []string{caller3}, 0, 0)
+	assert.True(t, err == nil)
+	fmt.Printf("caller2 balance: %s\n", res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "12")
+
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "approvedBalanceFrom", []string{caller2 + "," + caller1}, 0, 0)
+	assert.True(t, err == nil)
+	fmt.Printf("caller2 approvedBalanceFrom caller1 balance: %s\n", res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "18")
+
+}
+
 func TestSimpleChainTokenContract(t *testing.T) {
 	cmd := execCommandBackground(simpleChainPath)
 	assert.True(t, cmd != nil)
@@ -570,30 +652,12 @@ func TestSimpleChainTokenContract(t *testing.T) {
 	assert.True(t, err == nil)
 	fmt.Printf("head_block_num: %d\n", res.Get("head_block_num").MustInt())
 	caller1 := "SPLtest1"
-	caller2 := "SPLtest2"
 	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("token.gpc"), 50000, 10)
 	assert.True(t, err == nil)
 	contract1Addr := res.Get("contract_address").MustString()
 	fmt.Printf("contract address: %s\n", contract1Addr)
 	simpleChainRPC("generate_block")
-	res, err = simpleChainRPC("get_contract_info", contract1Addr)
-	assert.True(t, err == nil)
-	assert.True(t, res.Get("owner_address").MustString() == caller1 && res.Get("contract_address").MustString() == contract1Addr)
-	simpleChainRPC("invoke_contract", caller1, contract1Addr, "init_token", []string{"test,TEST,10000,100"}, 0, 0, 50000, 10)
-	simpleChainRPC("generate_block")
-	res, err = simpleChainRPC("get_storage", contract1Addr, "state")
-	assert.True(t, res.MustString() == "COMMON")
-	fmt.Printf("state after init_token of contract1 is: %s\n", res.MustString())
-	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "balanceOf", []string{caller1}, 0, 0)
-	assert.True(t, err == nil)
-	fmt.Printf("caller1 balance: %s\n", res.Get("api_result").MustString())
-	assert.True(t, res.Get("api_result").MustString() == "10000")
-	simpleChainRPC("invoke_contract", caller1, contract1Addr, "transfer", []string{caller2 + "," + strconv.Itoa(100)}, 0, 0, 50000, 10)
-	simpleChainRPC("generate_block")
-	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "balanceOf", []string{caller2}, 0, 0)
-	assert.True(t, err == nil)
-	fmt.Printf("caller2 balance: %s\n", res.Get("api_result").MustString())
-	assert.True(t, res.Get("api_result").MustString() == "100")
+	testTokenContractInSimplechain(t, contract1Addr)
 }
 
 func depositToPlasmaContract(caller string, plasmaContractAddress string, amount int, assetID int) (txID string, coinSlotHex string, err error) {
@@ -1154,7 +1218,6 @@ func TestNativeTokenContract(t *testing.T) {
 	var res *simplejson.Json
 	var err error
 	caller1 := "SPLtest1"
-	caller2 := "SPLtest2"
 
 	res, err = simpleChainRPC("create_native_contract", caller1, "token", 50000, 10)
 	assert.True(t, err == nil)
@@ -1162,22 +1225,5 @@ func TestNativeTokenContract(t *testing.T) {
 	fmt.Printf("contract address: %s\n", contract1Addr)
 	simpleChainRPC("generate_block")
 
-	res, err = simpleChainRPC("get_contract_info", contract1Addr)
-	assert.True(t, err == nil)
-	assert.True(t, res.Get("owner_address").MustString() == caller1 && res.Get("contract_address").MustString() == contract1Addr)
-	simpleChainRPC("invoke_contract", caller1, contract1Addr, "init_token", []string{"test,TEST,10000,100"}, 0, 0, 50000, 10)
-	simpleChainRPC("generate_block")
-	res, err = simpleChainRPC("get_storage", contract1Addr, "state")
-	assert.True(t, res.MustString() == "COMMON")
-	fmt.Printf("state after init_token of contract1 is: %s\n", res.MustString())
-	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "balanceOf", []string{caller1}, 0, 0)
-	assert.True(t, err == nil)
-	fmt.Printf("caller1 balance: %s\n", res.Get("api_result").MustString())
-	assert.True(t, res.Get("api_result").MustString() == "10000")
-	simpleChainRPC("invoke_contract", caller1, contract1Addr, "transfer", []string{caller2 + "," + strconv.Itoa(100)}, 0, 0, 50000, 10)
-	simpleChainRPC("generate_block")
-	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "balanceOf", []string{caller2}, 0, 0)
-	assert.True(t, err == nil)
-	fmt.Printf("caller2 balance: %s\n", res.Get("api_result").MustString())
-	assert.True(t, res.Get("api_result").MustString() == "100")
+	testTokenContractInSimplechain(t, contract1Addr)
 }
