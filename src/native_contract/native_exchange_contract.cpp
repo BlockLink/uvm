@@ -317,7 +317,7 @@ namespace uvm {
 			std::string takerAddr;
 			std::string takerOrderId;
 
-			auto& orderInfo = checkOrder(takerFillOrder, takerAddr, takerOrderId);
+			const auto& orderInfo = checkOrder(takerFillOrder, takerAddr, takerOrderId);
 
 			const auto& asset1 = orderInfo.purchaseAsset;
 			const auto& asset2 = orderInfo.payAsset;
@@ -360,9 +360,9 @@ namespace uvm {
 			boost::split(parsed_args, api_arg, [](char c) {return c == ','; });
 			if (parsed_args.size() != 2)
 				throw_error("argument format error, need format: feeReceiver,percentage");
-			auto& feeReceiver = parsed_args[0];
+			auto feeReceiver = parsed_args[0];
 			boost::trim(feeReceiver);
-			auto& percentage = parsed_args[1];
+			auto percentage = parsed_args[1];
 			boost::trim(percentage);
 			if (feeReceiver.empty() || percentage.empty())
 				throw_error("argument format error, need format: feeReceiver,percentage");
