@@ -77,7 +77,7 @@ namespace uvm {
 			if (v.find("orderInfo") == v.end() || (!v["orderInfo"].is_object())) {
 				return nullptr;
 			}
-			auto& infov = v["orderInfo"].as<fc::mutable_variant_object>();
+			const auto& infov = v["orderInfo"].as<fc::mutable_variant_object>();
 
 			orderInfo["purchaseAsset"] = CborObject::from_string(infov["purchaseAsset"].as_string());
 			orderInfo["purchaseNum"] = CborObject::from_int(infov["purchaseNum"].as_int64());
@@ -240,8 +240,8 @@ namespace uvm {
 				throw_error("num must > 0");
 			}
 
-			auto& a = safe_number_multiply(safe_number_create(spentNum), safe_number_create(purchaseNum));
-			auto& b = safe_number_multiply(safe_number_create(getNum), safe_number_create(payNum));
+			const auto& a = safe_number_multiply(safe_number_create(spentNum), safe_number_create(purchaseNum));
+			const auto& b = safe_number_multiply(safe_number_create(getNum), safe_number_create(payNum));
 			
 			if (safe_number_gt(a, b)) {  
 				throw_error("fill order price not satify");
@@ -335,7 +335,7 @@ namespace uvm {
 				std::string address;
 				std::string id;
 
-				auto& orderInfo = checkOrder(*it, address, id);
+				const auto& orderInfo = checkOrder(*it, address, id);
 
 				if (asset1 != orderInfo.payAsset || asset2 != orderInfo.purchaseAsset) {
 					throw_error("asset not match");
@@ -518,7 +518,7 @@ namespace uvm {
 			if (symbol.empty()) {
 				throw_error("symbol is empty");
 			}
-			auto& caller = caller_address_string();
+			const auto& caller = caller_address_string();
 			auto balance = current_fast_map_get(caller, symbol);
 			int64_t bal = 0;
 			if (!balance->is_integer()) {

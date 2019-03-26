@@ -38,7 +38,7 @@ namespace uvm {
 		private:
 			std::shared_ptr<uvm::contract::native_contract_interface> _proxy;
 			void checkMatchedOrders(exchange::FillOrder& takerFillOrder, std::vector<exchange::FillOrder>& makerFillOrders);
-			exchange::OrderInfo exchange_native_contract::checkOrder(exchange::FillOrder& fillOrder, std::string& addr, std::string& id);
+			exchange::OrderInfo checkOrder(exchange::FillOrder& fillOrder, std::string& addr, std::string& id);
 		public:
 			static std::string native_contract_key() { return "exchange"; }
 
