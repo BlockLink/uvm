@@ -42,7 +42,7 @@ static int time_add(lua_State *L) {
 
     const time_t rawtime = (const time_t)timestamp;
     struct tm * dt;
-	dt = gmtime(&rawtime); // localtime(&rawtime);
+	dt = localtime(&rawtime); // localtime and mktime work as pair
     if (!dt)
     {
       ARGS_ERROR();
