@@ -125,6 +125,7 @@ namespace simplechain {
 	struct StorageDataChangeType
 	{
 		StorageDataType storage_diff;
+		cbor_diff::DiffResult cbor_diff;
 		StorageDataType before;
 		StorageDataType after;
 	};

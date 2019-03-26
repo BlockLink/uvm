@@ -75,6 +75,10 @@ namespace simplechain {
 		void set_failed();
 
 		void apply_pendings(blockchain* chain, const std::string& tx_id);
+
+		// count storage gas and events gas
+		int64_t count_storage_gas() const;
+		int64_t count_event_gas() const;
 	};
 
 

@@ -202,6 +202,18 @@ namespace simplechain {
 					FC_ASSERT(native_contract);
 					native_contract->invoke(o.contract_api, first_contract_arg);
 					invoke_contract_result = *static_cast<contract_invoke_result*>(native_contract->get_result());
+					// count and add storage gas to gas_used
+					auto storage_gas = invoke_contract_result.count_storage_gas();
+					if (storage_gas < 0) {
+						throw uvm::core::UvmException("invalid storage gas");
+					}
+					invoke_contract_result.gas_used += storage_gas;
+					auto event_gas = invoke_contract_result.count_event_gas();
+					if (event_gas < 0) {
+						throw uvm::core::UvmException("invalid event gas");
+					}
+					invoke_contract_result.gas_used += event_gas;
+
 					gas_used = invoke_contract_result.gas_used;
 				}
 			}
