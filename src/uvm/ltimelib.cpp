@@ -42,7 +42,7 @@ static int time_add(lua_State *L) {
 
     const time_t rawtime = (const time_t)timestamp;
     struct tm * dt;
-    dt = localtime(&rawtime);
+	dt = gmtime(&rawtime); // localtime(&rawtime);
     if (!dt)
     {
       ARGS_ERROR();
@@ -80,7 +80,7 @@ static int time_tostr(lua_State *L)
     const time_t rawtime = (const time_t)timestamp;
     struct tm * dt;
     char buffer[30];
-    dt = localtime(&rawtime);
+	dt = gmtime(&rawtime); // localtime(&rawtime);
     if (!dt)
     {
       ARGS_ERROR();
@@ -93,7 +93,7 @@ static int time_tostr(lua_State *L)
 static const luaL_Reg timelib[] = {
     { "add", time_add },
     { "difftime", time_difftime },
-    // { "tostr", time_tostr },
+    { "tostr", time_tostr },
     { nullptr, nullptr }
 };
 
