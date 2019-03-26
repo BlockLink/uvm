@@ -11,6 +11,7 @@
 #include <boost/algorithm/hex.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <fc/crypto/hex.hpp>
+#include <fc/variant_object.hpp>
 
 namespace uvm
 {
@@ -78,6 +79,21 @@ namespace uvm
 				++it2;
 			}
 			return true;
+		}
+
+		bool compare_key(const std::string& first, const std::string& second)
+		{
+			unsigned int i = 0;
+			while ((i < first.length()) && (i < second.length()))
+			{
+				if (first[i] < second[i])
+					return true;
+				else if (first[i] > second[i])
+					return false;
+				else
+					++i;
+			}
+			return (first.length() < second.length());
 		}
 
 		void replace_all(std::string& str, const std::string& from, const std::string& to) {
@@ -568,6 +584,70 @@ namespace uvm
 				}
 			}
 			return ret;
+		}
+
+		std::string json_ordered_dumps(const fc::variant& value)
+		{
+			if (value.is_object())
+			{
+				std::stringstream ss;
+				ss << "{";
+				const auto& json_obj = value.as<fc::mutable_variant_object>();
+				std::list<std::string> keys;
+				for (auto it = json_obj.begin(); it != json_obj.end(); it++)
+				{
+					keys.push_back(it->key());
+				}
+				keys.sort();
+				bool is_first = true;
+				for (const auto& key : keys)
+				{
+					if (!is_first)
+						ss << ",";
+					is_first = false;
+					ss << fc::json::to_string(key) << ":" << json_ordered_dumps(json_obj[key]);
+				}
+				ss << "}";
+				return ss.str();
+			}
+			else
+			{
+				return fc::json::to_string(value);
+			}
+		}
+
+		cbor::CborObjectP nested_cbor_object_to_array(const cbor::CborObject* cbor_value)
+		{
+			if (cbor_value->is_map())
+			{
+				const auto& map = cbor_value->as_map();
+				cbor::CborArrayValue cbor_array;
+				std::list<std::string> keys;
+				for (auto it = map.begin(); it != map.end(); it++)
+				{
+					keys.push_back(it->first);
+				}
+				keys.sort(&compare_key);
+				for (const auto& key : keys)
+				{
+					cbor::CborArrayValue item_json;
+					item_json.push_back(cbor::CborObject::from_string(key));
+					item_json.push_back(nested_cbor_object_to_array(map.at(key).get()));
+					cbor_array.push_back(cbor::CborObject::create_array(item_json));
+				}
+				return cbor::CborObject::create_array(cbor_array);
+			}
+			if (cbor_value->is_array())
+			{
+				const auto& arr = cbor_value->as_array();
+				cbor::CborArrayValue result;
+				for (const auto& item : arr)
+				{
+					result.push_back(nested_cbor_object_to_array(item.get()));
+				}
+				return cbor::CborObject::create_array(result);
+			}
+			return std::make_shared<cbor::CborObject>(*cbor_value);
 		}
 
 	} // end namespace uvm::util

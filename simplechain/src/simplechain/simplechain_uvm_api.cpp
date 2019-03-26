@@ -101,6 +101,10 @@ namespace simplechain {
 				return (contract_create_evaluator*)uvm::lua::lib::get_lua_state_value(L, "register_evaluate_state").pointer_value;
 			}
 
+			static native_contract_create_evaluator* get_native_register_contract_evaluator(lua_State *L) {
+				return (native_contract_create_evaluator*)uvm::lua::lib::get_lua_state_value(L, "native_register_evaluate_state").pointer_value;
+			}
+
 			static contract_invoke_evaluator* get_invoke_contract_evaluator(lua_State *L) {
 				return (contract_invoke_evaluator*)uvm::lua::lib::get_lua_state_value(L, "invoke_evaluate_state").pointer_value;
 			}
@@ -109,6 +113,10 @@ namespace simplechain {
 				auto register_contract_evaluator = get_register_contract_evaluator(L);
 				if (register_contract_evaluator) {
 					return register_contract_evaluator;
+				}
+				auto native_register_contract_evaluator = get_native_register_contract_evaluator(L);
+				if (native_register_contract_evaluator) {
+					return native_register_contract_evaluator;
 				}
 				auto invoke_contract_evaluator = get_invoke_contract_evaluator(L);
 				if (invoke_contract_evaluator) {
@@ -963,6 +971,19 @@ namespace simplechain {
 				auto result = true;
 				L->cbor_diff_state = result ? 1 : 2; // cache it
 				return result;
+			}
+
+			std::string SimpleChainUvmChainApi::pubkey_to_address_string(const fc::ecc::public_key& pub) const {
+				auto dat = pub.serialize();
+				auto addr = fc::ripemd160::hash(fc::sha512::hash(dat.data, sizeof(dat)));
+				std::string prefix = "SL";
+				unsigned char version = 0X35;
+				fc::array<char, 25> bin_addr;
+				memcpy((char*)&bin_addr, (char*)&version, sizeof(version));
+				memcpy((char*)&bin_addr + 1, (char*)&addr, sizeof(addr));
+				auto checksum = fc::ripemd160::hash((char*)&bin_addr, bin_addr.size() - 4);
+				memcpy(((char*)&bin_addr) + 21, (char*)&checksum._hash[0], 4);
+				return prefix + fc::to_base58(bin_addr.data, sizeof(bin_addr));
 			}
 
 }

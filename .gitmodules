@@ -1,0 +1,3 @@
+[submodule "deps/jsondiff-cpp"]
+	path = deps/jsondiff-cpp
+	url = https://github.com/BlockLink/jsondiff-cpp.git

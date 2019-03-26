@@ -209,4 +209,5 @@ FakesAssemblies/
 /uvm_single_exec
 /.vscode
 /test/src/uvmtest/go.mod
+/libfc.a
 
