@@ -8,7 +8,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(CMAKE_CXX_FLAGS "-std=c++11 -D_DARWIN_C_SOURCE -Wno-invalid-partial-specialization")
 endif()
 
-file(GLOB HEADERS "include/uvm/*.h" "include/cborcpp/*.h" "include/cbor_diff/*.h" "include/safenumber/*.h" "include/native_contract/*.h" "deps/jsondiff-cpp/jsondiff-cpp/include/jsondiff/*.h")
+file(GLOB HEADERS "include/uvm/*.h" "include/cborcpp/*.h" "include/cbor_diff/*.h" "include/safenumber/*.h" "include/native_contract/*.h" "../jsondiff/jsondiff-cpp/include/jsondiff/*.h")
 
 set(SOURCES src/uvm/lapi.cpp
     src/uvm/lauxlib.cpp
@@ -102,9 +102,9 @@ LIST(APPEND BOOST_COMPONENTS thread iostreams date_time system filesystem progra
 add_library( uvm ${SOURCES} ${HEADERS} )
 
 target_link_libraries( uvm 
-  PUBLIC /code_deps/fc/libfc.a /usr/local/lib/libsecp256k1.a OpenSSL::SSL ${Boost_LIBRARIES} )
+  PUBLIC fc)
 target_include_directories( uvm 
-  PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/deps/jsondiff-cpp/jsondiff-cpp/include"
+  PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/../jsondiff/jsondiff-cpp/include"
 )
 
 #aux_source_directory(./simplechain/src simplechain_src1)
@@ -121,7 +121,7 @@ target_include_directories( uvm
 #  PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/simplechain/include" "${CMAKE_CURRENT_SOURCE_DIR}/deps/jsondiff-cpp/jsondiff-cpp/include"
 #)
 
-## OpenSSL::SSL fc
+# OpenSSL::SSL fc
 #target_link_libraries(simplechain_runner PUBLIC ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES} /code_deps/fc/libfc.a /usr/local/lib/libsecp256k1.a fc uvm ${CMAKE_SOURCE_DIR}/deps/jsondiff-cpp/libjsondiff_cpp.a)
 
 #add_executable(uvm_single_exec uvm_single/main.cpp uvm_single/Keccak.cpp uvm_single/uvm_api.demo.cpp)
