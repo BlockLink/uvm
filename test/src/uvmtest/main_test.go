@@ -373,8 +373,8 @@ func TestTimeModule(t *testing.T) {
 	assert.True(t, strings.Contains(out, `a1=	1234567890`))
 	assert.True(t, strings.Contains(out, `a2=	1234654290`))
 	assert.True(t, strings.Contains(out, `a3=	-86400`))
-	//assert.True(t, strings.Contains(out, `a4=	2009-02-14 07:31:30`))
-	//assert.True(t, strings.Contains(out, `a5=	2009-02-15 07:31:30`))
+	assert.True(t, strings.Contains(out, `a4=	2009-02-13 23:31:30`))
+	assert.True(t, strings.Contains(out, `a5=	2009-02-14 23:31:30`))
 }
 
 func TestForLoop(t *testing.T) {
