@@ -164,52 +164,49 @@ namespace uvm {
 
 
 		static std::string getOrderOwnerAddressAndId(exchange::Order& o, std::string& addr, std::string& id) {
-			try {
-				//auto orderP = order_to_cbor(o);
 
-				//const auto& order = orderP->as_map();
-				//const auto& orderInfo = order.at("orderInfo");
-				const auto& sig_hex = o.sig;
+			//auto orderP = order_to_cbor(o);
 
-				const auto& infostr = o.orderInfo;
+			//const auto& order = orderP->as_map();
+			//const auto& orderInfo = order.at("orderInfo");
+			const auto& sig_hex = o.sig;
 
-				const auto&  orderinfoDigest = fc::sha256::hash(infostr);
-				const auto&  temp = infostr + sig_hex;
-				const auto&  orderID = fc::sha256::hash(temp);
-				//fc::sha256 orderID(temp);
-				id = orderID.str();
-				if (o.id != id) {
-					printf("id not match,id:%s  caculate_id:%s\n", o.id.c_str(), id.c_str());
-					return "id not match";
-				}
+			const auto& infostr = o.orderInfo;
 
-				std::vector<char> sig_bytes(sig_hex.size() / 2);
-				auto bytes_count = fc::from_hex(sig_hex, sig_bytes.data(), sig_bytes.size());
-				if (bytes_count != sig_bytes.size()) {
-					return "parse sig hex to bytes error";
-				}
-
-				fc::ecc::compact_signature compact_sig;
-				if (sig_bytes.size() > compact_sig.size())
-					return "invalid sig bytes size";
-				memcpy(compact_sig.data, sig_bytes.data(), sig_bytes.size());
-
-				const auto& recoved_public_key = fc::ecc::public_key(compact_sig, orderinfoDigest, false);
-				if (!recoved_public_key.valid()) {
-					return "invalid signature";
-				}
-
-				if (!global_uvm_chain_api) {
-					return "invalid global_uvm_chain_api";
-				}
-				else {
-					addr = global_uvm_chain_api->pubkey_to_address_string(recoved_public_key);
-				}
-
+			const auto&  orderinfoDigest = fc::sha256::hash(infostr);
+			const auto&  temp = infostr + sig_hex;
+			const auto&  orderID = fc::sha256::hash(temp);
+			//fc::sha256 orderID(temp);
+			id = orderID.str();
+			if (o.id != id) {
+				printf("id not match,id:%s  caculate_id:%s\n", o.id.c_str(), id.c_str());
+				return "id not match";
 			}
-			catch (fc::exception e) {
-				return "exception";
+
+			std::vector<char> sig_bytes(sig_hex.size() / 2);
+			auto bytes_count = fc::from_hex(sig_hex, sig_bytes.data(), sig_bytes.size());
+			if (bytes_count != sig_bytes.size()) {
+				return "parse sig hex to bytes error";
 			}
+
+			fc::ecc::compact_signature compact_sig;
+			if (sig_bytes.size() > compact_sig.size())
+				return "invalid sig bytes size";
+			memcpy(compact_sig.data, sig_bytes.data(), sig_bytes.size());
+
+			const auto& recoved_public_key = fc::ecc::public_key(compact_sig, orderinfoDigest, false);
+			if (!recoved_public_key.valid()) {
+				return "invalid signature";
+			}
+
+			if (!global_uvm_chain_api) {
+				return "invalid global_uvm_chain_api";
+			}
+			else {
+				addr = global_uvm_chain_api->pubkey_to_address_string(recoved_public_key);
+			}
+
+			
 			return "OK";
 		}
 
@@ -239,6 +236,9 @@ namespace uvm {
 			if (purchaseNum <= 0 || payNum <= 0 || getNum <= 0 || spentNum <= 0) {
 				throw_error("num must > 0");
 			}
+			if (orderInfo.type != "buy"&&orderInfo.type != "sell") {
+				throw_error("order type wrong");
+			}
 
 			const auto& a = safe_number_multiply(safe_number_create(spentNum), safe_number_create(purchaseNum));
 			const auto& b = safe_number_multiply(safe_number_create(getNum), safe_number_create(payNum));
@@ -262,7 +262,7 @@ namespace uvm {
 			if (orderStore->is_map()) {
 				auto o = orderStore->as_map();
 				if (o.find("state") != o.end()) {
-					auto state = o["state"]->force_as_int();
+					auto state = o["state"]->force_as_int(); //???
 					if (state == 0) {
 						throw_error("order has been canceled");
 					}
@@ -322,6 +322,8 @@ namespace uvm {
 			const auto& asset1 = orderInfo.purchaseAsset;
 			const auto& asset2 = orderInfo.payAsset;
 
+			const auto& takerOrderType = orderInfo.type;
+
 			int64_t purchaseNum = orderInfo.purchaseNum;
 			int64_t payNum = orderInfo.payNum;
 
@@ -331,6 +333,8 @@ namespace uvm {
 			int64_t totalMakerGetNum = 0;
 			int64_t totalMakerSpentNum = 0;
 
+			std::string takerType = orderInfo.type;
+
 			for (auto it = makerFillOrders.begin(); it != makerFillOrders.end(); it++) {
 				std::string address;
 				std::string id;
@@ -339,6 +343,9 @@ namespace uvm {
 
 				if (asset1 != orderInfo.payAsset || asset2 != orderInfo.purchaseAsset) {
 					throw_error("asset not match");
+				}
+				if (takerOrderType == orderInfo.type) {
+					throw_error("order type not match");
 				}
 
 				totalMakerGetNum = it->getNum + totalMakerGetNum;
@@ -389,115 +396,103 @@ namespace uvm {
 		//{takerOrder:{},takerPayNum:80,fillOrders:[{order:"order_hex_str",fillNum:30},{order:order2,fillNum:50}]
 		void exchange_native_contract::fillOrder_api(const std::string& api_name, const std::string& api_args_utf8)
 		{
-			//if (get_storage_state() != common_state_of_exchange_contract)
-			//	throw_error("this exchange contract state is not common");
-			try {
-				auto args = fc::json::from_string(api_args_utf8);
-				if (!args.is_object()) {
-					throw_error("args not map");
-				}
-				exchange::MatchInfo matchinfo;
+			if (get_storage_state() != common_state_of_exchange_contract)
+				throw_error("this exchange contract state is not common");
 
-				fc::from_variant(args, matchinfo);
-				checkMatchedOrders(matchinfo.fillTakerOrder, matchinfo.fillMakerOrders);
+			auto args = fc::json::from_string(api_args_utf8);
+			if (!args.is_object()) {
+				throw_error("args not map");
 			}
-			catch (fc::exception e) {
-				printf("%s\n", e.to_detail_string().c_str());
-				throw_error(e.to_detail_string());
-			}
+			exchange::MatchInfo matchinfo;
+
+			fc::from_variant(args, matchinfo);
+			checkMatchedOrders(matchinfo.fillTakerOrder, matchinfo.fillMakerOrders);
+			
 
 			return;
 		}
 
 		void exchange_native_contract::cancelOrders_api(const std::string& api_name, const std::string& api_args) {
 			std::vector<std::string> canceledOrderIds;
-			try {
-				auto args = fc::json::from_string(api_args);
-				if (!args.is_array()) {
-					throw_error("args not array");
-				}
-				std::vector<exchange::Order> orders;
+			
+			auto args = fc::json::from_string(api_args);
+			if (!args.is_array()) {
+				throw_error("args not array");
+			}
+			std::vector<exchange::Order> orders;
 
-				fc::from_variant(args, orders);
-				auto callerAddr = caller_address_string();
+			fc::from_variant(args, orders);
+			auto callerAddr = caller_address_string();
 
-				for (int i = 0; i < orders.size(); i++) {
-					std::string addr;
-					std::string id;
-					if (getOrderOwnerAddressAndId(orders[i], addr, id) == "OK") {
-						if (callerAddr == addr) {
-							//check order  canceled , remain num
-							auto orderInfo = current_fast_map_get(id, "info");
-							if (orderInfo->is_map()) {
-								auto o = orderInfo->as_map();
-								if (o.find("state") != o.end()) {
-									auto state = o["state"]->force_as_int();
-									if (state == 0) { //0 ---- canceled
-										continue;
-									}
+			for (int i = 0; i < orders.size(); i++) {
+				std::string addr;
+				std::string id;
+				if (getOrderOwnerAddressAndId(orders[i], addr, id) == "OK") {
+					if (callerAddr == addr) {
+						//check order  canceled , remain num
+						auto orderInfo = current_fast_map_get(id, "info");
+						if (orderInfo->is_map()) {
+							auto o = orderInfo->as_map();
+							if (o.find("state") != o.end()) {
+								auto state = o["state"]->force_as_int();
+								if (state == 0) { //0 ---- canceled
+									continue;
 								}
-
-								o["state"] = CborObject::from_int(0);
-								current_fast_map_set(id, "info", orderInfo);
-								canceledOrderIds.push_back(id);
-
 							}
-							else {
-								CborMapValue m;
-								m["state"] = CborObject::from_int(0);
-								current_fast_map_set(id, "info", CborObject::create_map(m));
-								canceledOrderIds.push_back(id);
-							}
+
+							o["state"] = CborObject::from_int(0);
+							current_fast_map_set(id, "info", orderInfo);
+							canceledOrderIds.push_back(id);
+
+						}
+						else {
+							CborMapValue m;
+							m["state"] = CborObject::from_int(0);
+							current_fast_map_set(id, "info", CborObject::create_map(m));
+							canceledOrderIds.push_back(id);
 						}
 					}
 				}
-				const auto& result = fc::json::to_string(canceledOrderIds);
-				set_api_result(result);
 			}
-			catch (fc::exception e) {
-				printf("%s\n", e.to_detail_string().c_str());
-				throw_error(e.to_detail_string());
-			}
+			const auto& result = fc::json::to_string(canceledOrderIds);
+			set_api_result(result);
+			
 			return;
 		}
 
 
 		void exchange_native_contract::on_deposit_asset_api(const std::string& api_name, const std::string& api_args)
 		{
-			try {
-				auto args = fc::json::from_string(api_args);
-				if (!args.is_object()) {
-					throw_error("args not map");
-				}
 
-				auto arginfo = args.as<fc::mutable_variant_object>();
-				auto amount = arginfo["num"].as_int64();
-				auto symbol = arginfo["symbol"].as_string();
-				if (amount <= 0) {
-					throw_error("amount must > 0");
-				}
-
-				const auto& addr = caller_address_string();
-
-				//check balance
-				auto balance = current_fast_map_get(addr, symbol);
-				int64_t bal = 0;
-				if (balance->is_integer()) {
-					bal = balance->force_as_int();
-				}
-				current_fast_map_set(addr, symbol, CborObject::from_int(bal + amount));
-
-				jsondiff::JsonObject event_arg;
-				event_arg["from_address"] = addr;
-				event_arg["symbol"] = symbol;
-				event_arg["amount"] = amount;
-				emit_event("Deposited", uvm::util::json_ordered_dumps(event_arg));
-
+			auto args = fc::json::from_string(api_args);
+			if (!args.is_object()) {
+				throw_error("args not map");
 			}
-			catch (fc::exception e) {
-				printf("%s\n", e.to_detail_string().c_str());
-				throw_error(e.to_detail_string());
+
+			auto arginfo = args.as<fc::mutable_variant_object>();
+			auto amount = arginfo["num"].as_int64();
+			auto symbol = arginfo["symbol"].as_string();
+			if (amount <= 0) {
+				throw_error("amount must > 0");
 			}
+
+			const auto& addr = caller_address_string();
+
+			//check balance
+			auto balance = current_fast_map_get(addr, symbol);
+			int64_t bal = 0;
+			if (balance->is_integer()) {
+				bal = balance->force_as_int();
+			}
+			current_fast_map_set(addr, symbol, CborObject::from_int(bal + amount));
+
+			jsondiff::JsonObject event_arg;
+			event_arg["from_address"] = addr;
+			event_arg["symbol"] = symbol;
+			event_arg["amount"] = amount;
+			emit_event("Deposited", uvm::util::json_ordered_dumps(event_arg));
+
+
 		}
 
 		//args:amount,symbol
@@ -510,7 +505,9 @@ namespace uvm {
 
 			if (!is_integral(parsed_args[0]))
 				throw_error("argument format error, amount must be integral");
-			int64_t amount = std::stoll(parsed_args[0]);
+		
+			int64_t amount = fc::to_int64(parsed_args[0]);
+			
 			if (amount <= 0) {
 				throw_error("amount must > 0");
 			}
@@ -537,8 +534,8 @@ namespace uvm {
 			else {
 				current_fast_map_set(caller, parsed_args[1], CborObject::from_int(newBalance));
 			}
-			//
-			//add transfer
+
+			current_transfer_to_address(caller, symbol, amount);
 			//{"amount":35000,"realAmount":34996,"fee":4,"symbol":"HC","to_address":"test11"}
 			jsondiff::JsonObject event_arg;
 			event_arg["symbol"] = symbol;

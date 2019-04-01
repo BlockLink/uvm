@@ -15,6 +15,7 @@ namespace uvm {
 				std::string nonce;
 				std::string relayer;
 				std::string fee;
+				std::string type; // buy or sell   buy   exchangePair:purchaseAsset/payAsset   sell: exchangePair:payAsset/purchaseAsset
 			};
 			struct Order {
 				std::string orderInfo;

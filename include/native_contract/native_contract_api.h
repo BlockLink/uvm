@@ -49,8 +49,8 @@ namespace uvm {
 			virtual void set_current_contract_storage(const std::string& storage_name, cbor::CborObjectP cbor_value) {
 				get_proxy()->set_current_contract_storage(storage_name, cbor_value);
 			}
-			virtual void current_transfer_to_address(const std::string& to_address, uint32_t asset_id, uint64_t amount) {
-				get_proxy()->current_transfer_to_address(to_address, asset_id, amount);
+			virtual void current_transfer_to_address(const std::string& to_address, const std::string& asset_symbol, uint64_t amount) {
+				get_proxy()->current_transfer_to_address(to_address, asset_symbol, amount);
 			}
 			virtual void emit_event(const std::string& event_name, const std::string& event_arg) {
 				get_proxy()->emit_event(event_name, event_arg);
