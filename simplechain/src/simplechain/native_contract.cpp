@@ -4,6 +4,7 @@
 #include <simplechain/blockchain.h>
 #include <boost/algorithm/string.hpp>
 #include <jsondiff/jsondiff.h>
+#include <memory>
 
 namespace simplechain {
 	using namespace cbor_diff;
@@ -54,6 +55,31 @@ namespace simplechain {
 		StorageDataType value;
 		value.storage_data = cbor_encode(cbor_value);
 		return set_contract_storage(contract_address, storage_name, value);
+	}
+
+	void native_contract_store::transfer_to_address(const address& from_contract_address, const address& to_address, const uint32_t asset_id, const uint64_t amount) {
+		bool contract_balance_pair_found = false;
+		bool to_pair_found = false;
+		for (auto& p : _contract_invoke_result.account_balances_changes) {
+			if (p.first.first == from_contract_address && p.first.second == asset_id) {
+				p.second -= int64_t(amount);
+				contract_balance_pair_found = true;
+				continue;
+			}
+			if (p.first.first == to_address && p.first.second == asset_id) {
+				p.second += amount;
+				to_pair_found = true;
+				continue;
+			}
+		}
+		if (!contract_balance_pair_found) {
+			auto p = std::make_pair(from_contract_address, asset_id);
+			_contract_invoke_result.account_balances_changes[p] = - int64_t(amount);
+		}
+		if (!to_pair_found) {
+			auto p = std::make_pair(to_address, asset_id);
+			_contract_invoke_result.account_balances_changes[p] = int64_t(amount);
+		}
 	}
 
 	void native_contract_store::fast_map_set(const address& contract_address, const std::string& storage_name, const std::string& key, cbor::CborObjectP cbor_value) {
