@@ -24,6 +24,7 @@ namespace fc {
 		from_variant(obj["nonce"], vo.nonce);
 		from_variant(obj["relayer"], vo.relayer);
 		from_variant(obj["fee"], vo.fee);
+		from_variant(obj["type"], vo.type);
 	}
 	void from_variant(const variant& var, uvm::contract::exchange::Order& vo) {
 		auto obj = var.get_object();
@@ -236,8 +237,21 @@ namespace uvm {
 			if (purchaseNum <= 0 || payNum <= 0 || getNum <= 0 || spentNum <= 0) {
 				throw_error("num must > 0");
 			}
-			if (orderInfo.type != "buy"&&orderInfo.type != "sell") {
+			
+			bool isBuyOrder = false;
+			if (orderInfo.type == "buy") {
+				isBuyOrder = true;
+				
+			}
+			else if (orderInfo.type == "sell") {
+				isBuyOrder = false;
+			}
+			else {
 				throw_error("order type wrong");
+			}
+
+			if (spentNum > payNum) {
+				throw_error("spentNum must < payNum");
 			}
 
 			const auto& a = safe_number_multiply(safe_number_create(spentNum), safe_number_create(purchaseNum));
@@ -273,29 +287,52 @@ namespace uvm {
 						throw_error("wrong order state");
 					}
 				}
-				if (o.find("filledNum") != o.end()) {
-					auto filledNum = o["filledNum"]->force_as_int();
-					auto remainNum = purchaseNum - filledNum;
-					if (remainNum < getNum) {
-						throw_error("order remain not enough");
+				if (isBuyOrder) {
+					if (o.find("gotNum") != o.end()) {
+						auto gotNum = o["gotNum"]->force_as_int();
+						auto remainNum = purchaseNum - gotNum;
+						if (remainNum < getNum) {
+							throw_error("order remain not enough");
+						}
+						//write
+						o["gotNum"] = CborObject::from_int(gotNum + getNum);
+						if (o.find("spentdNum") == o.end()) {
+							throw_error("wrong order info stored");
+						}
+						auto lastSpentNum = o["spentdNum"]->force_as_int();
+						o["spentdNum"] = CborObject::from_int(lastSpentNum + spentNum);
 					}
-					//write
-					o["filledNum"] = CborObject::from_int(filledNum + getNum);
-					if (o.find("spentdNum") == o.end()) {
-						throw_error("wrong order info stored");
+					else {
+						o["gotNum"] = CborObject::from_int(getNum);
+						o["spentdNum"] = CborObject::from_int(spentNum);
 					}
-					auto lastSpentNum = o["spentdNum"]->force_as_int();
-					o["spentdNum"] = CborObject::from_int(lastSpentNum + spentNum);
 				}
 				else {
-					o["filledNum"] = CborObject::from_int(getNum);
-					o["spentdNum"] = CborObject::from_int(spentNum);
+					if (o.find("spentdNum") != o.end()) {
+						auto spentdNum = o["spentdNum"]->force_as_int();
+						auto remainNum = payNum - spentdNum;
+						if (remainNum < spentNum) {
+							throw_error("order remain not enough");
+						}
+						//write
+						o["spentdNum"] = CborObject::from_int(spentdNum + spentNum);
+						if (o.find("gotNum") == o.end()) {
+							throw_error("wrong order info stored");
+						}
+						auto lastGotNum = o["gotNum"]->force_as_int();
+						o["gotNum"] = CborObject::from_int(lastGotNum + getNum);
+					}
+					else {
+						o["gotNum"] = CborObject::from_int(getNum);
+						o["spentdNum"] = CborObject::from_int(spentNum);
+					}
 				}
+				
 				current_fast_map_set(id, "info", orderStore);
 			}
 			else {
 				CborMapValue m;
-				m["filledNum"] = CborObject::from_int(getNum);
+				m["gotNum"] = CborObject::from_int(getNum);
 				m["spentNum"] = CborObject::from_int(spentNum);
 				current_fast_map_set(id, "info", CborObject::create_map(m));
 			}
