@@ -298,26 +298,26 @@ namespace uvm {
 						}
 						//write
 						o["gotNum"] = CborObject::from_int(lastGotNum + getNum);
-						if (o.find("spentdNum") == o.end()) {
+						if (o.find("spentNum") == o.end()) {
 							throw_error("wrong order info stored");
 						}
-						auto lastSpentNum = o["spentdNum"]->force_as_int();
-						o["spentdNum"] = CborObject::from_int(lastSpentNum + spentNum);
+						auto lastSpentNum = o["spentNum"]->force_as_int();
+						o["spentNum"] = CborObject::from_int(lastSpentNum + spentNum);
 					}
 					else {
 						o["gotNum"] = CborObject::from_int(getNum);
-						o["spentdNum"] = CborObject::from_int(spentNum);
+						o["spentNum"] = CborObject::from_int(spentNum);
 					}
 				}
 				else {
-					if (o.find("spentdNum") != o.end()) {
-						auto lastSpentNum = o["spentdNum"]->force_as_int();
+					if (o.find("spentNum") != o.end()) {
+						auto lastSpentNum = o["spentNum"]->force_as_int();
 						auto remainNum = payNum - lastSpentNum;
 						if (remainNum < spentNum) {
 							throw_error("order remain not enough");
 						}
 						//write
-						o["spentdNum"] = CborObject::from_int(lastSpentNum + spentNum);
+						o["spentNum"] = CborObject::from_int(lastSpentNum + spentNum);
 						if (o.find("gotNum") == o.end()) {
 							throw_error("wrong order info stored");
 						}
@@ -326,10 +326,10 @@ namespace uvm {
 					}
 					else {
 						o["gotNum"] = CborObject::from_int(getNum);
-						o["spentdNum"] = CborObject::from_int(spentNum);
+						o["spentNum"] = CborObject::from_int(spentNum);
 					}
 				}
-				current_fast_map_set(id, "info", orderStore);
+				current_fast_map_set(id, "info", CborObject::create_map(o));
 			}
 			else {
 				CborMapValue m;
@@ -504,8 +504,7 @@ namespace uvm {
 			return;
 		}
 
-		//order: {orderInfo:{purchaseAsset:"HC",purchaseNum:20,payAsset:"HX",payNum:100,nounce:"13df",relayer:"HXsrsfsfe3",fee:0.0001},sig:"rsowor233"}
-		//{takerOrder:{},takerPayNum:80,fillOrders:[{order:"order_hex_str",fillNum:30},{order:order2,fillNum:50}]
+		//order: {'spentNum': 5, 'getNum': 49, 'order': {'sig': u'20634c5058e1eaa0bb89109cea606b8f3384d4b30b6a74c1009e9a02950108ff0a4fc6d38071974d415403bcd3fa2b4a0d61b707a934e7cf9a1c4f768095a46bae', 'id': u'a406b62974e79044432363d7c609d1f14ccff5f9f94e2c54ce75778ed1a3b7d3', 'orderInfo': '{"nonce": "2019-04-02 14:23:23.906000 50", "purchaseAsset": "COIN", "fee": "0.1", "payNum": 10, "relayer": "SSS", "payAsset": "HC", "purchaseNum": 98, "type": "sell"}'}}
 		void exchange_native_contract::fillOrder_api(const std::string& api_name, const std::string& api_args_utf8)
 		{
 			if (get_storage_state() != common_state_of_exchange_contract)
@@ -569,7 +568,6 @@ namespace uvm {
 
 		void exchange_native_contract::on_deposit_asset_api(const std::string& api_name, const std::string& api_args)
 		{
-
 			auto args = fc::json::from_string(api_args);
 			if (!args.is_object()) {
 				throw_error("args not map");
