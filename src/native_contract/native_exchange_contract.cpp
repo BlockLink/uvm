@@ -163,17 +163,9 @@ namespace uvm {
 			return end != 0 && *end == 0;
 		}
 
-
-		static std::string getOrderOwnerAddressAndId(exchange::Order& o, std::string& addr, std::string& id) {
-
-			//auto orderP = order_to_cbor(o);
-
-			//const auto& order = orderP->as_map();
-			//const auto& orderInfo = order.at("orderInfo");
+		static std::string getOrderOwnerAddressAndId(const exchange::Order& o, std::string& addr, std::string& id) {
 			const auto& sig_hex = o.sig;
-
 			const auto& infostr = o.orderInfo;
-
 			const auto&  orderinfoDigest = fc::sha256::hash(infostr);
 			const auto&  temp = infostr + sig_hex;
 			const auto&  orderID = fc::sha256::hash(temp);
@@ -206,8 +198,6 @@ namespace uvm {
 			else {
 				addr = global_uvm_chain_api->pubkey_to_address_string(recoved_public_key);
 			}
-
-			
 			return "OK";
 		}
 
@@ -216,7 +206,7 @@ namespace uvm {
 			return is_numeric(number.c_str()) && std::strchr(number.c_str(), '.') == 0;
 		}
 
-		exchange::OrderInfo exchange_native_contract::checkOrder(exchange::FillOrder& fillOrder, std::string& addr, std::string& id) {
+		exchange::OrderInfo exchange_native_contract::checkOrder(const exchange::FillOrder& fillOrder, std::string& addr, std::string& id, std::string& eventOrder,bool& isCompleted) {
 			if (getOrderOwnerAddressAndId(fillOrder.order, addr, id) != "OK") {
 				throw_error("fillOrder wrong");
 			}
@@ -232,26 +222,36 @@ namespace uvm {
 			int64_t getNum = fillOrder.getNum;
 			int64_t spentNum = fillOrder.spentNum;
 
-			const auto& feePercentage = orderInfo.fee; //add
-
 			if (purchaseNum <= 0 || payNum <= 0 || getNum <= 0 || spentNum <= 0) {
 				throw_error("num must > 0");
 			}
-			
+			if (spentNum > payNum) {
+				throw_error("spentNum must < payNum");
+			}
+
+			////
+			auto feeReceiver = orderInfo.relayer;
+			if (feeReceiver == "") {
+				feeReceiver = get_string_current_contract_storage("feeReceiver");
+			}
+
+			int64_t spentFee = safe_number_to_int64(safe_number_multiply(safe_number_create(spentNum), safe_number_create(orderInfo.fee)));
+			if (spentFee < 0) {
+				throw_error("spentFee must >= 0");
+			}
+			if (spentFee >= spentNum) {
+				throw_error("spentFee must < spentNum");
+			}
+
 			bool isBuyOrder = false;
 			if (orderInfo.type == "buy") {
 				isBuyOrder = true;
-				
 			}
 			else if (orderInfo.type == "sell") {
 				isBuyOrder = false;
 			}
 			else {
 				throw_error("order type wrong");
-			}
-
-			if (spentNum > payNum) {
-				throw_error("spentNum must < payNum");
 			}
 
 			const auto& a = safe_number_multiply(safe_number_create(spentNum), safe_number_create(purchaseNum));
@@ -267,12 +267,14 @@ namespace uvm {
 				throw_error("no balance");
 			}
 			auto bal = balance->force_as_int();
-			if (bal < spentNum) {   //add fee
+			if (bal < (spentNum+ spentFee)) {   //add fee
 				throw_error("not enough balance");
 			}
 
 			//check order  canceled , remain num
 			auto orderStore = current_fast_map_get(id, "info");
+			int64_t lastSpentNum = 0;
+			int64_t lastGotNum = 0;
 			if (orderStore->is_map()) {
 				auto o = orderStore->as_map();
 				if (o.find("state") != o.end()) {
@@ -289,13 +291,13 @@ namespace uvm {
 				}
 				if (isBuyOrder) {
 					if (o.find("gotNum") != o.end()) {
-						auto gotNum = o["gotNum"]->force_as_int();
-						auto remainNum = purchaseNum - gotNum;
+						lastGotNum = o["gotNum"]->force_as_int();
+						auto remainNum = purchaseNum - lastGotNum;
 						if (remainNum < getNum) {
 							throw_error("order remain not enough");
 						}
 						//write
-						o["gotNum"] = CborObject::from_int(gotNum + getNum);
+						o["gotNum"] = CborObject::from_int(lastGotNum + getNum);
 						if (o.find("spentdNum") == o.end()) {
 							throw_error("wrong order info stored");
 						}
@@ -309,17 +311,17 @@ namespace uvm {
 				}
 				else {
 					if (o.find("spentdNum") != o.end()) {
-						auto spentdNum = o["spentdNum"]->force_as_int();
-						auto remainNum = payNum - spentdNum;
+						auto lastSpentNum = o["spentdNum"]->force_as_int();
+						auto remainNum = payNum - lastSpentNum;
 						if (remainNum < spentNum) {
 							throw_error("order remain not enough");
 						}
 						//write
-						o["spentdNum"] = CborObject::from_int(spentdNum + spentNum);
+						o["spentdNum"] = CborObject::from_int(lastSpentNum + spentNum);
 						if (o.find("gotNum") == o.end()) {
 							throw_error("wrong order info stored");
 						}
-						auto lastGotNum = o["gotNum"]->force_as_int();
+						lastGotNum = o["gotNum"]->force_as_int();
 						o["gotNum"] = CborObject::from_int(lastGotNum + getNum);
 					}
 					else {
@@ -327,7 +329,6 @@ namespace uvm {
 						o["spentdNum"] = CborObject::from_int(spentNum);
 					}
 				}
-				
 				current_fast_map_set(id, "info", orderStore);
 			}
 			else {
@@ -338,7 +339,7 @@ namespace uvm {
 			}
 
 			////write bal
-			current_fast_map_set(addr, orderInfo.payAsset, CborObject::from_int(bal - spentNum));
+			current_fast_map_set(addr, orderInfo.payAsset, CborObject::from_int(bal - spentNum - spentFee));
 			balance = current_fast_map_get(addr, orderInfo.purchaseAsset);
 			if (!balance->is_integer()) {
 				bal = 0;
@@ -347,14 +348,39 @@ namespace uvm {
 				bal = balance->force_as_int();
 			}
 			current_fast_map_set(addr, orderInfo.purchaseAsset, CborObject::from_int(bal + getNum));
+			//fee
+			if (spentFee > 0) {
+				current_fast_map_set(feeReceiver, orderInfo.payAsset, CborObject::from_int(spentFee));
+			}
+
+			std::stringstream ss;
+			int64_t baseNum = 0;
+
+			if (isBuyOrder) {
+				baseNum = purchaseNum - getNum - lastGotNum;
+				ss << baseNum << "," << (payNum - spentNum - lastSpentNum) << "," << addr << "," << id << "," << (lastGotNum + getNum) << "," << (lastSpentNum + spentNum) << "," << getNum << "," << spentNum <<","<< spentFee;
+				}
+			else {
+				baseNum = payNum - spentNum - lastSpentNum;
+				ss << baseNum << "," << (purchaseNum - getNum - lastGotNum) << "," << addr << "," << id << "," << (lastSpentNum + spentNum) << "," << (lastGotNum + getNum) << "," << spentNum << "," << getNum << "," << spentFee;
+				}
+			
+			if (baseNum <= 0) {
+				isCompleted = true;
+			}
+			else {
+				isCompleted = false;
+			}
+			eventOrder = ss.str();
 			return orderInfo;
 		}
 
 		void exchange_native_contract::checkMatchedOrders(exchange::FillOrder& takerFillOrder, std::vector<exchange::FillOrder>& makerFillOrders) {
 			std::string takerAddr;
 			std::string takerOrderId;
-
-			const auto& orderInfo = checkOrder(takerFillOrder, takerAddr, takerOrderId);
+			std::string takerEventOrder;
+			bool isCompleted = false;
+			const auto& orderInfo = checkOrder(takerFillOrder, takerAddr, takerOrderId, takerEventOrder, isCompleted);
 
 			const auto& asset1 = orderInfo.purchaseAsset;
 			const auto& asset2 = orderInfo.payAsset;
@@ -371,12 +397,50 @@ namespace uvm {
 			int64_t totalMakerSpentNum = 0;
 
 			std::string takerType = orderInfo.type;
+			/*
+			{"OrderType":"sell","putOnOrder":"128,5,test11,2a96ff7713b7e8c6e34dab2
+			de5c2a5844bbc60435b12da5495324d19f0d61853","exchangPair":"HC/COIN","transactionB
+			uys":["0,0,test12,bd3bbc9fbc9a09eb43fd952cac840104f4fa0c9f54795e14af8938fff5a10f
+			de,125,6,125,6"],"transactionSells":["0,0,test11,2a96ff7713b7e8c6e34dab2de5c2a5
+			844bbc60435b12da5495324d19f0d61853,125,6,125,6"],"transactionResult":"FULL_COM
+			PLETED","totalExchangeBaseAmount":125,"totalExchangeQuoteAmount":6}
+			*/
+			bool takerIsBuy = false;
+			if (takerOrderType == "buy") {
+				takerIsBuy = true;
+			}
+			jsondiff::JsonObject event_arg;
+			jsondiff::JsonArray transactionBuys;
+			jsondiff::JsonArray transactionSells;
+			event_arg["OrderType"] = takerOrderType;
+			//char temp[1024] = {0};
+			std::string eventName;
+			std::stringstream ss;
+			if (takerIsBuy) {
+				eventName = "BuyOrderPutedOn";
+				transactionBuys.push_back(takerEventOrder);
+				event_arg["totalExchangeBaseAmount"] = takerGetNum;
+				event_arg["totalExchangeQuoteAmount"] = takerSpentNum;
+				event_arg["exchangPair"] = orderInfo.purchaseAsset+","+ orderInfo.payAsset;
+				ss << orderInfo.purchaseNum << "," << orderInfo.payNum << "," << takerAddr << "," << takerOrderId;
+				}
+			else {
+				eventName = "SellOrderPutedOn";
+				transactionSells.push_back(takerEventOrder);
+				event_arg["totalExchangeBaseAmount"] = takerSpentNum;
+				event_arg["totalExchangeQuoteAmount"] = takerGetNum;
+				event_arg["exchangPair"] = orderInfo.payAsset + "," + orderInfo.purchaseAsset;
+				ss << orderInfo.payNum << "," << orderInfo.purchaseNum << "," << takerAddr << "," << takerOrderId;
+			}
+			event_arg["putOnOrder"] = ss.str();
+			event_arg["transactionResult"] = isCompleted?"FULL_COMPLETED":"PARTLY_COMPLETED";
 
 			for (auto it = makerFillOrders.begin(); it != makerFillOrders.end(); it++) {
 				std::string address;
 				std::string id;
-
-				const auto& orderInfo = checkOrder(*it, address, id);
+				std::string eventOrder;
+				bool isCompleted = false;
+				const auto& orderInfo = checkOrder(*it, address, id, eventOrder, isCompleted);
 
 				if (asset1 != orderInfo.payAsset || asset2 != orderInfo.purchaseAsset) {
 					throw_error("asset not match");
@@ -387,11 +451,23 @@ namespace uvm {
 
 				totalMakerGetNum = it->getNum + totalMakerGetNum;
 				totalMakerSpentNum = it->spentNum + totalMakerSpentNum;
+
+				if (takerIsBuy) {
+					transactionSells.push_back(eventOrder);
+				}
+				else {
+					transactionBuys.push_back(eventOrder);
+				}
 			}
 
 			if (totalMakerGetNum != takerSpentNum || totalMakerSpentNum != takerGetNum) {
 				throw_error("total exchange num not match");
 			}
+			event_arg["transactionSells"] = transactionSells;
+			event_arg["transactionBuys"] = transactionBuys;
+			const auto& argstr = uvm::util::json_ordered_dumps(event_arg);
+			printf("%s",argstr.c_str());
+			emit_event(eventName, uvm::util::json_ordered_dumps(event_arg));
 		}
 
 		// arg format: feeReceiver,percentage
@@ -428,7 +504,6 @@ namespace uvm {
 			return;
 		}
 
-
 		//order: {orderInfo:{purchaseAsset:"HC",purchaseNum:20,payAsset:"HX",payNum:100,nounce:"13df",relayer:"HXsrsfsfe3",fee:0.0001},sig:"rsowor233"}
 		//{takerOrder:{},takerPayNum:80,fillOrders:[{order:"order_hex_str",fillNum:30},{order:order2,fillNum:50}]
 		void exchange_native_contract::fillOrder_api(const std::string& api_name, const std::string& api_args_utf8)
@@ -441,11 +516,8 @@ namespace uvm {
 				throw_error("args not map");
 			}
 			exchange::MatchInfo matchinfo;
-
 			fc::from_variant(args, matchinfo);
 			checkMatchedOrders(matchinfo.fillTakerOrder, matchinfo.fillMakerOrders);
-			
-
 			return;
 		}
 
@@ -480,7 +552,6 @@ namespace uvm {
 							o["state"] = CborObject::from_int(0);
 							current_fast_map_set(id, "info", orderInfo);
 							canceledOrderIds.push_back(id);
-
 						}
 						else {
 							CborMapValue m;
@@ -493,10 +564,8 @@ namespace uvm {
 			}
 			const auto& result = fc::json::to_string(canceledOrderIds);
 			set_api_result(result);
-			
 			return;
 		}
-
 
 		void exchange_native_contract::on_deposit_asset_api(const std::string& api_name, const std::string& api_args)
 		{
@@ -528,8 +597,6 @@ namespace uvm {
 			event_arg["symbol"] = symbol;
 			event_arg["amount"] = amount;
 			emit_event("Deposited", uvm::util::json_ordered_dumps(event_arg));
-
-
 		}
 
 		//args:amount,symbol
@@ -614,7 +681,6 @@ namespace uvm {
 			}
 			return;
 		}
-
 
 		void exchange_native_contract::invoke(const std::string& api_name, const std::string& api_arg) {
 			std::map<std::string, std::function<void(const std::string&, const std::string&)>> apis = {
