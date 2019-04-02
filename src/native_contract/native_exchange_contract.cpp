@@ -228,13 +228,17 @@ namespace uvm {
 			if (spentNum > payNum) {
 				throw_error("spentNum must < payNum");
 			}
-
-			////
-			auto feeReceiver = orderInfo.relayer;
-			if (feeReceiver == "") {
+			std::string feeReceiver = orderInfo.relayer;
+			if (orderInfo.relayer == "") {
 				feeReceiver = get_string_current_contract_storage("feeReceiver");
 			}
-
+			else {
+				if (!is_valid_address(orderInfo.relayer)) {
+					throw_error("relayer is invalid address");
+				}
+				feeReceiver = orderInfo.relayer;
+			}
+			
 			int64_t spentFee = safe_number_to_int64(safe_number_multiply(safe_number_create(spentNum), safe_number_create(orderInfo.fee)));
 			if (spentFee < 0) {
 				throw_error("spentFee must >= 0");
@@ -429,7 +433,7 @@ namespace uvm {
 				transactionSells.push_back(takerEventOrder);
 				event_arg["totalExchangeBaseAmount"] = takerSpentNum;
 				event_arg["totalExchangeQuoteAmount"] = takerGetNum;
-				event_arg["exchangPair"] = orderInfo.payAsset + "," + orderInfo.purchaseAsset;
+				event_arg["exchangPair"] = orderInfo.payAsset + "/" + orderInfo.purchaseAsset;
 				ss << orderInfo.payNum << "," << orderInfo.purchaseNum << "," << takerAddr << "," << takerOrderId;
 			}
 			event_arg["putOnOrder"] = ss.str();
@@ -470,27 +474,29 @@ namespace uvm {
 			emit_event(eventName, uvm::util::json_ordered_dumps(event_arg));
 		}
 
-		// arg format: feeReceiver,percentage
+		// arg format: feeReceiver
 		void exchange_native_contract::init_config_api(const std::string& api_name, const std::string& api_arg)
 		{
 			check_admin();
 			if (get_storage_state() != not_inited_state_of_exchange_contract)
 				throw_error("this exchange contract inited before");
-			std::vector<std::string> parsed_args;
-			boost::split(parsed_args, api_arg, [](char c) {return c == ','; });
-			if (parsed_args.size() != 2)
-				throw_error("argument format error, need format: feeReceiver,percentage");
-			auto feeReceiver = parsed_args[0];
+			//std::vector<std::string> parsed_args;
+			//boost::split(parsed_args, api_arg, [](char c) {return c == ','; });
+			//if (parsed_args.size() != 2)
+			//	throw_error("argument format error, need format: feeReceiver,percentage");
+			auto feeReceiver = api_arg;
 			boost::trim(feeReceiver);
-			auto percentage = parsed_args[1];
-			boost::trim(percentage);
-			if (feeReceiver.empty() || percentage.empty())
-				throw_error("argument format error, need format: feeReceiver,percentage");
-			if (!is_numeric(percentage))
-				throw_error("argument format error, percentage is not numeric");
-
+			//auto percentage = parsed_args[1];
+			//boost::trim(percentage);
+			if (feeReceiver.empty())
+				throw_error("feeReceiver is empty");
+			//if (!is_numeric(percentage))
+			//	throw_error("argument format error, percentage is not numeric");
+			if (!is_valid_address(feeReceiver)) {
+				throw_error("feeReceiver is invalid address");
+			}
 			set_current_contract_storage("feeReceiver", CborObject::from_string(feeReceiver));
-			set_current_contract_storage("percentage", CborObject::from_string(percentage));
+			//set_current_contract_storage("percentage", CborObject::from_string(percentage));
 			set_current_contract_storage("state", CborObject::from_string(common_state_of_exchange_contract));
 			emit_event("Inited", feeReceiver);
 			return;
@@ -517,10 +523,14 @@ namespace uvm {
 			exchange::MatchInfo matchinfo;
 			fc::from_variant(args, matchinfo);
 			checkMatchedOrders(matchinfo.fillTakerOrder, matchinfo.fillMakerOrders);
+			set_api_result("OK");
 			return;
 		}
 
 		void exchange_native_contract::cancelOrders_api(const std::string& api_name, const std::string& api_args) {
+			if (get_storage_state() != common_state_of_exchange_contract)
+				throw_error("this exchange contract state is not common");
+
 			std::vector<std::string> canceledOrderIds;
 			
 			auto args = fc::json::from_string(api_args);
@@ -568,6 +578,9 @@ namespace uvm {
 
 		void exchange_native_contract::on_deposit_asset_api(const std::string& api_name, const std::string& api_args)
 		{
+			if (get_storage_state() != common_state_of_exchange_contract)
+				throw_error("this exchange contract state is not common");
+
 			auto args = fc::json::from_string(api_args);
 			if (!args.is_object()) {
 				throw_error("args not map");
@@ -600,6 +613,9 @@ namespace uvm {
 		//args:amount,symbol
 		void exchange_native_contract::withdraw_api(const std::string& api_name, const std::string& api_arg)
 		{
+			if (get_storage_state() != common_state_of_exchange_contract)
+				throw_error("this exchange contract state is not common");
+
 			std::vector<std::string> parsed_args;
 			boost::split(parsed_args, api_arg, [](char c) {return c == ','; });
 			if (parsed_args.size() != 2)

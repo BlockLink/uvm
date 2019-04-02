@@ -113,6 +113,8 @@ namespace simplechain {
 		virtual void set_api_result(const std::string& api_result) {
 			_contract_invoke_result.api_result = api_result;
 		}
+
+		virtual bool is_valid_address(const std::string& addr);
 	};
 
 	class native_contract_finder

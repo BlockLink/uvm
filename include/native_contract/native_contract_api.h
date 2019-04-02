@@ -79,6 +79,9 @@ namespace uvm {
 			virtual void set_api_result(const std::string& api_result) {
 				get_proxy()->set_api_result(api_result);
 			}
+			virtual bool is_valid_address(const std::string& addr) {
+				return get_proxy()->is_valid_address(addr);
+			}
 		};
 	}
 }

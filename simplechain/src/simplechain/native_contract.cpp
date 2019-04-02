@@ -172,6 +172,13 @@ namespace simplechain {
 		_contract_invoke_result.invoker = caller_address();
 	}
 
+	bool native_contract_store::is_valid_address(const std::string& addr) {
+		if (addr.compare(0, 2, "SL") == 0 || addr.compare(0, 3, "CON") == 0) {
+			return true;
+		}
+		return false;
+	}
+
 	// class native_contract_finder
 
 	bool native_contract_finder::has_native_contract_with_key(const std::string& key)
