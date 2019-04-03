@@ -238,13 +238,19 @@ namespace uvm {
 				}
 				feeReceiver = orderInfo.relayer;
 			}
+			if (!is_numeric(orderInfo.fee)) {
+				throw_error("invalid fee percentage");
+			}
 			
 			int64_t spentFee = safe_number_to_int64(safe_number_multiply(safe_number_create(spentNum), safe_number_create(orderInfo.fee)));
+			if (spentFee == 0) {
+				spentFee = 1;
+			}
 			if (spentFee < 0) {
-				throw_error("spentFee must >= 0");
+				throw_error("fee percentage must positive");
 			}
 			if (spentFee >= spentNum) {
-				throw_error("spentFee must < spentNum");
+				throw_error("fee percentage must < 100%");
 			}
 
 			bool isBuyOrder = false;
@@ -257,9 +263,10 @@ namespace uvm {
 			else {
 				throw_error("order type wrong");
 			}
-
-			const auto& a = safe_number_multiply(safe_number_create(spentNum), safe_number_create(purchaseNum));
-			const auto& b = safe_number_multiply(safe_number_create(getNum), safe_number_create(payNum));
+			const auto& sn_purchaseNum = safe_number_create(purchaseNum);
+			const auto& sn_payNum = safe_number_create(payNum);
+			const auto& a = safe_number_multiply(safe_number_create(spentNum), sn_purchaseNum);
+			const auto& b = safe_number_multiply(safe_number_create(getNum), sn_payNum);
 			
 			if (safe_number_gt(a, b)) {  
 				throw_error("fill order price not satify");
@@ -293,7 +300,7 @@ namespace uvm {
 						throw_error("wrong order state");
 					}
 				}
-				if (isBuyOrder) {
+				/*if (isBuyOrder) {
 					if (o.find("gotNum") != o.end()) {
 						lastGotNum = o["gotNum"]->force_as_int();
 						auto remainNum = purchaseNum - lastGotNum;
@@ -305,7 +312,7 @@ namespace uvm {
 						if (o.find("spentNum") == o.end()) {
 							throw_error("wrong order info stored");
 						}
-						auto lastSpentNum = o["spentNum"]->force_as_int();
+						lastSpentNum = o["spentNum"]->force_as_int();
 						o["spentNum"] = CborObject::from_int(lastSpentNum + spentNum);
 					}
 					else {
@@ -313,9 +320,9 @@ namespace uvm {
 						o["spentNum"] = CborObject::from_int(spentNum);
 					}
 				}
-				else {
+				else {*/
 					if (o.find("spentNum") != o.end()) {
-						auto lastSpentNum = o["spentNum"]->force_as_int();
+						lastSpentNum = o["spentNum"]->force_as_int();
 						auto remainNum = payNum - lastSpentNum;
 						if (remainNum < spentNum) {
 							throw_error("order remain not enough");
@@ -332,7 +339,7 @@ namespace uvm {
 						o["gotNum"] = CborObject::from_int(getNum);
 						o["spentNum"] = CborObject::from_int(spentNum);
 					}
-				}
+				//}
 				current_fast_map_set(id, "info", CborObject::create_map(o));
 			}
 			else {
@@ -359,14 +366,33 @@ namespace uvm {
 
 			std::stringstream ss;
 			int64_t baseNum = 0;
+			int64_t quoteNum = 0;
 
 			if (isBuyOrder) {
 				baseNum = purchaseNum - getNum - lastGotNum;
-				ss << baseNum << "," << (payNum - spentNum - lastSpentNum) << "," << addr << "," << id << "," << (lastGotNum + getNum) << "," << (lastSpentNum + spentNum) << "," << getNum << "," << spentNum <<","<< spentFee;
+				quoteNum = payNum - spentNum - lastSpentNum;
+				if (baseNum > 0) {
+					//quoteNum = baseNum * (payNum / purchaseNum);
+					quoteNum = safe_number_to_int64(safe_number_multiply(safe_number_create(baseNum), safe_number_div(sn_payNum,sn_purchaseNum)));
+					
+				}
+				ss << baseNum << "," << quoteNum << "," << addr << "," << id << "," << (lastGotNum + getNum) << "," << (lastSpentNum + spentNum) << "," << getNum << "," << spentNum <<","<< spentFee;
 				}
 			else {
 				baseNum = payNum - spentNum - lastSpentNum;
-				ss << baseNum << "," << (purchaseNum - getNum - lastGotNum) << "," << addr << "," << id << "," << (lastSpentNum + spentNum) << "," << (lastGotNum + getNum) << "," << spentNum << "," << getNum << "," << spentFee;
+				quoteNum = purchaseNum - getNum - lastGotNum;
+				if (baseNum > 0) {
+					//quoteNum = baseNum * (purchaseNum / payNum);
+					auto sn_quoteNum = safe_number_multiply(safe_number_create(baseNum), safe_number_div(sn_purchaseNum, sn_payNum));
+					quoteNum = safe_number_to_int64(sn_quoteNum);
+					if (!safe_number_eq(sn_quoteNum, safe_number_create(quoteNum))) {
+						quoteNum = quoteNum + 1;
+					}
+					if (quoteNum == 0) {
+						quoteNum = 1;
+					}
+				}
+				ss << baseNum << "," << quoteNum << "," << addr << "," << id << "," << (lastSpentNum + spentNum) << "," << (lastGotNum + getNum) << "," << spentNum << "," << getNum << "," << spentFee;
 				}
 			
 			if (baseNum <= 0) {
@@ -425,7 +451,7 @@ namespace uvm {
 				transactionBuys.push_back(takerEventOrder);
 				event_arg["totalExchangeBaseAmount"] = takerGetNum;
 				event_arg["totalExchangeQuoteAmount"] = takerSpentNum;
-				event_arg["exchangPair"] = orderInfo.purchaseAsset+","+ orderInfo.payAsset;
+				event_arg["exchangPair"] = orderInfo.purchaseAsset+"/"+ orderInfo.payAsset;
 				ss << orderInfo.purchaseNum << "," << orderInfo.payNum << "," << takerAddr << "," << takerOrderId;
 				}
 			else {

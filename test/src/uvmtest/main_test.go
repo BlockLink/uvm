@@ -1346,7 +1346,7 @@ func test0xExchangeContractInSimplechain(t *testing.T, contract1Addr string) {
 		assert.True(t, res.Get("api_result").MustString() == "5000000")
 	}
 	
-	///////////////////////
+	//test fillOrder
 	matchedOrders := makeMatchedOrders(t,accounts[0],accounts[1])
 	str, err := json.Marshal(matchedOrders)
 	assert.True(t, err == nil)
@@ -1358,9 +1358,27 @@ func test0xExchangeContractInSimplechain(t *testing.T, contract1Addr string) {
 	assert.True(t, res.Get("api_result").MustString() == "OK")
 	fmt.Printf("fillOrder Result: %s\n",res.Get("api_result").MustString())
 	simpleChainRPC("generate_block")
-
 	
-
+	//test cancel orders
+	order1 := makeOrder(t,accounts[0]["prik"], "HC", 10, "COIN", 20,"buy")
+    order2 := makeOrder(t,accounts[0]["prik"], "HC", 10, "COIN", 20,"sell")
+	var orders [2]map[string]string
+    orders[0] = order1
+	orders[1] = order2
+	str, err = json.Marshal(orders)
+	assert.True(t, err == nil)
+    apiargs := string(str)
+	
+    print(apiargs)
+	res, err = simpleChainRPC("invoke_contract", accounts[0]["addr"], contract1Addr, "cancelOrders", []string{apiargs}, 0, 0, 50000, 10)
+	assert.True(t, err == nil)
+	str, err = json.Marshal(res)
+	assert.True(t, err == nil)
+	resstr := string(str)
+	fmt.Printf("cancel res:%s\n",resstr)
+	assert.True(t, strings.Contains(resstr,order1["id"]))
+	assert.True(t, strings.Contains(resstr,order2["id"]))
+    simpleChainRPC("generate_block")
 }
 
 func TestNativeExchangeContract(t *testing.T) {
