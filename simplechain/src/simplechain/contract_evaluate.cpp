@@ -231,6 +231,10 @@ namespace simplechain {
 			{
 				throw uvm::core::UvmException(e.what());
 			}
+			catch (boost::exception& e)
+			{
+				throw uvm::core::UvmException("boost exception");
+			}
 			catch (std::exception &e)
 			{
 				if (o.deposit_amount > 0) {
@@ -238,22 +242,6 @@ namespace simplechain {
 				}
 				
 				throw uvm::core::UvmException(e.what());
-			}
-			catch (fc::exception &e)
-			{
-				if (o.deposit_amount > 0) {
-					update_account_asset_balance(o.contract_address, o.deposit_asset_id, (0 - (o.deposit_amount)));
-				}
-
-				throw uvm::core::UvmException(e.to_string());
-			}
-			catch (boost::exception& e)
-			{
-				if (o.deposit_amount > 0) {
-					update_account_asset_balance(o.contract_address, o.deposit_asset_id, (0 - (o.deposit_amount)));
-				}
-				
-				throw uvm::core::UvmException("boost exception");
 			}
 
 			FC_ASSERT(gas_used <= gas_limit && gas_used > 0, "costs of execution can be only between 0 and init_cost");
