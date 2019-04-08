@@ -43,6 +43,10 @@ namespace simplechain {
 				engine->execute_contract_init_by_address(contract_address, "", &result_json_str);
 				invoke_contract_result.api_result = result_json_str;
 			}
+			catch (fc::exception &e)
+			{
+				throw uvm::core::UvmException(e.what());
+			}
 			catch (std::exception &e)
 			{
 				throw uvm::core::UvmException(e.what());
@@ -109,6 +113,10 @@ namespace simplechain {
 				auto native_result = *static_cast<contract_invoke_result*>(native_contract->get_result());
 				native_result.new_contracts = invoke_contract_result.new_contracts;
 				invoke_contract_result = native_result;
+			}
+			catch (fc::exception &e)
+			{
+				throw uvm::core::UvmException(e.what());
 			}
 			catch (const std::exception &e)
 			{
@@ -183,7 +191,9 @@ namespace simplechain {
 					update_account_asset_balance(o.contract_address, o.deposit_asset_id, o.deposit_amount);
 				}
 				auto contract = get_contract_by_address(o.contract_address);
-				FC_ASSERT(contract, "Can't find contract by address");
+				if (!contract) {
+					throw uvm::core::UvmException(std::string("Can't find contract by address ") + o.contract_address);
+				}
 				if (contract->native_contract_key.empty()) {
 					ContractEngineBuilder builder;
 					auto engine = builder.build();
@@ -216,6 +226,10 @@ namespace simplechain {
 
 					gas_used = invoke_contract_result.gas_used;
 				}
+			}
+			catch (fc::exception &e)
+			{
+				throw uvm::core::UvmException(e.what());
 			}
 			catch (std::exception &e)
 			{

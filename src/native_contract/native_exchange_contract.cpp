@@ -208,6 +208,7 @@ namespace uvm {
 
 			}
 			catch (fc::exception e) {
+				printf("exception %s\n", e.what());
 				return "exception";
 			}
 			return "OK";
