@@ -57,7 +57,12 @@ namespace simplechain {
 		return set_contract_storage(contract_address, storage_name, value);
 	}
 
-	void native_contract_store::transfer_to_address(const address& from_contract_address, const address& to_address, const uint32_t asset_id, const uint64_t amount) {
+	void native_contract_store::transfer_to_address(const address& from_contract_address, const address& to_address, const std::string& asset_symbol, const uint64_t amount) {
+		auto a = _evaluate->get_chain()->get_asset_by_symbol(asset_symbol);
+		if (a==nullptr) {
+			throw_error(std::string("invalid asset_symbol ") + asset_symbol);
+		}
+		auto asset_id = a->asset_id;
 		bool contract_balance_pair_found = false;
 		bool to_pair_found = false;
 		for (auto& p : _contract_invoke_result.account_balances_changes) {
@@ -165,6 +170,13 @@ namespace simplechain {
 
 	void native_contract_store::set_invoke_result_caller() {
 		_contract_invoke_result.invoker = caller_address();
+	}
+
+	bool native_contract_store::is_valid_address(const std::string& addr) {
+		if (addr.compare(0, 2, "SL") == 0 || addr.compare(0, 3, "CON") == 0) {
+			return true;
+		}
+		return false;
 	}
 
 	// class native_contract_finder

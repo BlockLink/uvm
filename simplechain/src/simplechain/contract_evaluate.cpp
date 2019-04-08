@@ -236,7 +236,24 @@ namespace simplechain {
 				if (o.deposit_amount > 0) {
 					update_account_asset_balance(o.contract_address, o.deposit_asset_id, (0 - (o.deposit_amount)));
 				}
+				
 				throw uvm::core::UvmException(e.what());
+			}
+			catch (fc::exception &e)
+			{
+				if (o.deposit_amount > 0) {
+					update_account_asset_balance(o.contract_address, o.deposit_asset_id, (0 - (o.deposit_amount)));
+				}
+
+				throw uvm::core::UvmException(e.to_string());
+			}
+			catch (boost::exception& e)
+			{
+				if (o.deposit_amount > 0) {
+					update_account_asset_balance(o.contract_address, o.deposit_asset_id, (0 - (o.deposit_amount)));
+				}
+				
+				throw uvm::core::UvmException("boost exception");
 			}
 
 			FC_ASSERT(gas_used <= gas_limit && gas_used > 0, "costs of execution can be only between 0 and init_cost");
@@ -246,12 +263,13 @@ namespace simplechain {
 			invoke_contract_result.gas_used = gas_count;
 
 		}
-		catch (const std::exception& e)
+		catch (uvm::core::UvmException& e)
 		{
 			has_error = true;
 			undo_contract_effected();
 			std::cerr << e.what() << std::endl;
 			invoke_contract_result.error = e.what();
+			invoke_contract_result.exec_succeed = false;
 		}
 		return std::make_shared<contract_invoke_result>(invoke_contract_result);
 	}

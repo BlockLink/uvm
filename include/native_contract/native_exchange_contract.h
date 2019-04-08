@@ -15,6 +15,7 @@ namespace uvm {
 				std::string nonce;
 				std::string relayer;
 				std::string fee;
+				std::string type; // buy or sell   buy   exchangePair:purchaseAsset/payAsset   sell: exchangePair:payAsset/purchaseAsset
 			};
 			struct Order {
 				std::string orderInfo;
@@ -38,7 +39,7 @@ namespace uvm {
 		private:
 			std::shared_ptr<uvm::contract::native_contract_interface> _proxy;
 			void checkMatchedOrders(exchange::FillOrder& takerFillOrder, std::vector<exchange::FillOrder>& makerFillOrders);
-			exchange::OrderInfo checkOrder(exchange::FillOrder& fillOrder, std::string& addr, std::string& id);
+			exchange::OrderInfo checkOrder(const exchange::FillOrder& fillOrder, std::string& addr, std::string& id, std::string& eventOrder,bool& isCompleted);
 		public:
 			static std::string native_contract_key() { return "exchange"; }
 
