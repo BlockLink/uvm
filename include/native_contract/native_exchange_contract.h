@@ -63,8 +63,10 @@ namespace uvm {
 			void init_config_api(const std::string& api_name, const std::string& api_arg);
 
 			void state_api(const std::string& api_name, const std::string& api_arg);
+			void minFee_api(const std::string& api_name, const std::string& api_arg);
 
 			void fillOrder_api(const std::string& api_name, const std::string& api_arg);
+			void setMinFee_api(const std::string& api_name, const std::string& api_arg);
 
 			void on_deposit_asset_api(const std::string& api_name, const std::string& api_args);
 			void withdraw_api(const std::string& api_name, const std::string& api_arg);

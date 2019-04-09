@@ -12,7 +12,8 @@
 #include <fc/crypto/ripemd160.hpp>
 #include <safenumber/safenumber.h>
 
-
+#define NATIVE_EXCHANGE_ORDER_STATE_CANCELED 0
+#define NATIVE_EXCHANGE_ORDER_STATE_COMPLETED 1
 
 namespace fc {
 	void from_variant(const variant& var, uvm::contract::exchange::OrderInfo& vo) {
@@ -221,6 +222,7 @@ namespace uvm {
 			int64_t payNum = orderInfo.payNum;
 			int64_t getNum = fillOrder.getNum;
 			int64_t spentNum = fillOrder.spentNum;
+			int64_t minFee = 0;
 
 			if (purchaseNum <= 0 || payNum <= 0 || getNum <= 0 || spentNum <= 0) {
 				throw_error("num must > 0");
@@ -243,13 +245,17 @@ namespace uvm {
 			}
 			
 			int64_t spentFee = safe_number_to_int64(safe_number_multiply(safe_number_create(spentNum), safe_number_create(orderInfo.fee)));
-			if (spentFee == 0) {
-				spentFee = 1;
+			const auto& temp_minFee = current_fast_map_get(orderInfo.payAsset, "minFee");
+			if (temp_minFee->is_integer()) {
+				minFee = temp_minFee->force_as_int();
 			}
 			if (spentFee < 0) {
 				throw_error("fee percentage must positive");
 			}
-			if (spentFee >= spentNum) {
+			else if (spentFee < minFee) {
+				spentFee = minFee;
+			}
+			else if (spentFee >= spentNum) {
 				throw_error("fee percentage must < 100%");
 			}
 
@@ -289,11 +295,11 @@ namespace uvm {
 			if (orderStore->is_map()) {
 				auto o = orderStore->as_map();
 				if (o.find("state") != o.end()) {
-					auto state = o["state"]->force_as_int(); //???
-					if (state == 0) {
+					auto state = o["state"]->force_as_int(); 
+					if (state == NATIVE_EXCHANGE_ORDER_STATE_CANCELED) {
 						throw_error("order has been canceled");
 					}
-					else if (state == 1) {
+					else if (state == NATIVE_EXCHANGE_ORDER_STATE_COMPLETED) {
 						throw_error("order has been completely filled");
 					}
 					else {
@@ -536,6 +542,46 @@ namespace uvm {
 			return;
 		}
 
+		//api_arg: asset_name
+		void exchange_native_contract::minFee_api(const std::string& api_name, const std::string& api_arg)
+		{
+			int64_t minFee = 0;
+			const auto& temp_minFee = current_fast_map_get(api_arg, "minFee");
+			if (temp_minFee->is_integer()) {
+				minFee = temp_minFee->force_as_int();
+			}
+			set_api_result(fc::to_string(minFee));
+			return ;
+		}
+
+		//api_arg: asset_symbol,minFee
+		void exchange_native_contract::setMinFee_api(const std::string& api_name, const std::string& api_arg)
+		{
+			if (get_storage_state() != common_state_of_exchange_contract)
+				throw_error("this exchange contract state is not common");
+
+			std::vector<std::string> parsed_args;
+			boost::split(parsed_args, api_arg, [](char c) {return c == ','; });
+			if (parsed_args.size() != 2)
+				throw_error("argument format error, need format: asset_symbol,minFee");
+
+			const auto& asset_symbol = parsed_args[0];
+			if (asset_symbol.empty()) {
+				throw_error("symbol is empty");
+			}
+
+			if (!is_integral(parsed_args[1]))
+				throw_error("argument format error, minFee must be integral");
+
+			int64_t minFee = fc::to_int64(parsed_args[1]);
+
+			if (minFee < 0) {
+				throw_error("amount must >= 0");
+			}			
+			current_fast_map_set(asset_symbol, "minFee", CborObject::from_int(minFee));
+			return;
+		}
+
 		//order: {'spentNum': 5, 'getNum': 49, 'order': {'sig': u'20634c5058e1eaa0bb89109cea606b8f3384d4b30b6a74c1009e9a02950108ff0a4fc6d38071974d415403bcd3fa2b4a0d61b707a934e7cf9a1c4f768095a46bae', 'id': u'a406b62974e79044432363d7c609d1f14ccff5f9f94e2c54ce75778ed1a3b7d3', 'orderInfo': '{"nonce": "2019-04-02 14:23:23.906000 50", "purchaseAsset": "COIN", "fee": "0.1", "payNum": 10, "relayer": "SSS", "payAsset": "HC", "purchaseNum": 98, "type": "sell"}'}}
 		void exchange_native_contract::fillOrder_api(const std::string& api_name, const std::string& api_args_utf8)
 		{
@@ -724,13 +770,15 @@ namespace uvm {
 
 		void exchange_native_contract::invoke(const std::string& api_name, const std::string& api_arg) {
 			std::map<std::string, std::function<void(const std::string&, const std::string&)>> apis = {
-				{ "init", std::bind(&exchange_native_contract::init_api, this, std::placeholders::_1, std::placeholders::_2) },
+			{ "init", std::bind(&exchange_native_contract::init_api, this, std::placeholders::_1, std::placeholders::_2) },
 			{ "init_config", std::bind(&exchange_native_contract::init_config_api, this, std::placeholders::_1, std::placeholders::_2) },
 			{ "fillOrder", std::bind(&exchange_native_contract::fillOrder_api, this, std::placeholders::_1, std::placeholders::_2) },
 			{ "cancelOrders", std::bind(&exchange_native_contract::cancelOrders_api, this, std::placeholders::_1, std::placeholders::_2) },
 			{ "balanceOf", std::bind(&exchange_native_contract::balanceOf_api, this, std::placeholders::_1, std::placeholders::_2) },
 			{ "getOrder", std::bind(&exchange_native_contract::getOrder_api, this, std::placeholders::_1, std::placeholders::_2) },
 			{ "state", std::bind(&exchange_native_contract::state_api, this, std::placeholders::_1, std::placeholders::_2) },
+			{ "minFee", std::bind(&exchange_native_contract::minFee_api, this, std::placeholders::_1, std::placeholders::_2) },
+			{ "setMinFee", std::bind(&exchange_native_contract::setMinFee_api, this, std::placeholders::_1, std::placeholders::_2) },
 			{ "on_deposit_asset", std::bind(&exchange_native_contract::on_deposit_asset_api, this, std::placeholders::_1, std::placeholders::_2) },
 			{ "withdraw", std::bind(&exchange_native_contract::withdraw_api, this, std::placeholders::_1, std::placeholders::_2) },
 			};
