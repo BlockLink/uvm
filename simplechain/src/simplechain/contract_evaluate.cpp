@@ -104,7 +104,7 @@ namespace simplechain {
 			this->caller_address = o.caller_address;
 
 			auto native_contract = native_contract_finder::create_native_contract_by_key(this, o.template_key, contract_address);
-			FC_ASSERT(native_contract);
+			FC_ASSERT(native_contract, "native contract with this key not found");
 
 			store_contract(contract_address, contract);
 			try
@@ -209,7 +209,7 @@ namespace simplechain {
 					// native contract
 					this->caller_address = o.caller_address;
 					auto native_contract = native_contract_finder::create_native_contract_by_key(this, contract->native_contract_key, o.contract_address);
-					FC_ASSERT(native_contract);
+					FC_ASSERT(native_contract, "native contract with the key not found");
 					native_contract->invoke(o.contract_api, first_contract_arg);
 					invoke_contract_result = *static_cast<contract_invoke_result*>(native_contract->get_result());
 					// count and add storage gas to gas_used
@@ -250,6 +250,9 @@ namespace simplechain {
 			invoke_contract_result.exec_succeed = true;
 			invoke_contract_result.gas_used = gas_count;
 
+		}
+		catch (fc::exception& e) {
+			throw uvm::core::UvmException(e.what());
 		}
 		catch (uvm::core::UvmException& e)
 		{
