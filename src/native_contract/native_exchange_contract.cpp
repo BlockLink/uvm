@@ -367,7 +367,12 @@ namespace uvm {
 			current_fast_map_set(addr, orderInfo.purchaseAsset, CborObject::from_int(bal + getNum));
 			//fee
 			if (spentFee > 0) {
-				current_fast_map_set(feeReceiver, orderInfo.payAsset, CborObject::from_int(spentFee));
+				balance = current_fast_map_get(feeReceiver, orderInfo.payAsset);
+				int64_t feeReceiverBal = 0;
+				if (balance->is_integer()) {
+					bal = balance->force_as_int();
+				}
+				current_fast_map_set(feeReceiver, orderInfo.payAsset, CborObject::from_int(feeReceiverBal + spentFee));
 			}
 
 			std::stringstream ss;
