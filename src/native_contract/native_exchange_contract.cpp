@@ -275,7 +275,7 @@ namespace uvm {
 			//check balance
 			auto balance = current_fast_map_get(addr, orderInfo.payAsset);
 			if (!balance->is_integer()) {
-				throw_error("no balance");
+				throw_error(std::string("no balance of user ") + addr);
 			}
 			auto bal = balance->force_as_int();
 			if (bal < (spentNum+ spentFee)) {   //add fee
