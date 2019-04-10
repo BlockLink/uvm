@@ -87,6 +87,7 @@ namespace simplechain {
 	struct transaction_receipt {
 		std::string tx_id;
 		std::vector<contract_event_notify_info> events;
+		bool exec_succeed = false;
 
 		fc::mutable_variant_object to_json() const;
 	};
