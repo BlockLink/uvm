@@ -99,6 +99,7 @@ namespace simplechain {
 		for (const auto& p : events) {
 			tx_receipt->events.push_back(p);
 		}
+		tx_receipt->exec_succeed = this->exec_succeed;
 		for (const auto& p : account_balances_changes) {
 			auto& addr = p.first.first;
 			auto asset_id = p.first.second;
