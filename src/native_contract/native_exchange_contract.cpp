@@ -453,6 +453,7 @@ namespace uvm {
 			jsondiff::JsonObject event_arg;
 			jsondiff::JsonArray transactionBuys;
 			jsondiff::JsonArray transactionSells;
+			jsondiff::JsonArray changedOrders;
 			event_arg["OrderType"] = takerOrderType;
 			//char temp[1024] = {0};
 			std::string eventName;
@@ -476,6 +477,7 @@ namespace uvm {
 			event_arg["putOnOrder"] = ss.str();
 			event_arg["transactionResult"] = isCompleted?"FULL_COMPLETED":"PARTLY_COMPLETED";
 
+			changedOrders.push_back(takerOrderId);
 			for (auto it = makerFillOrders.begin(); it != makerFillOrders.end(); it++) {
 				std::string address;
 				std::string id;
@@ -499,6 +501,7 @@ namespace uvm {
 				else {
 					transactionBuys.push_back(eventOrder);
 				}
+				changedOrders.push_back(id);
 			}
 
 			if (totalMakerGetNum != takerSpentNum || totalMakerSpentNum != takerGetNum) {
@@ -506,9 +509,12 @@ namespace uvm {
 			}
 			event_arg["transactionSells"] = transactionSells;
 			event_arg["transactionBuys"] = transactionBuys;
-			const auto& argstr = uvm::util::json_ordered_dumps(event_arg);
-			printf("%s",argstr.c_str());
+			
 			emit_event(eventName, uvm::util::json_ordered_dumps(event_arg));
+
+			emit_event("FillOrders", uvm::util::json_ordered_dumps(changedOrders));
+
+
 		}
 
 		// arg format: feeReceiver
@@ -650,6 +656,10 @@ namespace uvm {
 			}
 			const auto& result = fc::json::to_string(canceledOrderIds);
 			set_api_result(result);
+
+			if (canceledOrderIds.size() > 0) {
+				emit_event("CancelOrders", result);
+			}
 			return;
 		}
 
