@@ -724,8 +724,8 @@ namespace uvm {
 		static std::string getAddrByPubk(const std::string& pubk_hex) {
 			std::string addr = "";
 			fc::ecc::public_key_data pubkey_chars;
-			if (pubk_hex.size() <= (2 * pubkey_chars.size())) {
-				fc::from_hex(pubk_hex, pubkey_chars.data, pubk_hex.size() / 2);
+			if (pubk_hex.size() == (2 * pubkey_chars.size())) {
+				fc::from_hex(pubk_hex, pubkey_chars.data, pubkey_chars.size());
 				const auto& pubk = fc::ecc::public_key(pubkey_chars);
 				if (pubk.valid() && global_uvm_chain_api) {
 					addr = global_uvm_chain_api->pubkey_to_address_string(pubk);
