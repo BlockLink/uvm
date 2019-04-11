@@ -60,13 +60,13 @@ namespace uvm {
 		}
 
 		std::set<std::string> exchange_native_contract::apis() const {
-			return { "init", "init_config", "fillOrder","cancelOrders","balanceOf","getOrder","withdraw" };
+			return { "init", "init_config", "fillOrder","cancelOrders","setMinFee","withdraw", "state", "feeReceiver","balanceOf","getOrder", "minFee","balanceOfPubk","getAddrByPubk" };
 		}
 		std::set<std::string> exchange_native_contract::offline_apis() const {
-			return { "name", "state", "feeReceiver","balanceOf","getOrder" };
+			return { "state", "feeReceiver","balanceOf","getOrder", "minFee","balanceOfPubk","getAddrByPubk"};
 		}
 		std::set<std::string> exchange_native_contract::events() const {
-			return { "Inited", "OrderCanceled", "OrderFilled","Deposited","Withdrawed" };
+			return { "Inited", "OrderCanceled", "BuyOrderPutedOn","SellOrderPutedOn","Deposited","Withdrawed","CancelOrders","FillOrders" };
 		}
 
 		static const std::string not_inited_state_of_exchange_contract = "NOT_INITED";
