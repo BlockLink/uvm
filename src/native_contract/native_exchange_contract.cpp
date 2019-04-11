@@ -72,55 +72,6 @@ namespace uvm {
 		static const std::string not_inited_state_of_exchange_contract = "NOT_INITED";
 		static const std::string common_state_of_exchange_contract = "COMMON";
 
-		cbor::CborObjectP order_variant_to_cbor(fc::mutable_variant_object v) {
-			CborMapValue order;
-			CborMapValue orderInfo;
-
-			if (v.find("orderInfo") == v.end() || (!v["orderInfo"].is_object())) {
-				return nullptr;
-			}
-			const auto& infov = v["orderInfo"].as<fc::mutable_variant_object>();
-
-			orderInfo["purchaseAsset"] = CborObject::from_string(infov["purchaseAsset"].as_string());
-			orderInfo["purchaseNum"] = CborObject::from_int(infov["purchaseNum"].as_int64());
-			orderInfo["payAsset"] = CborObject::from_string(infov["payAsset"].as_string());
-			orderInfo["payNum"] = CborObject::from_int(infov["payNum"].as_int64());
-			orderInfo["nonce"] = CborObject::from_string(infov["nonce"].as_string());
-			orderInfo["relayer"] = CborObject::from_string(infov["relayer"].as_string());
-			orderInfo["fee"] = CborObject::from_string(infov["fee"].as_string());
-
-			auto orderInfoP = CborObject::create_map(orderInfo);
-			order["orderInfo"] = orderInfoP;
-			order["sig"] = CborObject::from_string(v["sig"].as_string());
-			order["id"] = CborObject::from_string(v["id"].as_string());
-
-			auto orderP = CborObject::create_map(order);
-			return orderP;
-		}
-
-		/*
-		cbor::CborObjectP order_to_cbor(exchange::Order v) {
-			CborMapValue order;
-			CborMapValue orderInfo;
-
-			orderInfo["purchaseAsset"] = CborObject::from_string(v.orderInfo.purchaseAsset);
-			orderInfo["purchaseNum"] = CborObject::from_int(v.orderInfo.purchaseNum);
-			orderInfo["payAsset"] = CborObject::from_string(v.orderInfo.payAsset);
-			orderInfo["payNum"] = CborObject::from_int(v.orderInfo.payNum);
-			orderInfo["nonce"] = CborObject::from_string(v.orderInfo.nonce);
-			orderInfo["relayer"] = CborObject::from_string(v.orderInfo.relayer);
-			orderInfo["fee"] = CborObject::from_string(v.orderInfo.fee);
-
-			auto orderInfoP = CborObject::create_map(orderInfo);
-			order["orderInfo"] = orderInfoP;
-			order["sig"] = CborObject::from_string(v.sig);
-			order["id"] = CborObject::from_string(v.id);
-
-			auto orderP = CborObject::create_map(order);
-			return orderP;
-		}
-		*/
-
 
 		void exchange_native_contract::init_api(const std::string& api_name, const std::string& api_arg)
 		{
@@ -192,7 +143,7 @@ namespace uvm {
 			if (!recoved_public_key.valid()) {
 				return "invalid signature";
 			}
-
+			
 			if (!global_uvm_chain_api) {
 				return "invalid global_uvm_chain_api";
 			}
@@ -770,6 +721,55 @@ namespace uvm {
 			return;
 		}
 
+		static std::string getAddrByPubk(const std::string& pubk_hex) {
+			std::string addr = "";
+			fc::ecc::public_key_data pubkey_chars;
+			if (pubk_hex.size() <= (2 * pubkey_chars.size())) {
+				fc::from_hex(pubk_hex, pubkey_chars.data, pubk_hex.size() / 2);
+				const auto& pubk = fc::ecc::public_key(pubkey_chars);
+				if (pubk.valid() && global_uvm_chain_api) {
+					addr = global_uvm_chain_api->pubkey_to_address_string(pubk);
+				}
+			}
+			return addr;
+		}
+
+		//args: publicKey_hexString
+		void exchange_native_contract::getAddrByPubk_api(const std::string& api_name, const std::string& api_arg)
+		{
+			auto addr = getAddrByPubk(api_arg);
+			if (addr == "") {
+				throw_error("invalid publicKey_hexString");
+			}
+			set_api_result(addr);
+			return;
+		}
+
+		//args: publicKey_hexString,symbol
+		void exchange_native_contract::balanceOfPubk_api(const std::string& api_name, const std::string& api_arg)
+		{
+			std::vector<std::string> parsed_args;
+			boost::split(parsed_args, api_arg, [](char c) {return c == ','; });
+			if (parsed_args.size() != 2)
+				throw_error("argument format error, need format: publicKey_hexString,symbol");
+
+			auto addr = getAddrByPubk(parsed_args[0]);
+			if (addr == "") {
+				throw_error("invalid publicKey_hexString");
+			}
+			
+			auto balance = current_fast_map_get(addr, parsed_args[1]);
+			int64_t bal = 0;
+			if (!balance->is_integer()) {
+				bal = 0;
+			}
+			else {
+				bal = balance->force_as_int();
+			}
+			set_api_result(std::to_string(bal));
+			return;
+		}
+
 		////args: orderId
 		void exchange_native_contract::getOrder_api(const std::string& api_name, const std::string& orderId)
 		{
@@ -796,6 +796,8 @@ namespace uvm {
 			{ "setMinFee", std::bind(&exchange_native_contract::setMinFee_api, this, std::placeholders::_1, std::placeholders::_2) },
 			{ "on_deposit_asset", std::bind(&exchange_native_contract::on_deposit_asset_api, this, std::placeholders::_1, std::placeholders::_2) },
 			{ "withdraw", std::bind(&exchange_native_contract::withdraw_api, this, std::placeholders::_1, std::placeholders::_2) },
+			{ "getAddrByPubk", std::bind(&exchange_native_contract::getAddrByPubk_api, this, std::placeholders::_1, std::placeholders::_2) },
+			{ "balanceOfPubk", std::bind(&exchange_native_contract::balanceOfPubk_api, this, std::placeholders::_1, std::placeholders::_2) }
 			};
 			if (apis.find(api_name) != apis.end())
 			{

@@ -74,7 +74,9 @@ namespace uvm {
 			void balanceOf_api(const std::string& api_name, const std::string& api_arg);
 			void getOrder_api(const std::string& api_name, const std::string& api_arg);
 			void cancelOrders_api(const std::string& api_name, const std::string& api_args);
-			//	void cancelOrder_api(const std::string& api_name, const std::string& api_arg);
+
+			void getAddrByPubk_api(const std::string& api_name, const std::string& api_arg);
+			void balanceOfPubk_api(const std::string& api_name, const std::string& api_arg);
 
 		};
 
