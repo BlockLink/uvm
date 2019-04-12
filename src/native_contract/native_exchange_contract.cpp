@@ -66,7 +66,7 @@ namespace uvm {
 			return { "state", "feeReceiver","balanceOf","getOrder", "minFee","balanceOfPubk","getAddrByPubk"};
 		}
 		std::set<std::string> exchange_native_contract::events() const {
-			return { "Inited", "OrderCanceled", "BuyOrderPutedOn","SellOrderPutedOn","Deposited","Withdrawed","CancelOrders","FillOrders" };
+			return { "Inited", "OrderCanceled", "BuyOrderPutedOn","SellOrderPutedOn","Deposited","Withdrawed","CancelOrders","FillOrders","UserBalanceChange" };
 		}
 
 		static const std::string not_inited_state_of_exchange_contract = "NOT_INITED";
@@ -364,6 +364,28 @@ namespace uvm {
 				isCompleted = false;
 			}
 			eventOrder = ss.str();
+
+
+			//UserBalanceChange event
+			jsondiff::JsonObject event_arg;
+			//spent
+			event_arg["symbol"] = orderInfo.payAsset;
+			event_arg["address"] = addr;
+			event_arg["amount"] = -(spentNum + spentFee);
+			emit_event("UserBalanceChange", uvm::util::json_ordered_dumps(event_arg));
+
+			if (spentFee > 0) {
+				event_arg["symbol"] = orderInfo.payAsset;
+				event_arg["address"] = feeReceiver;
+				event_arg["amount"] = spentFee;
+				emit_event("UserBalanceChange", uvm::util::json_ordered_dumps(event_arg));
+			}
+			
+			event_arg["symbol"] = orderInfo.purchaseAsset;
+			event_arg["address"] = addr;
+			event_arg["amount"] = getNum;
+			emit_event("UserBalanceChange", uvm::util::json_ordered_dumps(event_arg));
+
 			return orderInfo;
 		}
 
@@ -519,6 +541,7 @@ namespace uvm {
 		//api_arg: asset_symbol,minFee
 		void exchange_native_contract::setMinFee_api(const std::string& api_name, const std::string& api_arg)
 		{
+			check_admin();
 			if (get_storage_state() != common_state_of_exchange_contract)
 				throw_error("this exchange contract state is not common");
 
@@ -646,6 +669,11 @@ namespace uvm {
 			event_arg["symbol"] = symbol;
 			event_arg["amount"] = amount;
 			emit_event("Deposited", uvm::util::json_ordered_dumps(event_arg));
+
+			//UserBalanceChange
+			event_arg.erase("from_address");
+			event_arg["address"] = addr;
+			emit_event("UserBalanceChange", uvm::util::json_ordered_dumps(event_arg));
 		}
 
 		//args:amount,symbol
@@ -696,9 +724,14 @@ namespace uvm {
 			jsondiff::JsonObject event_arg;
 			event_arg["symbol"] = symbol;
 			event_arg["to_address"] = caller;
-			event_arg["realAmount"] = amount;
 			event_arg["amount"] = amount;
 			emit_event("Withdrawed", uvm::util::json_ordered_dumps(event_arg));
+
+			//UserBalanceChange
+			event_arg.erase("to_address");
+			event_arg["amount"] = -amount;
+			event_arg["address"] = caller;
+			emit_event("UserBalanceChange", uvm::util::json_ordered_dumps(event_arg));
 		}
 
 
