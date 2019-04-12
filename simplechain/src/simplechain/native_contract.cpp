@@ -138,6 +138,7 @@ namespace simplechain {
 		contract_event_notify_info info;
 		info.event_name = event_name;
 		info.event_arg = event_arg;
+		info.contract_address = contract_address;
 		//info.caller_addr = caller_address->address_to_string();
 		info.block_num = 1 + head_block_num();
 

@@ -87,7 +87,6 @@ namespace simplechain {
 	}
 
 	void contract_invoke_result::apply_pendings(blockchain* chain, const std::string& tx_id) {
-		std::vector<contract_event_notify_info> tx_events;
 		auto tx_receipt = chain->get_tx_receipt(tx_id);
 		if (!tx_receipt) {
 			tx_receipt = std::make_shared<transaction_receipt>();
@@ -195,6 +194,7 @@ namespace simplechain {
 			events_json.push_back(event_data.to_json());
 		}
 		info["events"] = events_json;
+		info["exec_succeed"] = exec_succeed;
 		return info;
 	}
 
