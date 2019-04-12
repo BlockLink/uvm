@@ -4,6 +4,7 @@
 #include <simplechain/simplechain_uvm_api.h>
 #include <iostream>
 #include <fc/io/json.hpp>
+#include <fc/log/logger.hpp>
 #include <cbor_diff/cbor_diff.h>
 
 namespace simplechain {
@@ -294,6 +295,7 @@ namespace simplechain {
 		blk.block_number = blocks.size();
 		blk.prev_block_hash = latest_block().block_hash();
 		blocks.push_back(blk);
+		ilog("block #${block_num} generated", ("block_num", blk.block_number));
 	}
 
 	fc::variant blockchain::get_state() const {

@@ -84,6 +84,7 @@ namespace simplechain {
 		res_json["code"] = rpc_response.error_code;
 		if (rpc_response.has_error) {
 			res_json["message"] = rpc_response.error;
+			res_json["error"] = rpc_response.error;
 		}
 		auto res_json_str = fc::json::to_string(res_json);
 		*response << "HTTP/1.1 200 OK\r\n"
