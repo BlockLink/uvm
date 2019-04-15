@@ -97,6 +97,9 @@ namespace simplechain {
 		virtual void current_transfer_to_address(const std::string& to_address, const std::string& asset_symbol, uint64_t amount) {
 			transfer_to_address(contract_address(), to_address, asset_symbol, amount);
 		}
+		virtual void current_set_on_deposit_asset(const std::string& asset_symbol, uint64_t amount) {
+			transfer_to_address(caller_address(), contract_address(), asset_symbol, amount);
+		}
 		virtual void emit_event(const std::string& event_name, const std::string& event_arg) {
 			emit_event(contract_address(), event_name, event_arg);
 		}

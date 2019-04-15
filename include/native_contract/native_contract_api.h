@@ -52,6 +52,9 @@ namespace uvm {
 			virtual void current_transfer_to_address(const std::string& to_address, const std::string& asset_symbol, uint64_t amount) {
 				get_proxy()->current_transfer_to_address(to_address, asset_symbol, amount);
 			}
+			virtual void current_set_on_deposit_asset(const std::string& asset_symbol, uint64_t amount) {
+				get_proxy()->current_set_on_deposit_asset(asset_symbol, amount);
+			}
 			virtual void emit_event(const std::string& event_name, const std::string& event_arg) {
 				get_proxy()->emit_event(event_name, event_arg);
 			}
