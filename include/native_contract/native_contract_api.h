@@ -85,6 +85,10 @@ namespace uvm {
 			virtual bool is_valid_address(const std::string& addr) {
 				return get_proxy()->is_valid_address(addr);
 			}
+
+			virtual uint32_t get_chain_now() const {
+				return get_proxy()->get_chain_now();
+			}
 		};
 	}
 }

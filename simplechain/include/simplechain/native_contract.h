@@ -118,6 +118,7 @@ namespace simplechain {
 		}
 
 		virtual bool is_valid_address(const std::string& addr);
+		virtual uint32_t get_chain_now() const;
 	};
 
 	class native_contract_finder

@@ -26,6 +26,8 @@ namespace fc {
 		from_variant(obj["relayer"], vo.relayer);
 		from_variant(obj["fee"], vo.fee);
 		from_variant(obj["type"], vo.type);
+		from_variant(obj["expiredAt"], vo.expiredAt);
+		from_variant(obj["version"], vo.version);
 	}
 	void from_variant(const variant& var, uvm::contract::exchange::Order& vo) {
 		auto obj = var.get_object();
@@ -175,6 +177,11 @@ namespace uvm {
 			int64_t spentNum = fillOrder.spentNum;
 			int64_t minFee = 0;
 
+			auto now = get_chain_now();
+			if (orderInfo.expiredAt <= now) {
+				throw_error("order expired, order id:"+id);
+			}
+			
 			if (purchaseNum <= 0 || payNum <= 0 || getNum <= 0 || spentNum <= 0) {
 				throw_error("num must > 0");
 			}

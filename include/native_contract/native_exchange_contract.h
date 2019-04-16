@@ -16,6 +16,8 @@ namespace uvm {
 				std::string relayer;
 				std::string fee;
 				std::string type; // buy or sell   buy   exchangePair:purchaseAsset/payAsset   sell: exchangePair:payAsset/purchaseAsset
+				uint64_t expiredAt; //时间值是指从1970-01-01 00:00:00 +0000 (UTC) 这个时间点开始到当前时间的秒数
+				uint64_t version;
 			};
 			struct Order {
 				std::string orderInfo;

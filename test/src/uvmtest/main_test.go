@@ -1242,6 +1242,8 @@ func makeOrder(t *testing.T, signer_prik string, purchaseAsset string,purchaseNu
     orderInfo["relayer"] = "SL_relayer"
     orderInfo["type"] = ordertype
 	orderInfo["fee"] = "0.1"
+	orderInfo["expiredAt"] = 9999999999
+	orderInfo["version"] = 1
 	
 	str, err := json.Marshal(orderInfo)
 	assert.True(t, err == nil)
@@ -1334,7 +1336,9 @@ func test0xExchangeContractInSimplechain(t *testing.T, contract1Addr string) {
 	for i := 0; i < len(accounts); i++ {
 		num := 5000000
 		user := accounts[i]["addr"]
+		simpleChainRPC("mint", user,0,num+500)
 		simpleChainRPC("invoke_contract", user, contract1Addr, "on_deposit_asset", []string{""}, 0, num, 50000, 10)
+		simpleChainRPC("mint", user,1,num+500)
 		simpleChainRPC("invoke_contract", user, contract1Addr, "on_deposit_asset", []string{""}, 1, num, 50000, 10)
 		simpleChainRPC("generate_block")
 		
