@@ -22,6 +22,8 @@ static UvmStorageTableReadList *get_or_init_storage_table_read_list(lua_State *L
 	if (state_value_node.type != LUA_STATE_VALUE_POINTER || nullptr == state_value_node.value.pointer_value)
 	{
 		list = (UvmStorageTableReadList*)lua_malloc(L, sizeof(UvmStorageTableReadList));
+		if (!list)
+			return nullptr;
 		new (list)UvmStorageTableReadList();
 		UvmStateValue value_to_store;
 		value_to_store.pointer_value = list;
@@ -71,6 +73,8 @@ static struct UvmStorageValue get_last_storage_changed_value(lua_State *L, const
 		// cache the value if it's the first time to read
 		if (!list) {
 			list = (UvmStorageChangeList*)lua_malloc(L, sizeof(UvmStorageChangeList));
+			if (!list)
+				return value;
 			new (list)UvmStorageChangeList();
 			UvmStateValue value_to_store;
 			value_to_store.pointer_value = list;
@@ -569,6 +573,10 @@ bool luaL_commit_storage_changes(lua_State *L)
 	{
 		storage_changelist_node.type = LUA_STATE_VALUE_POINTER;
 		auto *list = (UvmStorageChangeList*)lua_malloc(L, sizeof(UvmStorageChangeList));
+		if (!list)
+		{
+			return false;
+		}
 		new (list)UvmStorageChangeList();
 		UvmStateValue value_to_store;
 		value_to_store.pointer_value = list;
@@ -1017,6 +1025,10 @@ namespace uvm {
 			if (state_value_node.type != LUA_STATE_VALUE_POINTER || nullptr == state_value_node.value.pointer_value)
 			{
 				list = (UvmStorageChangeList*)lua_malloc(L, sizeof(UvmStorageChangeList));
+				if (!list)
+				{
+					return 0;
+				}
 				new (list)UvmStorageChangeList();
 				UvmStateValue value_to_store;
 				value_to_store.pointer_value = list;
