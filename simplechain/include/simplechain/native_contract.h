@@ -60,6 +60,7 @@ namespace simplechain {
 
 		virtual void set_contract_storage(const address& contract_address, const std::string& storage_name, const StorageDataType& value);
 		virtual void set_contract_storage(const address& contract_address, const std::string& storage_name, cbor::CborObjectP cbor_value);
+		virtual void transfer_to_address(const address& from_contract_address, const address& to_address, const std::string& asset_symbol, const uint64_t amount);
 		virtual void fast_map_set(const address& contract_address, const std::string& storage_name, const std::string& key, cbor::CborObjectP cbor_value);
 		virtual StorageDataType get_contract_storage(const address& contract_address, const std::string& storage_name) const;
 		virtual cbor::CborObjectP get_contract_storage_cbor(const address& contract_address, const std::string& storage_name) const;
@@ -93,6 +94,12 @@ namespace simplechain {
 		virtual void set_current_contract_storage(const std::string& storage_name, const StorageDataType& value) {
 			set_contract_storage(contract_address(), storage_name, value);
 		}
+		virtual void current_transfer_to_address(const std::string& to_address, const std::string& asset_symbol, uint64_t amount) {
+			transfer_to_address(contract_address(), to_address, asset_symbol, amount);
+		}
+		virtual void current_set_on_deposit_asset(const std::string& asset_symbol, uint64_t amount) {
+			transfer_to_address(caller_address(), contract_address(), asset_symbol, amount);
+		}
 		virtual void emit_event(const std::string& event_name, const std::string& event_arg) {
 			emit_event(contract_address(), event_name, event_arg);
 		}
@@ -109,6 +116,9 @@ namespace simplechain {
 		virtual void set_api_result(const std::string& api_result) {
 			_contract_invoke_result.api_result = api_result;
 		}
+
+		virtual bool is_valid_address(const std::string& addr);
+		virtual uint32_t get_chain_now() const;
 	};
 
 	class native_contract_finder

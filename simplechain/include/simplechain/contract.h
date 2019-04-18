@@ -64,6 +64,7 @@ namespace simplechain {
 		std::map<std::string, contract_storage_changes_type, std::less<std::string>> storage_changes;
 		std::map<std::pair<address, asset_id_t>, amount_change_type, comparator_for_contract_invoke_result_balance_change> account_balances_changes;
 
+
 		std::map<asset_id_t, share_type, std::less<asset_id_t>> transfer_fees;
 		std::vector<contract_event_notify_info> events;
 		std::vector<std::pair<contract_address_type, contract_object> > new_contracts;
@@ -86,6 +87,7 @@ namespace simplechain {
 	struct transaction_receipt {
 		std::string tx_id;
 		std::vector<contract_event_notify_info> events;
+		bool exec_succeed = false;
 
 		fc::mutable_variant_object to_json() const;
 	};

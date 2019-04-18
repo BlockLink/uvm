@@ -49,6 +49,12 @@ namespace uvm {
 			virtual void set_current_contract_storage(const std::string& storage_name, cbor::CborObjectP cbor_value) {
 				get_proxy()->set_current_contract_storage(storage_name, cbor_value);
 			}
+			virtual void current_transfer_to_address(const std::string& to_address, const std::string& asset_symbol, uint64_t amount) {
+				get_proxy()->current_transfer_to_address(to_address, asset_symbol, amount);
+			}
+			virtual void current_set_on_deposit_asset(const std::string& asset_symbol, uint64_t amount) {
+				get_proxy()->current_set_on_deposit_asset(asset_symbol, amount);
+			}
 			virtual void emit_event(const std::string& event_name, const std::string& event_arg) {
 				get_proxy()->emit_event(event_name, event_arg);
 			}
@@ -75,6 +81,13 @@ namespace uvm {
 			}
 			virtual void set_api_result(const std::string& api_result) {
 				get_proxy()->set_api_result(api_result);
+			}
+			virtual bool is_valid_address(const std::string& addr) {
+				return get_proxy()->is_valid_address(addr);
+			}
+
+			virtual uint32_t get_chain_now() const {
+				return get_proxy()->get_chain_now();
 			}
 		};
 	}

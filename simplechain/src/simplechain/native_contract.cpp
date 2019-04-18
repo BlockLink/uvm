@@ -4,6 +4,7 @@
 #include <simplechain/blockchain.h>
 #include <boost/algorithm/string.hpp>
 #include <jsondiff/jsondiff.h>
+#include <memory>
 
 namespace simplechain {
 	using namespace cbor_diff;
@@ -54,6 +55,36 @@ namespace simplechain {
 		StorageDataType value;
 		value.storage_data = cbor_encode(cbor_value);
 		return set_contract_storage(contract_address, storage_name, value);
+	}
+
+	void native_contract_store::transfer_to_address(const address& from_contract_address, const address& to_address, const std::string& asset_symbol, const uint64_t amount) {
+		auto a = _evaluate->get_chain()->get_asset_by_symbol(asset_symbol);
+		if (a==nullptr) {
+			throw_error(std::string("invalid asset_symbol ") + asset_symbol);
+		}
+		auto asset_id = a->asset_id;
+		bool contract_balance_pair_found = false;
+		bool to_pair_found = false;
+		for (auto& p : _contract_invoke_result.account_balances_changes) {
+			if (p.first.first == from_contract_address && p.first.second == asset_id) {
+				p.second -= int64_t(amount);
+				contract_balance_pair_found = true;
+				continue;
+			}
+			if (p.first.first == to_address && p.first.second == asset_id) {
+				p.second += amount;
+				to_pair_found = true;
+				continue;
+			}
+		}
+		if (!contract_balance_pair_found) {
+			auto p = std::make_pair(from_contract_address, asset_id);
+			_contract_invoke_result.account_balances_changes[p] = - int64_t(amount);
+		}
+		if (!to_pair_found) {
+			auto p = std::make_pair(to_address, asset_id);
+			_contract_invoke_result.account_balances_changes[p] = int64_t(amount);
+		}
 	}
 
 	void native_contract_store::fast_map_set(const address& contract_address, const std::string& storage_name, const std::string& key, cbor::CborObjectP cbor_value) {
@@ -107,6 +138,7 @@ namespace simplechain {
 		contract_event_notify_info info;
 		info.event_name = event_name;
 		info.event_arg = event_arg;
+		info.contract_address = contract_address;
 		//info.caller_addr = caller_address->address_to_string();
 		info.block_num = 1 + head_block_num();
 
@@ -130,6 +162,7 @@ namespace simplechain {
 	}
 
 	void native_contract_store::throw_error(const std::string& err) const {
+		printf("native contract error %s\n", err.c_str());
 		FC_THROW_EXCEPTION(fc::assert_exception, err);
 	}
 
@@ -139,6 +172,17 @@ namespace simplechain {
 
 	void native_contract_store::set_invoke_result_caller() {
 		_contract_invoke_result.invoker = caller_address();
+	}
+
+	bool native_contract_store::is_valid_address(const std::string& addr) {
+		if (addr.compare(0, 2, "SL") == 0 || addr.compare(0, 3, "CON") == 0) {
+			return true;
+		}
+		return false;
+	}
+
+	uint32_t native_contract_store::get_chain_now() const {
+		return _evaluate->get_chain()->latest_block().block_time.sec_since_epoch();
 	}
 
 	// class native_contract_finder

@@ -345,8 +345,12 @@ namespace simplechain {
 				auto address_str = global_uvm_chain_api->pubkey_to_address_string(pubk);
 
 				auto private_key_str = prik.get_secret().str();
+				auto ss = pubk.serialize();
+				auto hex_pubkey = fc::to_hex(ss.data, ss.size());
+				
 				res["prik"] = private_key_str;
 				res["public_key_base58"] = pubk_base58;
+				res["hex_pubkey"] = hex_pubkey;
 				res["addr"] = address_str;
 
 			}

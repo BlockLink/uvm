@@ -43,6 +43,10 @@ namespace simplechain {
 				engine->execute_contract_init_by_address(contract_address, "", &result_json_str);
 				invoke_contract_result.api_result = result_json_str;
 			}
+			catch (fc::exception &e)
+			{
+				throw uvm::core::UvmException(e.what());
+			}
 			catch (std::exception &e)
 			{
 				throw uvm::core::UvmException(e.what());
@@ -100,7 +104,7 @@ namespace simplechain {
 			this->caller_address = o.caller_address;
 
 			auto native_contract = native_contract_finder::create_native_contract_by_key(this, o.template_key, contract_address);
-			FC_ASSERT(native_contract);
+			FC_ASSERT(native_contract, "native contract with this key not found");
 
 			store_contract(contract_address, contract);
 			try
@@ -109,6 +113,10 @@ namespace simplechain {
 				auto native_result = *static_cast<contract_invoke_result*>(native_contract->get_result());
 				native_result.new_contracts = invoke_contract_result.new_contracts;
 				invoke_contract_result = native_result;
+			}
+			catch (fc::exception &e)
+			{
+				throw uvm::core::UvmException(e.what());
 			}
 			catch (const std::exception &e)
 			{
@@ -179,12 +187,14 @@ namespace simplechain {
 					}
 				}
 				std::string result_json_str;
-				if (o.deposit_amount > 0) {
-					update_account_asset_balance(o.contract_address, o.deposit_asset_id, o.deposit_amount);
-				}
 				auto contract = get_contract_by_address(o.contract_address);
-				FC_ASSERT(contract, "Can't find contract by address");
+				if (!contract) {
+					throw uvm::core::UvmException(std::string("Can't find contract by address ") + o.contract_address);
+				}
 				if (contract->native_contract_key.empty()) {
+					if (o.deposit_amount > 0) {
+						update_account_asset_balance(o.contract_address, o.deposit_asset_id, o.deposit_amount);
+					}
 					ContractEngineBuilder builder;
 					auto engine = builder.build();
 					engine->set_caller(o.caller_address, o.caller_address);
@@ -199,9 +209,15 @@ namespace simplechain {
 					// native contract
 					this->caller_address = o.caller_address;
 					auto native_contract = native_contract_finder::create_native_contract_by_key(this, contract->native_contract_key, o.contract_address);
-					FC_ASSERT(native_contract);
+					FC_ASSERT(native_contract, "native contract with the key not found");
 					native_contract->invoke(o.contract_api, first_contract_arg);
+					if (o.deposit_amount > 0) {
+						auto deposit_asset = get_chain()->get_asset(o.deposit_asset_id);
+						FC_ASSERT(deposit_asset);
+						native_contract->current_set_on_deposit_asset(deposit_asset->symbol, o.deposit_amount);
+					}
 					invoke_contract_result = *static_cast<contract_invoke_result*>(native_contract->get_result());
+					
 					// count and add storage gas to gas_used
 					auto storage_gas = invoke_contract_result.count_storage_gas();
 					if (storage_gas < 0) {
@@ -217,11 +233,20 @@ namespace simplechain {
 					gas_used = invoke_contract_result.gas_used;
 				}
 			}
+			catch (fc::exception &e)
+			{
+				throw uvm::core::UvmException(e.what());
+			}
+			catch (boost::exception& e)
+			{
+				throw uvm::core::UvmException("boost exception");
+			}
 			catch (std::exception &e)
 			{
 				if (o.deposit_amount > 0) {
 					update_account_asset_balance(o.contract_address, o.deposit_asset_id, (0 - (o.deposit_amount)));
 				}
+				
 				throw uvm::core::UvmException(e.what());
 			}
 
@@ -232,12 +257,16 @@ namespace simplechain {
 			invoke_contract_result.gas_used = gas_count;
 
 		}
-		catch (const std::exception& e)
+		catch (fc::exception& e) {
+			throw uvm::core::UvmException(e.what());
+		}
+		catch (uvm::core::UvmException& e)
 		{
 			has_error = true;
 			undo_contract_effected();
 			std::cerr << e.what() << std::endl;
 			invoke_contract_result.error = e.what();
+			invoke_contract_result.exec_succeed = false;
 		}
 		return std::make_shared<contract_invoke_result>(invoke_contract_result);
 	}
