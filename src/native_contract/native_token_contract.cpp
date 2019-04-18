@@ -384,7 +384,7 @@ namespace uvm {
 			if (apis.find(api_name) != apis.end())
 			{
 				apis[api_name](api_name, api_arg);
-				set_invoke_result_caller();
+				//set_invoke_result_caller();
 				add_gas(gas_count_for_api_invoke(api_name));
 				return;
 			}

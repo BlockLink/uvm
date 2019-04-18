@@ -28,6 +28,8 @@
 #include <simplechain/blockchain.h>
 #include <simplechain/address_helper.h>
 
+#include <simplechain/native_contract.h>
+
 namespace simplechain {
 	using namespace uvm::lua::api;
 
@@ -985,5 +987,46 @@ namespace simplechain {
 				memcpy(((char*)&bin_addr) + 21, (char*)&checksum._hash[0], 4);
 				return prefix + fc::to_base58(bin_addr.data, sizeof(bin_addr));
 			}
+
+
+
+			//return "" "exchange" "token"
+			std::string SimpleChainUvmChainApi::get_native_contract_key(lua_State *L, const char *contract_address) const {
+				auto evaluator = get_contract_evaluator(L);
+				try {
+					if (evaluator) {
+						auto contract = evaluator->get_contract_by_address(contract_address);
+						if (contract) {
+							return contract->native_contract_key;
+						}
+					}
+					return "";
+				}FC_CAPTURE_AND_LOG((contract_address))
+			}
+
+			std::shared_ptr<uvm::contract::native_contract_interface> SimpleChainUvmChainApi::create_native_contract_by_key(lua_State *L, std::string &native_contract_key,std::string &contract_address) {
+				if (L->invoked_native_contracts->find(contract_address)!= L->invoked_native_contracts->end()) {
+					return L->invoked_native_contracts->at(contract_address);
+				}
+				auto evaluator = get_contract_evaluator(L);
+				try {
+					if (evaluator) {
+						auto native_contract = native_contract_finder::create_native_contract_by_key(evaluator, native_contract_key, contract_address);
+						FC_ASSERT(native_contract, "native contract with the key not found");
+						/*(native_contract->invoke(o.contract_api, first_contract_arg);
+						if (o.deposit_amount > 0) {
+							auto deposit_asset = get_chain()->get_asset(o.deposit_asset_id);
+							FC_ASSERT(deposit_asset);
+							native_contract->current_set_on_deposit_asset(deposit_asset->symbol, o.deposit_amount);
+						}
+						invoke_contract_result = *static_cast<contract_invoke_result*>(native_contract->get_result());
+						*/
+						(*L->invoked_native_contracts)[contract_address] = native_contract;
+						return native_contract;
+					}
+					return nullptr;
+				}FC_CAPTURE_AND_LOG((contract_address))
+			}
+
 
 }

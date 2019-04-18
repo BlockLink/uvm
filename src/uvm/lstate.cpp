@@ -354,6 +354,8 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
 	L->allow_contract_modify = 0;
 	L->contract_table_addresses = new std::list<intptr_t>();
 
+	L->invoked_native_contracts = new std::map<std::string, std::shared_ptr<uvm::contract::native_contract_interface>>();
+
     for (i = 0; i < LUA_NUMTAGS; i++) g->mt[i] = nullptr;
     if (luaD_rawrunprotected(L, f_luaopen, nullptr) != LUA_OK) {
         /* memory allocation error: free partial state */
@@ -372,6 +374,8 @@ LUA_API void lua_close(lua_State *L) {
 	delete L->empty_buffers_positions;
 	delete L->contract_table_addresses;
 	L->contract_table_addresses = nullptr;
+	delete L->invoked_native_contracts;
+	L->invoked_native_contracts = nullptr;
     free(L->malloc_buffer);
     lua_lock(L);
     close_state(L);

@@ -227,6 +227,8 @@ struct lua_State {
 	int evalstacksize;
 
 	int cbor_diff_state; // 0: not_set, 1: true, 2: false
+
+	std::map<std::string, std::shared_ptr<uvm::contract::native_contract_interface>> *invoked_native_contracts;
 };
 
 void *lua_malloc(lua_State *L, size_t size);

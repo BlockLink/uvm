@@ -82,7 +82,7 @@ namespace uvm {
 
 			// fast map storages: canceledOrders, filledOrders
 			set_current_contract_storage("state", CborObject::from_string(not_inited_state_of_exchange_contract));
-			const auto& caller_addr = caller_address_string();
+			const auto& caller_addr = get_call_from_address();
 			FC_ASSERT(!caller_addr.empty(), "caller_address can't be empty");
 			set_current_contract_storage("admin", CborObject::from_string(caller_addr));
 			return;
@@ -90,7 +90,7 @@ namespace uvm {
 
 		std::string exchange_native_contract::check_admin()
 		{
-			const auto& caller_addr = caller_address_string();
+			const auto& caller_addr = get_call_from_address();
 			const auto& admin = get_string_current_contract_storage("admin");
 			if (admin == caller_addr)
 				return admin;
@@ -102,11 +102,6 @@ namespace uvm {
 		{
 			const auto& state = get_string_current_contract_storage("state");
 			return state;
-		}
-
-		std::string exchange_native_contract::get_from_address()
-		{
-			return caller_address_string(); // FIXME: when get from_address, caller maybe other contract
 		}
 
 		static bool is_numeric(std::string number)
@@ -518,6 +513,9 @@ namespace uvm {
 			if (!is_valid_address(feeReceiver)) {
 				throw_error("feeReceiver is invalid address");
 			}
+			if (global_uvm_chain_api && global_uvm_chain_api->is_valid_contract_address(nullptr, feeReceiver.c_str())) {
+				throw_error("not allowed contract to be feeReceiver");
+			}
 			set_current_contract_storage("feeReceiver", CborObject::from_string(feeReceiver));
 			//set_current_contract_storage("percentage", CborObject::from_string(percentage));
 			set_current_contract_storage("state", CborObject::from_string(common_state_of_exchange_contract));
@@ -604,7 +602,7 @@ namespace uvm {
 			std::vector<exchange::Order> orders;
 
 			fc::from_variant(args, orders);
-			auto callerAddr = caller_address_string();
+			auto callerAddr = get_call_from_address();
 
 			for (int i = 0; i < orders.size(); i++) {
 				std::string addr;
@@ -661,7 +659,10 @@ namespace uvm {
 				throw_error("amount must > 0");
 			}
 
-			const auto& addr = caller_address_string();
+			const auto& addr = get_call_from_address();
+			if (global_uvm_chain_api && global_uvm_chain_api->is_valid_contract_address(nullptr, addr.c_str())) {
+				throw_error("not allowed contract caller");
+			}
 
 			//check balance
 			auto balance = current_fast_map_get(addr, symbol);
@@ -706,7 +707,7 @@ namespace uvm {
 			if (symbol.empty()) {
 				throw_error("symbol is empty");
 			}
-			const auto& caller = caller_address_string();
+			const auto& caller = get_call_from_address();
 			auto balance = current_fast_map_get(caller, symbol);
 			int64_t bal = 0;
 			if (!balance->is_integer()) {
@@ -773,6 +774,7 @@ namespace uvm {
 			}
 			return addr;
 		}
+		
 
 		//args: publicKey_hexString
 		void exchange_native_contract::getAddrByPubk_api(const std::string& api_name, const std::string& api_arg)
@@ -841,8 +843,9 @@ namespace uvm {
 			};
 			if (apis.find(api_name) != apis.end())
 			{
+				init_changes_from_evaluator();
 				apis[api_name](api_name, api_arg);
-				set_invoke_result_caller();
+				//set_invoke_result_caller(caller_address_string());
 				add_gas(gas_count_for_api_invoke(api_name));
 				return;
 			}

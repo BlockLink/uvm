@@ -110,7 +110,7 @@ namespace simplechain {
 		virtual void throw_error(const std::string& err) const;
 
 		virtual void add_gas(uint64_t gas);
-		virtual void set_invoke_result_caller();
+		virtual void set_invoke_result_caller(const std::string& invoker);
 
 		virtual void* get_result() { return &_contract_invoke_result; }
 		virtual void set_api_result(const std::string& api_result) {
@@ -119,6 +119,18 @@ namespace simplechain {
 
 		virtual bool is_valid_address(const std::string& addr);
 		virtual uint32_t get_chain_now() const;
+
+		virtual std::string get_call_from_address() const
+		{
+			if (_contract_invoke_result.invoker.empty()) {
+				return caller_address();
+			}
+			return _contract_invoke_result.invoker;
+		}
+
+		virtual void init_changes_from_evaluator();
+
+		virtual std::string merge_changes_to_evaluator();
 	};
 
 	class native_contract_finder

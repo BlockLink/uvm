@@ -72,8 +72,8 @@ namespace uvm {
 			virtual void add_gas(uint64_t gas) {
 				get_proxy()->add_gas(gas);
 			}
-			virtual void set_invoke_result_caller() {
-				get_proxy()->set_invoke_result_caller();
+			virtual void set_invoke_result_caller(const std::string &invoker) {
+				get_proxy()->set_invoke_result_caller(invoker);
 			}
 			// @return contract_invoke_result*
 			virtual void* get_result() {
@@ -88,6 +88,18 @@ namespace uvm {
 
 			virtual uint32_t get_chain_now() const {
 				return get_proxy()->get_chain_now();
+			}
+
+			virtual void init_changes_from_evaluator() {
+				return get_proxy()->init_changes_from_evaluator();
+			}
+
+			virtual std::string merge_changes_to_evaluator() {
+				return get_proxy()->merge_changes_to_evaluator();
+			}
+
+			virtual std::string get_call_from_address() const {
+				return get_proxy()->get_call_from_address();
 			}
 		};
 	}

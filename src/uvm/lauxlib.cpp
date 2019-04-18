@@ -24,6 +24,8 @@
 #include <stack>
 #include <algorithm>
 
+//#include <native_contract/native_contract_api.h> 
+
 
 /* This file uses only the official API of Lua.
 ** Any function declared here could be written as an application function.
@@ -1438,6 +1440,107 @@ static std::string get_contract_id_using_in_lua(lua_State *L, std::string namest
     }
 }
 
+
+//args: table,apiarg,apiname
+static int native_api_func(lua_State *L) {
+	auto c = lua_gettop(L);
+	
+	if (lua_gettop(L) != 2 || !lua_isstring(L, 2) || !lua_istable(L, 1))
+	{
+		global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "native_api_func need one arg");
+		uvm::lua::lib::notify_lua_state_stop(L);
+		return 0;
+	}
+	auto native_contract_id = std::string(lua_tostring(L, lua_upvalueindex(1)));
+	auto api_name = std::string(lua_tostring(L, lua_upvalueindex(2)));
+	
+	auto apiargs = luaL_checkstring(L, 2);
+	if (c >= 2) {
+		lua_pop(L, c - 1);
+	}
+
+	auto contract_id_stack = uvm::lua::lib::get_using_contract_id_stack(L, true);
+	if (!contract_id_stack || contract_id_stack->size() < 1) {
+		global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "internal error,can't get current top uvm contract addr");
+		uvm::lua::lib::notify_lua_state_stop(L);
+		return 0;
+	}
+	auto top_uvm_contract_id = contract_id_stack->top().contract_id;
+
+	////////////////////////find api and call
+	if (L->invoked_native_contracts->find(native_contract_id) == L->invoked_native_contracts->end()) {
+		global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "internal error,can't find invoked_native_contracts");
+		uvm::lua::lib::notify_lua_state_stop(L);
+		return 0;
+	}
+
+	auto nativecontract_p = (*L->invoked_native_contracts)[native_contract_id];
+	if(std::find(uvm::lua::lib::contract_special_api_names.begin(), uvm::lua::lib::contract_special_api_names.end(), api_name)!= uvm::lua::lib::contract_special_api_names.end()){
+		global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "internal error,can't call special api");
+		uvm::lua::lib::notify_lua_state_stop(L);
+		return 0;
+	}
+	const auto &apis = nativecontract_p->apis();
+	if (apis.find(api_name) == apis.end()) {
+		global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "can't find api in native contract");
+		uvm::lua::lib::notify_lua_state_stop(L);
+		return 0;
+	}
+
+	nativecontract_p->set_invoke_result_caller(top_uvm_contract_id);
+	std::string api_result = "";
+	try {
+		nativecontract_p->invoke(api_name, apiargs);
+		api_result = nativecontract_p->merge_changes_to_evaluator();
+	}
+	catch (const std::exception &e)
+	{
+		global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "error in invoke native contract api, %s", e.what());
+		uvm::lua::lib::notify_lua_state_stop(L);
+		return 0;
+	}
+	catch (const fc::exception &e)
+	{
+		global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "error in invoke native contract api, %s", e.to_string().c_str());
+		uvm::lua::lib::notify_lua_state_stop(L);
+		return 0;
+	}
+	catch (...) {
+		global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "invoke native contract api error");
+		uvm::lua::lib::notify_lua_state_stop(L);
+		return 0;
+	}
+	
+	lua_pushstring(L, api_result.c_str());
+	return 1;
+}
+
+
+// contract::__index: function (t, k) return ; end
+static int native_contract_metatable_index(lua_State *L)
+{
+	// top:2: table, key
+	const char* contract_id = lua_tostring(L, lua_upvalueindex(1));
+
+	lua_pushstring(L, contract_id);
+	lua_pushvalue(L, -2);
+	
+
+	lua_pushcclosure(L, native_api_func, 2);
+
+	return 1;
+}
+
+
+
+static int native_contract_metatable_newindex(lua_State *L)
+{
+	global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "not allowed set native contract table");
+	uvm::lua::lib::notify_lua_state_stop(L);
+	return 0;
+}
+
+
 /************************************************************************/
 /* FIXME import contract by contract id, need copy code from luaL_import_contract_module */
 /************************************************************************/
@@ -1480,6 +1583,53 @@ int luaL_import_contract_module_from_address(lua_State *L)
         global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "this contract not found");
         return 0;
     }
+
+	//bool isNativeContract = true;
+	auto native_contract_key = global_uvm_chain_api->get_native_contract_key(L, contract_id);
+	if(!native_contract_key.empty()){
+	//if (isNativeContract) {
+		/*if (!is_starting_contract)
+		{
+			for (const auto &special_api_name : uvm::lua::lib::contract_special_api_names)
+			{
+				lua_pushnil(L);
+				lua_setfield(L, -2, special_api_name.c_str());
+			}
+		}*/
+
+		auto contractp = global_uvm_chain_api->create_native_contract_by_key(L, native_contract_key, std::string(contract_id));
+		if (!contractp) {
+			global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "create_native_contract_by_key fail", UVM_CONTRACT_API_NAME_MAX_LENGTH);
+			uvm::lua::lib::notify_lua_state_stop(L);
+		}
+
+
+		lua_createtable(L, 0, 0);  //native contract table
+		lua_pushstring(L, contract_id);
+		lua_setfield(L, -2, "$contract_id");
+
+
+		lua_createtable(L, 0, 0);  //metatable
+
+		lua_pushstring(L, contract_id);
+		lua_pushcclosure(L, &native_contract_metatable_index,1);
+		lua_setfield(L, -2, "__index");
+		lua_pushcfunction(L, &native_contract_metatable_newindex);
+		lua_setfield(L, -2, "__newindex");
+
+		lua_setmetatable(L, -2);
+
+		lua_pushvalue(L, -1);
+
+
+		lua_setfield(L, 2, filename);  /* _LOADED[name] = returned value */  //set contract to loaded table
+		//lua_remove(L, 1);
+		//lua_remove(L, 2);
+		return 1;
+	}
+
+
+
     findloader_for_import_contract(L, name);
     lua_pushstring(L, filename);  /* pass name as argument to module loader */
     lua_insert(L, -2);  /* name is 1st argument (before search data) */

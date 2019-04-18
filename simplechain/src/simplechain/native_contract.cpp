@@ -170,8 +170,8 @@ namespace simplechain {
 		_contract_invoke_result.gas_used += gas;
 	}
 
-	void native_contract_store::set_invoke_result_caller() {
-		_contract_invoke_result.invoker = caller_address();
+	void native_contract_store::set_invoke_result_caller(const std::string &invoker) {
+		_contract_invoke_result.invoker = invoker;
 	}
 
 	bool native_contract_store::is_valid_address(const std::string& addr) {
@@ -184,6 +184,71 @@ namespace simplechain {
 	uint32_t native_contract_store::get_chain_now() const {
 		return _evaluate->get_chain()->latest_block().block_time.sec_since_epoch();
 	}
+
+	void native_contract_store::init_changes_from_evaluator() {
+		_contract_invoke_result.reset();
+		_contract_invoke_result.storage_changes = _evaluate->invoke_contract_result.storage_changes;
+		_contract_invoke_result.account_balances_changes = _evaluate->invoke_contract_result.account_balances_changes;
+		_contract_invoke_result.transfer_fees = _evaluate->invoke_contract_result.transfer_fees;
+
+	}
+
+	std::string native_contract_store::merge_changes_to_evaluator() {
+		//merge result
+		//_contract_invoke_result.
+		auto &target_invoke_contract_result = _evaluate->invoke_contract_result;
+		auto &target_storage_changes = target_invoke_contract_result.storage_changes;
+		//_evaluate->invoke_contract_result = _contract_invoke_result;
+		for (auto &p : _contract_invoke_result.storage_changes) {
+			if (target_storage_changes.find(p.first) == target_storage_changes.end()) {
+				target_storage_changes[p.first] = p.second;
+			}
+			else {
+				auto &targets = target_storage_changes[p.first];
+				auto& scs = p.second;
+				for (auto &sp : scs) {
+					targets[sp.first] = sp.second;
+				}
+			}
+		}
+		//>>>>>>>>>>>>>>>...................................
+		auto &target_account_balances_changes = target_invoke_contract_result.account_balances_changes;
+		for (auto& p : _contract_invoke_result.account_balances_changes) {
+			if (target_account_balances_changes.find(p.first) == target_account_balances_changes.end()) {
+				target_account_balances_changes[p.first] = p.second;
+			}
+			else {
+				target_account_balances_changes[p.first] += p.second;
+			}
+		}
+
+		auto &target_events = target_invoke_contract_result.events;
+		for (auto& event : _contract_invoke_result.events) {
+			target_events.push_back(event);
+		}
+
+		auto &target_transfer_fees = target_invoke_contract_result.transfer_fees;
+		for (auto& p : _contract_invoke_result.transfer_fees) {
+			if (target_transfer_fees.find(p.first) == target_transfer_fees.end()) {
+				target_transfer_fees[p.first] = p.second;
+			}
+			else {
+				target_transfer_fees[p.first] += p.second;
+			}
+		}
+
+		target_invoke_contract_result.gas_used += _contract_invoke_result.gas_used;
+		if (!_contract_invoke_result.error.empty() && target_invoke_contract_result.error.empty()) {
+			target_invoke_contract_result.error = _contract_invoke_result.error;
+		}
+
+		return _contract_invoke_result.api_result;
+
+	}
+
+
+
+
 
 	// class native_contract_finder
 
