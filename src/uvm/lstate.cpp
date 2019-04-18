@@ -308,7 +308,9 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
     L->tt = LUA_TTHREAD;
     g->currentwhite = bitmask(WHITE0BIT);
     L->marked = luaC_white(g);
-    L->malloc_buffer = malloc(LUA_MALLOC_TOTAL_SIZE);
+	do {
+		L->malloc_buffer = malloc(LUA_MALLOC_TOTAL_SIZE);
+	} while (! L->malloc_buffer);
     L->malloc_pos = 0;
     L->malloced_buffers = new std::vector<std::pair<ptrdiff_t, ptrdiff_t>>();
 	L->empty_buffers_positions = new std::map<size_t, bool>();
