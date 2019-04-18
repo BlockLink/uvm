@@ -393,6 +393,11 @@ void *lua_malloc(lua_State *L, size_t size)
         uvm::lua::lib::notify_lua_state_stop(L);
         return nullptr;
     }
+	if (!L->malloc_buffer)
+	{
+		uvm::lua::lib::notify_lua_state_stop(L);
+		return nullptr;
+	}
     if (L->malloced_buffers->size() < 1)
     {
         auto offset = L->malloc_pos;
