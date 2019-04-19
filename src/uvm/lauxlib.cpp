@@ -1491,7 +1491,8 @@ static int native_api_func(lua_State *L) {
 	std::string api_result = "";
 	try {
 		nativecontract_p->invoke(api_name, apiargs);
-		api_result = nativecontract_p->merge_changes_to_evaluator();
+		int exec_native_contract_api_gas_used = nativecontract_p->merge_changes_to_evaluator(api_result);
+		uvm::lua::lib::increment_lvm_instructions_executed_count(L, exec_native_contract_api_gas_used);
 	}
 	catch (const std::exception &e)
 	{

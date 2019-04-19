@@ -94,8 +94,8 @@ namespace uvm {
 				return get_proxy()->init_changes_from_evaluator();
 			}
 
-			virtual std::string merge_changes_to_evaluator() {
-				return get_proxy()->merge_changes_to_evaluator();
+			virtual int merge_changes_to_evaluator(std::string &api_result) {
+				return get_proxy()->merge_changes_to_evaluator(api_result);
 			}
 
 			virtual std::string get_call_from_address() const {

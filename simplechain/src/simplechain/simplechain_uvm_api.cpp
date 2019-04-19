@@ -481,10 +481,15 @@ namespace simplechain {
 				data[json_str.size()] = '\0';
 				return data;
 			}
+
 			
 			bool SimpleChainUvmChainApi::commit_storage_changes_to_uvm(lua_State *L, AllContractsChangesMap &changes)
 			{
 				auto evaluator = get_contract_evaluator(L);
+
+				if (!evaluator) {
+					return false;
+				}
 				//auto use_cbor_diff_flag = use_cbor_diff(L);
 				auto use_cbor_diff_flag = true;
 				cbor_diff::CborDiff differ;
@@ -494,6 +499,16 @@ namespace simplechain {
 				auto gas_limit = uvm::lua::lib::get_lua_state_instructions_limit(L);
 				const char* out_of_gas_error = "contract storage changes out of gas";
 
+				//calculate native contract storage and events gas
+				if ((gas_limit>0) && L->invoked_native_contracts && (L->invoked_native_contracts->size()> 0)) {
+					int64_t native_storage_gas = evaluator->invoke_contract_result.count_storage_gas();
+					int64_t native_event_gas = evaluator->invoke_contract_result.count_event_gas();
+					storage_gas += native_storage_gas;
+					storage_gas += native_event_gas;
+					L->invoked_native_contracts->clear(); //clear to prevent calculate twice
+				}
+
+				
 				for (auto all_con_chg_iter = changes.begin(); all_con_chg_iter != changes.end(); ++all_con_chg_iter)
 				{
 					// commit change to evaluator

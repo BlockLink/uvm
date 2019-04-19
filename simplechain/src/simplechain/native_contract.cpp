@@ -193,7 +193,7 @@ namespace simplechain {
 
 	}
 
-	std::string native_contract_store::merge_changes_to_evaluator() {
+	int native_contract_store::merge_changes_to_evaluator(std::string &api_result) {
 		//merge result
 		//_contract_invoke_result.
 		auto &target_invoke_contract_result = _evaluate->invoke_contract_result;
@@ -237,12 +237,13 @@ namespace simplechain {
 			}
 		}
 
-		target_invoke_contract_result.gas_used += _contract_invoke_result.gas_used;
+		//target_invoke_contract_result.gas_used += _contract_invoke_result.gas_used;
 		if (!_contract_invoke_result.error.empty() && target_invoke_contract_result.error.empty()) {
 			target_invoke_contract_result.error = _contract_invoke_result.error;
 		}
 
-		return _contract_invoke_result.api_result;
+		api_result = _contract_invoke_result.api_result;
+		return _contract_invoke_result.gas_used;
 
 	}
 
