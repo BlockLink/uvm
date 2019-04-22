@@ -1507,7 +1507,7 @@ static int native_api_func(lua_State *L) {
 		return 0;
 	}
 	catch (...) {
-		global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "invoke native contract api error");
+		global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "invoke native contract api internal error");
 		uvm::lua::lib::notify_lua_state_stop(L);
 		return 0;
 	}
@@ -1624,8 +1624,9 @@ int luaL_import_contract_module_from_address(lua_State *L)
 
 
 		lua_setfield(L, 2, filename);  /* _LOADED[name] = returned value */  //set contract to loaded table
-		//lua_remove(L, 1);
-		//lua_remove(L, 2);
+		lua_remove(L, 2);
+		lua_remove(L, 1);
+		
 		return 1;
 	}
 
