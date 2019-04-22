@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
 			const auto& chain_state = chain->get_state_json();
 		}
 
-		RpcServer rpc_server(chain.get(), 8081);
+		RpcServer rpc_server(chain.get(), 8080);
 		rpc_server.start();
 	}
 	catch (const std::exception& e) {
