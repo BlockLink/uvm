@@ -185,6 +185,10 @@ namespace simplechain {
 		return _evaluate->get_chain()->latest_block().block_time.sec_since_epoch();
 	}
 
+	std::string native_contract_store::get_api_result() const {
+		return _contract_invoke_result.api_result;
+	}
+
 
 	// class native_contract_finder
 	bool native_contract_finder::has_native_contract_with_key(const std::string& key)

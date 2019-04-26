@@ -120,6 +120,8 @@ namespace simplechain {
 		virtual bool is_valid_address(const std::string& addr);
 		virtual uint32_t get_chain_now() const;
 
+		virtual std::string get_api_result() const;
+
 		virtual std::string get_call_from_address() const
 		{
 			if (_contract_invoke_result.invoker.empty()) {

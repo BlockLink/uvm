@@ -93,6 +93,10 @@ namespace uvm {
 			virtual std::string get_call_from_address() const {
 				return get_proxy()->get_call_from_address();
 			}
+
+			virtual std::string get_api_result() const {
+				return get_proxy()->get_api_result();
+			}
 		};
 	}
 }
