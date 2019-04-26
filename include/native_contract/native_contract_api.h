@@ -90,14 +90,6 @@ namespace uvm {
 				return get_proxy()->get_chain_now();
 			}
 
-			virtual void init_changes_from_evaluator() {
-				return get_proxy()->init_changes_from_evaluator();
-			}
-
-			virtual int merge_changes_to_evaluator(std::string &api_result) {
-				return get_proxy()->merge_changes_to_evaluator(api_result);
-			}
-
 			virtual std::string get_call_from_address() const {
 				return get_proxy()->get_call_from_address();
 			}

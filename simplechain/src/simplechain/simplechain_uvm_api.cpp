@@ -482,6 +482,37 @@ namespace simplechain {
 				return data;
 			}
 
+			static void merge_other_changes_to_evaluator(evaluate_state* evaluator, contract_invoke_result *_contract_invoke_resultp) {
+				//merge result
+
+				auto target_invoke_contract_resultp = &(evaluator->invoke_contract_result);
+				//>>>>>>>>>>>>>>>...................................
+				auto &target_account_balances_changes = target_invoke_contract_resultp->account_balances_changes;
+				for (auto& p : _contract_invoke_resultp->account_balances_changes) {
+					if (target_account_balances_changes.find(p.first) == target_account_balances_changes.end()) {
+						target_account_balances_changes[p.first] = p.second;
+					}
+					else {
+						target_account_balances_changes[p.first] += p.second;
+					}
+				}
+
+				auto &target_events = target_invoke_contract_resultp->events;
+				for (auto& event : _contract_invoke_resultp->events) {
+					target_events.push_back(event);
+				}
+
+				auto &target_transfer_fees = target_invoke_contract_resultp->transfer_fees;
+				for (auto& p : _contract_invoke_resultp->transfer_fees) {
+					if (target_transfer_fees.find(p.first) == target_transfer_fees.end()) {
+						target_transfer_fees[p.first] = p.second;
+					}
+					else {
+						target_transfer_fees[p.first] += p.second;
+					}
+				}
+				target_invoke_contract_resultp->gas_used += _contract_invoke_resultp->gas_used;
+			}
 			
 			bool SimpleChainUvmChainApi::commit_storage_changes_to_uvm(lua_State *L, AllContractsChangesMap &changes)
 			{
@@ -501,14 +532,35 @@ namespace simplechain {
 
 				//calculate native contract storage and events gas
 				if ((gas_limit>0) && L->invoked_native_contracts && (L->invoked_native_contracts->size()> 0)) {
+					auto iter = L->invoked_native_contracts->begin();
+					while (iter != L->invoked_native_contracts->end()) {
+						auto s_resultp = static_cast<contract_invoke_result*>(iter->second->get_result());
+
+						auto &native_contract_id = iter->first;
+						auto schanges_size = s_resultp->storage_changes.size();
+						if (schanges_size > 0) {
+							if (schanges_size == 1 && s_resultp->storage_changes.find(native_contract_id) != s_resultp->storage_changes.end()) {
+								put_contract_storage_changes_to_evaluator(evaluator, native_contract_id, s_resultp->storage_changes[native_contract_id]);
+							}
+							else {
+								throw_exception(L, UVM_API_SIMPLE_ERROR, "native contract can't set other contract storage");
+								return false;
+							}
+						}
+
+						merge_other_changes_to_evaluator(evaluator,s_resultp);
+						iter++;
+					}
+					
 					int64_t native_storage_gas = evaluator->invoke_contract_result.count_storage_gas();
 					int64_t native_event_gas = evaluator->invoke_contract_result.count_event_gas();
 					storage_gas += native_storage_gas;
 					storage_gas += native_event_gas;
-					L->invoked_native_contracts->clear(); //clear to prevent calculate twice
+					storage_gas += evaluator->invoke_contract_result.gas_used; //add exec native contract api gas
 				}
-
+				L->invoked_native_contracts->clear(); //clear to prevent calculate twice
 				
+
 				for (auto all_con_chg_iter = changes.begin(); all_con_chg_iter != changes.end(); ++all_con_chg_iter)
 				{
 					// commit change to evaluator
@@ -1027,17 +1079,10 @@ namespace simplechain {
 				try {
 					if (evaluator) {
 						auto native_contract = native_contract_finder::create_native_contract_by_key(evaluator, native_contract_key, contract_address);
-						FC_ASSERT(native_contract, "native contract with the key not found");
-						/*(native_contract->invoke(o.contract_api, first_contract_arg);
-						if (o.deposit_amount > 0) {
-							auto deposit_asset = get_chain()->get_asset(o.deposit_asset_id);
-							FC_ASSERT(deposit_asset);
-							native_contract->current_set_on_deposit_asset(deposit_asset->symbol, o.deposit_amount);
+						if (native_contract) {
+							(*L->invoked_native_contracts)[contract_address] = native_contract;
+							return native_contract;
 						}
-						invoke_contract_result = *static_cast<contract_invoke_result*>(native_contract->get_result());
-						*/
-						(*L->invoked_native_contracts)[contract_address] = native_contract;
-						return native_contract;
 					}
 					return nullptr;
 				}FC_CAPTURE_AND_LOG((contract_address))

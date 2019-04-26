@@ -1491,8 +1491,8 @@ static int native_api_func(lua_State *L) {
 	std::string api_result = "";
 	try {
 		nativecontract_p->invoke(api_name, apiargs);
-		int exec_native_contract_api_gas_used = nativecontract_p->merge_changes_to_evaluator(api_result);
-		uvm::lua::lib::increment_lvm_instructions_executed_count(L, exec_native_contract_api_gas_used);
+		//int exec_native_contract_api_gas_used = nativecontract_p->merge_changes_to_evaluator(api_result);
+		//uvm::lua::lib::increment_lvm_instructions_executed_count(L, exec_native_contract_api_gas_used);
 	}
 	catch (const std::exception &e)
 	{
@@ -1525,8 +1525,7 @@ static int native_contract_metatable_index(lua_State *L)
 
 	lua_pushstring(L, contract_id);
 	lua_pushvalue(L, -2);
-	
-
+		
 	lua_pushcclosure(L, native_api_func, 2);
 
 	return 1;
@@ -1585,30 +1584,17 @@ int luaL_import_contract_module_from_address(lua_State *L)
         return 0;
     }
 
-	//bool isNativeContract = true;
 	auto native_contract_key = global_uvm_chain_api->get_native_contract_key(L, contract_id);
-	if(!native_contract_key.empty()){
-	//if (isNativeContract) {
-		/*if (!is_starting_contract)
-		{
-			for (const auto &special_api_name : uvm::lua::lib::contract_special_api_names)
-			{
-				lua_pushnil(L);
-				lua_setfield(L, -2, special_api_name.c_str());
-			}
-		}*/
-
+	if(!native_contract_key.empty()){  // native contract 
 		auto contractp = global_uvm_chain_api->create_native_contract_by_key(L, native_contract_key, std::string(contract_id));
 		if (!contractp) {
 			global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "create_native_contract_by_key fail", UVM_CONTRACT_API_NAME_MAX_LENGTH);
 			uvm::lua::lib::notify_lua_state_stop(L);
 		}
 
-
 		lua_createtable(L, 0, 0);  //native contract table
 		lua_pushstring(L, contract_id);
 		lua_setfield(L, -2, "$contract_id");
-
 
 		lua_createtable(L, 0, 0);  //metatable
 
@@ -1617,19 +1603,16 @@ int luaL_import_contract_module_from_address(lua_State *L)
 		lua_setfield(L, -2, "__index");
 		lua_pushcfunction(L, &native_contract_metatable_newindex);
 		lua_setfield(L, -2, "__newindex");
-
 		lua_setmetatable(L, -2);
 
 		lua_pushvalue(L, -1);
-
-
 		lua_setfield(L, 2, filename);  /* _LOADED[name] = returned value */  //set contract to loaded table
+		
 		lua_remove(L, 2);
 		lua_remove(L, 1);
 		
 		return 1;
 	}
-
 
 
     findloader_for_import_contract(L, name);

@@ -127,10 +127,6 @@ namespace simplechain {
 			}
 			return _contract_invoke_result.invoker;
 		}
-
-		virtual void init_changes_from_evaluator();
-
-		virtual int merge_changes_to_evaluator(std::string &api_result);
 	};
 
 	class native_contract_finder
