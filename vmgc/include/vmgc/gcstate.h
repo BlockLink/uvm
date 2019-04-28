@@ -10,11 +10,16 @@
 #include <cstring>
 #include "vmgc/exceptions.h"
 #include "vmgc/gcobject.h"
+#include <map>
+
 
 namespace vmgc {
 
 // 100MB
 #define DEFAULT_MAX_GC_HEAP_SIZE 100*1024*1024
+#define DEFAULT_MAX_GC_STRPOOL_SIZE 8*1024*1024
+
+#define DEFAULT_MAX_GC_SHORT_STRING_SIZE 32
 
 	struct GcObject;
 
@@ -23,10 +28,14 @@ namespace vmgc {
 		ptrdiff_t _usedsize;
 		ptrdiff_t _heapend;
 		ptrdiff_t _lastfreepos;
+		ptrdiff_t _last_strpool_freepos;
 		ptrdiff_t _max_gc_heap_size = DEFAULT_MAX_GC_HEAP_SIZE;
+		ptrdiff_t _max_gc_strpool_size = DEFAULT_MAX_GC_STRPOOL_SIZE;
+		ptrdiff_t _end;
 		void* _pstart;
 		std::shared_ptr<std::list<std::pair<ptrdiff_t, ptrdiff_t> > > _malloced_buffers; // [ [start_ptr, end_ptr], ... ]
 		std::shared_ptr<std::list<ptrdiff_t> > _gc_objects; // list of GcObject managed in GcState
+		std::shared_ptr<std::map<std::string, ptrdiff_t> > _gc_strpool;
 
 	public:
 		// @throws vmgc::GcException
@@ -46,8 +55,9 @@ namespace vmgc {
 		ptrdiff_t usedsize() const;
 		void gc_free_all();
 
+		void* gc_intern_strpool(size_t sz, size_t strsize, const char* str, bool* isNewStr);
 
-
+		
 		template <typename T>
 		T* gc_new_object()
 		{
@@ -123,6 +133,32 @@ namespace vmgc {
 			*size = newsize;
 			return new_p;
 		}
+
+		// short string into str pool, reused
+		template <typename T>
+		T* gc_intern_string(const char* str, size_t size, bool* isNewStr)
+		{
+			T* ts = nullptr;
+			*isNewStr = true;
+			if (size <= DEFAULT_MAX_GC_SHORT_STRING_SIZE) {
+				size_t sz = sizeof(T);
+				auto p = gc_intern_strpool(sz, size, str, isNewStr);
+				if (!p) {
+					return nullptr;
+				}
+				GcObject* obj_p = static_cast<GcObject*>(p);
+				if (*isNewStr) {
+					new (obj_p)T();
+					obj_p->tt = T::type;
+				}
+				ts = static_cast<T*>(obj_p);
+			}
+			else {
+				ts = gc_new_object<T>();
+			}
+			return ts;
+		}
+
 
     };
 }

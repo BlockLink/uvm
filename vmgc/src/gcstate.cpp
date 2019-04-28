@@ -1,22 +1,30 @@
 #include "vmgc/gcstate.h"
 #include "vmgc/gcobject.h"
 #include <algorithm>
+#include "uvm/lstring.h"
 
 namespace vmgc {
-	GcState::GcState(ptrdiff_t max_gc_heap_size) {
+#define DEFAULT_GC_STR_POOL_QUOTA 25
+
+	GcState::GcState(ptrdiff_t max_gc_size) {
 		this->_malloced_buffers = std::make_shared<std::list<std::pair<ptrdiff_t, ptrdiff_t> > >();
 		this->_gc_objects = std::make_shared<std::list<ptrdiff_t> >();
-		this->_max_gc_heap_size = max_gc_heap_size;
+		this->_max_gc_strpool_size = max_gc_size * DEFAULT_GC_STR_POOL_QUOTA/100;
+		this->_max_gc_heap_size = max_gc_size - this->_max_gc_strpool_size;
 		_usedsize = 0;
 		_heapend = 0;
 		_pstart = nullptr;
 		_lastfreepos = 0;
+		_last_strpool_freepos = 0;
 
-		_pstart = malloc(this->_max_gc_heap_size);
+		_pstart = malloc(max_gc_size);
 		_heapend = this->_max_gc_heap_size;
 		if (!_pstart) {
 			throw GcException("malloc gc heap error");
 		}
+		_end = max_gc_size;//str pool start from _heapend , end to _end
+		this->_gc_strpool = std::make_shared<std::map<std::string, ptrdiff_t> >();
+
 	}
 
 	GcState::~GcState() {
@@ -33,6 +41,15 @@ namespace vmgc {
 		if ((s & 0x7) == 0)
 			return s;
 		return ((s >> 3) + 1) << 3;
+	}
+
+	void* gc_intern_string(size_t size, const char* str) {
+		if (str == nullptr)
+			return nullptr;
+		if (size <= 0)
+			return nullptr;
+		size = align8(size);
+
 	}
 
 	void* GcState::gc_malloc(size_t size) {
@@ -224,7 +241,7 @@ namespace vmgc {
 
 	size_t GcState::gc_objects_count() const
 	{
-		return _gc_objects->size();
+		return (_gc_objects->size() + _gc_strpool->size());
 	}
 
 	std::shared_ptr<std::list<ptrdiff_t> > GcState::gc_objects() const
@@ -250,7 +267,41 @@ namespace vmgc {
 			_gc_objects->clear();
 			_usedsize = 0;
 			_lastfreepos = 0;
+
+			std::map<std::string, ptrdiff_t>::iterator iter;
+			for (iter = _gc_strpool->begin(); iter != _gc_strpool->end(); iter++) {
+				auto p = (GcObject*)((intptr_t)_pstart + _heapend + iter->second);
+				p->~GcObject();
+			}
+			_last_strpool_freepos = 0;
 		}
+	}
+
+
+	void* GcState::gc_intern_strpool(size_t sz, size_t strsize, const char* str, bool* isNewStr) {
+		void* p = nullptr;
+		//unsigned int seed = 1; 
+		//unsigned int h = luaS_hash(str, strsize, seed);
+		*isNewStr = false;
+		std::string s = std::string(str, strsize);
+		auto it = _gc_strpool->find(s);
+		if (it == _gc_strpool->end()) {
+			//add 
+			size_t align8sz = align8(sz);
+			auto pos = _last_strpool_freepos;
+			_last_strpool_freepos = _last_strpool_freepos + align8sz;
+			if (_last_strpool_freepos > (_end - _heapend)) {
+				return nullptr;
+			}
+			_gc_strpool->insert(std::pair<std::string, ptrdiff_t>(s,pos));
+
+			p = (void *)((intptr_t)(_pstart)+_heapend + pos);
+			*isNewStr = true;
+		}
+		else {
+			p = (void *)((intptr_t)(_pstart)+_heapend + it->second);
+		}
+		return p;
 	}
 
 }
