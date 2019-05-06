@@ -25,7 +25,7 @@
 #include <vmgc/vmgc.h>
 #include "uvm/lopcodes.h"
 
-#define LUA_MALLOC_TOTAL_SIZE	(50*1024*1024)
+#define LUA_MALLOC_TOTAL_SIZE	(500*1024*1024)
 
 #define LUA_COMPILE_ERROR_MAX_LENGTH 4096
 

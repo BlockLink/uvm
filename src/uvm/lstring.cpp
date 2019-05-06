@@ -125,7 +125,7 @@ static uvm_types::GcString *internshrstr(lua_State *L, const char *str, size_t l
 */
 uvm_types::GcString *luaS_newlstr(lua_State *L, const char *str, size_t l) {
 	
-    if (l <= LUAI_MAXSHORTLEN)  //short string? 
+	/*if (l <= LUAI_MAXSHORTLEN)  //short string?
         return internshrstr(L, str, l);
     else {
 		uvm_types::GcString *ts;
@@ -134,7 +134,7 @@ uvm_types::GcString *luaS_newlstr(lua_State *L, const char *str, size_t l) {
         ts = luaS_createlngstrobj(L, l);
         memcpy(getstr(ts), str, l * sizeof(char));
         return ts;
-    }/*
+    }*/
 	
 	bool isNewStr = true;
 	auto ts = L->gc_state->gc_intern_string<uvm_types::GcString>(str,l,&isNewStr);
@@ -142,8 +142,7 @@ uvm_types::GcString *luaS_newlstr(lua_State *L, const char *str, size_t l) {
 		ts->value = std::string(str, l);
 	}
 	return ts;
-	*/
-	
+
 }
 
 
