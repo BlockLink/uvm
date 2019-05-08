@@ -11,6 +11,7 @@ namespace uvm {
 			std::set<std::string> offline_abi;
 			std::set<std::string> events;
 			std::map<std::string, fc::enum_type<fc::unsigned_int, uvm::blockchain::StorageValueTypes>> storage_properties;
+			std::map<std::string, std::vector<fc::enum_type<fc::unsigned_int, UvmTypeInfoEnum> >> contract_api_arg_types;
 			std::vector<unsigned char> code;
 			std::string code_hash;
 			Code() {}
