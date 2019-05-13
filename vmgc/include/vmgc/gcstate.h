@@ -19,7 +19,8 @@ namespace vmgc {
 #define DEFAULT_MAX_GC_HEAP_SIZE 100*1024*1024
 #define DEFAULT_MAX_GC_STRPOOL_SIZE 8*1024*1024
 
-#define DEFAULT_MAX_GC_SHORT_STRING_SIZE 32
+#define	DEFAULT_GC_STR_HASHLIMIT 5
+#define DEFAULT_MAX_GC_SHORT_STRING_SIZE 32   //2^DEFAULT_GC_HASHLIMIT
 
 #define DEFAULT_MAX_SMALL_BUFFER_SIZE 128  //8µÄ±¶Êý
 #define DEFAULT_SMALL_BUFFER_VECTOR_SIZE (DEFAULT_MAX_SMALL_BUFFER_SIZE/8)     
@@ -142,7 +143,7 @@ namespace vmgc {
 		{
 			T* ts = nullptr;
 			*isNewStr = true;
-			if (size <= DEFAULT_MAX_GC_SHORT_STRING_SIZE) {
+			if (size < DEFAULT_MAX_GC_SHORT_STRING_SIZE) { 
 				size_t sz = sizeof(T);
 				auto p = gc_intern_strpool(sz, size, str, isNewStr);
 				if (!p) {

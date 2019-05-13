@@ -304,11 +304,18 @@ namespace vmgc {
 		return _used_size;
 	}
 
-
+	//支持长度小于2^5的hash，大于等于此数字会较大概率发生碰撞
+	static unsigned int gc_str_hash(const char *str, size_t l, unsigned int seed) {
+		unsigned int h = seed ^ lua_cast(unsigned int, l);
+		size_t step = (l >> DEFAULT_GC_STR_HASHLIMIT) + 1;
+		for (; l >= step; l -= step)
+			h ^= ((h << 5) + (h >> 2) + cast_byte(str[l - 1]));
+		return h;
+	}
 
 	void* GcState::gc_intern_strpool(size_t sz, size_t strsize, const char* str, bool* isNewStr) {
 		void* p = nullptr;
-		unsigned int h = luaS_hash(str, strsize, 1);//????????
+		unsigned int h = gc_str_hash(str, strsize, 1);
 
 		auto it = _gc_strpool->find(h);
 		if (it == _gc_strpool->end()) {
