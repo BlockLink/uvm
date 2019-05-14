@@ -315,10 +315,24 @@ namespace vmgc {
 
 	void* GcState::gc_intern_strpool(size_t sz, size_t strsize, const char* str, bool* isNewStr) {
 		void* p = nullptr;
-		unsigned int h = gc_str_hash(str, strsize, 1);
+		unsigned int seed = 1;
+		unsigned int h = gc_str_hash(str, strsize, seed);
 
 		auto it = _gc_strpool->find(h);
 		if (it == _gc_strpool->end()) {
+			*isNewStr = true;
+		}
+		else {
+			*isNewStr = false;
+			p = (void *)((*_gc_strpool)[h].first);
+			uvm_types::GcString* gcstr = static_cast<uvm_types::GcString*>(p);
+			if (strncmp(gcstr->value.c_str(), str, strsize) != 0) { //Åö×²
+				//new it 
+				*isNewStr = true;
+			}
+		}
+
+		if (*isNewStr) {
 			//add 
 			size_t align8sz = align8(sz);
 
@@ -354,12 +368,8 @@ namespace vmgc {
 				}
 			}
 			_used_size += align8sz;
-			*isNewStr = true;
 		}
-		else {
-			*isNewStr = false;
-			p = (void *)((*_gc_strpool)[h].first);
-		}
+		
 		return p;
 	}
 
