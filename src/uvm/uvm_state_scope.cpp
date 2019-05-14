@@ -161,32 +161,32 @@ namespace uvm
             {
                 uvm::lua::lib::register_module(_L, name, openmodule_func);
             }
-            int UvmStateScope::execute_contract_api(const char *contract_name, const char *api_name, const char *arg1, std::string *result_json_string)
+            int UvmStateScope::execute_contract_api(const char *contract_name, const char *api_name, cbor::CborArrayValue& args, std::string *result_json_string)
             {
-                return uvm::lua::lib::execute_contract_api(_L, contract_name, api_name, arg1, result_json_string);
+                return uvm::lua::lib::execute_contract_api(_L, contract_name, api_name, args, result_json_string);
             }
 
-            int UvmStateScope::execute_contract_api_by_address(const char *address, const char *api_name, const char *arg1, std::string *result_json_string)
+            int UvmStateScope::execute_contract_api_by_address(const char *address, const char *api_name, cbor::CborArrayValue& args, std::string *result_json_string)
             {
-                return uvm::lua::lib::execute_contract_api_by_address(_L, address, api_name, arg1, result_json_string);
+                return uvm::lua::lib::execute_contract_api_by_address(_L, address, api_name, args, result_json_string);
             }
 
-            bool UvmStateScope::execute_contract_init_by_address(const char *contract_address, const char *arg1, std::string *result_json_string)
+            bool UvmStateScope::execute_contract_init_by_address(const char *contract_address, cbor::CborArrayValue& args, std::string *result_json_string)
             {
-                return uvm::lua::lib::execute_contract_init_by_address(_L, contract_address, arg1, result_json_string);
+                return uvm::lua::lib::execute_contract_init_by_address(_L, contract_address, args, result_json_string);
             }
-            bool UvmStateScope::execute_contract_start_by_address(const char *contract_address, const char *arg1, std::string *result_json_string)
+            bool UvmStateScope::execute_contract_start_by_address(const char *contract_address, cbor::CborArrayValue& args, std::string *result_json_string)
             {
-                return uvm::lua::lib::execute_contract_start_by_address(_L, contract_address, arg1, result_json_string);
+                return uvm::lua::lib::execute_contract_start_by_address(_L, contract_address, args, result_json_string);
             }
 
-            bool UvmStateScope::execute_contract_init(UvmModuleByteStream *stream, const char *arg1, std::string *result_json_string)
+            bool UvmStateScope::execute_contract_init(UvmModuleByteStream *stream, cbor::CborArrayValue& args, std::string *result_json_string)
             {
-                return uvm::lua::lib::execute_contract_init(_L, "tmp", stream, arg1, result_json_string);
+                return uvm::lua::lib::execute_contract_init(_L, "tmp", stream, args, result_json_string);
             }
-            bool UvmStateScope::execute_contract_start(UvmModuleByteStream *stream, const char *arg1, std::string *result_json_string)
+            bool UvmStateScope::execute_contract_start(UvmModuleByteStream *stream, cbor::CborArrayValue& args, std::string *result_json_string)
             {
-                return uvm::lua::lib::execute_contract_start(_L, "tmp", stream, arg1, result_json_string);
+                return uvm::lua::lib::execute_contract_start(_L, "tmp", stream, args, result_json_string);
             }
 
             bool UvmStateScope::check_contract_bytecode_stream(UvmModuleByteStream *stream)

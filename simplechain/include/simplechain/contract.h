@@ -145,7 +145,8 @@ namespace simplechain {
 		std::string caller_address;
 		std::string contract_address;
 		std::string contract_api;
-		std::vector<std::string> contract_args;
+		//std::vector<std::string> contract_args;
+		fc::variants contract_args;
 		uint64_t gas_price;
 		uint64_t gas_limit;
 		share_type deposit_amount = 0;

@@ -135,7 +135,7 @@ LUALIB_API void (luaL_requiref)(lua_State *L, const char *modname,
 int luaL_require_module(lua_State *L);
 
 LUA_API int lua_execute_contract_api_by_stream(lua_State *L, UvmModuleByteStream *stream,
-	const char *api_name, const char *arg1, std::string *result_json_string);
+	const char *api_name, cbor::CborArrayValue& args, std::string *result_json_string);
 
 size_t luaL_wrap_contract_apis(lua_State *L, int index, void *ud);
 

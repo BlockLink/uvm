@@ -11,7 +11,7 @@
 
 #include <stdarg.h>
 #include <stddef.h>
-
+#include "cborcpp/cbor_object.h"
 
 #include "uvm/luaconf.h"
 
@@ -306,10 +306,10 @@ LUA_API int (lua_docompiledfile)(lua_State *L, const char *filename);
 LUA_API int (lua_docompiled_bytestream)(lua_State *L, void *stream);
 
 LUA_API int (lua_execute_contract_api)(lua_State *L, const char *contract_name,
-	const char *api_name, const char *arg1, std::string *result_json_string=nullptr);
+	const char *api_name, cbor::CborArrayValue& args, std::string *result_json_string=nullptr);
 
 LUA_API int (lua_execute_contract_api_by_address)(lua_State *L, const char *address,
-	const char *api_name, const char *arg1, std::string *result_json_string);
+	const char *api_name, cbor::CborArrayValue& args, std::string *result_json_string);
 
 /*
 ** coroutine functions

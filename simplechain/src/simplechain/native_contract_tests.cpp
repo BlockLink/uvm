@@ -23,7 +23,12 @@ namespace simplechain {
 			cout << "token contract: " << contract1_addr << endl;
 
 			auto tx2 = std::make_shared<transaction>();
-			tx2->operations.push_back(operations_helper::invoke_contract(caller_addr, contract1_addr, "init_token", std::vector<std::string>{"test,TEST,100000000,10"}));
+
+			fc::variants arrArgs;
+			fc::variant aarg;
+			fc::to_variant(std::string("test,TEST,100000000,10"), aarg);
+			arrArgs.push_back(aarg);
+			tx2->operations.push_back(operations_helper::invoke_contract(caller_addr, contract1_addr, "init_token", arrArgs));
 			tx2->tx_time = fc::time_point_sec(fc::time_point::now());
 			chain->accept_transaction_to_mempool(*tx2);
 			chain->generate_block();
@@ -32,7 +37,11 @@ namespace simplechain {
 			size_t count = 10000;
 			for (size_t i = 0; i < count; i++) {
 				auto tx3 = std::make_shared<transaction>();
-				tx3->operations.push_back(operations_helper::invoke_contract(caller_addr, contract1_addr, "transfer", std::vector<std::string>{caller2_addr + "," + std::to_string(i + 1)}));
+				fc::variants arrArgs;
+				fc::variant aarg;
+				fc::to_variant(caller2_addr + "," + std::to_string(i + 1), aarg);
+				arrArgs.push_back(aarg);
+				tx3->operations.push_back(operations_helper::invoke_contract(caller_addr, contract1_addr, "transfer", arrArgs));
 				tx3->tx_time = fc::time_point_sec(fc::time_point::now());
 				chain->accept_transaction_to_mempool(*tx3);
 			}

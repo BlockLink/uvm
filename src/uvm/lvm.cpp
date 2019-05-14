@@ -1077,7 +1077,8 @@ namespace uvm {
 				Instruction i = *(ci->u.l.savedpc++);
 #ifdef DEBUG
 				ci->u.l.savedpc--;
-				printf("%s\tline:%d\n", luaP_opnames[GET_OPCODE(i)],current_line());
+				const auto cur_line = current_line();
+				printf("%s\tline:%d\n", luaP_opnames[GET_OPCODE(i)], cur_line);
 				ci->u.l.savedpc++;
 #endif // DEBUG
 

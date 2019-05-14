@@ -20,6 +20,7 @@
 #include <uvm/llimits.h>
 #include <uvm/lobject.h>
 #include <uvm/uvm_api.h>
+#include "cborcpp/cbor_object.h"
 
 #define BOOL_VAL(val) ((val)>0?true:false)
 
@@ -182,30 +183,30 @@ namespace uvm
                 /************************************************************************/
                 /* execute contract's api by contract name and api name                 */
                 /************************************************************************/
-                int execute_contract_api(const char *contract_name, const char *api_name, const char *arg1, std::string *result_json_string);
+                int execute_contract_api(const char *contract_name, const char *api_name, cbor::CborArrayValue& args, std::string *result_json_string);
                 /************************************************************************/
                 /* execute contract's api by contract address and api name              */
                 /************************************************************************/
-                int execute_contract_api_by_address(const char *address, const char *api_name, const char *arg1, std::string *result_json_string);
+                int execute_contract_api_by_address(const char *address, const char *api_name, cbor::CborArrayValue& args, std::string *result_json_string);
 
                 /************************************************************************/
                 /* execute contract's init function by byte stream.
                    if you use this, notice the life cycle of the stream */
                 /************************************************************************/
-                bool execute_contract_init(UvmModuleByteStreamP stream, const char *arg1, std::string *result_json_string);
+                bool execute_contract_init(UvmModuleByteStreamP stream, cbor::CborArrayValue& args, std::string *result_json_string);
                 /************************************************************************/
                 /* execute contract's start function by byte stream,
                    if you use this, notice the life cycle of the stream */
                 /************************************************************************/
-                bool execute_contract_start(UvmModuleByteStreamP stream, const char *arg1, std::string *result_json_string);
+                bool execute_contract_start(UvmModuleByteStreamP stream, cbor::CborArrayValue& args, std::string *result_json_string);
                 /************************************************************************/
                 /* execute contract's init function by contract address                 */
                 /************************************************************************/
-                bool execute_contract_init_by_address(const char *contract_address, const char *arg1, std::string *result_json_string);
+                bool execute_contract_init_by_address(const char *contract_address, cbor::CborArrayValue& args, std::string *result_json_string);
                 /************************************************************************/
                 /* execute contract's start function by contract address                */
                 /************************************************************************/
-                bool execute_contract_start_by_address(const char *contract_address, const char *arg1, std::string *result_json_string);
+                bool execute_contract_start_by_address(const char *contract_address, cbor::CborArrayValue& args, std::string *result_json_string);
 
                 /************************************************************************/
                 /* whether contract's bytecode stream right                             */
@@ -360,9 +361,9 @@ namespace uvm
             // lvmadd_count
             void increment_lvm_instructions_executed_count(lua_State *L, int add_count);
 
-            int execute_contract_api(lua_State *L, const char *contract_name, const char *api_name, const char *arg1, std::string *result_json_string);
+            int execute_contract_api(lua_State *L, const char *contract_name, const char *api_name, cbor::CborArrayValue& args, std::string *result_json_string);
 
-			int execute_contract_api_by_stream(lua_State *L, UvmModuleByteStreamP stream, const char *api_name, const char *arg1, std::string *result_json_string);
+			int execute_contract_api_by_stream(lua_State *L, UvmModuleByteStreamP stream, const char *api_name, cbor::CborArrayValue& args, std::string *result_json_string);
 
             const char *get_contract_id_in_api(lua_State *L);
 
@@ -370,15 +371,15 @@ namespace uvm
             * diff from execute_contract_api is the contract bytestream is loaded by pointer and uvm
             */
             LUA_API int execute_contract_api_by_address(lua_State *L, const char *contract_address,
-				const char *api_name, const char *arg1, std::string *result_json_string);
+				const char *api_name, cbor::CborArrayValue& args, std::string *result_json_string);
 
-            bool execute_contract_init(lua_State *L, const char *name, UvmModuleByteStreamP stream, const char *arg1, std::string *result_json_string);
-            bool execute_contract_start(lua_State *L, const char *name, UvmModuleByteStreamP stream, const char *arg1, std::string *result_json_string);
+            bool execute_contract_init(lua_State *L, const char *name, UvmModuleByteStreamP stream, cbor::CborArrayValue& args, std::string *result_json_string);
+            bool execute_contract_start(lua_State *L, const char *name, UvmModuleByteStreamP stream, cbor::CborArrayValue& args, std::string *result_json_string);
 
-            bool execute_contract_init_by_address(lua_State *L, const char *contract_address, const char *arg1, std::string *result_json_string);
-            bool execute_contract_start_by_address(lua_State *L, const char *contract_address, const char *arg1, std::string *result_json_string);
+            bool execute_contract_init_by_address(lua_State *L, const char *contract_address, cbor::CborArrayValue& args, std::string *result_json_string);
+            bool execute_contract_start_by_address(lua_State *L, const char *contract_address, cbor::CborArrayValue& args, std::string *result_json_string);
 
-			bool call_last_contract_api(lua_State* L, const std::string& contract_id, const std::string& api_name, const std::string& api_arg, const std::string& caller_address, const std::string& caller_pubkey, std::string* result_json_string);
+			bool call_last_contract_api(lua_State* L, const std::string& contract_id, const std::string& api_name, cbor::CborArrayValue& args, const std::string& caller_address, const std::string& caller_pubkey, std::string* result_json_string);
 
 			// whether the head of call stack is contract's init API
 			bool is_calling_contract_init_api(lua_State *L);

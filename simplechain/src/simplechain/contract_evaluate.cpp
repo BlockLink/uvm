@@ -19,6 +19,30 @@ namespace simplechain {
 		return last_contract_engine_for_debugger;
 	}
 
+	static void convertArgs2Cbor(const fc::variants& args, cbor::CborArrayValue& api_args) {
+		for (const auto& api_arg_json : args) {
+			if (api_arg_json.is_bool()) {
+				api_args.push_back(cbor::CborObject::from_bool(api_arg_json.as_bool()));
+			}
+			else if (api_arg_json.is_string()) {
+				api_args.push_back(cbor::CborObject::from_string(api_arg_json.as_string()));
+			}
+			else if (api_arg_json.is_int64()) {
+				api_args.push_back(cbor::CborObject::from_int(api_arg_json.as_int64()));
+			}
+			else if (api_arg_json.is_uint64()) {
+				api_args.push_back(cbor::CborObject::from_extra_integer(api_arg_json.as_uint64(), true));
+			}
+			else if (api_arg_json.is_double()) {
+				api_args.push_back(cbor::CborObject::from_float64(api_arg_json.as_double()));
+			}
+			else {
+				throw uvm::core::UvmException(std::string("contract args only accept bool,string,int,float"));
+			}
+		}
+	}
+
+
 	// contract_create_evaluator methods
 	std::shared_ptr<contract_create_evaluator::operation_type::result_type> contract_create_evaluator::do_evaluate(const operation_type& o) {
 		last_contract_engine_for_debugger = nullptr;
@@ -55,7 +79,8 @@ namespace simplechain {
 			try
 			{
 				std::string result_json_str;
-				engine->execute_contract_init_by_address(contract_address, "", &result_json_str);
+				cbor::CborArrayValue args;
+				engine->execute_contract_init_by_address(contract_address, args, &result_json_str);
 				invoke_contract_result.api_result = result_json_str;
 			}
 			catch (std::exception &e)
@@ -186,7 +211,10 @@ namespace simplechain {
 			invoke_contract_result.reset();
 			try
 			{
-				std::string first_contract_arg = o.contract_args.empty() ? "" : o.contract_args[0];
+				std::string first_contract_arg = o.contract_args.empty() ? "" : o.contract_args[0].as_string();
+				auto argsNum = o.contract_args.size();
+				cbor::CborArrayValue arr;
+				
 				// only can call on_deposit_asset when deposit_amount > 0
 				if (o.deposit_amount > 0) {
 					if (o.contract_api != "on_deposit_asset") {
@@ -200,12 +228,15 @@ namespace simplechain {
 					depositArgs["num"] = o.deposit_amount;
 					depositArgs["symbol"] = asset->symbol;
 					depositArgs["param"] = first_contract_arg;
-					first_contract_arg = fc::json::to_string(depositArgs);
+
+					auto argStr = fc::json::to_string(depositArgs);	
+					arr.push_back(cbor::CborObject::from_string(argStr));
 				}
 				else {
 					if (std::find(uvm::lua::lib::contract_special_api_names.begin(), uvm::lua::lib::contract_special_api_names.end(), o.contract_api) != uvm::lua::lib::contract_special_api_names.end()) {
 						throw uvm::core::UvmException(std::string("can't call ") + o.contract_api + " directly");
 					}
+					convertArgs2Cbor(o.contract_args, arr);
 				}
 				std::string result_json_str;
 				if (o.deposit_amount > 0) {
@@ -220,7 +251,7 @@ namespace simplechain {
 					engine->set_state_pointer_value("invoke_evaluate_state", this);
 					engine->clear_exceptions();
 					engine->set_gas_limit(limit);
-					engine->execute_contract_api_by_address(o.contract_address, o.contract_api, first_contract_arg, &result_json_str);
+					engine->execute_contract_api_by_address(o.contract_address, o.contract_api, arr, &result_json_str);
 					invoke_contract_result.api_result = result_json_str;
 					gas_used = engine->gas_used();
 				}

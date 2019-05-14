@@ -2095,7 +2095,7 @@ end
             }
 
             int execute_contract_api(lua_State *L, const char *contract_name,
-				const char *api_name, const char *arg1, std::string *result_json_string)
+				const char *api_name, cbor::CborArrayValue& args, std::string *result_json_string)
             {
                 auto contract_address = malloc_managed_string(L, CONTRACT_ID_MAX_LENGTH + 1);
 				if (!contract_address)
@@ -2109,11 +2109,11 @@ end
                     value.string_value = contract_address;
                     set_lua_state_value(L, STARTING_CONTRACT_ADDRESS, value, LUA_STATE_VALUE_STRING);
                 }
-                return lua_execute_contract_api(L, contract_name, api_name, arg1, result_json_string);
+                return lua_execute_contract_api(L, contract_name, api_name, args, result_json_string);
             }
 
             LUA_API int execute_contract_api_by_address(lua_State *L, const char *contract_address,
-				const char *api_name, const char *arg1, std::string *result_json_string)
+				const char *api_name, cbor::CborArrayValue& args, std::string *result_json_string)
             {
                 UvmStateValue value;
                 auto str = malloc_managed_string(L, strlen(contract_address) + 1);
@@ -2123,13 +2123,13 @@ end
                 strncpy(str, contract_address, strlen(contract_address));
                 value.string_value = str;
                 set_lua_state_value(L, STARTING_CONTRACT_ADDRESS, value, LUA_STATE_VALUE_STRING);
-                return lua_execute_contract_api_by_address(L, contract_address, api_name, arg1, result_json_string);
+                return lua_execute_contract_api_by_address(L, contract_address, api_name, args, result_json_string);
             }
 
             int execute_contract_api_by_stream(lua_State *L, UvmModuleByteStream *stream,
-                const char *api_name, const char *arg1, std::string *result_json_string)
+                const char *api_name, cbor::CborArrayValue& args, std::string *result_json_string)
             {
-                return lua_execute_contract_api_by_stream(L, stream, api_name, arg1, result_json_string);
+                return lua_execute_contract_api_by_stream(L, stream, api_name, args, result_json_string);
             }
 
 			bool is_calling_contract_init_api(lua_State *L)
@@ -2149,37 +2149,37 @@ end
 					return "";
             }
 
-            bool execute_contract_init_by_address(lua_State *L, const char *contract_address, const char *arg1, std::string *result_json_string)
+            bool execute_contract_init_by_address(lua_State *L, const char *contract_address, cbor::CborArrayValue& args, std::string *result_json_string)
             {
                 UvmStateValue state_value;
                 state_value.int_value = 1;
                 set_lua_state_value(L, UVM_CONTRACT_INITING, state_value, LUA_STATE_VALUE_INT);
-                int status = execute_contract_api_by_address(L, contract_address, "init", arg1, result_json_string);
+                int status = execute_contract_api_by_address(L, contract_address, "init", args, result_json_string);
                 state_value.int_value = 0;
                 set_lua_state_value(L, UVM_CONTRACT_INITING, state_value, LUA_STATE_VALUE_INT);
                 return status == 0;
             }
-            bool execute_contract_start_by_address(lua_State *L, const char *contract_address, const char *arg1, std::string *result_json_string)
+            bool execute_contract_start_by_address(lua_State *L, const char *contract_address, cbor::CborArrayValue& args, std::string *result_json_string)
             {
-                return execute_contract_api_by_address(L, contract_address, "start", arg1, result_json_string) == LUA_OK;
+                return execute_contract_api_by_address(L, contract_address, "start", args, result_json_string) == LUA_OK;
             }
 
-            bool execute_contract_init(lua_State *L, const char *name, UvmModuleByteStreamP stream, const char *arg1, std::string *result_json_string)
+            bool execute_contract_init(lua_State *L, const char *name, UvmModuleByteStreamP stream, cbor::CborArrayValue& args, std::string *result_json_string)
             {
                 UvmStateValue state_value;
                 state_value.int_value = 1;
                 set_lua_state_value(L, UVM_CONTRACT_INITING, state_value, LUA_STATE_VALUE_INT);
-                int status = execute_contract_api_by_stream(L, stream, "init", arg1, result_json_string);
+                int status = execute_contract_api_by_stream(L, stream, "init", args, result_json_string);
                 state_value.int_value = 0;
                 set_lua_state_value(L, UVM_CONTRACT_INITING, state_value, LUA_STATE_VALUE_INT);
                 return status == 0;
             }
-            bool execute_contract_start(lua_State *L, const char *name, UvmModuleByteStreamP stream, const char *arg1, std::string *result_json_string)
+            bool execute_contract_start(lua_State *L, const char *name, UvmModuleByteStreamP stream, cbor::CborArrayValue& args, std::string *result_json_string)
             {
-                return execute_contract_api_by_stream(L, stream, "start", arg1, result_json_string) == LUA_OK;
+                return execute_contract_api_by_stream(L, stream, "start", args, result_json_string) == LUA_OK;
             }
 
-			bool call_last_contract_api(lua_State* L, const std::string& contract_id, const std::string& api_name, const std::string& api_arg, const std::string& caller_address, const std::string& caller_pubkey, std::string* result_json_string) {
+			bool call_last_contract_api(lua_State* L, const std::string& contract_id, const std::string& api_name, cbor::CborArrayValue& args, const std::string& caller_address, const std::string& caller_pubkey, std::string* result_json_string) {
 				using uvm::lua::api::global_uvm_chain_api;
 				try {
 					lua_fill_contract_info_for_use(L);
@@ -2206,18 +2206,50 @@ end
 					if (lua_isfunction(L, -1))
 					{
 						lua_pushvalue(L, -2); // push self	
-						if (uvm::util::vector_contains(uvm::lua::lib::contract_int_argument_special_api_names, api_name))
-						{
-							std::stringstream arg_ss;
-							arg_ss << api_arg;
-							lua_Integer arg1_int = 0;
-							arg_ss >> arg1_int;
-							lua_pushinteger(L, arg1_int);
+						
+						{ //push args ; check args  
+							auto stored_contract_info = std::make_shared<UvmContractInfo>();
+							if (!global_uvm_chain_api->get_stored_contract_info_by_address(L, contract_id.c_str(), stored_contract_info))
+							{
+								global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "get_stored_contract_info_by_address %s error", contract_id.c_str());
+								return 0;
+							}
+							std::vector<UvmTypeInfoEnum> arg_types;
+							bool check_arg_type = false;  //old gpc vesion, no arg_types info
+							if (stored_contract_info->contract_api_arg_types.size() > 0) {
+								if (stored_contract_info->contract_api_arg_types.find(api_name) == stored_contract_info->contract_api_arg_types.end()) {
+									global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "can't find api_arg_types %s error", api_name.c_str());
+									return 0;
+								}
+								check_arg_type = true; //new gpc version has arg_types, support muti args, try check
+								std::copy(stored_contract_info->contract_api_arg_types[api_name].begin(), stored_contract_info->contract_api_arg_types[api_name].end(), std::back_inserter(arg_types));
+							}
+							int input_args_num = args.size();
+							if (check_arg_type) { //new version
+								if (arg_types.size() != input_args_num) {
+									global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "args num not match %d error", arg_types.size());
+									return 0;
+								}
+							}
+							else {  //old gpc version,  conctract api accept only one arg
+								if (input_args_num != 1) {
+									global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "old vesion gpc only accept 1 arg , but input %d args", input_args_num);
+									return 0;
+								}
+							}
+							for (int i = 0; i<input_args_num; i++) {
+								const auto& arg = args[i];
+								//if (check_arg_type) {
+								//	if (!isArgTypeMatched(arg_types[i], arg->type)) {
+								//		global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "arg type not match ,api:%s args", api_name_str.c_str());
+								//		return 0;
+								//	}
+								//}
+								luaL_push_cbor_as_json(L, arg);
+							}
+							//lua_pushstring(L, arg1_str.c_str());
 						}
-						else
-						{
-							lua_pushstring(L, api_arg.c_str());
-						}
+
 
 						add_global_string_variable(L, "caller", caller_pubkey.c_str());
 						add_global_string_variable(L, "caller_address", caller_address.c_str());

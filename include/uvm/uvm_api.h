@@ -241,6 +241,7 @@ class UvmContractInfo
 {
 public:
     std::vector<std::string> contract_apis;
+	std::map<std::string, std::vector<UvmTypeInfoEnum>> contract_api_arg_types;
 };
 
 #define UVM_API_NO_ERROR 0

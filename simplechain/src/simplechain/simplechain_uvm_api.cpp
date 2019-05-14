@@ -236,6 +236,11 @@ namespace simplechain {
 
 				std::copy(contract_info->contract_apis.begin(), contract_info->contract_apis.end(), std::back_inserter(contract_info_ret->contract_apis));
 				std::copy(code->offline_abi.begin(), code->offline_abi.end(), std::back_inserter(contract_info_ret->contract_apis));
+
+				contract_info_ret->contract_api_arg_types.clear();
+				for (const auto&item : code->api_arg_types) {
+					contract_info_ret->contract_api_arg_types[item.first] = std::vector<UvmTypeInfoEnum>(item.second);
+				}
 				return 1;
 			}
 
