@@ -139,6 +139,7 @@ LUAI_FUNC void luaV_finishOp(lua_State *L);
 LUAI_FUNC std::shared_ptr<uvm::core::ExecuteContext> luaV_execute(lua_State *L);
 // if not sure, don't use result of get_last_execute_context()'s pointer fields
 std::shared_ptr<uvm::core::ExecuteContext> get_last_execute_context();
+std::shared_ptr<uvm::core::ExecuteContext> set_last_execute_context(std::shared_ptr<uvm::core::ExecuteContext> p);
 LUAI_FUNC void luaV_concat(lua_State *L, int total);
 LUAI_FUNC lua_Integer luaV_div(lua_State *L, lua_Integer x, lua_Integer y);
 LUAI_FUNC lua_Integer luaV_mod(lua_State *L, lua_Integer x, lua_Integer y);

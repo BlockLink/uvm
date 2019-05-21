@@ -57,7 +57,6 @@ namespace simplechain {
 
 	class blockchain;
 
-
 	struct contract_invoke_result : public evaluate_result
 	{
 		std::string api_result;

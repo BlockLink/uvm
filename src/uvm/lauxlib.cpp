@@ -1990,22 +1990,23 @@ int luaL_import_contract_module(lua_State *L)
     return 1;
 }
 
-static bool isArgTypeMatched(UvmTypeInfoEnum storedType, cbor::CborObjectType inputType) {
+static bool isArgTypeMatched(UvmTypeInfoEnum storedType, int inputType) {
 	switch (storedType) {
 	case(LTI_NIL):
-		return inputType == cbor::CborObjectType::COT_NULL;
+		return inputType == LUA_TNIL;
 	case(LTI_STRING):
-		return inputType == cbor::CborObjectType::COT_STRING;
+		return inputType == LUA_TSTRING;
 	case(LTI_INT):
-		return (inputType == cbor::CborObjectType::COT_INT || inputType == cbor::CborObjectType::COT_EXTRA_INT);
+		return inputType == LUA_TNUMBER;
 	case(LTI_NUMBER):
-		return inputType == cbor::CborObjectType::COT_FLOAT;
+		return inputType == LUA_TNUMBER;
 	case(LTI_BOOL):
-		return inputType == cbor::CborObjectType::COT_BOOL;
+		return inputType == LUA_TBOOLEAN;
 	default:
 		return false;
 	}
 }
+
 
 
 static int lua_real_execute_contract_api(lua_State *L
@@ -2154,13 +2155,14 @@ static int lua_real_execute_contract_api(lua_State *L
 			}
 			for (int i=0;i<input_args_num;i++){
 				const auto& arg = args[i];
+				luaL_push_cbor_as_json(L, arg);
 				if (check_arg_type) {
-					if (!isArgTypeMatched(arg_types[i],arg->type)) {
+					if (!isArgTypeMatched(arg_types[i],lua_type(L,-1))) {
 						global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "arg type not match ,api:%s args", api_name_str.c_str());
 						return 0;
 					}
 				}
-				luaL_push_cbor_as_json(L,arg);
+				
 			}
 			//lua_pushstring(L, arg1_str.c_str());
 		}
