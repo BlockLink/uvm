@@ -23,8 +23,8 @@
 
 #define LUA_VERSION	"glua " LUA_VERSION_MAJOR "." LUA_VERSION_MINOR
 #define LUA_RELEASE	LUA_VERSION "." LUA_VERSION_RELEASE
-#define LUA_COPYRIGHT	LUA_RELEASE "  Copyright (C) 2017- UniteBitcoin"
-#define LUA_AUTHORS	"UniteBitcoin"
+#define LUA_COPYRIGHT	LUA_RELEASE "  Copyright (C) 2017- uvm"
+#define LUA_AUTHORS	"uvm"
 
 // size_t type length, use lua_Integer to fixed format in 64bit and 32bit
 #define LUA_SIZE_T_TYPE lua_Integer
