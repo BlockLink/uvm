@@ -45,7 +45,7 @@ namespace simplechain {
 			}
 			catch (fc::exception &e)
 			{
-				throw uvm::core::UvmException(e.what());
+				throw uvm::core::UvmException(e.to_string());
 			}
 			catch (std::exception &e)
 			{
@@ -116,7 +116,7 @@ namespace simplechain {
 			}
 			catch (fc::exception &e)
 			{
-				throw uvm::core::UvmException(e.what());
+				throw uvm::core::UvmException(e.to_string());
 			}
 			catch (const std::exception &e)
 			{
@@ -235,7 +235,7 @@ namespace simplechain {
 			}
 			catch (fc::exception &e)
 			{
-				throw uvm::core::UvmException(e.what());
+				throw uvm::core::UvmException(e.to_string());
 			}
 			catch (boost::exception& e)
 			{

@@ -229,7 +229,7 @@ public:
     // storage
     std::map<std::string, uvm::blockchain::StorageValueTypes> contract_storage_properties;
 
-	// APIAPI
+	// API args
 	std::map<std::string, std::vector<UvmTypeInfoEnum>> contract_api_arg_types;
 
 public:

@@ -163,7 +163,8 @@ namespace simplechain {
 
 	void native_contract_store::throw_error(const std::string& err) const {
 		printf("native contract error %s\n", err.c_str());
-		FC_THROW_EXCEPTION(fc::assert_exception, err);
+		throw uvm::core::UvmException(err);
+		// FC_THROW_EXCEPTION(fc::assert_exception, err);
 	}
 
 	void native_contract_store::add_gas(uint64_t gas) {
