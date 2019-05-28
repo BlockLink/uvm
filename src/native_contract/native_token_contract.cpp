@@ -38,7 +38,8 @@ namespace uvm {
 			// fast map storages: users, allowed
 			set_current_contract_storage("state", CborObject::from_string(not_inited_state_of_token_contract));
 			auto caller_addr = caller_address_string();
-			FC_ASSERT(!caller_addr.empty(), "caller_address can't be empty");
+			if (caller_addr.empty())
+				throw_error("caller_address can't be empty");
 			set_current_contract_storage("admin", CborObject::from_string(caller_addr));
 			return;
 		}
