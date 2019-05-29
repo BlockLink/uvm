@@ -7,8 +7,9 @@ namespace uvm {
 		// this is native contract for token
 		class token_native_contract : public uvm::contract::abstract_native_contract_impl
 		{
-		private:
+		protected:
 			std::shared_ptr<uvm::contract::native_contract_interface> _proxy;
+
 		public:
 			static std::string native_contract_key() { return "token"; }
 
