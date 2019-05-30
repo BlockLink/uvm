@@ -164,26 +164,33 @@ namespace uvm {
 			emit_event("Inited", uvm::util::json_ordered_dumps(event_arg));
 		}
 
-		//add_asset1_amount,max_add_asset2_amount
+		//add_asset1_amount,max_add_asset2_amount,expired_blocknum
 		void uniswap_native_contract::addLiquidity_api(const std::string& api_name, const std::string& api_arg) {
 			if (get_storage_state() != common_state_of_contract)
 				throw_error("state not common!");
 			std::vector<std::string> parsed_args;
 			boost::split(parsed_args, api_arg, [](char c) {return c == ','; });
-			if (parsed_args.size() != 2)
-				throw_error("argument format error, need format: add_asset1_amount,max_add_asset2_amount");
+			if (parsed_args.size() != 3)
+				throw_error("argument format error, need format: add_asset1_amount,max_add_asset2_amount,expired_blocknum");
 			
 			std::string add_asset1_amount_str = parsed_args[0];
 			std::string max_add_asset2_amount_str = parsed_args[1];
+			std::string expired_blocknum_str = parsed_args[2];
 
-			if (!is_integral(add_asset1_amount_str) || !is_integral(max_add_asset2_amount_str))
-				throw_error("argument format error, need format: add_asset1_amount,max_add_asset2_amount");
+			if (!is_integral(add_asset1_amount_str) || !is_integral(max_add_asset2_amount_str) || !is_integral(expired_blocknum_str))
+				throw_error("argument format error, need format: add_asset1_amount,max_add_asset2_amount,expired_blocknum");
 
 			int64_t add_asset1_amount = std::stoll(add_asset1_amount_str);
 			int64_t max_add_asset2_amount = std::stoll(max_add_asset2_amount_str);
+			int64_t expired_blocknum = std::stoll(expired_blocknum_str);
 
-			if (add_asset1_amount <= 0 || max_add_asset2_amount <= 0)
+			if (add_asset1_amount <= 0 || max_add_asset2_amount <= 0 )
 				throw_error("argument format error, add_asset_amount to add liquidity must be positive integer");
+			if (expired_blocknum <= 0)
+				throw_error("argument format error, expired_blocknum must be positive integer");
+			auto head_blocknum = head_block_num();
+			if(expired_blocknum <= head_blocknum)
+				throw_error("expired blocknum:"+ expired_blocknum_str);
 
 			if (add_asset1_amount < get_int_current_contract_storage("min_asset1_amount")) {
 				throw_error("add_asset1_amount must >= min_asset1_amount");
@@ -281,28 +288,34 @@ namespace uvm {
 			set_api_result(std::to_string(token_amount));
 		}
 
-		//destory_token_amount,min_remove_asset1_amount,min_remove_asset2_amount
+		//destory_token_amount,min_remove_asset1_amount,min_remove_asset2_amount,expired_blocknum
 		void uniswap_native_contract::removeLiquidity_api(const std::string& api_name, const std::string& api_arg) {
 			if (get_storage_state() != common_state_of_contract)
 				throw_error("state not common!");
 			std::vector<std::string> parsed_args;
 			boost::split(parsed_args, api_arg, [](char c) {return c == ','; });
-			if (parsed_args.size() != 3)
-				throw_error("argument format error, need format: destory_token_amount,min_remove_asset1_amount,min_remove_asset2_amount");
+			if (parsed_args.size() != 4)
+				throw_error("argument format error, need format: destory_token_amount,min_remove_asset1_amount,min_remove_asset2_amount,expired_blocknum");
 
 			std::string destory_token_amount_str = parsed_args[0];
 			std::string min_remove_asset1_amount_str = parsed_args[1];
 			std::string min_remove_asset2_amount_str = parsed_args[2];
+			std::string expired_blocknum_str = parsed_args[3];
 
-			if (!is_integral(min_remove_asset1_amount_str) || !is_integral(min_remove_asset2_amount_str) || !is_integral(destory_token_amount_str))
-				throw_error("argument format error, need format: destory_token_amount,min_remove_asset1_amount,min_remove_asset2_amount");
+			if (!is_integral(min_remove_asset1_amount_str) || !is_integral(min_remove_asset2_amount_str) || !is_integral(destory_token_amount_str) || !is_integral(expired_blocknum_str))
+				throw_error("argument format error, need format: destory_token_amount,min_remove_asset1_amount,min_remove_asset2_amount,expired_blocknum");
 
 			int64_t destory_token_amount = std::stoll(destory_token_amount_str);
 			int64_t min_remove_asset1_amount = std::stoll(min_remove_asset1_amount_str);
 			int64_t min_remove_asset2_amount = std::stoll(min_remove_asset2_amount_str);
+			int64_t expired_blocknum = std::stoll(expired_blocknum_str);
 
-			if (min_remove_asset1_amount < 0 || min_remove_asset2_amount < 0 || destory_token_amount <= 0)
+			if (min_remove_asset1_amount < 0 || min_remove_asset2_amount < 0 || destory_token_amount <= 0 || expired_blocknum <= 0)
 				throw_error("argument format error, input args must be positive integers");
+			
+			auto head_blocknum = head_block_num();
+			if (expired_blocknum <= head_blocknum)
+				throw_error("expired blocknum:" + expired_blocknum_str);
 
 			//check liquidity token 
 			auto from_address = get_from_address();
@@ -389,7 +402,7 @@ namespace uvm {
 			emit_event("LiquidityTokenDestoryed", std::to_string(destory_token_amount));
 		}
 
-		//want_buy_asset_symbol,min_want_buy_asset_amount
+		//want_buy_asset_symbol,min_want_buy_asset_amount,expired_blocknum
 		void uniswap_native_contract::on_deposit_asset_api(const std::string& api_name, const std::string& api_args)
 		{
 			if (get_storage_state() != common_state_of_contract)
@@ -433,19 +446,29 @@ namespace uvm {
 			else { //exchange
 				std::vector<std::string> parsed_args;
 				boost::split(parsed_args, param, [](char c) {return c == ','; });
-				if (parsed_args.size() != 2)
-					throw_error("argument format error, need format: want_buy_asset_symbol,min_want_buy_asset_amount");
+				if (parsed_args.size() != 3)
+					throw_error("argument format error, need format: want_buy_asset_symbol,min_want_buy_asset_amount,expired_blocknum");
 
 				std::string want_buy_asset_symbol = parsed_args[0];
 				std::string want_buy_asset_amount_str = parsed_args[1];
+				std::string expired_blocknum_str = parsed_args[2];
 
-				if (!is_integral(want_buy_asset_amount_str))
-					throw_error("argument format error, need format: want_buy_asset_symbol,min_want_buy_asset_amount");
+				if (!is_integral(want_buy_asset_amount_str)|| !is_integral(expired_blocknum_str))
+					throw_error("argument format error, need format: want_buy_asset_symbol,min_want_buy_asset_amount,expired_blocknum");
 
 				int64_t want_buy_asset_amount = std::stoll(want_buy_asset_amount_str);
+				int64_t expired_blocknum = std::stoll(expired_blocknum_str);
+
 				if (want_buy_asset_amount <= 0) {
 					throw_error("want_buy_asset_amount must > 0");
 				}
+				if (expired_blocknum <= 0) {
+					throw_error("expired_blocknum must > 0");
+				}
+
+				auto head_blocknum = head_block_num();
+				if (expired_blocknum <= head_blocknum)
+					throw_error("expired blocknum:" + expired_blocknum_str);
 
 				if (want_buy_asset_symbol != asset1 && want_buy_asset_symbol != asset2) {
 					throw_error("not support buy asset:" + want_buy_asset_symbol);
@@ -508,8 +531,8 @@ namespace uvm {
 					}
 					asset_2_pool_amount += amount;
 					asset_1_pool_amount -= get_asset_amount;
-
 					event_arg["buy_asset"] = asset1;
+					
 				}
 				if (asset_1_pool_amount <= 0 || asset_2_pool_amount <= 0) {
 					throw_error("caculate internal error");
@@ -517,12 +540,15 @@ namespace uvm {
 				set_current_contract_storage("asset_1_pool_amount", CborObject::from_int(asset_1_pool_amount));
 				set_current_contract_storage("asset_2_pool_amount", CborObject::from_int(asset_2_pool_amount));
 
+				current_transfer_to_address(from_address, want_buy_asset_symbol, get_asset_amount);
+
 				event_arg["addr"] = from_address;
 				event_arg["fee"] = fee; // fee symbol ->sell_asset
 				event_arg["sell_asset"] = symbol;
 				event_arg["sell_amount"] = amount;
 				event_arg["buy_amount"] = get_asset_amount;
 				emit_event("Exchanged", uvm::util::json_ordered_dumps(event_arg));
+				set_api_result(std::to_string(get_asset_amount));
 			}
 		}
 
