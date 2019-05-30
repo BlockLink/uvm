@@ -125,11 +125,12 @@ namespace uvm {
 			int64_t min_asset1_amount = std::stoll(min_amount1);
 			int64_t min_asset2_amount = std::stoll(min_amount2);
 			char* end = 0;
-			double feeRate = std::strtod(feestr.c_str(),&end);
+			
+			const auto& feeRate = safe_number_create(feestr);
 			if (min_asset1_amount <= 0 || min_asset2_amount <= 0)
 				throw_error("argument format error, min_asset_amount to add liquidity must be positive integer");
-			if (feeRate < 0.000001 || feeRate >= 0.999999)
-				throw_error("argument format error, fee rate must be number between 0 to 1");
+			if (safe_number_lt(feeRate, safe_number_create(0))|| safe_number_gte(feeRate, safe_number_create(1)))
+				throw_error("argument format error, fee rate must be >=0 and < 1");
 
 			std::string token_name = parsed_args[5];
 			boost::trim(token_name);
