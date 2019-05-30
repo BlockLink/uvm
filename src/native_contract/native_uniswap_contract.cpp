@@ -21,7 +21,7 @@ namespace uvm {
 
 		std::set<std::string> uniswap_native_contract::apis() const {
 			return { "init", "init_token", "transfer", "transferFrom", "balanceOf", "approve", "approvedBalanceFrom", "allApprovedFromUser", "state", "supply", "precision", "tokenName", "tokenSymbol","addLiquidity",
-			"removeLiquidity","on_deposit_asset","init_config","withraw","setMinAddAmount"};
+			"removeLiquidity","on_deposit_asset","init_config","withraw","setMinAddAmount","caculateExchangeAmount","getInfo","balanceOfAsset","getUserRemoveableLiquidity","caculatePoolShareByToken" };
 		}
 		std::set<std::string> uniswap_native_contract::offline_apis() const {
 			return { "balanceOf", "approvedBalanceFrom", "allApprovedFromUser", "state", "supply", "precision", "tokenName", "tokenSymbol",
@@ -49,7 +49,7 @@ namespace uvm {
 
 		void uniswap_native_contract::init_api(const std::string& api_name, const std::string& api_arg)
 		{
-			this->token_native_contract::init_api(api_name, api_arg);//????
+			this->token_native_contract::init_api(api_name, api_arg);
 			set_current_contract_storage("fee_rate", CborObject::from_string("0.0")); 
 			set_current_contract_storage("asset_1_symbol", CborObject::from_string("")); 
 			set_current_contract_storage("asset_2_symbol", CborObject::from_string(""));
@@ -114,6 +114,8 @@ namespace uvm {
 			boost::trim(asset2);
 			if (asset1.empty() || asset2.empty())
 				throw_error("argument format error, need format: asset1,asset2,min_asset1_amount,min_asset2_amount,fee_rate,token_name,token_symbol");
+			if (asset1==asset2)
+				throw_error("asset1 is same with asset2");
 			std::string min_amount1 = parsed_args[2];
 			std::string min_amount2 = parsed_args[3];
 			std::string feestr = parsed_args[4];
@@ -275,7 +277,8 @@ namespace uvm {
 			event_arg[asset2] = caculate_asset2_amount;
 			emit_event("LiquidityAdded", uvm::util::json_ordered_dumps(event_arg));
 
-			emit_event("LiquidityTokenMinted", std::to_string(token_amount));	
+			emit_event("LiquidityTokenMinted", std::to_string(token_amount));
+			set_api_result(std::to_string(token_amount));
 		}
 
 		//destory_token_amount,min_remove_asset1_amount,min_remove_asset2_amount
@@ -740,8 +743,12 @@ namespace uvm {
 
 		void uniswap_native_contract::getInfo_api(const std::string& api_name, const std::string& api_arg) {
 			jsondiff::JsonObject infos;
+			infos["admin"] = get_current_contract_storage_cbor("admin")->as_string();
 			infos["state"] = get_current_contract_storage_cbor("state")->as_string();
 			infos["fee_rate"] = get_current_contract_storage_cbor("fee_rate")->as_string();
+			infos["token_name"] = get_current_contract_storage_cbor("name")->as_string();
+			infos["token_symbol"] = get_current_contract_storage_cbor("symbol")->as_string();
+			infos["supply"] = get_current_contract_storage_cbor("supply")->force_as_int();
 			infos["asset_1_symbol"] = get_current_contract_storage_cbor("asset_1_symbol")->as_string();
 			infos["asset_2_symbol"] = get_current_contract_storage_cbor("asset_2_symbol")->as_string();
 			infos["asset_1_pool_amount"] = get_current_contract_storage_cbor("asset_1_pool_amount")->force_as_int();
