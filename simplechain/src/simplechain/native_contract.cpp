@@ -1,6 +1,7 @@
 #include <simplechain/native_contract.h>
 #include <native_contract/native_token_contract.h>
 #include <native_contract/native_exchange_contract.h>
+#include <native_contract/native_uniswap_contract.h>
 #include <simplechain/blockchain.h>
 #include <boost/algorithm/string.hpp>
 #include <jsondiff/jsondiff.h>
@@ -216,6 +217,10 @@ namespace simplechain {
 		else if (key == exchange_native_contract::native_contract_key())
 		{
 			result = std::make_shared<exchange_native_contract>(store);
+		}
+		else if (key == uniswap_native_contract::native_contract_key())
+		{
+			result = std::make_shared<uniswap_native_contract>(store);
 		}
 		else
 		{
