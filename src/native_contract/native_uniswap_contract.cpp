@@ -20,11 +20,11 @@ namespace uvm {
 		}
 
 		std::set<std::string> uniswap_native_contract::apis() const {
-			return { "init", "init_token", "transfer", "transferFrom", "balanceOf", "approve", "approvedBalanceFrom", "allApprovedFromUser", "state", "supply", "precision", "tokenName", "tokenSymbol","addLiquidity",
+			return { "init", "init_token", "transfer", "transferFrom", "balanceOf", "approve", "approvedBalanceFrom", "allApprovedFromUser", "state", "supply", "totalSupply", "precision", "tokenName", "tokenSymbol","addLiquidity",
 			"removeLiquidity","on_deposit_asset","init_config","withraw","setMinAddAmount","caculateExchangeAmount","getInfo","balanceOfAsset","getUserRemoveableLiquidity","caculatePoolShareByToken" };
 		}
 		std::set<std::string> uniswap_native_contract::offline_apis() const {
-			return { "balanceOf", "approvedBalanceFrom", "allApprovedFromUser", "state", "supply", "precision", "tokenName", "tokenSymbol",
+			return { "balanceOf", "approvedBalanceFrom", "allApprovedFromUser", "state", "supply", "totalSupply", "precision", "tokenName", "tokenSymbol",
 			"caculateExchangeAmount","getInfo","balanceOfAsset","getUserRemoveableLiquidity","caculatePoolShareByToken" };
 		}
 		std::set<std::string> uniswap_native_contract::events() const {
@@ -773,6 +773,7 @@ namespace uvm {
 			{ "allApprovedFromUser", std::bind(&uniswap_native_contract::all_approved_from_user_api, this, std::placeholders::_1, std::placeholders::_2) },
 			{ "state", std::bind(&uniswap_native_contract::state_api, this, std::placeholders::_1, std::placeholders::_2) },
 			{ "supply", std::bind(&uniswap_native_contract::supply_api, this, std::placeholders::_1, std::placeholders::_2) },
+			{ "totalSupply", std::bind(&uniswap_native_contract::totalSupply_api, this, std::placeholders::_1, std::placeholders::_2) },
 			{ "precision", std::bind(&uniswap_native_contract::precision_api, this, std::placeholders::_1, std::placeholders::_2) },
 			{ "tokenName", std::bind(&uniswap_native_contract::token_name_api, this, std::placeholders::_1, std::placeholders::_2) },
 			{ "tokenSymbol", std::bind(&uniswap_native_contract::token_symbol_api, this, std::placeholders::_1, std::placeholders::_2) },
