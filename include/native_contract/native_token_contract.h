@@ -42,6 +42,7 @@ namespace uvm {
 			void token_name_api(const std::string& api_name, const std::string& api_arg);
 			void token_symbol_api(const std::string& api_name, const std::string& api_arg);
 			void supply_api(const std::string& api_name, const std::string& api_arg);
+			void totalSupply_api(const std::string& api_name, const std::string& api_arg);
 			void precision_api(const std::string& api_name, const std::string& api_arg);
 			// 授权另一个用户可以从自己的余额中提现
 			// arg format : spenderAddress, amount(with precision)

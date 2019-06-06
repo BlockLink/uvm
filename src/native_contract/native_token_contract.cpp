@@ -199,6 +199,10 @@ namespace uvm {
 			set_api_result(std::to_string(supply));
 			return;
 		}
+		void token_native_contract::totalSupply_api(const std::string& api_name, const std::string& api_arg)
+		{
+			supply_api(api_name, api_arg);
+		}
 		void token_native_contract::precision_api(const std::string& api_name, const std::string& api_arg)
 		{
 			auto precision = get_storage_precision();
