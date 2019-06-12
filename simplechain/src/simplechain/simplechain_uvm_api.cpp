@@ -801,6 +801,10 @@ namespace simplechain {
 				}
 			}
 
+			uint32_t SimpleChainUvmChainApi::get_chain_safe_random(lua_State *L) {
+				return get_chain_random(L);
+			}
+
 			std::string SimpleChainUvmChainApi::get_transaction_id(lua_State *L)
 			{
 				uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
