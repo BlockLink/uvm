@@ -459,6 +459,11 @@ namespace uvm {
 				return 0;
 			}
 
+			uint32_t DemoUvmChainApi::get_header_block_num_without_gas(lua_State *L)
+			{
+				return 0;
+			}
+
 			uint32_t DemoUvmChainApi::wait_for_future_random(lua_State *L, int next)
 			{
               uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
@@ -544,7 +549,7 @@ namespace uvm {
 			}
 
 			int64_t DemoUvmChainApi::get_fork_height(lua_State* L, const std::string& fork_key) {
-				return -1;
+				return 1;
 			}
 
 			bool DemoUvmChainApi::use_cbor_diff(lua_State* L) const {
