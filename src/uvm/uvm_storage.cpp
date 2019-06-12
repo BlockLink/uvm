@@ -80,15 +80,19 @@ static struct UvmStorageValue get_last_storage_changed_value(lua_State *L, const
 			value_to_store.pointer_value = list;
 			uvm::lua::lib::set_lua_state_value(L, LUA_STORAGE_CHANGELIST_KEY, value_to_store, LUA_STATE_VALUE_POINTER);
 		}
-		UvmStorageChangeItem change_item;
-		change_item.before = value;
-		change_item.after = value;
-		change_item.contract_id = contract_id_str;
-		change_item.key = key;
-		change_item.fast_map_key = is_fast_map ? fast_map_key : "";
-		change_item.is_fast_map = is_fast_map;
-		list->push_back(change_item);
 
+		auto mod_change_list_fork_height = global_uvm_chain_api->get_fork_height(L, "MOD_CHANGE_LIST");
+		if (mod_change_list_fork_height < 0 || global_uvm_chain_api->get_header_block_num(L) < mod_change_list_fork_height) {
+			UvmStorageChangeItem change_item;
+			change_item.before = value;
+			change_item.after = value;
+			change_item.contract_id = contract_id_str;
+			change_item.key = key;
+			change_item.fast_map_key = is_fast_map ? fast_map_key : "";
+			change_item.is_fast_map = is_fast_map;
+			list->push_back(change_item);
+		}
+		
 		return value;
 	}
 	for (auto it = list->rbegin(); it != list->rend(); ++it)
@@ -585,6 +589,11 @@ bool luaL_commit_storage_changes(lua_State *L)
 	}
 	if (storage_changelist_node.type == LUA_STATE_VALUE_POINTER && nullptr != storage_changelist_node.value.pointer_value)
 	{
+		auto mod_change_list_fork_height = global_uvm_chain_api->get_fork_height(L, "MOD_CHANGE_LIST");
+		bool mod_change_list = false;
+		if (mod_change_list_fork_height >= 0 && global_uvm_chain_api->get_header_block_num(L) >= mod_change_list_fork_height)
+			mod_change_list = true;
+		
 		UvmStorageChangeList *list = (UvmStorageChangeList*)storage_changelist_node.value.pointer_value;
 		// merge initial tables here
 		if (table_read_list)
@@ -644,8 +653,11 @@ bool luaL_commit_storage_changes(lua_State *L)
 				contract_changes->insert(contract_changes->end(), std::make_pair(change_item_full_key, change_item));
 				changes.insert(changes.end(), std::make_pair(change_item.contract_id, contract_changes));
 			}
-			if(change_item.after.type == uvm::blockchain::StorageValueTypes::storage_value_null)
-				null_keys_changed.insert(change_item_full_key);
+			if (!mod_change_list) {
+				if (change_item.after.type == uvm::blockchain::StorageValueTypes::storage_value_null)
+					null_keys_changed.insert(change_item_full_key);
+			}
+			
 		}
 	}
 	else
