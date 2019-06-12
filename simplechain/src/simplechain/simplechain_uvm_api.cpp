@@ -831,6 +831,22 @@ namespace simplechain {
 				}
 			}
 
+			uint32_t SimpleChainUvmChainApi::get_header_block_num_without_gas(lua_State *L)
+			{
+				try {
+					auto evaluator = get_contract_evaluator(L);
+					if (evaluator == nullptr)
+						return 0;
+					return (uint32_t)evaluator->get_chain()->latest_block().block_number;
+				}
+				catch (...)
+				{
+					L->force_stopping = true;
+					L->exit_code = LUA_API_INTERNAL_ERROR;
+					return 0;
+				}
+			}
+
 			uint32_t SimpleChainUvmChainApi::wait_for_future_random(lua_State *L, int next)
 			{
 				uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
@@ -958,7 +974,7 @@ namespace simplechain {
 			}
 
 			int64_t SimpleChainUvmChainApi::get_fork_height(lua_State* L, const std::string& fork_key) {
-				return -1;
+				return 1;
 			}
 
 			bool SimpleChainUvmChainApi::use_cbor_diff(lua_State* L) const {

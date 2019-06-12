@@ -302,8 +302,14 @@ namespace simplechain {
 			const auto& addr = params.at(0).as_string();
 			const auto& storages = chain->get_contract_storages(addr);
 			fc::mutable_variant_object storages_json;
+			
+			auto scope = std::make_shared < uvm::lua::lib::UvmStateScope>();
 			for (const auto& p : storages) {
-				storages_json[p.first] = fc::json::from_string(p.second.as<std::string>());
+				//storages_json[p.first] = fc::json::from_string(p.second.as<std::string>());
+				auto storage_value = cbor_diff::cbor_decode(p.second.storage_data);			
+				auto uvm_storage_data = cbor_to_uvm_storage_value(scope->L(), storage_value.get());
+				auto storage_json = simplechain::uvm_storage_value_to_json(uvm_storage_data);
+				storages_json[p.first] = storage_json;
 			}
 			return storages_json;
 		}
