@@ -68,7 +68,7 @@ namespace uvm
                 "caller", "caller_address",
                 "contract_transfer", "contract_transfer_to", "transfer_from_contract_to_address",
 				"transfer_from_contract_to_public_account",
-                "get_chain_random", "get_transaction_fee", "fast_map_get", "fast_map_set",
+                "get_chain_random", "get_chain_safe_random", "get_transaction_fee", "fast_map_get", "fast_map_set",
                 "get_transaction_id", "get_header_block_num", "wait_for_future_random", "get_waited",
                 "get_contract_balance_amount", "get_chain_now", "get_current_contract_address", "get_system_asset_symbol", "get_system_asset_precision",
                 "pairs", "ipairs", "pairsByKeys", "collectgarbage", "error", "getmetatable", "_VERSION",
@@ -702,6 +702,14 @@ namespace uvm
                 lua_pushinteger(L, rand);
                 return 1;
             }
+
+			static int get_chain_safe_random(lua_State *L)
+			{
+				auto rand = uvm::lua::api::global_uvm_chain_api->get_chain_safe_random(L);
+				lua_pushinteger(L, rand);
+				return 1;
+			}
+
             static int get_transaction_id(lua_State *L)
             {
                 std::string tid = uvm::lua::api::global_uvm_chain_api->get_transaction_id(L);
@@ -1323,6 +1331,7 @@ end
                     add_global_c_function(L, "get_contract_balance_amount", get_contract_balance_amount);
                     add_global_c_function(L, "get_chain_now", get_chain_now);
                     add_global_c_function(L, "get_chain_random", get_chain_random);
+					add_global_c_function(L, "get_chain_safe_random", get_chain_safe_random);
                     add_global_c_function(L, "get_current_contract_address", get_contract_address_lua_api);
                     add_global_c_function(L, "get_transaction_id", get_transaction_id);
                     add_global_c_function(L, "get_header_block_num", get_header_block_num);

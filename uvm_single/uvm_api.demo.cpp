@@ -447,6 +447,10 @@ namespace uvm {
 				return 0;
 			}
 
+			uint32_t DemoUvmChainApi::get_chain_safe_random(lua_State *L) {
+				return get_chain_random(L);
+			}
+
 			std::string DemoUvmChainApi::get_transaction_id(lua_State *L)
 			{
               uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
