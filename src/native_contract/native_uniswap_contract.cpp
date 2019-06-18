@@ -287,6 +287,13 @@ namespace uvm {
 
 			emit_event("LiquidityTokenMinted", std::to_string(token_amount));
 			set_api_result(std::to_string(token_amount));
+
+			jsondiff::JsonObject event_arg2;
+			event_arg2["from"] = "";
+			event_arg2["to"] = from_address;
+			event_arg2["amount"] = token_amount;
+			emit_event("Transfer", uvm::util::json_ordered_dumps(event_arg2));
+
 		}
 
 		//destory_token_amount,min_remove_asset1_amount,min_remove_asset2_amount,expired_blocknum
@@ -509,7 +516,7 @@ namespace uvm {
 					}
 					get_asset_amount = getInputPrice(amount-fee, asset_1_pool_amount, asset_2_pool_amount);
 					if (get_asset_amount <= 0) {
-						throw_error("get_token_amount <= 0");
+						throw_error("get_asset_amount <= 0");
 					}
 					if (want_buy_asset_amount > get_asset_amount) {
 						throw_error("can't get what you want amount");
@@ -565,28 +572,31 @@ namespace uvm {
 			if (cbor_token_balance->is_integer()) {
 				token_balance = cbor_token_balance->force_as_int();
 			}
-			if (token_balance <= 0) {
-				throw_error("you have not enough liquidity to remove");
-			}
-
-			const auto& asset1 = get_string_current_contract_storage("asset_1_symbol");
-			const auto& asset2 = get_string_current_contract_storage("asset_2_symbol");
-			int64_t asset_1_pool_amount = get_int_current_contract_storage("asset_1_pool_amount");
-			int64_t asset_2_pool_amount = get_int_current_contract_storage("asset_2_pool_amount");
-			int64_t supply = get_int_current_contract_storage("supply");
 
 			jsondiff::JsonObject result;
-			if (token_balance == supply) {
-				result[asset1] = asset_1_pool_amount;
-				result[asset2] = asset_2_pool_amount;
+			const auto& asset1 = get_string_current_contract_storage("asset_1_symbol");
+			const auto& asset2 = get_string_current_contract_storage("asset_2_symbol");
+			if (token_balance <= 0) {
+				result[asset1] = 0;
+				result[asset2] = 0;
 			}
 			else {
-				const auto& a = safe_number_create(asset_1_pool_amount);
-				const auto& b = safe_number_create(asset_2_pool_amount);
-				const auto& quota = safe_number_div(safe_number_create(token_balance), safe_number_create(supply));
+				int64_t asset_1_pool_amount = get_int_current_contract_storage("asset_1_pool_amount");
+				int64_t asset_2_pool_amount = get_int_current_contract_storage("asset_2_pool_amount");
+				int64_t supply = get_int_current_contract_storage("supply");
 
-				result[asset1] = safe_number_to_int64(safe_number_multiply(quota, a));
-				result[asset2] = safe_number_to_int64(safe_number_multiply(quota, b));
+				if (token_balance == supply) {
+					result[asset1] = asset_1_pool_amount;
+					result[asset2] = asset_2_pool_amount;
+				}
+				else {
+					const auto& a = safe_number_create(asset_1_pool_amount);
+					const auto& b = safe_number_create(asset_2_pool_amount);
+					const auto& quota = safe_number_div(safe_number_create(token_balance), safe_number_create(supply));
+
+					result[asset1] = safe_number_to_int64(safe_number_multiply(quota, a));
+					result[asset2] = safe_number_to_int64(safe_number_multiply(quota, b));
+				}
 			}
 
 			const auto& r = uvm::util::json_ordered_dumps(result);
@@ -617,7 +627,7 @@ namespace uvm {
 				result[asset2] = asset_2_pool_amount;
 			}
 			else if (tokenAmount > supply) {
-				throw_error("input tokenAmount > supply");
+				throw_error("input tokenAmount must <= supply");
 			}
 			else {
 				const auto& a = safe_number_create(asset_1_pool_amount);
@@ -750,9 +760,7 @@ namespace uvm {
 				set_api_result(std::to_string(0));
 				return;
 			}
-			jsondiff::JsonObject event_arg;
 			int64_t get_asset_amount = 0;
-
 			if (want_sell_asset_symbol == asset1 && want_buy_asset_symbol == asset2) {
 				get_asset_amount = getInputPrice(want_sell_asset_amount-fee, asset_1_pool_amount, asset_2_pool_amount);
 			}

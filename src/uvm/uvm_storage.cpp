@@ -1087,18 +1087,16 @@ namespace uvm {
 
 			if (is_fast_map && (after.type == uvm::blockchain::StorageValueTypes::storage_value_null)
 				&& (lua_storage_is_table(before.type))) {
-				bool mod_change_list = false;
 				if (global_uvm_chain_api) { 
 					int64_t mod_change_list_fork_height = global_uvm_chain_api->get_fork_height(L, "MOD_CHANGE_LIST");
 					if (global_uvm_chain_api->get_header_block_num_without_gas(L) >= mod_change_list_fork_height) {
-						mod_change_list = true;
+						// has been added to table_read_list when get_last_storage_changed_value
+						//set val
+						lua_pushvalue(L, value_index);
+						lua_setglobal(L, global_key_for_storage_prop(contract_id, name, fast_map_key_str, is_fast_map).c_str());
 					}
 				}
-				if (mod_change_list) {
-					// has been added to table_read_list when get_last_storage_changed_value
-					lua_pushvalue(L, value_index);
-					lua_setglobal(L, global_key_for_storage_prop(contract_id, name, fast_map_key_str, is_fast_map).c_str());
-				}
+
 			}
 
 			// can't create new storage index outside init
