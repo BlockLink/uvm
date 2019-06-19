@@ -153,7 +153,9 @@ SafeNumber safe_number_abs(const SafeNumber& a);
 // tostring(a)
 std::string safe_number_to_string(const SafeNumber& a);
 
-int64_t safe_number_to_int64(const SafeNumber& a);
+int64_t safe_number_to_int64(const SafeNumber& a); // 12.3 -> 12    -12.3 -> -12
+
+int64_t safe_number_to_int64_floor(const SafeNumber& a); //// 12.3 -> 12    -12.3 -> -13
 
 // a == b. a and b should both be compressed
 bool safe_number_eq(const SafeNumber& a, const SafeNumber& b);
