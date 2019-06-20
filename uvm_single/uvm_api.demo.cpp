@@ -222,21 +222,29 @@ namespace uvm {
 					filename = std::string("uvm_modules") + uvm::util::file_separator_str() + "uvm_contract_" + name;
 				}
 
-
 				FILE *f = fopen(filename.c_str(), "rb");
 				if (nullptr == f)
 				{
 					std::string origin_filename(name);
-					filename = origin_filename + ".lua";
-					f = fopen(filename.c_str(), "rb");
-					if (!f)
-					{
-						filename = origin_filename + ".glua";
-						f = fopen(filename.c_str(), "rb");
-						if (nullptr == f)
-							return nullptr;
+					char filesep = uvm::util::file_separator_str()[0];
+					int pos = origin_filename.find('/');
+					while (pos > 0) {
+						origin_filename.replace(pos, 1, "\\");
+						pos = origin_filename.find('/');
 					}
-					is_bytes = false;
+					filename = origin_filename;
+					f = fopen(filename.c_str(), "rb");
+					if(nullptr == f){
+						filename = origin_filename + ".lua";
+						f = fopen(filename.c_str(), "rb");
+						if (!f)
+						{
+							filename = origin_filename + ".glua";
+							f = fopen(filename.c_str(), "rb");
+							if (nullptr == f)
+								return nullptr;
+						}
+					}
 				}
 				auto stream = std::make_shared<UvmModuleByteStream>();
 				if (nullptr == stream)
@@ -328,6 +336,14 @@ namespace uvm {
 					}					
 					is_init_storage_file = true;
 				}
+
+				std::string contract_id = contract_name;
+				int pos = contract_id.find('\\');
+				while (pos > 0) {
+					contract_id.replace(pos, 1, "/");
+					pos = contract_id.find('\\');
+				}
+
 				auto key = std::string(contract_name) + "$" + name; 
 				if (is_fast_map) {
 					key = key + "." + fast_map_key;
@@ -351,7 +367,13 @@ namespace uvm {
 					}
 					is_init_storage_file = true;
 				}
-				auto key = std::string(contract_address) + "$" + name;
+				std::string contract_id = contract_address;
+				int pos = contract_id.find('\\');
+				while (pos > 0) {
+					contract_id.replace(pos, 1, "/");
+					pos = contract_id.find('\\');
+				}
+				auto key = std::string(contract_id) + "$" + name;
 				if (is_fast_map) {
 					key = key + "." + fast_map_key;
 				}
@@ -383,6 +405,14 @@ namespace uvm {
 				for (const auto &change : changes)
 				{
 					auto contract_id = change.first;
+
+
+					int pos = contract_id.find('\\');
+					while (pos > 0) {
+						contract_id.replace(pos, 1, "/");
+						pos = contract_id.find('\\');
+					}
+					
 					for (const auto &change_info : *(change.second))
 					{
 						auto name = change_info.first;
