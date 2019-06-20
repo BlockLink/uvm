@@ -328,7 +328,10 @@ namespace uvm {
 					}					
 					is_init_storage_file = true;
 				}
-				auto key = std::string(contract_name) + "$" + name; // fix me zq ???????
+				auto key = std::string(contract_name) + "$" + name; 
+				if (is_fast_map) {
+					key = key + "." + fast_map_key;
+				}
 				if (storage_root.find(key) != storage_root.end()) {
 					auto s = simplechain::json_to_uvm_storage_value(L, storage_root[key]);
 					return s;
@@ -349,6 +352,9 @@ namespace uvm {
 					is_init_storage_file = true;
 				}
 				auto key = std::string(contract_address) + "$" + name;
+				if (is_fast_map) {
+					key = key + "." + fast_map_key;
+				}
 				if (storage_root.find(key) != storage_root.end()) {
 					auto s = simplechain::json_to_uvm_storage_value(L, storage_root[key]);
 					return s;
@@ -399,7 +405,7 @@ namespace uvm {
 					fc::variant temp;
 					fc::to_variant(storage_root, temp);
 					fc::json::save_to_file(temp, fc::path("uvm_storage_demo.json"),true, fc::json::legacy_generator);
-
+					printf("save uvm_storage_demo.json OK!\n");
 				}
 				return true;
 			}
