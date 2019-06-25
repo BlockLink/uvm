@@ -28,7 +28,7 @@ namespace simplechain {
 	}
 
 	long StreamFileWrapper::common_tell() {
-		return (long) stream->tellg();
+		return (long)stream->tellg();
 	}
 
 	int ContractHelper::common_fread_int(LikeFile* fp, int* dst_int)
@@ -403,6 +403,60 @@ free(storage_buf); \
 					types_vector.push_back(arg_type);
 				}
 				code.api_arg_types.insert(std::make_pair(std::string(api_name_buf), types_vector));
+			}
+		}
+
+		// read api args
+		{
+			int args_apis_count = 0;
+			auto read_count = common_fread_int(f, &args_apis_count);
+			if (read_count == 1) {
+				for (int i = 0; i < args_apis_count; i++)
+				{
+					int api_len = 0;
+					read_count = common_fread_int(f, &api_len);
+					if (read_count != 1)
+					{
+						f->common_close();
+						throw uvm::core::UvmException("Read verify code fail!");
+					}
+					api_buf = (char*)malloc(api_len + 1);
+					if (api_buf == NULL)
+					{
+						f->common_close();
+						FC_ASSERT(api_buf == NULL, "malloc fail!");
+					}
+					read_count = common_fread_octets(f, api_buf, api_len);
+					if (read_count != 1)
+					{
+						f->common_close();
+						free(api_buf);
+						throw uvm::core::UvmException("Read verify code fail!");
+					}
+					api_buf[api_len] = '\0';
+					std::string api_name(api_buf);
+					free(api_buf);
+					int args_count = 0;
+					read_count = common_fread_int(f, &args_count);
+					if (read_count != 1)
+					{
+						f->common_close();
+						free(api_buf);
+						throw uvm::core::UvmException("Read verify code fail!");
+					}
+					std::vector<fc::enum_type<fc::unsigned_int, UvmTypeInfoEnum>> api_args;
+					for (int j = 0; j < args_count; j++) {
+						int arg_type = 0;
+						read_count = common_fread_int(f, (int*)&arg_type);
+						if (read_count != 1)
+						{
+							f->common_close();
+							throw uvm::core::UvmException("Read verify code fail!");
+						}
+						api_args.push_back(static_cast<UvmTypeInfoEnum>(arg_type));
+					}
+					code.contract_api_arg_types[api_name] = api_args;
+				}
 			}
 		}
 

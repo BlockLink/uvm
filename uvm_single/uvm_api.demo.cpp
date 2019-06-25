@@ -573,6 +573,10 @@ namespace uvm {
 				return 0;
 			}
 
+			uint32_t DemoUvmChainApi::get_chain_safe_random(lua_State *L) {
+				return get_chain_random(L);
+			}
+
 			std::string DemoUvmChainApi::get_transaction_id(lua_State *L)
 			{
               uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
@@ -582,6 +586,11 @@ namespace uvm {
 			uint32_t DemoUvmChainApi::get_header_block_num(lua_State *L)
 			{
               uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
+				return 0;
+			}
+
+			uint32_t DemoUvmChainApi::get_header_block_num_without_gas(lua_State *L)
+			{
 				return 0;
 			}
 
@@ -673,7 +682,7 @@ namespace uvm {
 			}
 
 			int64_t DemoUvmChainApi::get_fork_height(lua_State* L, const std::string& fork_key) {
-				return -1;
+				return 1;
 			}
 
 			bool DemoUvmChainApi::use_cbor_diff(lua_State* L) const {
@@ -686,6 +695,19 @@ namespace uvm {
 				auto result = true;
 				L->cbor_diff_state = result ? 1 : 2; // cache it
 				return result;
+			}
+
+			std::string DemoUvmChainApi::pubkey_to_address_string(const fc::ecc::public_key& pub) const {
+				auto dat = pub.serialize();
+				auto addr = fc::ripemd160::hash(fc::sha512::hash(dat.data, sizeof(dat)));
+				std::string prefix = "SL";
+				unsigned char version = 0X35;
+				fc::array<char, 25> bin_addr;
+				memcpy((char*)&bin_addr, (char*)&version, sizeof(version));
+				memcpy((char*)&bin_addr + 1, (char*)&addr, sizeof(addr));
+				auto checksum = fc::ripemd160::hash((char*)&bin_addr, bin_addr.size() - 4);
+				memcpy(((char*)&bin_addr) + 21, (char*)&checksum._hash[0], 4);
+				return prefix + fc::to_base58(bin_addr.data, sizeof(bin_addr));
 			}
 
 		}

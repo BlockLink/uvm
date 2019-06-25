@@ -793,7 +793,7 @@ static int safemath_safe_number_create(lua_State *L) {
 	std::string value_str;
 	if (lua_isinteger(L, 1)) {
 		lua_Integer n = lua_tointeger(L, 1);
-		std::string value_str;
+		//std::string value_str;
 		value_str = std::to_string(n);
 	}
 	else if (lua_isstring(L, 1)) {

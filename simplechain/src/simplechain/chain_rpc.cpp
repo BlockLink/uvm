@@ -12,6 +12,12 @@
 #include <boost/asio.hpp>
 #include <fc/io/json.hpp>
 #include <cbor_diff/cbor_diff.h>
+#include <fc/crypto/hex.hpp>
+#include <fc/crypto/sha256.hpp>
+#include <fc/crypto/base58.hpp>
+#include <fc/crypto/elliptic.hpp>
+#include <fc/crypto/ripemd160.hpp>
+
 
 #include <uvm/lauxlib.h>
 
@@ -99,6 +105,26 @@ namespace simplechain {
 			auto gas_price = params.at(3).as_uint64();
 			auto tx = std::make_shared<transaction>();
 			auto op = operations_helper::create_contract_from_file(caller_addr, contract_filepath, gas_limit, gas_price);
+			tx->operations.push_back(op);
+			tx->tx_time = fc::time_point_sec(fc::time_point::now());
+			const auto& contract_addr = op.calculate_contract_id();
+
+			chain->evaluate_transaction(tx);
+			chain->accept_transaction_to_mempool(*tx);
+
+			fc::mutable_variant_object res;
+			res["contract_address"] = contract_addr;
+			res["txid"] = tx->tx_hash();
+			return res;
+		}
+		
+		RpcResultType create_native_contract(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			auto caller_addr = params.at(0).as_string();
+			auto contract_type = params.at(1).as_string();
+			auto gas_limit = params.at(2).as_uint64();
+			auto gas_price = params.at(3).as_uint64();
+			auto tx = std::make_shared<transaction>();
+			auto op = operations_helper::create_native_contract(caller_addr, contract_type);
 			tx->operations.push_back(op);
 			tx->tx_time = fc::time_point_sec(fc::time_point::now());
 			const auto& contract_addr = op.calculate_contract_id();
@@ -506,5 +532,75 @@ namespace simplechain {
 			fc::to_variant(result, res);
 			return res;
 		}
+		
+		using uvm::lua::api::global_uvm_chain_api;
+		RpcResultType generate_key(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			fc::mutable_variant_object res;
+			try {
+				auto prik = fc::ecc::private_key::generate();
+				auto pubk = prik.get_public_key();
+				auto pubk_base58 = pubk.to_base58();
+				
+				auto address_str = global_uvm_chain_api->pubkey_to_address_string(pubk);
+
+				auto private_key_str = prik.get_secret().str();
+				auto ss = pubk.serialize();
+				auto hex_pubkey = fc::to_hex(ss.data, ss.size());
+				
+				res["prik"] = private_key_str;
+				res["public_key_base58"] = pubk_base58;
+				res["hex_pubkey"] = hex_pubkey;
+				res["addr"] = address_str;
+
+			}
+			catch (fc::exception e) {
+				res["exec_succeed"] = false;
+				return res;
+			}
+			return res;
+		}
+
+
+		RpcResultType sign_info(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			fc::mutable_variant_object res;
+			try{
+				const auto& private_key_str = params.at(0).as_string();
+				const auto& infostr = params.at(1).as_string();
+				/*std::string infostr;
+				if (fc::json::is_valid(info)) {
+					auto v = fc::json::from_string(info); //map items order 
+					infostr = fc::json::to_string(v);  
+				}
+				else {
+					infostr = info;
+				}*/
+				
+				auto private_key = fc::ecc::private_key::regenerate(fc::sha256(private_key_str));
+
+				auto orderinfoDigest = fc::sha256::hash(infostr);
+				auto sig = private_key.sign_compact(orderinfoDigest);
+
+				std::vector<char> chars(sig.size());
+				memcpy(chars.data(), sig.data, sig.size());
+				auto sig_hex = fc::to_hex(chars);
+
+				auto temp = infostr + sig_hex;
+				auto orderID = fc::sha256::hash(temp);
+				//fc::sha256 orderID(temp);
+				auto id = orderID.str();
+			
+				res["digest_hex"] = orderinfoDigest.str();
+				res["sig_hex"] = sig_hex;
+				res["id"] = id;
+				res["exec_succeed"] = true;
+			}
+			catch (fc::exception e) {
+				res["exec_succeed"] = false;
+				return res;
+
+			}
+			return res;
+		}
+
 	}
 }

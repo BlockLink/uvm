@@ -148,8 +148,10 @@ namespace uvm {
         virtual int64_t get_transaction_fee(lua_State *L);
         virtual uint32_t get_chain_now(lua_State *L);
         virtual uint32_t get_chain_random(lua_State *L);
+		virtual uint32_t get_chain_safe_random(lua_State *L);
         virtual std::string get_transaction_id(lua_State *L);
         virtual uint32_t get_header_block_num(lua_State *L);
+		virtual uint32_t get_header_block_num_without_gas(lua_State *L);
         virtual uint32_t wait_for_future_random(lua_State *L, int next);
 
         virtual int32_t get_waited(lua_State *L, uint32_t num);
@@ -172,6 +174,8 @@ namespace uvm {
 		virtual int64_t get_fork_height(lua_State* L, const std::string& fork_key) override;
 
 		virtual bool use_cbor_diff(lua_State* L) const override;
+
+		virtual std::string pubkey_to_address_string(const fc::ecc::public_key& pub) const override;
 
       };
 

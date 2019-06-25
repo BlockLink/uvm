@@ -17,6 +17,7 @@ namespace simplechain {
 	{ "register_account", &register_account },
 	{ "transfer", &transfer },
 	{ "create_contract_from_file", &create_contract_from_file },
+	{ "create_native_contract", &create_native_contract },
 	{ "create_contract", &create_contract },
 	{ "invoke_contract", &invoke_contract },
 	{ "invoke_contract_offline", &invoke_contract_offline },
@@ -33,8 +34,11 @@ namespace simplechain {
 	{ "get_account_balances", &get_account_balances },
 	{ "get_contract_storages", &get_contract_storages },
 	{ "get_storage", &get_storage },
-
-	//add debug rpc
+	{ "add_asset", &add_asset },
+        { "generate_key", &generate_key },
+        { "sign_info", &sign_info },
+	
+        //add debug rpc
 	{ "set_breakpoint", &set_breakpoint },
 	{ "view_debug_info", &view_debug_info },
 	{ "view_localvars_in_last_debugger_state", &view_localvars_in_last_debugger_state },
@@ -99,6 +103,7 @@ namespace simplechain {
 		res_json["code"] = rpc_response.error_code;
 		if (rpc_response.has_error) {
 			res_json["message"] = rpc_response.error;
+			res_json["error"] = rpc_response.error;
 		}
 		auto res_json_str = fc::json::to_string(res_json);
 		*response << "HTTP/1.1 200 OK\r\n"

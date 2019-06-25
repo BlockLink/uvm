@@ -14,7 +14,7 @@ namespace simplechain {
 	fc::mutable_variant_object block::to_json() const {
 		fc::mutable_variant_object info;
 		info["hash"] = block_hash();
-		info["id"] = info["hash"];
+		info["id"] = block_hash();
 		info["block_number"] = block_number;
 		info["prev_block_hash"] = prev_block_hash;
 		info["block_time"] = block_time;

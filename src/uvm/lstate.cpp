@@ -260,7 +260,7 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
     LG *l = lua_cast(LG *, (*f)(ud ? ud : gc_state, nullptr, LUA_TTHREAD, sizeof(LG)));
     if (l == nullptr) return nullptr;
     L = &l->l.l;
-	L->gc_state = gc_state;
+    L->gc_state = gc_state;
     memset(L->compile_error, 0x0, LUA_COMPILE_ERROR_MAX_LENGTH);
 	memset(L->runerror, 0x0, LUA_VM_EXCEPTION_STRNG_MAX_LENGTH);
     L->in = stdin;

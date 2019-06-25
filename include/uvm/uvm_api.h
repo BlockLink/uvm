@@ -24,6 +24,8 @@
 #include <jsondiff/exceptions.h>
 #include <cborcpp/cbor.h>
 #include <cbor_diff/cbor_diff.h>
+#include <fc/crypto/elliptic.hpp>
+#include <fc/crypto/base58.hpp>
 
 #define LOG_INFO(...)  fprintf(stderr, "[INFO] " ##__VA_ARGS__)
 
@@ -227,7 +229,7 @@ public:
     // storage
     std::map<std::string, uvm::blockchain::StorageValueTypes> contract_storage_properties;
 
-	// APIAPI
+	// API args
 	std::map<std::string, std::vector<UvmTypeInfoEnum>> contract_api_arg_types;
 
 public:
@@ -573,8 +575,10 @@ namespace uvm {
             virtual int64_t get_transaction_fee(lua_State *L) = 0;
             virtual uint32_t get_chain_now(lua_State *L) = 0;
             virtual uint32_t get_chain_random(lua_State *L) = 0;
+			virtual uint32_t get_chain_safe_random(lua_State *L) = 0;
             virtual std::string get_transaction_id(lua_State *L) = 0;
             virtual uint32_t get_header_block_num(lua_State *L) = 0;
+			virtual uint32_t get_header_block_num_without_gas(lua_State *L) = 0;
             virtual uint32_t wait_for_future_random(lua_State *L, int next) = 0;
 
             virtual int32_t get_waited(lua_State *L, uint32_t num) = 0;
@@ -604,6 +608,8 @@ namespace uvm {
 			virtual bool use_fast_map_set_nil(lua_State *L) const {
 				return use_cbor_diff(L);
 			}
+
+			virtual std::string pubkey_to_address_string(const fc::ecc::public_key& pub) const = 0;
 
           };
 

@@ -79,6 +79,8 @@ set(SOURCES src/uvm/lapi.cpp
 	src/safenumber/safenumber.cpp
 
 	src/native_contract/native_token_contract.cpp
+	src/native_contract/native_exchange_contract.cpp
+	src/native_contract/native_uniswap_contract.cpp
 )
 
 find_package(OpenSSL REQUIRED)
@@ -105,7 +107,7 @@ LIST(APPEND BOOST_COMPONENTS thread iostreams date_time system filesystem progra
 add_library( uvm ${SOURCES} ${HEADERS} )
 
 target_link_libraries( uvm 
-  PUBLIC /code_deps/fc/libfc.a /usr/local/lib/libsecp256k1.a OpenSSL::SSL ${Boost_LIBRARIES} )
+  PUBLIC fc)
 target_include_directories( uvm 
   PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/deps/jsondiff-cpp/jsondiff-cpp/include" "${CMAKE_CURRENT_SOURCE_DIR}/vmgc/include"
 )

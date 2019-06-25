@@ -7,6 +7,7 @@
 #include <list>
 #include <fc/io/json.hpp>
 #include <uvm/lvm.h>
+#include <fc/log/logger.hpp>
 #include <cbor_diff/cbor_diff.h>
 
 namespace simplechain {
@@ -132,11 +133,11 @@ namespace simplechain {
 		
 		auto balance_iter = balances.find(asset_id);
 		if (balance_iter == balances.end()) {
-			assert(balance_change >= 0);
+			FC_ASSERT(balance_change >= 0, "balance change must >= 0");
 			balances[asset_id] = (balance_t)(balance_change);
 		}
 		else {
-			assert(balance_change > 0 || (-balance_change <= balance_iter->second));
+			FC_ASSERT(balance_change > 0 || (-balance_change <= balance_iter->second), "balance change invalid");
 			balances[asset_id] = balance_t(int64_t(balance_iter->second) + balance_change);
 		}
 		account_balances[account_address] = balances;
@@ -319,6 +320,7 @@ namespace simplechain {
 		blk.block_number = blocks.size();
 		blk.prev_block_hash = latest_block().block_hash();
 		blocks.push_back(blk);
+		ilog("block #${block_num} generated", ("block_num", blk.block_number));
 	}
 
 	fc::variant blockchain::get_state() const {

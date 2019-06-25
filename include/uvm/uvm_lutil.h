@@ -16,6 +16,7 @@
 #include <chrono>
 #include <algorithm>
 #include <memory>
+#include <cborcpp/cbor.h>
 
 struct lua_State;
 
@@ -34,6 +35,7 @@ namespace uvm
 		bool starts_with(const std::string &str, const std::string &prefix);
 
 		bool compare_string_list(std::list<std::string> &l1, std::list<std::string> &l2);
+		bool compare_key(const std::string& first, const std::string& second);
 
 		void replace_all(std::string& str, const std::string& from, const std::string& to);
 
@@ -256,6 +258,7 @@ namespace uvm
 		std::string convert_pre(int old_base, int new_base, std::string source_str);
 
 		std::string json_ordered_dumps(const fc::variant& value);
+		cbor::CborObjectP nested_cbor_object_to_array(const cbor::CborObject* cbor_value);
 
 	} // end namespace uvm::util
 } // end namespace uvm

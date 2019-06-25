@@ -45,6 +45,8 @@ namespace simplechain {
 		RpcResultType transfer(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		// create_contract_from_file(caller_address: string, contract_filepath: string, gas_limit: int, gas_price: int)
 		RpcResultType create_contract_from_file(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		
+		RpcResultType create_native_contract(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		// create_contract(caller_address: string, contract_base64: string, gas_limit: int, gas_price: int)
 		RpcResultType create_contract(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		// invoke_contract(caller_address: string, contract_address: string, api_name: string, api_args: [string], deposit_asset_id: int, deposit_amount: int, gas_limit: int, gas_price: int)
@@ -81,6 +83,8 @@ namespace simplechain {
 		RpcResultType view_current_contract_storage_value(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		RpcResultType view_call_stack(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 
+		RpcResultType generate_key(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType sign_info(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		// TODO: deposit to contract
 
 

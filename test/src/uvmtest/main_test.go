@@ -17,7 +17,7 @@ import (
 	"strings"
 	"testing"
 	"time"
-
+	"math/rand"
 	"github.com/bitly/go-simplejson"
 	"github.com/stretchr/testify/assert"
 	"github.com/zoowii/ecdsatools"
@@ -37,7 +37,7 @@ func findUvmSinglePath() string {
 	if runtime.GOOS == "windows" {
 		return filepath.Join(uvmDir, "x64", "Debug", "uvm_single.exe")
 	}
-	return filepath.Join(uvmDir, "uvm_single")
+	return filepath.Join(uvmDir, "uvm_single_exec")
 }
 
 func findUvmCompilerPath() string {
@@ -109,6 +109,10 @@ func execCommand(program string, args ...string) (string, string) {
 
 func execCommandBackground(program string, args ...string) *exec.Cmd {
 	cmd := exec.Command(program, args...)
+	var outb, errb bytes.Buffer
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = &outb
+	cmd.Stderr = &errb
 	err := cmd.Start()
 	if err != nil {
 		fmt.Printf("%v\n", err)
@@ -389,8 +393,8 @@ func TestTimeModule(t *testing.T) {
 	assert.True(t, strings.Contains(out, `a1=	1234567890`))
 	assert.True(t, strings.Contains(out, `a2=	1234654290`))
 	assert.True(t, strings.Contains(out, `a3=	-86400`))
-	assert.True(t, strings.Contains(out, `a4=	2009-02-14 07:31:30`))
-	assert.True(t, strings.Contains(out, `a5=	2009-02-15 07:31:30`))
+	assert.True(t, strings.Contains(out, `a4=	2009-02-13 23:31:30`))
+	assert.True(t, strings.Contains(out, `a5=	2009-02-14 23:31:30`))
 }
 
 func TestForLoop(t *testing.T) {
@@ -538,6 +542,7 @@ func TestSimpleChainMintAndTransfer(t *testing.T) {
 	defer func() {
 		kill(cmd)
 	}()
+	time.Sleep(1 * time.Second)
 
 	var res *simplejson.Json
 	var err error
@@ -566,29 +571,42 @@ func TestSimpleChainMintAndTransfer(t *testing.T) {
 	assert.True(t, balance2 == 300)
 }
 
-func TestSimpleChainTokenContract(t *testing.T) {
-	cmd := execCommandBackground(simpleChainPath)
-	assert.True(t, cmd != nil)
-	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
-	defer func() {
-		kill(cmd)
-	}()
+type TxEvent struct {
+	EventName string `json:"event_name"`
+	EventArg  string `json:"event_arg"`
+}
 
-	var res *simplejson.Json
-	var err error
-	res, err = simpleChainRPC("get_chain_state")
+func getTxReceiptEvents(txid string) (result []*TxEvent, err error) {
+	result = make([]*TxEvent, 0)
+	res, err := simpleChainRPC("get_tx_receipt", txid)
 	if err != nil {
-		fmt.Printf("error: %s\n", err.Error())
+		return
 	}
-	assert.True(t, err == nil)
-	fmt.Printf("head_block_num: %d\n", res.Get("head_block_num").MustInt())
+	eventsArrayJson := res.Get("events")
+	eventsBytes, err := eventsArrayJson.Encode()
+	if err != nil {
+		return
+	}
+	err = json.Unmarshal(eventsBytes, &result)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func testTokenContractInSimplechain(t *testing.T, contract1Addr string) {
 	caller1 := "SPLtest1"
 	caller2 := "SPLtest2"
+	caller3 := "SPLtest3"
+        var res *simplejson.Json
+        var err error
+
 	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("newtoken.gpc"), 50000, 10)
 	assert.True(t, err == nil)
 	contract1Addr := res.Get("contract_address").MustString()
 	fmt.Printf("contract address: %s\n", contract1Addr)
 	simpleChainRPC("generate_block")
+
 	res, err = simpleChainRPC("get_contract_info", contract1Addr)
 	assert.True(t, err == nil)
 	assert.True(t, res.Get("owner_address").MustString() == caller1 && res.Get("contract_address").MustString() == contract1Addr)
@@ -601,12 +619,72 @@ func TestSimpleChainTokenContract(t *testing.T) {
 	assert.True(t, err == nil)
 	fmt.Printf("caller1 balance: %s\n", res.Get("api_result").MustString())
 	assert.True(t, res.Get("api_result").MustString() == "10000")
-	simpleChainRPC("invoke_contract", caller1, contract1Addr, "transfer", []string{caller2 + "," + strconv.Itoa(100)}, 0, 0, 50000, 10)
+	res, err = simpleChainRPC("invoke_contract", caller1, contract1Addr, "transfer", []string{caller2 + "," + strconv.Itoa(100)}, 0, 0, 50000, 10)
+	assert.True(t, err == nil)
+	transferTxid := res.Get("txid").MustString()
+	println("transfer txid: ", transferTxid)
 	simpleChainRPC("generate_block")
+	// check emited event
+	res, err = simpleChainRPC("get_tx_receipt", transferTxid)
+	assert.True(t, err == nil)
+	transferEvents, err := getTxReceiptEvents(transferTxid)
+	assert.True(t, err == nil)
+	assert.True(t, len(transferEvents) == 1)
+	transferEvent := transferEvents[0]
+	assert.True(t, transferEvent.EventName == "Transfer")
+
 	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "balanceOf", []string{caller2}, 0, 0)
 	assert.True(t, err == nil)
 	fmt.Printf("caller2 balance: %s\n", res.Get("api_result").MustString())
 	assert.True(t, res.Get("api_result").MustString() == "100")
+
+	// test approve and transferFrom
+	simpleChainRPC("invoke_contract", caller1, contract1Addr, "approve", []string{caller2 + "," + strconv.Itoa(30)}, 0, 0, 50000, 10)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "approvedBalanceFrom", []string{caller2 + "," + caller1}, 0, 0)
+	assert.True(t, err == nil)
+	fmt.Printf("caller2 approvedBalanceFrom caller1 balance: %s\n", res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "30")
+
+	simpleChainRPC("invoke_contract", caller2, contract1Addr, "transferFrom", []string{caller1 + "," + caller3 + "," + strconv.Itoa(12)}, 0, 0, 50000, 10)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "balanceOf", []string{caller3}, 0, 0)
+	assert.True(t, err == nil)
+	fmt.Printf("caller2 balance: %s\n", res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "12")
+
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "approvedBalanceFrom", []string{caller2 + "," + caller1}, 0, 0)
+	assert.True(t, err == nil)
+	fmt.Printf("caller2 approvedBalanceFrom caller1 balance: %s\n", res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "18")
+
+}
+
+func TestSimpleChainTokenContract(t *testing.T) {
+	cmd := execCommandBackground(simpleChainPath)
+	assert.True(t, cmd != nil)
+	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
+	time.Sleep(1 * time.Second)
+	defer func() {
+		kill(cmd)
+	}()
+	time.Sleep(1 * time.Second)
+
+	var res *simplejson.Json
+	var err error
+	res, err = simpleChainRPC("get_chain_state")
+	if err != nil {
+		fmt.Printf("error: %s\n", err.Error())
+	}
+	assert.True(t, err == nil)
+	fmt.Printf("head_block_num: %d\n", res.Get("head_block_num").MustInt())
+	caller1 := "SPLtest1"
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("token.gpc"), 50000, 10)
+	assert.True(t, err == nil)
+	contract1Addr := res.Get("contract_address").MustString()
+	fmt.Printf("contract address: %s\n", contract1Addr)
+	simpleChainRPC("generate_block")
+	testTokenContractInSimplechain(t, contract1Addr)
 }
 
 func depositToPlasmaContract(caller string, plasmaContractAddress string, amount int, assetID int) (txID string, coinSlotHex string, err error) {
@@ -717,6 +795,84 @@ func invokeContract(caller string, contractAddress string, apiName, apiArg strin
 }
 
 func createPlasmaContract(caller1 string) (string, error) {
+	compileOut, compileErr := execCommand(uvmCompilerPath, "-g", testContractPath("sparse_merkle_tree.lua"))
+	fmt.Printf("compile out: %s\n", compileOut)
+	if compileErr != "" {
+		return "", errors.New(compileErr)
+	}
+	var res *simplejson.Json
+	var err error
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("sparse_merkle_tree.lua.gpc"), 50000, 10)
+	if err != nil {
+		return "", err
+	}
+	smtContractAddress := res.Get("contract_address").MustString()
+	fmt.Printf("contract address: %s\n", smtContractAddress)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("get_contract_info", smtContractAddress)
+	if err != nil {
+		return "", err
+	}
+	if !(res.Get("owner_address").MustString() == caller1 && res.Get("contract_address").MustString() == smtContractAddress) {
+		return "", errors.New("invalid smt contract address or owner address")
+	}
+
+	compileOut2, compileErr2 := execCommand(uvmCompilerPath, "-g", testContractPath("plasma_root_chain.lua"))
+	fmt.Printf("compile out: %s\n", compileOut2)
+	if compileErr2 != "" {
+		return "", errors.New(compileErr2)
+	}
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("plasma_root_chain.lua.gpc"), 50000, 10)
+	if err != nil {
+		return "", err
+	}
+	plasmaContractAddress := res.Get("contract_address").MustString()
+	fmt.Printf("contract address: %s\n", plasmaContractAddress)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("get_contract_info", plasmaContractAddress)
+	if err != nil {
+		return "", err
+	}
+	if !(res.Get("owner_address").MustString() == caller1 && res.Get("contract_address").MustString() == plasmaContractAddress) {
+		return "", errors.New("invalid plasma contract address or owner address")
+	}
+
+	compileOut3, compileErr3 := execCommand(uvmCompilerPath, "-g", testContractPath("validator_manager_contract.lua"))
+	fmt.Printf("compile out: %s\n", compileOut3)
+	if compileErr3 != "" {
+		return "", errors.New(compileErr3)
+	}
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("validator_manager_contract.lua.gpc"), 50000, 10)
+	if err != nil {
+		return "", err
+	}
+	vmcContractAddress := res.Get("contract_address").MustString()
+	fmt.Printf("contract address: %s\n", vmcContractAddress)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("get_contract_info", vmcContractAddress)
+	if err != nil {
+		return "", err
+	}
+	if !(res.Get("owner_address").MustString() == caller1 && res.Get("contract_address").MustString() == vmcContractAddress) {
+		return "", errors.New("invalid vmc contract address or owner address")
+	}
+
+	simpleChainRPC("invoke_contract", caller1, plasmaContractAddress, "set_config", []string{caller1 + "," + vmcContractAddress + "," + smtContractAddress + ",1000"}, 0, 0, 50000, 10)
+	simpleChainRPC("generate_block")
+	return plasmaContractAddress, nil
+}
+
+func TestPlasmaRootChain(t *testing.T) {
+	cmd := execCommandBackground(simpleChainPath)
+	assert.True(t, cmd != nil)
+	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
+	defer func() {
+		kill(cmd)
+	}()
+	time.Sleep(1 * time.Second)
+	var res *simplejson.Json
+	var err error
+	caller1 := "SPLtest1"
 	compileOut, compileErr := execCommand(uvmCompilerPath, "-g", testContractPath("sparse_merkle_tree.lua"))
 	fmt.Printf("compile out: %s\n", compileOut)
 	if compileErr != "" {
@@ -1519,6 +1675,7 @@ func TestSparseMerkleTreeContract(t *testing.T) {
 	defer func() {
 		kill(cmd)
 	}()
+	time.Sleep(1 * time.Second)
 
 	var res *simplejson.Json
 	var err error
@@ -1557,6 +1714,7 @@ func TestSimpleChainContractCallContract(t *testing.T) {
 	defer func() {
 		kill(cmd)
 	}()
+	time.Sleep(1 * time.Second)
 
 	var res *simplejson.Json
 	var err error
@@ -1618,6 +1776,7 @@ func TestSimpleChainContractChangeOtherContractProperties(t *testing.T) {
 	defer func() {
 		kill(cmd)
 	}()
+	time.Sleep(1 * time.Second)
 
 	var res *simplejson.Json
 	var err error
@@ -1653,6 +1812,7 @@ func TestManyObjects(t *testing.T) {
 	defer func() {
 		kill(cmd)
 	}()
+	time.Sleep(1 * time.Second)
 	var res *simplejson.Json
 	var err error
 	caller1 := "SPLtest1"
@@ -1682,6 +1842,7 @@ func TestCallContractWithIdNumberStorage(t *testing.T) {
 	defer func() {
 		kill(cmd)
 	}()
+	time.Sleep(1 * time.Second)
 	var res *simplejson.Json
 	var err error
 	caller1 := "SPLtest1"
@@ -1703,6 +1864,7 @@ func TestCallContractManyTimes(t *testing.T) {
 	defer func() {
 		kill(cmd)
 	}()
+	time.Sleep(1 * time.Second)
 	var res *simplejson.Json
 	var err error
 	caller1 := "SPLtest1"
@@ -1726,4 +1888,203 @@ func TestCallContractManyTimes(t *testing.T) {
 		time.Sleep(time.Duration(1) * time.Second)
 	}
 	println("TestCallContractManyTimes")
+}
+
+func TestNativeTokenContract(t *testing.T) {
+	cmd := execCommandBackground(simpleChainPath)
+	assert.True(t, cmd != nil)
+	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
+	defer func() {
+		kill(cmd)
+	}()
+	time.Sleep(1 * time.Second)
+	var res *simplejson.Json
+	var err error
+	caller1 := "SPLtest1"
+
+	res, err = simpleChainRPC("create_native_contract", caller1, "token", 50000, 10)
+	assert.True(t, err == nil)
+	contract1Addr := res.Get("contract_address").MustString()
+	fmt.Printf("contract address: %s\n", contract1Addr)
+	simpleChainRPC("generate_block")
+
+	testTokenContractInSimplechain(t, contract1Addr)
+}
+
+
+func makeOrder(t *testing.T, signer_prik string, purchaseAsset string,purchaseNum int,payAsset string,payNum int,ordertype string) map[string]string{
+	var res *simplejson.Json
+	var err error
+	orderInfo := make(map[string]interface{})
+	order := make(map[string]string)
+	orderInfo["nonce"]= time.Now().Format("Jan _2 15:04:05.000")+strconv.Itoa(rand.Intn(1000))
+	orderInfo["purchaseAsset"] = purchaseAsset
+    orderInfo["purchaseNum"] = purchaseNum
+    orderInfo["payAsset"] = payAsset
+    orderInfo["payNum"] = payNum
+    orderInfo["relayer"] = "SL_relayer"
+    orderInfo["type"] = ordertype
+	orderInfo["fee"] = "0.1"
+	orderInfo["expiredAt"] = 9999999999
+	orderInfo["version"] = 1
+	
+	str, err := json.Marshal(orderInfo)
+	assert.True(t, err == nil)
+    orderInfoStr := string(str)
+	
+	res, err = simpleChainRPC("sign_info", signer_prik, orderInfoStr)
+	assert.True(t,err == nil)
+	
+	sig_hex := res.Get("sig_hex").MustString()
+	id := res.Get("id").MustString()
+	assert.True(t, sig_hex != "")
+	order["orderInfo"] = orderInfoStr
+	order["sig"] = sig_hex
+	order["id"] = id
+	return order
+}
+
+
+func makeFillOrder(t *testing.T, signer_prik string, purchaseAsset string,purchaseNum int,payAsset string,payNum int,getNum int,spentNum int,ordertype string) map[string]interface{}{
+	order := makeOrder(t,signer_prik, purchaseAsset, purchaseNum, payAsset, payNum,ordertype)
+	fillorder := make(map[string]interface{})
+	fillorder["order"] = order
+    fillorder["getNum"] = getNum
+    fillorder["spentNum"] = spentNum
+    return fillorder
+}
+
+func makeMatchedOrders(t *testing.T, user1 map[string]string, user2 map[string]string) map[string]interface{}{
+	matchedOrders := make(map[string]interface{})
+	takerGetNum := rand.Intn(100)
+	takerSpentNum := rand.Intn(100)
+	fillTakerOrder := makeFillOrder(t,user1["prik"],"HC",takerGetNum,"COIN",takerSpentNum,takerGetNum,takerSpentNum,"buy")
+	fillMakerOrder := makeFillOrder(t,user2["prik"], "COIN", takerSpentNum, "HC", takerGetNum, takerSpentNum, takerGetNum,"sell")
+	var orders [1]map[string]interface{}
+	orders[0] = fillMakerOrder
+	matchedOrders["fillTakerOrder"] = fillTakerOrder
+    matchedOrders["fillMakerOrders"] = orders
+    return matchedOrders
+}
+
+
+
+
+func test0xExchangeContractInSimplechain(t *testing.T, contract1Addr string) {
+	var accounts = [...]map[string]string{{"prik": "71be40602648864966a0b7956edef37117d34b03e27dd35663eaaed58b5f0182",
+                "addr": "SLNasXuVXWpwrxe38h6we8m51BCsP6eUibL7"},
+               {"prik": "be16fe777ed4670e06db7a754da0b46aeea2ce267819274a447ed47e387e7700",
+                "addr": "SLNhHWv5KS7e9Ab8LzXMdcSyLw6qUvVW2wWn"},
+               {"prik": "7df8fe64fbbf347f5f18be1f8ec1a276cb64869261b5bcd9d58ba6e869dd4959",
+                "addr": "SLNZgyTAxiDLLmsjwQ5hcVuS3Ks65wKrYSiE"},
+               {"prik": "e4e34089cdeb11f470b56fd933d27b53846bdecf050bb97cbea1dd88fd276ddb",
+                "addr": "SLNZmUEvsybDrjJC8aHpLaHmZsEKVwkmEHAa"},
+               {"prik": "27e0bdfb1736d5e80379c07fe9b44a5f9d5a35d2ec92efa01092a85374dca2ea",
+                "addr": "SLNbtMZ9zucVAFtyaNT35pbLJUscS8thCwaA"},
+               {"prik": "ece4a800e8d096b09b3e777a06dd5d44dbd88ac3430730e58c4f93a8b51ad5ad",
+                "addr": "SLNY8Q846p7PuGyBPmEm1G2ULU99HnyKmtGC"},
+               {"prik": "96f19dfe4143635f710dba44fcaf76b375b1b8c959d5ea7a819e8af7d17c2ece",
+                "addr": "SLNjBSKEAuQWsyWUuHB6ENURmgHbSXM9XQ6q"},
+               {"prik": "c629091c5736ab646dfe0d073a52886d641b04c22cd3891dcc25fe02808da75b",
+                "addr": "SLNawrikbH1iGhzFxGPrCiorLT9mGcYWwJYL"},
+               {"prik": "f1777f455bf9a803598d3f15203cf3f8a244d481f7d016a59b7a3b1557d3b0a9",
+                "addr": "SLNS3xj5rU2xZqd7UJta6ksW7fwMUEvvXNZA"},
+               {"prik": "407e4822e927d393868f89775d998782472d0b6897d80ab06cb49f5713861b06",
+                "addr": "SLNebuEoRLHPspvxjA2UtjSV9DKYd6evwMw3"}}
+               
+	//fmt.Printf("%s",accounts)
+	caller1 := "SPLtest1"
+	fmt.Printf("%s",caller1)
+	//caller1 := "SPLtest1"
+	caller2 := accounts[0]["addr"] 
+	fmt.Printf("%s",caller2)
+	//caller3 := "SPLtest3"
+	var res *simplejson.Json
+	var err error
+	res, err = simpleChainRPC("get_contract_info", contract1Addr)
+	assert.True(t, err == nil)
+	assert.True(t, res.Get("owner_address").MustString() == caller1 && res.Get("contract_address").MustString() == contract1Addr)
+	
+	simpleChainRPC("invoke_contract", caller1, contract1Addr, "init_config", []string{"SL_feeReceiver"}, 0, 0, 50000, 10)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("get_storage", contract1Addr, "state")
+	assert.True(t, res.MustString() == "COMMON")
+	fmt.Printf("state after init_config of contract1 is: %s\n", res.MustString())
+	
+	
+	//deposit.......
+	simpleChainRPC("add_asset", "HC", 8)
+	simpleChainRPC("add_asset", "BTC", 8)
+	simpleChainRPC("generate_block")
+	for i := 0; i < len(accounts); i++ {
+		num := 5000000
+		user := accounts[i]["addr"]
+		simpleChainRPC("mint", user,0,num+500)
+		simpleChainRPC("invoke_contract", user, contract1Addr, "on_deposit_asset", []string{""}, 0, num, 50000, 10)
+		simpleChainRPC("mint", user,1,num+500)
+		simpleChainRPC("invoke_contract", user, contract1Addr, "on_deposit_asset", []string{""}, 1, num, 50000, 10)
+		simpleChainRPC("generate_block")
+		
+		res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "balanceOf", []string{user+",COIN"}, 0, 0)
+		assert.True(t, err == nil)
+		assert.True(t, res.Get("api_result").MustString() == "5000000")
+		res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "balanceOf", []string{user+",HC"}, 0, 0)
+		assert.True(t, err == nil)
+		assert.True(t, res.Get("api_result").MustString() == "5000000")
+	}
+	
+	//test fillOrder
+	matchedOrders := makeMatchedOrders(t,accounts[0],accounts[1])
+	str, err := json.Marshal(matchedOrders)
+	assert.True(t, err == nil)
+    apiarg := string(str)
+	fmt.Printf("fill Order apiarg: %s\n", apiarg)
+	res, err = simpleChainRPC("invoke_contract", caller1, contract1Addr, "fillOrder", []string{apiarg}, 0, 0, 50000, 10)
+	assert.True(t, err == nil)
+
+	assert.True(t, res.Get("api_result").MustString() == "OK")
+	fmt.Printf("fillOrder Result: %s\n",res.Get("api_result").MustString())
+	simpleChainRPC("generate_block")
+	
+	//test cancel orders
+	order1 := makeOrder(t,accounts[0]["prik"], "HC", 10, "COIN", 20,"buy")
+    order2 := makeOrder(t,accounts[0]["prik"], "HC", 10, "COIN", 20,"sell")
+	var orders [2]map[string]string
+    orders[0] = order1
+	orders[1] = order2
+	str, err = json.Marshal(orders)
+	assert.True(t, err == nil)
+    apiargs := string(str)
+	
+    print(apiargs)
+	res, err = simpleChainRPC("invoke_contract", accounts[0]["addr"], contract1Addr, "cancelOrders", []string{apiargs}, 0, 0, 50000, 10)
+	assert.True(t, err == nil)
+	str, err = json.Marshal(res)
+	assert.True(t, err == nil)
+	resstr := string(str)
+	fmt.Printf("cancel res:%s\n",resstr)
+	assert.True(t, strings.Contains(resstr,order1["id"]))
+	assert.True(t, strings.Contains(resstr,order2["id"]))
+    simpleChainRPC("generate_block")
+}
+
+func TestNativeExchangeContract(t *testing.T) {
+	cmd := execCommandBackground(simpleChainPath)
+	assert.True(t, cmd != nil)
+	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
+	defer func() {
+		kill(cmd)
+	}()
+	time.Sleep(1 * time.Second)
+	var res *simplejson.Json
+	var err error
+	caller1 := "SPLtest1"
+
+	res, err = simpleChainRPC("create_native_contract", caller1, "exchange", 50000, 10)
+	assert.True(t, err == nil)
+	contract1Addr := res.Get("contract_address").MustString()
+	fmt.Printf("contract address: %s\n", contract1Addr)
+	simpleChainRPC("generate_block")
+
+	test0xExchangeContractInSimplechain(t, contract1Addr)
 }

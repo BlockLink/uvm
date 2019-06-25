@@ -566,7 +566,7 @@ static SafeNumber compress_number(const SafeNumber& a) {
 		--e;
 	}
 	uint32_t tmp_x_large_count = e;
-	while(tmp_x_large_count > 8) { // eg. when a = 1.1234567890123
+	while(tmp_x_large_count > 16) { // eg. when a = 1.1234567890123
 		x = simple_uint128_divmod(x, uint128_10).div_result; // x / 10
 		tmp_x_large_count--;
 	}
@@ -579,7 +579,7 @@ static SafeNumber compress_number(const SafeNumber& a) {
 		e--;
 	}
 	auto sign = a.sign;
-	if(e > 8) {
+	if(e > 16) {
 		x = uint128_0;
 		e = 0;
 		sign = true;
@@ -822,8 +822,11 @@ std::string safe_number_to_string(const SafeNumber& a) {
 	const auto& p = pq.div_result;
 	const auto& q = pq.mod_result;
 	ss << simple_uint128_to_string(p, 10, 0);
-	if(!simple_uint128_is_zero(q)) {
-		ss << "." << simple_uint128_to_string(q, 10, 0);
+
+	auto decimal_len = val.e;
+	if (!simple_uint128_is_zero(q)) {
+		auto decimal = simple_uint128_to_string(q, 10, decimal_len);
+		ss << "." << decimal;
 	}
 	return ss.str();
 }
@@ -836,11 +839,40 @@ int64_t safe_number_to_int64(const SafeNumber& a) {
 		return 0;
 	}
 	int64_t result = 0;
-	if (a.e > 0) {
+	if(a.e > 0) {
 		auto ax_divmod = simple_uint128_divmod(a.x, simple_uint128_create(0, uint64_pow(10, a.e)));
 		auto tmp_uint128 = ax_divmod.div_result;
 		int64_t tmp = (static_cast<int64_t>(tmp_uint128.low) << 1) >> 1;
 		result = a.sign ? tmp : -tmp;
+	}
+	else {
+		int64_t tmp = (static_cast<int64_t>(a.x.low) << 1) >> 1;
+		result = a.sign ? tmp : -tmp;
+	}
+	return result;
+}
+
+
+int64_t safe_number_to_int64_floor(const SafeNumber& a) {
+	if (safe_number_invalid(a)) {
+		return 0;
+	}
+	if (safe_number_is_zero(a)) {
+		return 0;
+	}
+	int64_t result = 0;
+	if (a.e > 0) {
+		auto ax_divmod = simple_uint128_divmod(a.x, simple_uint128_create(0, uint64_pow(10, a.e)));
+		auto tmp_uint128 = ax_divmod.div_result;
+		auto mod_result = ax_divmod.mod_result;
+		int64_t tmp = (static_cast<int64_t>(tmp_uint128.low) << 1) >> 1;
+
+		if (simple_uint128_is_zero(mod_result)) {
+			result = a.sign ? tmp : -tmp;
+		}
+		else {
+			result = a.sign ? tmp : (-tmp-1);
+		}
 	}
 	else {
 		int64_t tmp = (static_cast<int64_t>(a.x.low) << 1) >> 1;
