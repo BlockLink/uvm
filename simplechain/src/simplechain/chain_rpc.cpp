@@ -5,11 +5,13 @@
 #include <simplechain/block.h>
 #include <simplechain/blockchain.h>
 #include <simplechain/contract.h>
+#include <uvm/uvm_lib.h>
 #include <streambuf>
 #include <istream>
 #include <ostream>
 #include <boost/asio.hpp>
 #include <fc/io/json.hpp>
+#include <cbor_diff/cbor_diff.h>
 
 #include <uvm/lauxlib.h>
 
@@ -22,6 +24,7 @@ namespace simplechain {
 			}
 		}
 
+		
 		RpcResultType get_account(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			const auto& addr = params.at(0).as_string();
 			const auto& pubkey_hex = chain->get_address_pubkey_hex(addr);
@@ -141,23 +144,24 @@ namespace simplechain {
 			return res;
 		}
 
+
 		RpcResultType invoke_contract(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			auto caller_addr = params.at(0).as_string();
 			auto contract_address = params.at(1).as_string();
 			auto api_name = params.at(2).as_string();
 			params_assert(params.at(3).is_array());
 			auto api_args_json = params.at(3).as<fc::variants>();
-			std::vector<std::string> api_args;
-			for (const auto& api_arg_json : api_args_json) {
-				api_args.push_back(api_arg_json.as_string());
-			}
+
+			//cbor::CborArrayValue api_args;
+			//convertArgs2Cbor(api_args_json, api_args);
+
 			auto deposit_asset_id = params.at(4).as_uint64();
 			auto deposit_amount = params.at(5).as_uint64();
 			auto gas_limit = params.at(6).as_uint64();
 			auto gas_price = params.at(7).as_uint64();
 
 			auto tx = std::make_shared<transaction>();
-			auto op = operations_helper::invoke_contract(caller_addr, contract_address, api_name, api_args, gas_limit, gas_price);
+			auto op = operations_helper::invoke_contract(caller_addr, contract_address, api_name, api_args_json, gas_limit, gas_price);
 			op.deposit_amount = deposit_amount;
 			op.deposit_asset_id = (asset_id_t)deposit_asset_id;
 			tx->operations.push_back(op);
@@ -170,6 +174,7 @@ namespace simplechain {
 				contract_invoke_result* contract_result = (contract_invoke_result*)op_result.get();
 				res["api_result"] = contract_result->api_result;
 				res["exec_succeed"] = contract_result->exec_succeed;
+				res["gas_used"] = contract_result->gas_used;
 				if (!contract_result->exec_succeed)
 					res["error"] = contract_result->error;
 			}
@@ -186,13 +191,11 @@ namespace simplechain {
 			auto deposit_asset_id = (asset_id_t)params.at(4).as_uint64();
 			auto deposit_amount = params.at(5).as_uint64();
 
-			std::vector<std::string> api_args;
-			for (const auto& api_arg_json : api_args_json) {
-				api_args.push_back(api_arg_json.as_string());
-			}
-
+			//cbor::CborArrayValue api_args;
+			//convertArgs2Cbor(api_args_json, api_args);
+			
 			auto tx = std::make_shared<transaction>();
-			auto op = operations_helper::invoke_contract(caller_addr, contract_address, api_name, api_args, 10000000);
+			auto op = operations_helper::invoke_contract(caller_addr, contract_address, api_name, api_args_json, 10000000);
 			op.deposit_amount = deposit_amount;
 			op.deposit_asset_id = (asset_id_t)deposit_asset_id;
 			tx->operations.push_back(op);
@@ -309,8 +312,19 @@ namespace simplechain {
 			const auto& addr = params.at(0).as_string();
 			const auto& storages = chain->get_contract_storages(addr);
 			fc::mutable_variant_object storages_json;
+
+			//auto scope = std::make_shared < uvm::lua::lib::UvmStateScope>();
 			for (const auto& p : storages) {
-				storages_json[p.first] = fc::json::from_string(p.second.as<std::string>());
+				auto storage_value = cbor_diff::cbor_decode(p.second.storage_data);
+				//const auto& uvm_storage_data = cbor_to_uvm_storage_value(scope->L(), storage_value.get());
+				//const auto& storage_json = simplechain::uvm_storage_value_to_json(uvm_storage_data);
+				//auto res = storage_json;
+				//return res;
+
+
+				//const auto& s = p.second.as<StorageStringType>();
+				//auto a = cbor::CborObject::from_bytes(p.second.storage_data);
+				storages_json[p.first] = storage_value->to_json();
 			}
 			return storages_json;
 		}
@@ -318,10 +332,13 @@ namespace simplechain {
 			const auto& addr = params.at(0).as_string();
 			const auto& storage_name = params.at(1).as_string();
 			const auto& storage = chain->get_storage(addr, storage_name);
-			fc::variant res = fc::json::from_string(storage.as<std::string>());
+			auto storage_value = cbor_diff::cbor_decode(storage.storage_data);
+			auto scope = std::make_shared < uvm::lua::lib::UvmStateScope>();
+			auto uvm_storage_data = cbor_to_uvm_storage_value(scope->L(), storage_value.get());
+			auto storage_json = simplechain::uvm_storage_value_to_json(uvm_storage_data);
+			auto res = storage_json;
 			return res;
 		}
-
 
 		//---------------add debug rpc ----------------------------------------------------------
 		RpcResultType set_breakpoint(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
@@ -382,17 +399,17 @@ namespace simplechain {
 			auto api_name = params.at(2).as_string();
 			params_assert(params.at(3).is_array());
 			auto api_args_json = params.at(3).as<fc::variants>();
-			std::vector<std::string> api_args;
-			for (const auto& api_arg_json : api_args_json) {
-				api_args.push_back(api_arg_json.as_string());
-			}
+
+			//cbor::CborArrayValue api_args;
+			//convertArgs2Cbor(api_args_json, api_args);
+
 			auto deposit_asset_id = params.at(4).as_uint64();
 			auto deposit_amount = params.at(5).as_uint64();
 			auto gas_limit = params.at(6).as_uint64();
 			auto gas_price = params.at(7).as_uint64();
 
 			auto tx = std::make_shared<transaction>();
-			auto op = operations_helper::invoke_contract(caller_addr, contract_address, api_name, api_args, gas_limit, gas_price);
+			auto op = operations_helper::invoke_contract(caller_addr, contract_address, api_name, api_args_json, gas_limit, gas_price);
 			op.deposit_amount = deposit_amount;
 			op.deposit_asset_id = deposit_asset_id;
 			tx->operations.push_back(op);

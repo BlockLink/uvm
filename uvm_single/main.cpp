@@ -462,7 +462,9 @@ static int pmain(lua_State *L) {
 		if (args & has_call) {
 			// call contract api
 			std::string result_string;
-			if (!uvm::lua::lib::call_last_contract_api(L, std::string(argv[script]), contract_api, contract_api_arg,caller_address,caller_pubkey, &result_string)) {
+			cbor::CborArrayValue arr;
+			arr.push_back(cbor::CborObject::from_string(contract_api_arg));
+			if (!uvm::lua::lib::call_last_contract_api(L, std::string(argv[script]), contract_api, arr,caller_address,caller_pubkey, &result_string)) {
 				return LUA_ERRERR;
 			}
 			printf("result: %s\n", result_string.c_str());

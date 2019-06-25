@@ -59,8 +59,11 @@ LUAMOD_API int(luaopen_uvm)(lua_State *L);
 #define LUA_DBLIBNAME	"debug"
 LUAMOD_API int (luaopen_debug)(lua_State *L);
 
+//#define LUA_JSONLIBNAME	"json"
+//LUAMOD_API int (luaopen_json)(lua_State *L);
+
 #define LUA_JSONLIBNAME	"json"
-LUAMOD_API int (luaopen_json)(lua_State *L);
+LUAMOD_API int (luaopen_json2)(lua_State *L);
 
 #define LUA_JSONLIBNAME2	"json2"
 LUAMOD_API int (luaopen_json2)(lua_State *L);

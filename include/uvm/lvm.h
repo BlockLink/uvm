@@ -119,9 +119,9 @@ namespace uvm {
 
 			std::map<std::string, TValue> view_localvars(lua_State* L) const;
 			std::map<std::string, TValue> view_upvalues(lua_State* L) const;
-			TValue ExecuteContext::view_contract_storage_value(lua_State* L, const char *name, const char* fast_map_key, bool is_fast_map) const;
+			TValue view_contract_storage_value(lua_State* L, const char *name, const char* fast_map_key, bool is_fast_map) const;
 			uint32_t current_line() const;
-			std::vector<std::string> ExecuteContext::view_call_stack(lua_State* L) const;
+			std::vector<std::string> view_call_stack(lua_State* L) const;
 		};
 	}
 }
@@ -139,6 +139,7 @@ LUAI_FUNC void luaV_finishOp(lua_State *L);
 LUAI_FUNC std::shared_ptr<uvm::core::ExecuteContext> luaV_execute(lua_State *L);
 // if not sure, don't use result of get_last_execute_context()'s pointer fields
 std::shared_ptr<uvm::core::ExecuteContext> get_last_execute_context();
+std::shared_ptr<uvm::core::ExecuteContext> set_last_execute_context(std::shared_ptr<uvm::core::ExecuteContext> p);
 LUAI_FUNC void luaV_concat(lua_State *L, int total);
 LUAI_FUNC lua_Integer luaV_div(lua_State *L, lua_Integer x, lua_Integer y);
 LUAI_FUNC lua_Integer luaV_mod(lua_State *L, lua_Integer x, lua_Integer y);

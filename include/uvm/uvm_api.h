@@ -22,6 +22,8 @@
 #include <uvm/lua.h>
 #include <jsondiff/jsondiff.h>
 #include <jsondiff/exceptions.h>
+#include <cborcpp/cbor.h>
+#include <cbor_diff/cbor_diff.h>
 
 #define LOG_INFO(...)  fprintf(stderr, "[INFO] " ##__VA_ARGS__)
 
@@ -60,7 +62,7 @@
 // storagerecord
 #define CONTRACT_STORAGE_PROPERTIES_MAX_COUNT 256
 
-// uvmAPIAPI
+// uvm API
 #define CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT 50
 
 // ，register_object_in_pool
@@ -239,6 +241,7 @@ class UvmContractInfo
 {
 public:
     std::vector<std::string> contract_apis;
+	std::map<std::string, std::vector<UvmTypeInfoEnum>> contract_api_arg_types;
 };
 
 #define UVM_API_NO_ERROR 0
@@ -409,6 +412,7 @@ typedef struct UvmStorageChangeItem
     std::string contract_id;
     std::string key;
 	jsondiff::DiffResult diff;
+	cbor_diff::DiffResult cbor_diff;
 	std::string fast_map_key;
 	bool is_fast_map = false;
     struct UvmStorageValue before;
@@ -437,6 +441,9 @@ bool lua_push_storage_value(lua_State *L, const UvmStorageValue &value);
 
 UvmStorageValue json_to_uvm_storage_value(lua_State *L, jsondiff::JsonValue json_value);
 jsondiff::JsonValue uvm_storage_value_to_json(UvmStorageValue value);
+
+UvmStorageValue cbor_to_uvm_storage_value(lua_State *L, cbor::CborObject* cbor_value);
+cbor::CborObjectP uvm_storage_value_to_cbor(UvmStorageValue value);
 
 typedef std::unordered_map<std::string, UvmStorageChangeItem> ContractChangesMap;
 
@@ -587,6 +594,17 @@ namespace uvm {
 			virtual std::string ripemd160_hex(const std::string& hex_string) = 0;
 
 			virtual std::string get_address_role(lua_State* L, const std::string& addr) = 0;
+
+			// when fork height < 0, not has this fork
+			virtual int64_t get_fork_height(lua_State* L, const std::string& fork_key) = 0;
+
+			// whether use cbor diff in storage diff
+			virtual bool use_cbor_diff(lua_State* L) const = 0;
+
+			virtual bool use_fast_map_set_nil(lua_State *L) const {
+				return use_cbor_diff(L);
+			}
+
           };
 
 

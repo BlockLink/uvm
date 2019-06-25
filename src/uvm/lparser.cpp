@@ -41,7 +41,8 @@
 
 /* because all strings are unified by the scanner, the parser
    can use pointer equality for string equality */
-#define eqstr(a,b)	((a) == (b))
+//#define eqstr(a,b)	((a) == (b))
+#define eqstr(a,b)	(((a)->value).compare((b)->value) == 0 )
 
 
 /*

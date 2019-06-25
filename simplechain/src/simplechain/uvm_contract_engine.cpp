@@ -96,10 +96,10 @@ namespace simplechain
 		uvm::lua::api::global_uvm_chain_api->clear_exceptions(_scope->L());
 	}
 
-	void UvmContractEngine::execute_contract_api_by_address(std::string contract_id, std::string method, std::string argument, std::string *result_json_string)
+	void UvmContractEngine::execute_contract_api_by_address(std::string contract_id, std::string method, cbor::CborArrayValue& args, std::string *result_json_string)
 	{
 		clear_exceptions();
-		uvm::lua::lib::execute_contract_api_by_address(_scope->L(), contract_id.c_str(), method.c_str(), argument.c_str(), result_json_string);
+		uvm::lua::lib::execute_contract_api_by_address(_scope->L(), contract_id.c_str(), method.c_str(), args, result_json_string);
 		if (_scope->L()->force_stopping == true && _scope->L()->exit_code == LUA_API_INTERNAL_ERROR)
 			throw uvm::core::UvmException("uvm_executor_internal_error");
 		auto exception_code = uvm::lua::lib::get_lua_state_value(_scope->L(), "exception_code").int_value;
@@ -115,10 +115,10 @@ namespace simplechain
 		}
 	}
 
-	void UvmContractEngine::execute_contract_init_by_address(std::string contract_id, std::string argument, std::string *result_json_string)
+	void UvmContractEngine::execute_contract_init_by_address(std::string contract_id, cbor::CborArrayValue& args, std::string *result_json_string)
 	{
 		clear_exceptions();
-		uvm::lua::lib::execute_contract_init_by_address(_scope->L(), contract_id.c_str(), argument.c_str(), result_json_string);
+		uvm::lua::lib::execute_contract_init_by_address(_scope->L(), contract_id.c_str(), args, result_json_string);
 		if (_scope->L()->force_stopping == true && _scope->L()->exit_code == LUA_API_INTERNAL_ERROR)
 			throw uvm::core::UvmException("uvm_executor_internal_error");
 		auto exception_code = uvm::lua::lib::get_lua_state_value(_scope->L(), "exception_code").int_value;

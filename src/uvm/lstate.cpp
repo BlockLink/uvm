@@ -289,6 +289,8 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
 	L->state = lua_VMState::LVM_STATE_NONE;
 	L->allow_debug = false;
 	L->breakpoints = new std::map<std::string, std::list<uint32_t> >();
+    
+	L->cbor_diff_state = 0;
 
 	L->allow_contract_modify = 0;
 	L->contract_table_addresses = new std::list<intptr_t>();
@@ -322,7 +324,12 @@ static size_t align8(size_t s) {
 
 void *lua_malloc(lua_State *L, size_t size)
 {
-	return L->gc_state->gc_malloc(size);
+	auto p = L->gc_state->gc_malloc(size);
+    if(!p) {
+        uvm::lua::lib::notify_lua_state_stop(L);
+        return nullptr;
+    }
+    return p;
 }
 
 void* lua_realloc(lua_State *L, void* addr, size_t old_size, size_t new_size)

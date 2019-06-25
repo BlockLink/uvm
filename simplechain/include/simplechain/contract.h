@@ -57,7 +57,6 @@ namespace simplechain {
 
 	class blockchain;
 
-
 	struct contract_invoke_result : public evaluate_result
 	{
 		std::string api_result;
@@ -113,6 +112,31 @@ namespace simplechain {
 		std::string calculate_contract_id() const;
 	};
 
+	struct native_contract_create_operation : public generic_operation {
+		typedef contract_invoke_result result_type;
+
+		operation_type_enum type;
+		std::string caller_address;
+		std::string template_key;
+		uint64_t gas_price;
+		uint64_t gas_limit;
+		fc::time_point_sec op_time;
+
+		native_contract_create_operation();
+		virtual ~native_contract_create_operation();
+
+		virtual operation_type_enum get_type() const {
+			return type;
+		}
+
+		virtual fc::mutable_variant_object to_json() const {
+			fc::mutable_variant_object info;
+			return info;
+		}
+
+		std::string calculate_contract_id() const;
+	};
+
 	struct contract_invoke_operation : public generic_operation {
 		typedef contract_invoke_result result_type;
 
@@ -120,7 +144,8 @@ namespace simplechain {
 		std::string caller_address;
 		std::string contract_address;
 		std::string contract_api;
-		std::vector<std::string> contract_args;
+		//std::vector<std::string> contract_args;
+		fc::variants contract_args;
 		uint64_t gas_price;
 		uint64_t gas_limit;
 		share_type deposit_amount = 0;
@@ -144,5 +169,6 @@ namespace simplechain {
 
 FC_REFLECT(simplechain::transaction_receipt, (tx_id)(events))
 
+FC_REFLECT(simplechain::native_contract_create_operation, (type)(caller_address)(template_key)(gas_price)(gas_limit)(op_time))
 FC_REFLECT(simplechain::contract_create_operation, (type)(caller_address)(contract_code)(gas_price)(gas_limit)(op_time))
 FC_REFLECT(simplechain::contract_invoke_operation, (type)(caller_address)(contract_address)(contract_api)(contract_args)(gas_price)(gas_limit)(deposit_amount)(deposit_asset_id)(op_time))

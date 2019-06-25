@@ -35,9 +35,9 @@ namespace simplechain {
 
 		virtual void clear_exceptions();
 
-		virtual void execute_contract_api_by_address(std::string contract_id, std::string method, std::string argument, std::string *result_json_string);
+		virtual void execute_contract_api_by_address(std::string contract_id, std::string method, cbor::CborArrayValue& args, std::string *result_json_string);
 
-		virtual void execute_contract_init_by_address(std::string contract_id, std::string argument, std::string *result_json_string);
+		virtual void execute_contract_init_by_address(std::string contract_id, cbor::CborArrayValue& args, std::string *result_json_string);
 
 		virtual void load_and_run_stream(void *stream);
 

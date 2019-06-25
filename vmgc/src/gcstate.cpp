@@ -1,32 +1,78 @@
 #include "vmgc/gcstate.h"
 #include "vmgc/gcobject.h"
 #include <algorithm>
+#include "uvm/lstring.h"
 
 namespace vmgc {
-	GcState::GcState(ptrdiff_t max_gc_heap_size) {
-		this->_malloced_buffers = std::make_shared<std::list<std::pair<ptrdiff_t, ptrdiff_t> > >();
-		this->_gc_objects = std::make_shared<std::list<ptrdiff_t> >();
-		this->_max_gc_heap_size = max_gc_heap_size;
-		_usedsize = 0;
-		_heapend = 0;
-		_pstart = nullptr;
-		_lastfreepos = 0;
+#define DEFAULT_GC_BLOCK_SIZE 1024*1024  
 
-		_pstart = malloc(this->_max_gc_heap_size);
-		_heapend = this->_max_gc_heap_size;
-		if (!_pstart) {
-			throw GcException("malloc gc heap error");
+//#define MAX_GC_BLOCKS_SIZE 500*1024*1024 
+
+	GcState::GcState(ptrdiff_t max_gc_size) {
+		this->_malloced_blocks = std::make_shared<std::list<std::pair<intptr_t, intptr_t> > >();
+		_total_malloced_blocks_size = 0;
+		_used_size = 0;
+		_max_gc_size = max_gc_size;
+
+		this->_malloced_gcbuffers = std::make_shared<std::map<intptr_t,GcBuffer>>();
+
+		for (int i = 0; i < DEFAULT_SMALL_BUFFER_VECTOR_SIZE; i++) {
+			_empty_small_buffers[i] = std::make_shared<std::list<std::pair<intptr_t, ptrdiff_t>>>();
 		}
+
+		this->_empty_big_buffers = std::make_shared<std::list<std::pair<intptr_t, ptrdiff_t> >>();
+
+		//////////////////
+		this->_malloced_str_blocks = std::make_shared<std::list<std::pair<intptr_t, intptr_t>>>();
+		this->_gc_strpool = std::make_shared<std::map<unsigned int, std::pair<intptr_t, ptrdiff_t>>>();
+
+		_empty_str_buffer.first = 0;
+		_empty_str_buffer.second = 0;
 	}
 
-	GcState::~GcState() {
-		if (_pstart) {
-			gc_free_all();
-			free(_pstart);
-			_pstart = nullptr;
-			_usedsize = 0;
-			_heapend = 0;
+	void GcState::gc_free_all()
+	{
+		for (const auto& item : *_malloced_gcbuffers) {
+			if (item.second.isGcObj) {
+				auto gc_obj = (GcObject*)item.first;
+				gc_obj->~GcObject();
+			}
 		}
+		_malloced_gcbuffers->clear();
+
+		for (int i = 0; i < DEFAULT_SMALL_BUFFER_VECTOR_SIZE; i++) {
+			_empty_small_buffers[i]->clear();
+		}
+
+		_empty_big_buffers->clear();
+
+		////////////////////////////////////
+		for (const auto& item : *_gc_strpool) {
+			auto gc_obj = (GcObject*)item.second.first;
+			gc_obj->~GcObject();
+		}
+		_gc_strpool->clear();
+
+		_empty_str_buffer.first = 0;
+		_empty_str_buffer.second = 0;
+
+		_used_size = 0;
+		_total_malloced_blocks_size = 0;
+	}
+
+
+	GcState::~GcState() {
+		gc_free_all();
+
+		for (const auto& item : (*_malloced_blocks)) {
+			free((void*)(item.first));
+		}
+		_malloced_blocks->clear();
+
+		for (const auto& item : (*_malloced_str_blocks)) {
+			free((void*)(item.first));
+		}
+		_malloced_str_blocks->clear();
 	}
 
 	static size_t align8(size_t s) {
@@ -35,110 +81,144 @@ namespace vmgc {
 		return ((s >> 3) + 1) << 3;
 	}
 
-	void* GcState::gc_malloc(size_t size) {
+	void GcState::insert_empty_buffer(std::pair<intptr_t, ptrdiff_t> &buf) {
+		auto size = buf.second;
+		if (size > 0) {
+			if ((size > DEFAULT_MAX_SMALL_BUFFER_SIZE) || (size % 8) != 0) {
+				for (auto iter = _empty_big_buffers->begin(); iter != _empty_big_buffers->end(); iter++) {
+					if (size <= iter->second) {  //inserted
+						_empty_big_buffers->emplace(iter, buf);
+						return;
+					}
+				}
+				_empty_big_buffers->push_back(buf);
+			}
+			else {
+				_empty_small_buffers[(size / 8) - 1]->push_back(buf);
+			}
+		}
+	}
+
+	void* GcState::gc_malloc(size_t size, bool isGcObj) {
 		if (size <= 0)
 			return nullptr;
 		size = align8(size);
-		if (size > _heapend)
-		{
-			return nullptr;
+
+		GcBuffer b;
+		b.isGcObj = isGcObj;
+		b.pos = 0;
+		b.size = size;
+		_used_size += size;
+
+		//find _empty_small_buffers 
+		if (size <= DEFAULT_MAX_SMALL_BUFFER_SIZE) {
+			auto pbuffers = _empty_small_buffers[size/8 - 1];
+			if (!pbuffers->empty()) {  //finded
+				const auto& buf = pbuffers->front();
+				
+				b.pos = buf.first;
+				(*_malloced_gcbuffers)[buf.first] = b;
+				pbuffers->pop_front();
+				return (void*)b.pos;
+			}
 		}
+		
+		//find _empty_big_buffers  	
+		auto len = _empty_big_buffers->size();
+		if (len > 0) {
+			const auto &frontBuf = _empty_big_buffers->front();
+			if (size <= _empty_big_buffers->front().second) {
+				auto bufpos = frontBuf.first;
+				auto bufsz = frontBuf.second;
+				b.pos = bufpos;
 
-		if (_pstart == nullptr) {
-			return nullptr;
-		}
+				_empty_big_buffers->pop_front();
 
-		if ((_usedsize + size) > _heapend) {
-			return nullptr;
-		}
-
-		void *p = nullptr;
-		if (_malloced_buffers->empty())
-		{
-			p = _pstart;
-			_usedsize = _usedsize + size;
-			_malloced_buffers->push_back(std::make_pair(0, size));
-			_lastfreepos = (ptrdiff_t)size;
-			return p;
-		}
-
-		//try malloc from last pos
-		if (_lastfreepos + (ptrdiff_t)size <= _heapend)
-		{
-			p = (void *)((intptr_t)(_pstart) + _lastfreepos);
-			_usedsize = _usedsize + size;
-			_malloced_buffers->push_back(std::make_pair(_lastfreepos, size));
-			_lastfreepos = _lastfreepos + (ptrdiff_t)size;
-			return p;
-		}
-
-
-		//try find space among mems 
-		std::pair<ptrdiff_t, ptrdiff_t> last_pair;
-		auto begin = _malloced_buffers->begin();
-		for (auto it = begin; it != _malloced_buffers->end(); ++it)
-		{
-			if (it == begin)
-			{
-				if (it->first > (ptrdiff_t)size)
-				{
-					// can alloc memory before first block
-					ptrdiff_t offset = 0;
-					void *p = _pstart;
-					_malloced_buffers->insert(_malloced_buffers->begin(), std::make_pair(offset, size));
-					_usedsize = _usedsize + (ptrdiff_t)size;
-					return p;
+				if (size < bufsz) {
+					std::pair<intptr_t, ptrdiff_t> eb;
+					eb.first = bufpos + size;
+					eb.second = bufsz - size;
+					insert_empty_buffer(eb);
 				}
-				last_pair = *it;
-				continue;
+
+				//_malloced_gcbuffers->insert(std::pair<intptr_t, GcBuffer>(frontBuf.first, b));
+				(*_malloced_gcbuffers)[bufpos] = b;
+				return (void*)b.pos;
 			}
-			if (it->first > last_pair.first + last_pair.second + (ptrdiff_t)size)
-			{
-				ptrdiff_t offset = last_pair.first + last_pair.second;
-				p = (void*)((intptr_t)_pstart + offset);
-				_malloced_buffers->insert(it, std::make_pair(offset, size));
-				_usedsize = _usedsize + (ptrdiff_t)size;
-				return p;
+
+			const auto &backBuf = _empty_big_buffers->back();
+			if (size <= backBuf.second) {
+				auto bufpos = backBuf.first;
+				auto bufsz = backBuf.second;
+				b.pos = bufpos;
+
+				_empty_big_buffers->pop_back();
+
+				if (size < bufsz) {
+					std::pair<intptr_t, ptrdiff_t> eb;
+					eb.first = bufpos + size;
+					eb.second = bufsz - size;
+					insert_empty_buffer(eb);
+				}
+
+				(*_malloced_gcbuffers)[bufpos] = b;
+				return (void*)b.pos;
 			}
-			last_pair = *it;
 		}
 
-		// no space   
-		// TODO: compact
-		return nullptr;
+		//malloc new block
+		//check max size
+		auto mallocSize = DEFAULT_GC_BLOCK_SIZE;
+		if (size > DEFAULT_GC_BLOCK_SIZE) {
+			mallocSize = size;
+		}
+		if (mallocSize + _total_malloced_blocks_size > _max_gc_size) {
+			_used_size -= size;
+			return nullptr;
+		}
+		auto p = malloc(mallocSize);
+		if (!p) {
+			_used_size -= size;
+			return nullptr;
+		}
+		_total_malloced_blocks_size += mallocSize;
+
+		std::pair<intptr_t, intptr_t> block;
+		block.first = (intptr_t)p;
+		block.second = mallocSize;
+		_malloced_blocks->push_back(block);
+
+		b.pos = (intptr_t)p;
+		(*_malloced_gcbuffers)[b.pos] = b;
+
+		if (size < mallocSize) {
+			//add empty buff
+			std::pair<intptr_t, ptrdiff_t> eb;
+			eb.first = (intptr_t)p + size;
+			eb.second = mallocSize - size;
+			insert_empty_buffer(eb);
+		}
+		return (void*)b.pos;
 	}
+
 	void GcState::gc_free(void* p) {
 		if (nullptr == p)
 			return;
-		auto offset = (intptr_t)p - (intptr_t)(_pstart);
-		if (offset < 0 || offset >= _heapend)
-			return;
-
-		std::pair<ptrdiff_t, ptrdiff_t> last_pair;
-		last_pair.first = 0;
-		last_pair.second = 0;
-		auto begin = _malloced_buffers->begin();
-		for (auto it = begin; it != _malloced_buffers->end(); ++it)
-		{
-			if (it->first == (ptrdiff_t)offset)
-			{
-				ptrdiff_t size = it->second;
-				_malloced_buffers->erase(it);
-				// free GcObject
-				auto found_gc_object = std::find(_gc_objects->begin(), _gc_objects->end(), offset);
-				if (found_gc_object != _gc_objects->end()) {
-					auto gc_obj = (GcObject*)p ;
-					gc_obj->~GcObject();
-					_gc_objects->erase(found_gc_object);
-				}
-				_usedsize = _usedsize - (ptrdiff_t)size;
-
-				if ((offset + size) == _lastfreepos) {
-					_lastfreepos = (ptrdiff_t)(last_pair.first + last_pair.second);
-				}
-				return;
+		if (_malloced_gcbuffers->find((intptr_t)p) != _malloced_gcbuffers->end()) {
+			auto buf = (*_malloced_gcbuffers)[(intptr_t)p];
+			if (buf.isGcObj) {
+				auto gc_obj = (GcObject*)p;
+				auto objtt = gc_obj->tt;
+				auto ntt = novariant(objtt);
+				gc_obj->~GcObject();
 			}
-			last_pair = *it;
+			_malloced_gcbuffers->erase((intptr_t)p);  
+
+			std::pair<intptr_t, ptrdiff_t> eb;
+			eb.first = buf.pos;
+			eb.second = buf.size;
+			insert_empty_buffer(eb);
+			_used_size -= buf.size;
 		}
 	}
 
@@ -147,13 +227,11 @@ namespace vmgc {
 		if (!p || count <= 0)
 			return;
 		for (size_t i = 0; i < count; i++) {
-			gc_free((void*)((intptr_t)p + i*size));
+			gc_free((void*)((intptr_t)p + i * size));
 		}
 	}
 
 	void* GcState::gc_realloc(void *p, size_t oldsz, size_t newsz) {
-		if (_pstart == nullptr) return nullptr;
-
 		if ((oldsz < 0) || (newsz < 0))return nullptr;
 
 		if (newsz == 0) {
@@ -198,15 +276,15 @@ namespace vmgc {
 		if (nelements + 1 <= *size)
 			return p;
 		size_t newsize;
-		if ((*size) >= limit / 2) {  /* cannot double it? */
-			if ((*size) >= limit)  /* cannot grow even a little? */
+		if ((*size) >= limit / 2) {  // cannot double it? 
+			if ((*size) >= limit)  // cannot grow even a little? 
 				throw GcException(std::string("too many objects in gc vector (limit is ") + std::to_string(limit) + ")");
-			newsize = limit;  /* still have at least one free place */
+			newsize = limit;  // still have at least one free place 
 		}
 		else {
 			newsize = (*size) * 2;
 			if (newsize < GC_MINSIZEARRAY)
-				newsize = GC_MINSIZEARRAY;  /* minimum size */
+				newsize = GC_MINSIZEARRAY;  // minimum size 
 		}
 		auto new_p = gc_malloc_vector(newsize, element_size);
 		if (!new_p) {
@@ -222,35 +300,77 @@ namespace vmgc {
 		return new_p;
 	}
 
-	size_t GcState::gc_objects_count() const
-	{
-		return _gc_objects->size();
-	}
-
-	std::shared_ptr<std::list<ptrdiff_t> > GcState::gc_objects() const
-	{
-		return _gc_objects;
-	}
-
-	void* GcState::pstart() const {
-		return _pstart;
-	}
-
 	ptrdiff_t GcState::usedsize() const {
-		return _usedsize;
+		return _used_size;
 	}
 
-	void GcState::gc_free_all()
-	{
-		if (_pstart) {
-			for (const auto& offset : *_gc_objects) {
-				auto p = (GcObject*)((intptr_t)_pstart + offset);
-				p->~GcObject();
-			}
-			_gc_objects->clear();
-			_usedsize = 0;
-			_lastfreepos = 0;
+	//支持长度小于2^5的hash，大于等于此数字会较大概率发生碰撞
+	static unsigned int gc_str_hash(const char *str, size_t l, unsigned int seed) {
+		unsigned int h = seed ^ lua_cast(unsigned int, l);
+		size_t step = (l >> DEFAULT_GC_STR_HASHLIMIT) + 1;
+		for (; l >= step; l -= step)
+			h ^= ((h << 5) + (h >> 2) + cast_byte(str[l - 1]));
+		return h;
+	}
+
+	void* GcState::gc_intern_strpool(size_t sz, size_t strsize, const char* str, bool* isNewStr) {
+		void* p = nullptr;
+		unsigned int seed = 1;
+		unsigned int h = gc_str_hash(str, strsize, seed);
+
+		auto it = _gc_strpool->find(h);
+		if (it == _gc_strpool->end()) {
+			*isNewStr = true;
 		}
+		else {
+			*isNewStr = false;
+			p = (void *)((*_gc_strpool)[h].first);
+			uvm_types::GcString* gcstr = static_cast<uvm_types::GcString*>(p);
+			if (strncmp(gcstr->value.c_str(), str, strsize) != 0) { //碰撞
+				//new it 
+				*isNewStr = true;
+			}
+		}
+
+		if (*isNewStr) {
+			//add 
+			size_t align8sz = align8(sz);
+
+			if (align8sz <= _empty_str_buffer.second) {
+				(*_gc_strpool)[h] = std::pair<intptr_t, ptrdiff_t>(_empty_str_buffer.first, align8sz);
+				p = (void*) _empty_str_buffer.first;
+
+				_empty_str_buffer.first = _empty_str_buffer.first + align8sz;
+				_empty_str_buffer.second = _empty_str_buffer.second - align8sz;
+
+			}
+			else {
+				//malloc new block
+				if (DEFAULT_GC_BLOCK_SIZE + _total_malloced_blocks_size > _max_gc_size) {
+					return nullptr;
+				}
+				p = malloc(DEFAULT_GC_BLOCK_SIZE);
+				if (!p) {
+					return nullptr;
+				}
+				_total_malloced_blocks_size += DEFAULT_GC_BLOCK_SIZE;
+
+				std::pair<intptr_t, intptr_t> block;
+				block.first = (intptr_t)p;
+				block.second = DEFAULT_GC_BLOCK_SIZE;
+				_malloced_str_blocks->push_back(block);
+
+				(*_gc_strpool)[h] = std::pair<intptr_t, ptrdiff_t>((intptr_t)p, align8sz);
+
+				if (align8sz < DEFAULT_GC_BLOCK_SIZE) {
+					_empty_str_buffer.first = (intptr_t)p + align8sz;
+					_empty_str_buffer.second = DEFAULT_GC_BLOCK_SIZE - align8sz;
+				}
+			}
+			_used_size += align8sz;
+		}
+		
+		return p;
 	}
 
 }

@@ -38,6 +38,7 @@
 #include <uvm/uvm_storage.h>
 #include <uvm/exceptions.h>
 #include <cborcpp/cbor.h>
+#include <uvm/lvm.h>
 
 namespace uvm
 {
@@ -77,7 +78,7 @@ namespace uvm
                 "next", "rawequal", "rawlen", "rawget", "rawset", "select",
                 "setmetatable",
 				"hex_to_bytes", "bytes_to_hex", "sha256_hex", "sha1_hex", "sha3_hex", "ripemd160_hex",
-				"cbor_encode", "cbor_decode", "signature_recover","get_address_role"
+				"cbor_encode", "cbor_decode", "signature_recover","get_address_role","send_message"
             };
 
             typedef lua_State* L_Key1;
@@ -448,7 +449,7 @@ namespace uvm
 					}
 					cbor::output_dynamic output;
 					cbor::encoder encoder(output);
-					encoder.write_cbor_object(cbor_object);
+					encoder.write_cbor_object(cbor_object.get());
 					const auto& output_hex = output.hex();
 					lua_pushstring(L, output_hex.c_str());
 					return 1;
@@ -1173,6 +1174,304 @@ namespace uvm
 				return 0;
 			}
 
+			static int uvm_core_lib_pairs_by_keys_func_loader(lua_State *L)
+			{
+				lua_getglobal(L, "__real_pairs_by_keys_func");
+				bool exist = !lua_isnil(L, -1) && (lua_isfunction(L, -1) || lua_iscfunction(L, -1));
+				lua_pop(L, 1);
+				if (exist)
+					return 0;
+				// pairsByKeys' iterate order is number first(than string), short string first(than long string), little ASCII string first
+				const char *code = R"END(
+function __real_pairs_by_keys_func(t)
+	local hashes = {}  
+	local n = nil
+	local int_key_size = 0;
+	local int_hashes = {}
+    for n in __old_pairs(t) do
+		if type(n) == 'number' then
+			int_key_size = int_key_size + 1
+			int_hashes[#int_hashes+1] = n
+		else
+			hashes[#hashes+1] = tostring(n)
+		end
+    end  
+	table.sort(int_hashes)
+    table.sort(hashes)  
+	local k = 0
+	while k < #hashes do
+		k = k + 1
+	end
+    local i = 0  
+    return function()  
+        i = i + 1  
+		if i <= int_key_size then
+			return int_hashes[i], t[int_hashes[i]]
+		end
+        return hashes[i-int_key_size], t[hashes[i-int_key_size]] 
+    end  
+end
+)END";
+				luaL_dostring(L, code);
+				return 0;
+			}
+
+			/*
+			function pairsByKeys(t)
+			uvm_core_lib_pairs_by_keys_func_loader()
+			return __real_pairs_by_keys_func(t)
+			end
+			*/
+			static int uvm_core_lib_pairs_by_keys(lua_State *L)
+			{
+				lua_getglobal(L, "uvm_core_lib_pairs_by_keys_func_loader");
+				lua_call(L, 0, 0);
+				lua_getglobal(L, "__real_pairs_by_keys_func");
+				lua_pushvalue(L, 1);
+				lua_call(L, 1, 1);
+				return 1;
+			}
+
+			static bool isArgTypeMatched(UvmTypeInfoEnum storedType, int inputType) {
+				switch (storedType) {
+				case(LTI_NIL):
+					return inputType == LUA_TNIL;
+				case(LTI_STRING):
+					return inputType == LUA_TSTRING;
+				case(LTI_INT):
+					return inputType == LUA_TNUMBER;
+				case(LTI_NUMBER):
+					return inputType == LUA_TNUMBER;
+				case(LTI_BOOL):
+					return inputType == LUA_TBOOLEAN;
+				default:
+					return false;
+				}
+			}
+
+			//增加给合约发送消息的方式可以调用其他合约API但是失败不会退出本次调用而是返回错误码
+			// [result, exit_code] = send_message(contract_address, api_name, args） args为 array table
+			//返回值为array table [result, exit_code]   exit_code==0 表示成功
+			static int send_message(lua_State *L)
+			{
+				auto common_gas = 100;
+				if (uvm::lua::lib::get_lua_state_instructions_executed_count(L) > gas_penalty_threshold) {
+					uvm::lua::lib::increment_lvm_instructions_executed_count(L, 2 * common_gas - 1);
+				}
+				else {
+					uvm::lua::lib::increment_lvm_instructions_executed_count(L, common_gas - 1);
+				}
+				if (lua_gettop(L) < 3 || !lua_isstring(L, 1) || !lua_isstring(L, 2) || !lua_istable(L, 3)) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "invalid arguments of send_message");
+					L->force_stopping = true;
+					return 0;
+				}
+				auto cur_contract_id = get_current_using_contract_id(L);
+				auto to_call_contract_id = luaL_checkstring(L, 1);
+				auto api_name = luaL_checkstring(L, 2);
+				auto api_name_str = std::string(api_name);
+
+				auto input_args_num = lua_rawlen(L, 3);
+
+				//import
+				lua_getglobal(L, "import_contract_from_address");
+				if (!lua_iscfunction(L, 4)) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "no import_contract_from_address");
+					L->force_stopping = true;
+					return 0;
+				}
+				lua_pushvalue(L, 1); // con_id,apiname,args,import_func,con_id
+				lua_call(L, 1, 1);
+				//con_id,apiname,args,con_table
+
+
+				//get api func
+				lua_pushvalue(L, 2);//push api name //con_id,apiname,args,con_table,api_name
+				lua_gettable(L, 4);
+				//con_id,apiname,args,con_table,api_func
+
+				if (!lua_isfunction(L, 5)) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "no api funcion");
+					L->force_stopping = true;
+					return 0;
+				}
+
+				//记录storage change list
+				UvmStateValueNode state_value_node = uvm::lua::lib::get_lua_state_value_node(L, LUA_STORAGE_CHANGELIST_KEY);
+				UvmStorageChangeList *list;
+				if (state_value_node.type != LUA_STATE_VALUE_POINTER || nullptr == state_value_node.value.pointer_value)
+				{
+					list = (UvmStorageChangeList*)lua_malloc(L, sizeof(UvmStorageChangeList));
+					new (list)UvmStorageChangeList();
+					UvmStateValue value_to_store;
+					value_to_store.pointer_value = list;
+					uvm::lua::lib::set_lua_state_value(L, LUA_STORAGE_CHANGELIST_KEY, value_to_store, LUA_STATE_VALUE_POINTER);
+				}
+				else
+				{
+					list = (UvmStorageChangeList*)state_value_node.value.pointer_value;
+				}
+				int origContractStackSize = L->using_contract_id_stack->size();
+
+				//备份原来list size// native contract ????change list??
+				auto origChangelistSize = list->size();
+
+				auto orig_last_execute_context = get_last_execute_context();
+
+				lua_State LbakStruct = *L;
+				
+				auto Lbak = &LbakStruct;
+				Lbak->oldpc = L->oldpc;
+
+				//call api func
+				lua_insert(L, 4);
+				//con_id,apiname,args,api_func,con_table
+				
+				
+				//get to call contract api args types
+				auto stored_contract_info = std::make_shared<UvmContractInfo>();
+				if (!global_uvm_chain_api->get_stored_contract_info_by_address(L, to_call_contract_id, stored_contract_info))
+				{
+					global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "get_stored_contract_info_by_address %s error", to_call_contract_id);
+					L->force_stopping = true;
+					return 0;
+				}
+				std::vector<UvmTypeInfoEnum> arg_types;
+				bool check_arg_type = false;  //old gpc vesion, no arg_types info
+				if (stored_contract_info->contract_api_arg_types.size() > 0) {
+					if (stored_contract_info->contract_api_arg_types.find(api_name_str) == stored_contract_info->contract_api_arg_types.end()) {
+						global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "can't find api_arg_types %s error", api_name_str.c_str());
+						L->force_stopping = true;
+						return 0;
+					}
+					check_arg_type = true; //new gpc version has arg_types, support muti args, try check
+					std::copy(stored_contract_info->contract_api_arg_types[api_name_str].begin(), stored_contract_info->contract_api_arg_types[api_name_str].end(), std::back_inserter(arg_types));
+				}
+
+				//int input_args_num = args.size();
+				if (check_arg_type) { //new version
+					if (arg_types.size() != input_args_num) {
+						global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "send_message to contract args num not match %d error", arg_types.size());
+						L->force_stopping = true;
+						return 0;
+					}
+				}
+				else {  //old gpc version,  conctract api accept only one arg
+					if (input_args_num != 1 && api_name_str != "init") {
+						global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "send_message to contract old vesion gpc only accept 1 arg , but input %d args", input_args_num);
+						L->force_stopping = true;
+						return 0;
+					}
+				}
+
+				lua_pushvalue(L, 3);
+				//con_id,apiname,args,api_func,con_table,args
+				lua_pushnil(L);
+				int argidx = 0;
+				int i = 0;
+				while (lua_next(L, 6)) //lua_next压栈键值对key,value
+				{
+					argidx++;
+					//check arg type
+					if (check_arg_type) {
+						if (!isArgTypeMatched(arg_types[i], lua_type(L,-1))) {
+							global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "send message arg type not match ,api:%s args", api_name_str.c_str());
+							L->force_stopping = true;
+							return 0;
+						}
+						i++;
+					}
+					
+					//调换位置为 value,key
+					lua_insert(L, 6 + argidx);
+
+				}
+				lua_remove(L, 6);
+				//con_id,apiname,args,api_func,con_table,arg1,arg2,....
+
+				auto ret_code = lua_pcall(L, (1 + input_args_num), 1, 0); // result 1 ???
+												  //con_id,apiname,args,result
+
+				auto exception_code = uvm::lua::lib::get_lua_state_value(L, "exception_code").int_value;
+				if (ret_code == LUA_OK && exception_code == UVM_API_NO_ERROR) {
+					lua_createtable(L, 2, 0);
+					lua_insert(L, -2);
+					lua_pushinteger(L, 1);
+					lua_insert(L, -2);
+					lua_settable(L, -3); //set ret
+					lua_pushinteger(L, 2);
+					lua_pushinteger(L, 0);//code = 0   success
+					lua_settable(L, -3); //set code
+					return 1;
+				}
+				else {
+					if (L->force_stopping)
+						L->force_stopping = false;
+					
+					if (exception_code == UVM_API_LVM_LIMIT_OVER_ERROR) { //op limit ???
+						printf("UVM_API_LVM_LIMIT_OVER_ERROR!!!\n");
+					}
+					else {
+						UvmStateValue val_code;
+						val_code.int_value = UVM_API_NO_ERROR;
+
+						UvmStateValue val_msg;
+						val_msg.string_value = "";
+
+						uvm::lua::lib::set_lua_state_value(L, "exception_code", val_code, UvmStateValueType::LUA_STATE_VALUE_INT);
+						uvm::lua::lib::set_lua_state_value(L, "exception_msg", val_msg, UvmStateValueType::LUA_STATE_VALUE_STRING);
+					}
+
+					if (global_uvm_chain_api->has_exception(L))
+					{
+						global_uvm_chain_api->clear_exceptions(L);
+					}
+
+					L->allowhook = Lbak->allowhook;
+					L->call_op_msg = Lbak->call_op_msg;
+					L->ci = Lbak->ci;
+					L->compile_error[0] = '\0';
+					L->runerror[0] = '\0';
+					L->ci_depth = Lbak->ci_depth;
+					L->basehookcount = Lbak->basehookcount;
+					L->evalstacktop = Lbak->evalstacktop;
+					L->nci = Lbak->nci;
+					L->top = Lbak->top;
+					L->nCcalls = Lbak->nCcalls;
+					L->memerrmsg = Lbak->memerrmsg;
+					L->ci_depth = Lbak->ci_depth;
+					L->oldpc = Lbak->oldpc;
+					L->stack_last = Lbak->stack_last;
+					L->allow_contract_modify = Lbak->allow_contract_modify;
+					L->state = Lbak->state;
+					L->errorJmp = Lbak->errorJmp;
+
+					//恢复storage   native???
+					int sz = list->size();
+					for (; sz > origChangelistSize; sz--) {
+						list->pop_back();
+					}
+
+					sz = L->using_contract_id_stack->size();
+					for (; sz > origContractStackSize; sz--) {
+						L->using_contract_id_stack->pop();
+					}
+
+					//恢复栈 
+					set_last_execute_context(orig_last_execute_context);
+
+					lua_createtable(L, 2, 0);
+					lua_pushinteger(L, 1);
+					lua_pushstring(L, "");
+					lua_settable(L, -3); //set ret
+					lua_pushinteger(L, 2);
+					lua_pushinteger(L, 1);//code = 1 fail
+					lua_settable(L, -3); //set code
+					return 1;
+				}	
+			}
+
+
             lua_State *create_lua_state(bool use_contract)
             {
                 lua_State *L = luaL_newstate();
@@ -1236,6 +1535,19 @@ namespace uvm
 				add_global_c_function(L, "fast_map_get", &fast_map_get);
 				add_global_c_function(L, "fast_map_set", &fast_map_set);
 
+				/*
+				__old_pairs = pairs
+				pairs = pairsByKeys
+				*/
+				lua_pushinteger(L, 0);
+				lua_setglobal(L, "__real_pairs_by_keys_func");
+				add_global_c_function(L, "uvm_core_lib_pairs_by_keys_func_loader", &uvm_core_lib_pairs_by_keys_func_loader);
+				lua_getglobal(L, "pairs");
+				lua_setglobal(L, "__old_pairs");
+				lua_pushcfunction(L, &uvm_core_lib_pairs_by_keys);
+				lua_setglobal(L, "pairs");
+				//------------------------------------------------------------
+
 				add_global_c_function(L, "hex_to_bytes", hex_to_bytes);
 				add_global_c_function(L, "bytes_to_hex", bytes_to_hex);
 				add_global_c_function(L, "sha256_hex", sha256_hex);
@@ -1270,6 +1582,8 @@ namespace uvm
 					add_global_c_function(L, "cbor_decode", &cbor_decode);
 					add_global_c_function(L, "signature_recover", &signature_recover);
 					add_global_c_function(L, "get_address_role", &get_address_role);
+
+					add_global_c_function(L, "send_message", &send_message);
                 }
                 return L;
             }
@@ -1491,13 +1805,19 @@ namespace uvm
                 {
                     return;
                 }
-
+				char* str_value = nullptr;
+				if (type == LUA_STATE_VALUE_STRING) {
+					str_value = uvm::lua::lib::malloc_and_copy_string(L, value.string_value);
+					if (!str_value) {
+						return;
+					}
+				}
                 L_V1 map = create_value_map_for_lua_state(L);
                 UvmStateValueNode node_v;
                 node_v.type = type;
                 node_v.value = value;
-                if (node_v.type == LUA_STATE_VALUE_STRING)
-                    node_v.value.string_value = uvm::lua::lib::malloc_and_copy_string(L, value.string_value);
+				if (node_v.type == LUA_STATE_VALUE_STRING)
+					node_v.value.string_value = str_value;
                 std::string key_str(key);
                 map->erase(key_str);
                 map->insert(std::make_pair(key_str, node_v));
@@ -1566,7 +1886,7 @@ namespace uvm
             {
                 return TYPED_LUA_LIB_CODE;
             }
-
+			
 			static bool upval_defined_in_parent(lua_State *L, uvm_types::GcProto *parent, std::list<uvm_types::GcProto*> *all_protos, Upvaldesc upvaldesc)
 			{
 				// whether the upval defined in parent proto
@@ -1602,7 +1922,6 @@ namespace uvm
 							}
 						}
 						return upval_defined_in_parent(L, pp, &remaining, parent_upvaldesc);
-
 					}
 					else
 						return false;
@@ -1664,7 +1983,7 @@ namespace uvm
 					{
 						is_importing_contract = false;
 						// LOADK
-						if(getOpMode(o) == UOP_LOADK)
+						if(UOP_LOADK == o)
 						{
 							int idx = MYK(INDEXK(bx));
 							int idx_in_kst = -idx - 1;
@@ -1683,7 +2002,7 @@ namespace uvm
 					{
 						is_importing_contract_address = false;
 						// LOADK
-						if (getOpMode(o) == UOP_LOADK)
+						if (UOP_LOADK == o)
 						{
 							int idx = MYK(INDEXK(bx));
 							int idx_in_kst = -idx - 1;
@@ -1906,6 +2225,9 @@ namespace uvm
             char *malloc_managed_string(lua_State *L, size_t size, const char *init_data)
             {
 				char *data = static_cast<char*>(L->gc_state->gc_malloc(size));
+				if (!data) {
+					return nullptr;
+				}
 				memset(data, 0x0, size);
 				if(nullptr != init_data)
 					memcpy(data, init_data, strlen(init_data));
@@ -2016,9 +2338,11 @@ namespace uvm
             }
 
             int execute_contract_api(lua_State *L, const char *contract_name,
-				const char *api_name, const char *arg1, std::string *result_json_string)
+				const char *api_name, cbor::CborArrayValue& args, std::string *result_json_string)
             {
                 auto contract_address = malloc_managed_string(L, CONTRACT_ID_MAX_LENGTH + 1);
+				if (!contract_address)
+					return LUA_ERRRUN;
                 memset(contract_address, 0x0, CONTRACT_ID_MAX_LENGTH + 1);
                 size_t address_size = 0;
                 uvm::lua::api::global_uvm_chain_api->get_contract_address_by_name(L, contract_name, contract_address, &address_size);
@@ -2028,25 +2352,27 @@ namespace uvm
                     value.string_value = contract_address;
                     set_lua_state_value(L, STARTING_CONTRACT_ADDRESS, value, LUA_STATE_VALUE_STRING);
                 }
-                return lua_execute_contract_api(L, contract_name, api_name, arg1, result_json_string);
+                return lua_execute_contract_api(L, contract_name, api_name, args, result_json_string);
             }
 
             LUA_API int execute_contract_api_by_address(lua_State *L, const char *contract_address,
-				const char *api_name, const char *arg1, std::string *result_json_string)
+				const char *api_name, cbor::CborArrayValue& args, std::string *result_json_string)
             {
                 UvmStateValue value;
                 auto str = malloc_managed_string(L, strlen(contract_address) + 1);
+				if (!str)
+					return LUA_ERRRUN;
                 memset(str, 0x0, strlen(contract_address) + 1);
                 strncpy(str, contract_address, strlen(contract_address));
                 value.string_value = str;
                 set_lua_state_value(L, STARTING_CONTRACT_ADDRESS, value, LUA_STATE_VALUE_STRING);
-                return lua_execute_contract_api_by_address(L, contract_address, api_name, arg1, result_json_string);
+                return lua_execute_contract_api_by_address(L, contract_address, api_name, args, result_json_string);
             }
 
             int execute_contract_api_by_stream(lua_State *L, UvmModuleByteStream *stream,
-                const char *api_name, const char *arg1, std::string *result_json_string)
+                const char *api_name, cbor::CborArrayValue& args, std::string *result_json_string)
             {
-                return lua_execute_contract_api_by_stream(L, stream, api_name, arg1, result_json_string);
+                return lua_execute_contract_api_by_stream(L, stream, api_name, args, result_json_string);
             }
 
 			bool is_calling_contract_init_api(lua_State *L)
@@ -2066,37 +2392,37 @@ namespace uvm
 					return "";
             }
 
-            bool execute_contract_init_by_address(lua_State *L, const char *contract_address, const char *arg1, std::string *result_json_string)
+            bool execute_contract_init_by_address(lua_State *L, const char *contract_address, cbor::CborArrayValue& args, std::string *result_json_string)
             {
                 UvmStateValue state_value;
                 state_value.int_value = 1;
                 set_lua_state_value(L, UVM_CONTRACT_INITING, state_value, LUA_STATE_VALUE_INT);
-                int status = execute_contract_api_by_address(L, contract_address, "init", arg1, result_json_string);
+                int status = execute_contract_api_by_address(L, contract_address, "init", args, result_json_string);
                 state_value.int_value = 0;
                 set_lua_state_value(L, UVM_CONTRACT_INITING, state_value, LUA_STATE_VALUE_INT);
                 return status == 0;
             }
-            bool execute_contract_start_by_address(lua_State *L, const char *contract_address, const char *arg1, std::string *result_json_string)
+            bool execute_contract_start_by_address(lua_State *L, const char *contract_address, cbor::CborArrayValue& args, std::string *result_json_string)
             {
-                return execute_contract_api_by_address(L, contract_address, "start", arg1, result_json_string) == LUA_OK;
+                return execute_contract_api_by_address(L, contract_address, "start", args, result_json_string) == LUA_OK;
             }
 
-            bool execute_contract_init(lua_State *L, const char *name, UvmModuleByteStreamP stream, const char *arg1, std::string *result_json_string)
+            bool execute_contract_init(lua_State *L, const char *name, UvmModuleByteStreamP stream, cbor::CborArrayValue& args, std::string *result_json_string)
             {
                 UvmStateValue state_value;
                 state_value.int_value = 1;
                 set_lua_state_value(L, UVM_CONTRACT_INITING, state_value, LUA_STATE_VALUE_INT);
-                int status = execute_contract_api_by_stream(L, stream, "init", arg1, result_json_string);
+                int status = execute_contract_api_by_stream(L, stream, "init", args, result_json_string);
                 state_value.int_value = 0;
                 set_lua_state_value(L, UVM_CONTRACT_INITING, state_value, LUA_STATE_VALUE_INT);
                 return status == 0;
             }
-            bool execute_contract_start(lua_State *L, const char *name, UvmModuleByteStreamP stream, const char *arg1, std::string *result_json_string)
+            bool execute_contract_start(lua_State *L, const char *name, UvmModuleByteStreamP stream, cbor::CborArrayValue& args, std::string *result_json_string)
             {
-                return execute_contract_api_by_stream(L, stream, "start", arg1, result_json_string) == LUA_OK;
+                return execute_contract_api_by_stream(L, stream, "start", args, result_json_string) == LUA_OK;
             }
 
-			bool call_last_contract_api(lua_State* L, const std::string& contract_id, const std::string& api_name, const std::string& api_arg, const std::string& caller_address, const std::string& caller_pubkey, std::string* result_json_string) {
+			bool call_last_contract_api(lua_State* L, const std::string& contract_id, const std::string& api_name, cbor::CborArrayValue& args, const std::string& caller_address, const std::string& caller_pubkey, std::string* result_json_string) {
 				using uvm::lua::api::global_uvm_chain_api;
 				try {
 					lua_fill_contract_info_for_use(L);
@@ -2123,18 +2449,50 @@ namespace uvm
 					if (lua_isfunction(L, -1))
 					{
 						lua_pushvalue(L, -2); // push self	
-						if (uvm::util::vector_contains(uvm::lua::lib::contract_int_argument_special_api_names, api_name))
-						{
-							std::stringstream arg_ss;
-							arg_ss << api_arg;
-							lua_Integer arg1_int = 0;
-							arg_ss >> arg1_int;
-							lua_pushinteger(L, arg1_int);
+						
+						{ //push args ; check args  
+							auto stored_contract_info = std::make_shared<UvmContractInfo>();
+							if (!global_uvm_chain_api->get_stored_contract_info_by_address(L, contract_id.c_str(), stored_contract_info))
+							{
+								global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "get_stored_contract_info_by_address %s error", contract_id.c_str());
+								return 0;
+							}
+							std::vector<UvmTypeInfoEnum> arg_types;
+							bool check_arg_type = false;  //old gpc vesion, no arg_types info
+							if (stored_contract_info->contract_api_arg_types.size() > 0) {
+								if (stored_contract_info->contract_api_arg_types.find(api_name) == stored_contract_info->contract_api_arg_types.end()) {
+									global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "can't find api_arg_types %s error", api_name.c_str());
+									return 0;
+								}
+								check_arg_type = true; //new gpc version has arg_types, support muti args, try check
+								std::copy(stored_contract_info->contract_api_arg_types[api_name].begin(), stored_contract_info->contract_api_arg_types[api_name].end(), std::back_inserter(arg_types));
+							}
+							int input_args_num = args.size();
+							if (check_arg_type) { //new version
+								if (arg_types.size() != input_args_num) {
+									global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "args num not match %d error", arg_types.size());
+									return 0;
+								}
+							}
+							else {  //old gpc version,  conctract api accept only one arg
+								if (input_args_num != 1) {
+									global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "old vesion gpc only accept 1 arg , but input %d args", input_args_num);
+									return 0;
+								}
+							}
+							for (int i = 0; i<input_args_num; i++) {
+								const auto& arg = args[i];
+								//if (check_arg_type) {
+								//	if (!isArgTypeMatched(arg_types[i], arg->type)) {
+								//		global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "arg type not match ,api:%s args", api_name_str.c_str());
+								//		return 0;
+								//	}
+								//}
+								luaL_push_cbor_as_json(L, arg);
+							}
+							//lua_pushstring(L, arg1_str.c_str());
 						}
-						else
-						{
-							lua_pushstring(L, api_arg.c_str());
-						}
+
 
 						add_global_string_variable(L, "caller", caller_pubkey.c_str());
 						add_global_string_variable(L, "caller_address", caller_address.c_str());

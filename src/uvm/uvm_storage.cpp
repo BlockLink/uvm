@@ -6,6 +6,7 @@
 #include <vector>
 #include <unordered_map>
 #include <memory>
+#include <set>
 
 #include <uvm/uvm_storage.h>
 #include <jsondiff/jsondiff.h>
@@ -170,6 +171,170 @@ bool lua_push_storage_value(lua_State *L, const UvmStorageValue &value)
 	}
 	}
 	return true;
+}
+
+UvmStorageValue cbor_to_uvm_storage_value(lua_State *L, cbor::CborObject* cbor_value) {
+	UvmStorageValue value;
+	if (cbor_value->is_null())
+	{
+		value.type = uvm::blockchain::StorageValueTypes::storage_value_null;
+		value.value.int_value = 0;
+		return value;
+	}
+	else if (cbor_value->is_bool())
+	{
+		value.type = uvm::blockchain::StorageValueTypes::storage_value_bool;
+		value.value.bool_value = cbor_value->as_bool();
+		return value;
+	}
+	else if (cbor_value->is_int() || cbor_value->is_extra_int())
+	{
+		value.type = uvm::blockchain::StorageValueTypes::storage_value_int;
+		value.value.int_value = cbor_value->force_as_int();
+		return value;
+	}
+	else if (cbor_value->is_float())
+	{
+		value.type = uvm::blockchain::StorageValueTypes::storage_value_number;
+		value.value.number_value = cbor_value->as_float64();
+		return value;
+	}
+	else if (cbor_value->is_string())
+	{
+		value.type = uvm::blockchain::StorageValueTypes::storage_value_string;
+		const auto& cbor_str = cbor_value->as_string();
+		value.value.string_value = uvm::lua::lib::malloc_and_copy_string(L, cbor_str.c_str());
+		return value;
+	}
+	else if (cbor_value->is_array())
+	{
+		const auto& cbor_array = cbor_value->as_array();
+		value.value.table_value = uvm::lua::lib::create_managed_lua_table_map(L);
+		if (cbor_array.empty())
+		{
+			value.type = uvm::blockchain::StorageValueTypes::storage_value_unknown_array;
+		}
+		else
+		{
+			std::vector<UvmStorageValue> item_values;
+			for (size_t i = 0; i < cbor_array.size(); i++)
+			{
+				auto cbor_item = cbor_array[i];
+				const auto &item_value = cbor_to_uvm_storage_value(L, cbor_item.get());
+				item_values.push_back(item_value);
+				(*value.value.table_value)[std::to_string(i + 1)] = item_value;
+			}
+			switch (item_values[0].type)
+			{
+			case uvm::blockchain::StorageValueTypes::storage_value_null:
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_unknown_array;
+				break;
+			case uvm::blockchain::StorageValueTypes::storage_value_bool:
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_bool_array;
+				break;
+			case uvm::blockchain::StorageValueTypes::storage_value_int:
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_int_array;
+				break;
+			case uvm::blockchain::StorageValueTypes::storage_value_number:
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_number_array;
+				break;
+			case uvm::blockchain::StorageValueTypes::storage_value_string:
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_string_array;
+				break;
+			default:
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_unknown_array;
+			}
+		}
+		return value;
+	}
+	else if (cbor_value->is_map())
+	{
+		const auto& cbor_map = cbor_value->as_map();
+		value.value.table_value = uvm::lua::lib::create_managed_lua_table_map(L);
+		if (cbor_map.size()<1)
+		{
+			value.type = uvm::blockchain::StorageValueTypes::storage_value_unknown_table;
+		}
+		else
+		{
+			std::vector<UvmStorageValue> item_values;
+			for (const auto &p : cbor_map)
+			{
+				const auto &item_value = cbor_to_uvm_storage_value(L, p.second.get());
+				item_values.push_back(item_value);
+				(*value.value.table_value)[p.first] = item_value;
+			}
+			switch (item_values[0].type)
+			{
+			case uvm::blockchain::StorageValueTypes::storage_value_null:
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_unknown_table;
+				break;
+			case uvm::blockchain::StorageValueTypes::storage_value_bool:
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_bool_table;
+				break;
+			case uvm::blockchain::StorageValueTypes::storage_value_int:
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_int_table;
+				break;
+			case uvm::blockchain::StorageValueTypes::storage_value_number:
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_number_table;
+				break;
+			case uvm::blockchain::StorageValueTypes::storage_value_string:
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_string_table;
+				break;
+			default:
+				value.type = uvm::blockchain::StorageValueTypes::storage_value_unknown_table;
+			}
+		}
+		return value;
+	}
+	else
+	{
+		throw cbor::CborException("not supported cbor value type");
+	}
+}
+cbor::CborObjectP uvm_storage_value_to_cbor(UvmStorageValue value) {
+	using namespace cbor;
+	switch (value.type)
+	{
+	case uvm::blockchain::StorageValueTypes::storage_value_null:
+		return CborObject::create_null();
+	case uvm::blockchain::StorageValueTypes::storage_value_bool:
+		return CborObject::from_bool(value.value.bool_value);
+	case uvm::blockchain::StorageValueTypes::storage_value_int:
+		return CborObject::from_int(value.value.int_value);
+	case uvm::blockchain::StorageValueTypes::storage_value_number:
+		return CborObject::from_float64(value.value.number_value);
+	case uvm::blockchain::StorageValueTypes::storage_value_string:
+		return CborObject::from_string(value.value.string_value);
+	case uvm::blockchain::StorageValueTypes::storage_value_bool_array:
+	case uvm::blockchain::StorageValueTypes::storage_value_int_array:
+	case uvm::blockchain::StorageValueTypes::storage_value_number_array:
+	case uvm::blockchain::StorageValueTypes::storage_value_string_array:
+	case uvm::blockchain::StorageValueTypes::storage_value_unknown_array:
+	{
+		CborArrayValue cbor_array;
+		for (const auto &p : *value.value.table_value)
+		{
+			cbor_array.push_back(uvm_storage_value_to_cbor(p.second));
+		}
+		return CborObject::create_array(cbor_array);
+	}
+	case uvm::blockchain::StorageValueTypes::storage_value_bool_table:
+	case uvm::blockchain::StorageValueTypes::storage_value_int_table:
+	case uvm::blockchain::StorageValueTypes::storage_value_number_table:
+	case uvm::blockchain::StorageValueTypes::storage_value_string_table:
+	case uvm::blockchain::StorageValueTypes::storage_value_unknown_table:
+	{
+		CborMapValue cbor_map;
+		for (const auto &p : *value.value.table_value)
+		{
+			cbor_map[p.first] = uvm_storage_value_to_cbor(p.second);
+		}
+		return CborObject::create_map(cbor_map);
+	}
+	default:
+		throw cbor::CborException("not supported cbor value type");
+	}
 }
 
 jsondiff::JsonValue uvm_storage_value_to_json(UvmStorageValue value)
@@ -337,7 +502,7 @@ UvmStorageValue json_to_uvm_storage_value(lua_State *L, jsondiff::JsonValue json
 	}
 }
 
-static UvmStorageChangeItem diff_storage_change_if_is_table(lua_State *L, UvmStorageChangeItem change_item)
+static UvmStorageChangeItem diff_storage_change_if_is_table(lua_State *L, UvmStorageChangeItem change_item, bool use_cbor_diff)
 {
 	if (!lua_storage_is_table(change_item.after.type))
 		return change_item;
@@ -345,15 +510,30 @@ static UvmStorageChangeItem diff_storage_change_if_is_table(lua_State *L, UvmSto
 		return change_item;
 	try
 	{
-		const auto &before_json = uvm_storage_value_to_json(change_item.before);
-		const auto &after_json = uvm_storage_value_to_json(change_item.after);
-		jsondiff::JsonDiff json_diff;
-		const auto &diff_json = json_diff.diff(before_json, after_json);
-		change_item.diff = *diff_json;
+		if (use_cbor_diff) {
+			const auto &before_cbor = uvm_storage_value_to_cbor(change_item.before);
+			const auto &after_cbor = uvm_storage_value_to_cbor(change_item.after);
+			cbor_diff::CborDiff differ;
+			const auto &diff = differ.diff(before_cbor, after_cbor);
+			change_item.cbor_diff = *diff;
+		}
+		else {
+			const auto &before_json = uvm_storage_value_to_json(change_item.before);
+			const auto &after_json = uvm_storage_value_to_json(change_item.after);
+			jsondiff::JsonDiff json_diff;
+			const auto &diff_json = json_diff.diff(before_json, after_json);
+			change_item.diff = *diff_json;
+		}
 	}
-	catch (jsondiff::JsonDiffException &e)
+	catch (jsondiff::JsonDiffException& e)
 	{
 		return change_item; // FIXME: throw error
+	}
+	catch (cbor_diff::CborDiffException& e) {
+		return change_item;
+	}
+	catch (...) {
+		return change_item;
 	}
 	return change_item;
 }
@@ -381,6 +561,7 @@ bool luaL_commit_storage_changes(lua_State *L)
 		}
 		return false;
 	}
+	auto use_cbor_diff = global_uvm_chain_api->use_cbor_diff(L);
 	// merge changes
 	std::unordered_map<std::string, std::shared_ptr<std::unordered_map<std::string, UvmStorageChangeItem>>> changes; // contract_id => (storage_unique_key => change_item)
 	UvmStorageTableReadList *table_read_list = get_or_init_storage_table_read_list(L);
@@ -409,7 +590,9 @@ bool luaL_commit_storage_changes(lua_State *L)
 				{
 					auto after_value = lua_type_to_storage_value_type(L, -1, 0);
 					// check whether changelist has this property's change item. only read value if not exist
-					change_item.after = after_value;
+					//if (change_item.after.type != uvm::blockchain::StorageValueTypes::storage_value_null) {
+						change_item.after = after_value;
+					//}
 					// FIXME: eg. a= {}, storage.a = a, a['name'] = 123, storage.a = {}   How to deal with the above circumstances?  maybe it will help to treat the storage as a table
 					//if (!has_property_changed_in_changelist(list, change_item.contract_id, change_item.key))
 					// {
@@ -423,10 +606,15 @@ bool luaL_commit_storage_changes(lua_State *L)
 			}
 			table_read_list->clear();
 		}
+		std::set<std::string> null_keys_changed;
 		for (auto it = list->begin(); it != list->end(); ++it)
 		{
 			UvmStorageChangeItem change_item = *it;
 			const auto& change_item_full_key = change_item.full_key();
+			if (global_uvm_chain_api->use_fast_map_set_nil(L)) {
+				if (change_item.is_fast_map && null_keys_changed.find(change_item_full_key) != null_keys_changed.end())
+					continue;
+			}
 			auto found = changes.find(change_item.contract_id);
 			if (found != changes.end())
 			{
@@ -448,6 +636,8 @@ bool luaL_commit_storage_changes(lua_State *L)
 				contract_changes->insert(contract_changes->end(), std::make_pair(change_item_full_key, change_item));
 				changes.insert(changes.end(), std::make_pair(change_item.contract_id, contract_changes));
 			}
+			if(change_item.after.type == uvm::blockchain::StorageValueTypes::storage_value_null)
+				null_keys_changed.insert(change_item_full_key);
 		}
 	}
 	else
@@ -554,7 +744,7 @@ bool luaL_commit_storage_changes(lua_State *L)
 				else if (lua_storage_is_table(it2->second.before.type) && it2->second.before.value.table_value->size()>0)
 					it2->second.after.type = it2->second.before.type;
 				// just save table diff
-				it2->second = diff_storage_change_if_is_table(L, it2->second);
+				it2->second = diff_storage_change_if_is_table(L, it2->second, use_cbor_diff);
 			}
 			// check storage changes and the corresponding types of compile-time contracts, and modify the type of commit
 			if (!is_in_starting_contract_init)
@@ -853,14 +1043,14 @@ namespace uvm {
 			auto after = arg2;
 			if (!is_fast_map && after.type == uvm::blockchain::StorageValueTypes::storage_value_null)
 			{
-				global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, (name_str + "storage can't change to nil").c_str());
+				global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, (name_str + " storage can't change to nil").c_str());
 				uvm::lua::lib::notify_lua_state_stop(L);
 				return 0;
 			}
 			if (!is_fast_map && (before.type != uvm::blockchain::StorageValueTypes::storage_value_null
 				&& (before.type != after.type && !lua_storage_is_table(before.type))))
 			{
-				global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, (std::string(name) + "storage can't change type").c_str());
+				global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, (std::string(name) + " storage can't change type").c_str());
 				uvm::lua::lib::notify_lua_state_stop(L);
 				return 0;
 			}

@@ -208,3 +208,5 @@ FakesAssemblies/
 /simplechain_runner
 /uvm_single_exec
 /test/src/uvmtest/go.mod
+/.vscode
+/libfc.a

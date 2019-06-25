@@ -3,6 +3,13 @@
 #include <simplechain/operations.h>
 
 namespace simplechain {
+
+	int32_t tx_incrementor = 0;
+
+	transaction::transaction() {
+		tx_nonce = tx_incrementor++;
+	}
+
 	hash_t transaction::digest() const {
 		return hash_t::hash(*this);
 	}
@@ -14,6 +21,7 @@ namespace simplechain {
 	}
 	fc::mutable_variant_object transaction::to_json() const {
 		fc::mutable_variant_object info;
+		info["nonce"] = tx_nonce;
 		info["hash"] = tx_hash();
 		info["id"] = info["hash"];
 		info["tx_time"] = tx_time.sec_since_epoch();

@@ -40,6 +40,8 @@ namespace cbor {
 
         void write_int(uint64_t value);
 
+		void write_neg_int(uint64_t value);
+
         void write_bytes(const unsigned char *data, unsigned int size);
 
         void write_string(const char *data, unsigned int size);
@@ -52,17 +54,21 @@ namespace cbor {
 
         void write_tag(const unsigned int tag);
 
-        void write_special(int special);
+        /*void write_special(int special);*/
+
+		void write_float64(CborDoubleValue value);
         
         void write_null();
         
         void write_undefined();
 
-		void write_cbor_object(CborObjectP value);
+		void write_cbor_object(const CborObject* value);
 
     private:
         void write_type_value(int major_type, uint32_t value);
 
         void write_type_value(int major_type, uint64_t value);
+
+		void write_type_value(int major_type, CborDoubleValue value);
     };
 }

@@ -1077,7 +1077,8 @@ namespace uvm {
 				Instruction i = *(ci->u.l.savedpc++);
 #ifdef DEBUG
 				ci->u.l.savedpc--;
-				printf("%s\tline:%d\n", luaP_opnames[GET_OPCODE(i)],current_line());
+				const auto cur_line = current_line();
+				printf("%s\tline:%d\n", luaP_opnames[GET_OPCODE(i)], cur_line);
 				ci->u.l.savedpc++;
 #endif // DEBUG
 
@@ -1536,7 +1537,7 @@ namespace uvm {
 						vmbreak;
 					}
 					vmcase(UOP_CCALL)
-					vmcase(UOP_CSTATICCALL)
+					vmcase(UOP_CSTATICCALL) //static call can not modify contract storage
 					{ //ra:contract_address  ra+1:api_name  ra+2:arg...   b:arg num  c:result_num
 						TValue tempbuf[10];
 						int nargs = GETARG_B(i) - 1;
@@ -2158,6 +2159,10 @@ std::shared_ptr<uvm::core::ExecuteContext> luaV_execute(lua_State *L)
 
 std::shared_ptr<uvm::core::ExecuteContext> get_last_execute_context() {
 	return last_execute_context;
+}
+
+std::shared_ptr<uvm::core::ExecuteContext> set_last_execute_context(std::shared_ptr<uvm::core::ExecuteContext> p) {
+	return last_execute_context = p;
 }
 
 

@@ -29,6 +29,8 @@ namespace cbor {
         STATE_BYTES_DATA,
         STATE_STRING_SIZE,
         STATE_STRING_DATA,
+		STATE_FLOAT_SIZE,
+		STATE_FLOAT_DATA,
         STATE_ARRAY,
         STATE_MAP,
         STATE_TAG,

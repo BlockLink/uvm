@@ -7,6 +7,7 @@
 #include <list>
 #include <fc/io/json.hpp>
 #include <uvm/lvm.h>
+#include <cbor_diff/cbor_diff.h>
 
 namespace simplechain {
 	blockchain::blockchain() {
@@ -177,13 +178,23 @@ namespace simplechain {
 	StorageDataType blockchain::get_storage(const std::string& contract_address, const std::string& key) const {
 		auto it1 = contract_storages.find(contract_address);
 		if (it1 == contract_storages.end()) {
-			std::string null_jsonstr("null");
-			return StorageDataType(null_jsonstr);
+			auto cbor_null = cbor::CborObject::create_null();
+			const auto& cbor_null_bytes = cbor_diff::cbor_encode(cbor_null);
+			StorageDataType storage;
+			storage.storage_data = cbor_null_bytes;
+			return storage;
+			// std::string null_jsonstr("null");
+			// return StorageDataType(null_jsonstr);
 		}
 		auto it2 = it1->second.find(key);
 		if (it2 == it1->second.end()) {
-			std::string null_jsonstr("null");
-			return StorageDataType(null_jsonstr);
+			auto cbor_null = cbor::CborObject::create_null();
+			const auto& cbor_null_bytes = cbor_diff::cbor_encode(cbor_null);
+			StorageDataType storage;
+			storage.storage_data = cbor_null_bytes;
+			return storage;
+			// std::string null_jsonstr("null");
+			// return StorageDataType(null_jsonstr);
 		}
 		return it2->second;
 	}
@@ -266,6 +277,9 @@ namespace simplechain {
 		case operation::tag<contract_invoke_operation>::value: {
 			return std::make_shared<contract_invoke_evaluator>(this, tx);
 		} break;
+		case operation::tag<native_contract_create_operation>::value: {
+			return std::make_shared<native_contract_create_evaluator>(this, tx);
+		} break;
 		default: {
 			auto err = std::string("unknown operation type ") + std::to_string(type) + " in blockchain::get_operation_evaluator";
 			throw uvm::core::UvmException(err.c_str());
@@ -275,7 +289,9 @@ namespace simplechain {
 
 	void blockchain::accept_transaction_to_mempool(const transaction& tx) {
 		for (const auto& item : tx_mempool) {
-			FC_ASSERT(item.tx_hash() != tx.tx_hash());
+			if (item.tx_hash() == tx.tx_hash()) {
+				return;
+			}
 		}
 		tx_mempool.push_back(tx);
 	}

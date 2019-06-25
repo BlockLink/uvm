@@ -3,12 +3,18 @@
 #include <simplechain/rpcserver.h>
 #include <uvm/uvm_lutil.h>
 #include <fc/crypto/hex.hpp>
+#include <cbor_diff/cbor_diff.h>
+#include <cbor_diff/cbor_diff_tests.h>
+#include <simplechain/native_contract_tests.h>
 
 using namespace simplechain;
 #ifndef RUN_BOOST_TESTS
 
 int main(int argc, char** argv) {
 	std::cout << "Hello, simplechain based on uvm" << std::endl;
+	// cbor_diff::test_cbor_diff();
+	// cbor_diff::test_cbor_json();
+	// test_token_native_contract();
 	try {
 		auto chain = std::make_shared<simplechain::blockchain>();
 
@@ -42,7 +48,11 @@ int main(int argc, char** argv) {
 			chain->generate_block();
 			{
 				auto tx = std::make_shared<transaction>();
-				auto op = operations_helper::invoke_contract(caller_addr, contract1_addr, "init_token", { "test,TEST,10000,100" });
+				fc::variants arrArgs;
+				fc::variant aarg;
+				fc::to_variant(std::string("test,TEST,10000,100"), aarg);
+				arrArgs.push_back(aarg);
+				auto op = operations_helper::invoke_contract(caller_addr, contract1_addr, "init_token", arrArgs);
 				tx->operations.push_back(op);
 				tx->tx_time = fc::time_point_sec(fc::time_point::now());
 
@@ -78,6 +88,10 @@ int main(int argc, char** argv) {
 	catch (const std::exception& e) {
 		std::cerr << e.what() << std::endl;
 		return 1;
+	}
+	catch (...) {
+		auto e = std::current_exception();
+		std::cerr << "some error happen" << std::endl;
 	}
 	return 0;
 }

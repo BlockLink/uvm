@@ -62,15 +62,20 @@ namespace simplechain {
 					return;
 				has_error = 1;
 				char *msg = (char*)lua_malloc(L, LUA_EXCEPTION_MULTILINE_STRNG_MAX_LENGTH);
-				memset(msg, 0x0, LUA_EXCEPTION_MULTILINE_STRNG_MAX_LENGTH);
+				if (msg) {
+					memset(msg, 0x0, LUA_EXCEPTION_MULTILINE_STRNG_MAX_LENGTH);
 
-				va_list vap;
-				va_start(vap, error_format);
-				vsnprintf(msg, LUA_EXCEPTION_MULTILINE_STRNG_MAX_LENGTH, error_format, vap);
-				va_end(vap);
-				if (strlen(msg) > LUA_EXCEPTION_MULTILINE_STRNG_MAX_LENGTH - 1)
-				{
-					msg[LUA_EXCEPTION_MULTILINE_STRNG_MAX_LENGTH - 1] = 0;
+					va_list vap;
+					va_start(vap, error_format);
+					vsnprintf(msg, LUA_EXCEPTION_MULTILINE_STRNG_MAX_LENGTH, error_format, vap);
+					va_end(vap);
+					if (strlen(msg) > LUA_EXCEPTION_MULTILINE_STRNG_MAX_LENGTH - 1)
+					{
+						msg[LUA_EXCEPTION_MULTILINE_STRNG_MAX_LENGTH - 1] = 0;
+					}
+				}
+				else {
+					msg = "vm out of memory";
 				}
 				lua_set_compile_error(L, msg);
 
@@ -87,13 +92,17 @@ namespace simplechain {
 
 				UvmStateValue val_msg;
 				val_msg.string_value = msg;
-
+				printf("error: %s\n", msg);
 				uvm::lua::lib::set_lua_state_value(L, "exception_code", val_code, UvmStateValueType::LUA_STATE_VALUE_INT);
 				uvm::lua::lib::set_lua_state_value(L, "exception_msg", val_msg, UvmStateValueType::LUA_STATE_VALUE_STRING);
 			}
 
 			static contract_create_evaluator* get_register_contract_evaluator(lua_State *L) {
 				return (contract_create_evaluator*)uvm::lua::lib::get_lua_state_value(L, "register_evaluate_state").pointer_value;
+			}
+
+			static native_contract_create_evaluator* get_native_register_contract_evaluator(lua_State *L) {
+				return (native_contract_create_evaluator*)uvm::lua::lib::get_lua_state_value(L, "native_register_evaluate_state").pointer_value;
 			}
 
 			static contract_invoke_evaluator* get_invoke_contract_evaluator(lua_State *L) {
@@ -104,6 +113,10 @@ namespace simplechain {
 				auto register_contract_evaluator = get_register_contract_evaluator(L);
 				if (register_contract_evaluator) {
 					return register_contract_evaluator;
+				}
+				auto native_register_contract_evaluator = get_native_register_contract_evaluator(L);
+				if (native_register_contract_evaluator) {
+					return native_register_contract_evaluator;
 				}
 				auto invoke_contract_evaluator = get_invoke_contract_evaluator(L);
 				if (invoke_contract_evaluator) {
@@ -223,6 +236,11 @@ namespace simplechain {
 
 				std::copy(contract_info->contract_apis.begin(), contract_info->contract_apis.end(), std::back_inserter(contract_info_ret->contract_apis));
 				std::copy(code->offline_abi.begin(), code->offline_abi.end(), std::back_inserter(contract_info_ret->contract_apis));
+
+				contract_info_ret->contract_api_arg_types.clear();
+				for (const auto&item : code->api_arg_types) {
+					contract_info_ret->contract_api_arg_types[item.first] = std::vector<UvmTypeInfoEnum>(item.second);
+				}
 				return 1;
 			}
 
@@ -344,6 +362,91 @@ namespace simplechain {
 				}
 			}
 
+			static bool compare_key(const std::string& first, const std::string& second)
+			{
+				unsigned int i = 0;
+				while ((i<first.length()) && (i<second.length()))
+				{
+					if (first[i] < second[i])
+						return true;
+					else if (first[i] > second[i])
+						return false;
+					else
+						++i;
+				}
+				return (first.length() < second.length());
+			}
+
+			// parse arg to json_array when it's json object. otherwhile return itself. And recursively process child elements
+			static jsondiff::JsonValue nested_json_object_to_array(const jsondiff::JsonValue& json_value)
+			{
+				if (json_value.is_object())
+				{
+					const auto& obj = json_value.as<jsondiff::JsonObject>();
+					jsondiff::JsonArray json_array;
+					std::list<std::string> keys;
+					for (auto it = obj.begin(); it != obj.end(); it++)
+					{
+						keys.push_back(it->key());
+					}
+					keys.sort(&compare_key);
+					for (const auto& key : keys)
+					{
+						jsondiff::JsonArray item_json;
+						item_json.push_back(key);
+						item_json.push_back(nested_json_object_to_array(obj[key]));
+						json_array.push_back(item_json);
+					}
+					return json_array;
+				}
+				if (json_value.is_array())
+				{
+					const auto& arr = json_value.as<jsondiff::JsonArray>();
+					jsondiff::JsonArray result;
+					for (const auto& item : arr)
+					{
+						result.push_back(nested_json_object_to_array(item));
+					}
+					return result;
+				}
+				return json_value;
+			}
+
+			static cbor::CborObjectP nested_cbor_object_to_array(const cbor::CborObject* cbor_value)
+			{
+				if (cbor_value->is_map())
+				{
+					const auto& map = cbor_value->as_map();
+					cbor::CborArrayValue cbor_array;
+					std::list<std::string> keys;
+					for (auto it = map.begin(); it != map.end(); it++)
+					{
+						keys.push_back(it->first);
+					}
+					keys.sort(&compare_key);
+					for (const auto& key : keys)
+					{
+						cbor::CborArrayValue item_json;
+						item_json.push_back(cbor::CborObject::from_string(key));
+						item_json.push_back(nested_cbor_object_to_array(map.at(key).get()));
+						cbor_array.push_back(cbor::CborObject::create_array(item_json));
+					}
+					return cbor::CborObject::create_array(cbor_array);
+				}
+				if (cbor_value->is_array())
+				{
+					const auto& arr = cbor_value->as_array();
+					cbor::CborArrayValue result;
+					for (const auto& item : arr)
+					{
+						result.push_back(nested_cbor_object_to_array(item.get()));
+					}
+					return cbor::CborObject::create_array(result);
+				}
+				return std::make_shared<cbor::CborObject>(*cbor_value);
+			}
+
+
 			UvmStorageValue SimpleChainUvmChainApi::get_storage_value_from_uvm_by_address(lua_State *L, const char *contract_address, const std::string& name
 				, const std::string& fast_map_key, bool is_fast_map)
 			{
@@ -373,10 +476,23 @@ namespace simplechain {
 				}
 			}
 
+			static std::vector<char> json_to_chars(const jsondiff::JsonValue& json_value)
+			{
+				const auto &json_str = jsondiff::json_dumps(json_value);
+				std::vector<char> data(json_str.size() + 1);
+				memcpy(data.data(), json_str.c_str(), json_str.size());
+				data[json_str.size()] = '\0';
+				return data;
+			}
+			
 			bool SimpleChainUvmChainApi::commit_storage_changes_to_uvm(lua_State *L, AllContractsChangesMap &changes)
 			{
 				auto evaluator = get_contract_evaluator(L);
-				int64_t storage_gas = 100;
+				//auto use_cbor_diff_flag = use_cbor_diff(L);
+				auto use_cbor_diff_flag = true;
+				cbor_diff::CborDiff differ;
+				jsondiff::JsonDiff json_differ;
+				int64_t storage_gas = 0;
 
 				auto gas_limit = uvm::lua::lib::get_lua_state_instructions_limit(L);
 				const char* out_of_gas_error = "contract storage changes out of gas";
@@ -387,7 +503,8 @@ namespace simplechain {
 					contract_storage_changes_type contract_storage_change;
 					std::string contract_id = all_con_chg_iter->first;
 					ContractChangesMap contract_change = *(all_con_chg_iter->second);
-					fc::mutable_variant_object nested_changes;
+					cbor::CborMapValue nested_changes;
+					jsondiff::JsonObject json_nested_changes;
 
 					for (auto con_chg_iter = contract_change.begin(); con_chg_iter != contract_change.end(); ++con_chg_iter)
 					{
@@ -395,18 +512,59 @@ namespace simplechain {
 
 						StorageDataChangeType storage_change;
 						// storage_op存储的从before, after改成diff
-						auto json_storage_before = simplechain::uvm_storage_value_to_json(con_chg_iter->second.before);
-						auto json_storage_after = simplechain::uvm_storage_value_to_json(con_chg_iter->second.after);
 						auto storage_after = StorageDataType::get_storage_data_from_lua_storage(con_chg_iter->second.after);
-						storage_change.after = storage_after;
-						contract_storage_change[contract_name] = storage_change;
+						if (use_cbor_diff_flag) {
+							auto cbor_storage_before = uvm_storage_value_to_cbor(con_chg_iter->second.before);
+							auto cbor_storage_after = uvm_storage_value_to_cbor(con_chg_iter->second.after);
+							con_chg_iter->second.cbor_diff = *(differ.diff(cbor_storage_before, cbor_storage_after));
+							auto cbor_diff_value = std::make_shared<cbor::CborObject>(con_chg_iter->second.cbor_diff.value());
+							const auto& cbor_diff_chars = cbor_diff::cbor_encode(cbor_diff_value);
+							storage_change.storage_diff.storage_data = cbor_diff_chars;
+							storage_change.after = storage_after;
+							contract_storage_change[contract_name] = storage_change;
+							nested_changes[contract_name] = cbor_diff_value;
+						}
+						else {
+							
+							const auto& json_storage_before = simplechain::uvm_storage_value_to_json(con_chg_iter->second.before);
+							const auto& json_storage_after = simplechain::uvm_storage_value_to_json(con_chg_iter->second.after);
+							con_chg_iter->second.diff = *(json_differ.diff(json_storage_before, json_storage_after));
+							storage_change.storage_diff.storage_data = json_to_chars(con_chg_iter->second.diff.value());
+							storage_change.after = storage_after;
+							contract_storage_change[contract_name] = storage_change;
+							json_nested_changes[contract_name] = con_chg_iter->second.diff.value();
+							
+						}
+
+					}
+					// count gas by changes size
+					size_t changes_size = 0;
+					if (use_cbor_diff_flag) {
+						auto nested_changes_cbor = cbor::CborObject::create_map(nested_changes);
+						const auto& changes_parsed_to_array = nested_cbor_object_to_array(nested_changes_cbor.get());
+						changes_size = cbor_diff::cbor_encode(changes_parsed_to_array).size();
+					}
+					/*else {
+						const auto& changes_parsed_to_array = nested_json_object_to_array(json_nested_changes);
+						changes_size = jsondiff::json_dumps(changes_parsed_to_array).size();
+					}*/
+					// printf("changes size: %d bytes\n", changes_size);
+					storage_gas += changes_size * 10; // 1 byte storage cost 10 gas
+					if (storage_gas < 0 && gas_limit > 0) {
+						throw_exception(L, UVM_API_LVM_LIMIT_OVER_ERROR, out_of_gas_error);
+						return false;
 					}
 					put_contract_storage_changes_to_evaluator(evaluator, contract_id, contract_storage_change);
 				}
-				uvm::lua::lib::increment_lvm_instructions_executed_count(L, (int)storage_gas);
+				if (gas_limit > 0) {
+					if (storage_gas > gas_limit || storage_gas + uvm::lua::lib::get_lua_state_instructions_executed_count(L) > gas_limit) {
+						throw_exception(L, UVM_API_LVM_LIMIT_OVER_ERROR, out_of_gas_error);
+						return false;
+					}
+				}
+				uvm::lua::lib::increment_lvm_instructions_executed_count(L, storage_gas);
 				return true;
 			}
-
 			intptr_t SimpleChainUvmChainApi::register_object_in_pool(lua_State *L, intptr_t object_addr, UvmOutsideObjectTypes type)
 			{
 				auto node = uvm::lua::lib::get_lua_state_value_node(L, GLUA_OUTSIDE_OBJECT_POOLS_KEY);
@@ -802,6 +960,22 @@ namespace simplechain {
 
 			std::string SimpleChainUvmChainApi::get_address_role(lua_State* L, const std::string& addr) {
 				return std::string(addr);
+			}
+
+			int64_t SimpleChainUvmChainApi::get_fork_height(lua_State* L, const std::string& fork_key) {
+				return -1;
+			}
+
+			bool SimpleChainUvmChainApi::use_cbor_diff(lua_State* L) const {
+				if (1 == L->cbor_diff_state) {
+					return true;
+				}
+				else if (2 == L->cbor_diff_state) {
+					return false;
+				}
+				auto result = true;
+				L->cbor_diff_state = result ? 1 : 2; // cache it
+				return result;
 			}
 
 }

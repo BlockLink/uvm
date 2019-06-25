@@ -437,7 +437,7 @@ LUA_CDIR"loadall.dll;" ".\\?.dll"
 
 #define l_floor(x)		(l_mathop(floor)(x))
 
-#define lua_number2str(s,sz,n)	l_sprintf((s), sz, LUA_NUMBER_FMT, (n))
+#define lua_number2str(s,sz,n) lua_number2str_impl((s), (sz), (n))
 
 /*
 @@ lua_numbertointeger converts a float number to an integer, or
@@ -455,38 +455,7 @@ LUA_CDIR"loadall.dll;" ".\\?.dll"
 
 /* now the variable definitions */
 
-#if LUA_FLOAT_TYPE == LUA_FLOAT_FLOAT		/* { single float */
-
-#define LUA_NUMBER	float
-
-#define l_mathlim(n)		(FLT_##n)
-
-#define LUAI_UACNUMBER	double
-
-#define LUA_NUMBER_FRMLEN	""
-#define LUA_NUMBER_FMT		"%.7g"
-
-#define l_mathop(op)		op##f
-
-#define lua_str2number(s,p)	strtof((s), (p))
-
-
-#elif LUA_FLOAT_TYPE == LUA_FLOAT_LONGDOUBLE	/* }{ long double */
-
-#define LUA_NUMBER	long double
-
-#define l_mathlim(n)		(LDBL_##n)
-
-#define LUAI_UACNUMBER	long double
-
-#define LUA_NUMBER_FRMLEN	"L"
-#define LUA_NUMBER_FMT		"%.19Lg"
-
-#define l_mathop(op)		op##l
-
-#define lua_str2number(s,p)	strtold((s), (p))
-
-#elif LUA_FLOAT_TYPE == LUA_FLOAT_DOUBLE	/* }{ double */
+#if LUA_FLOAT_TYPE == LUA_FLOAT_DOUBLE	/* }{ double */
 
 #define LUA_NUMBER	double
 
@@ -495,7 +464,7 @@ LUA_CDIR"loadall.dll;" ".\\?.dll"
 #define LUAI_UACNUMBER	double
 
 #define LUA_NUMBER_FRMLEN	""
-#define LUA_NUMBER_FMT		"%.14g"
+#define LUA_NUMBER_FMT		"%.14g" // %.14g in lua
 
 #define l_mathop(op)		op
 
@@ -669,9 +638,10 @@ LUA_CDIR"loadall.dll;" ".\\?.dll"
 @@ lua_getlocaledecpoint gets the locale "radix character" (decimal point).
 ** Change that if you do not want to use C locales. (Code using this
 ** macro must include header 'locale.h'.)
+* localeconv()->decimal_point[0]
 */
 #if !defined(lua_getlocaledecpoint)
-#define lua_getlocaledecpoint()		(localeconv()->decimal_point[0])
+#define lua_getlocaledecpoint()		('0')
 #endif
 
 /* }================================================================== */

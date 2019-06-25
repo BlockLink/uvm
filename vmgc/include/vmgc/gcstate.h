@@ -10,56 +10,71 @@
 #include <cstring>
 #include "vmgc/exceptions.h"
 #include "vmgc/gcobject.h"
+#include <map>
+
 
 namespace vmgc {
 
 // 100MB
 #define DEFAULT_MAX_GC_HEAP_SIZE 100*1024*1024
+#define DEFAULT_MAX_GC_STRPOOL_SIZE 8*1024*1024
+
+#define	DEFAULT_GC_STR_HASHLIMIT 5
+#define DEFAULT_MAX_GC_SHORT_STRING_SIZE 32   //2^DEFAULT_GC_HASHLIMIT
+
+#define DEFAULT_MAX_SMALL_BUFFER_SIZE 128  //8µÄ±¶Êý
+#define DEFAULT_SMALL_BUFFER_VECTOR_SIZE (DEFAULT_MAX_SMALL_BUFFER_SIZE/8)     
 
 	struct GcObject;
 
+	struct GcBuffer {
+		intptr_t pos;
+		ptrdiff_t size;
+		bool isGcObj;
+		//bool isFree;
+	};
+
     class GcState {
 	private:
-		ptrdiff_t _usedsize;
-		ptrdiff_t _heapend;
-		ptrdiff_t _lastfreepos;
-		ptrdiff_t _max_gc_heap_size = DEFAULT_MAX_GC_HEAP_SIZE;
-		void* _pstart;
-		std::shared_ptr<std::list<std::pair<ptrdiff_t, ptrdiff_t> > > _malloced_buffers; // [ [start_ptr, end_ptr], ... ]
-		std::shared_ptr<std::list<ptrdiff_t> > _gc_objects; // list of GcObject managed in GcState
+		ptrdiff_t _total_malloced_blocks_size;
+		ptrdiff_t _used_size;
+		ptrdiff_t _max_gc_size;
+		std::shared_ptr<std::list<std::pair<intptr_t, ptrdiff_t> > > _malloced_blocks; // [ [start_ptr, size], ... ]
+		std::shared_ptr<std::map<intptr_t,GcBuffer>> _malloced_gcbuffers; // 
+		std::shared_ptr<std::list<std::pair<intptr_t, ptrdiff_t>>> _empty_small_buffers[DEFAULT_MAX_SMALL_BUFFER_SIZE]; //empty_size => [ [start_ptr, size], ... ]
+		std::shared_ptr<std::list<std::pair<intptr_t, ptrdiff_t>>> _empty_big_buffers; //order list, from small to big
+		std::shared_ptr<std::list<std::pair<intptr_t, intptr_t> > > _malloced_str_blocks; // [ [start_ptr, size], ... ]
+		std::shared_ptr<std::map<unsigned int,std::pair<intptr_t, ptrdiff_t>>> _gc_strpool;
+		std::pair<intptr_t, ptrdiff_t>  _empty_str_buffer; // [start_ptr, size]
+		void insert_empty_buffer(std::pair<intptr_t, ptrdiff_t> &buf);
 
 	public:
 		// @throws vmgc::GcException
 		GcState(ptrdiff_t max_gc_heap_size = DEFAULT_MAX_GC_HEAP_SIZE);
 		virtual ~GcState();
 
-		void* gc_malloc(size_t size);
+		void* gc_malloc(size_t size, bool isGcObj=false);
 		void gc_free(void* p);
 		void gc_free_array(void* p, size_t count, size_t element_size);
 		void* gc_realloc(void *p, size_t oldsize, size_t newsize);
 		void* gc_malloc_vector(size_t count, size_t element_size);
-		// @throws vmgc::GcException
 		void* gc_grow_vector(void *p, size_t nelements, size_t* size, size_t element_size, size_t limit);
-		size_t gc_objects_count() const;
-		std::shared_ptr<std::list<ptrdiff_t> > gc_objects() const;
-		void* pstart() const;
 		ptrdiff_t usedsize() const;
 		void gc_free_all();
-
-
+		void* gc_intern_strpool(size_t sz, size_t strsize, const char* str, bool* isNewStr);
 
 		template <typename T>
 		T* gc_new_object()
 		{
 			size_t sz = sizeof(T);
-			auto p = gc_malloc(sz);
+			auto p = gc_malloc(sz,true);
 			if (!p) {
 				return nullptr;
 			}
 			GcObject* obj_p = static_cast<GcObject*>(p);
 			new (obj_p)T();
 			obj_p->tt = T::type;
-			_gc_objects->push_back((intptr_t) p - (intptr_t) _pstart);
+			//_gc_objects->push_back((intptr_t) p - (intptr_t) _pstart);
 			return static_cast<T*>(obj_p);
 		}
 
@@ -71,7 +86,7 @@ namespace vmgc {
 			size_t sz = sizeof(T);
 			std::vector<T*> malloced_items;
 			for (size_t i = 0; i < count; i++) {
-				auto p = gc_malloc(sz);
+				auto p = gc_malloc(sz,true);
 				if (!p) {
 					for (const auto& item : malloced_items) {
 						gc_free(item);
@@ -81,7 +96,7 @@ namespace vmgc {
 				GcObject* obj_p = static_cast<GcObject*>(p);
 				new (obj_p)T();
 				obj_p->tt = T::type;
-				_gc_objects->push_back((intptr_t)p - (intptr_t)_pstart);
+				//_gc_objects->push_back((intptr_t)p - (intptr_t)_pstart);
 				T* t_p = static_cast<T*>(obj_p);
 				malloced_items.push_back(t_p);
 			}
@@ -89,9 +104,7 @@ namespace vmgc {
 		}
 
 
-
 		#define GC_MINSIZEARRAY 4
-
 		template <typename T>
 		T* gc_grow_object_vector(T* p, size_t nelements, size_t* size, size_t limit)
 		{
@@ -123,6 +136,32 @@ namespace vmgc {
 			*size = newsize;
 			return new_p;
 		}
+
+		// short string into str pool, reused
+		template <typename T>
+		T* gc_intern_string(const char* str, size_t size, bool* isNewStr)
+		{
+			T* ts = nullptr;
+			*isNewStr = true;
+			if (size < DEFAULT_MAX_GC_SHORT_STRING_SIZE) { 
+				size_t sz = sizeof(T);
+				auto p = gc_intern_strpool(sz, size, str, isNewStr);
+				if (!p) {
+					return nullptr;
+				}
+				GcObject* obj_p = static_cast<GcObject*>(p);
+				if (*isNewStr) {
+					new (obj_p)T();
+					obj_p->tt = T::type;
+				}
+				ts = static_cast<T*>(obj_p);
+			}
+			else {
+				ts = gc_new_object<T>();
+			}
+			return ts;
+		}
+
 
     };
 }
