@@ -136,7 +136,6 @@ static bool findindex_of_sorted_table(lua_State *L, uvm_types::GcTable *t, StkId
 		*is_map_key = false;
 		return true;
 	}*/
-	// TODO: hash table part的排序顺序是先数组再字符串，由短到长由小到大，所以这里要记录keys中哪些是数字或者分离数字table和字符串table，优先排序数字
 	if (i != 0 && i <= t->array.size())  /* is 'key' inside array part? */
 	{
 		*array_index = i;
@@ -205,6 +204,11 @@ int luaH_next(lua_State *L, uvm_types::GcTable *t, StkId key) {
 		{
 			item_value_it++;
 			continue;
+		}
+		if (ttisinteger(&item_value_it->first)) {
+			setobj2s(L, key, &item_value_it->first);
+			setobj2s(L, key + 1, &item_value_it->second);
+			return 1;
 		}
 		bool isNewStr = false;
 		std::string item_key_str;
