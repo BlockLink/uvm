@@ -119,105 +119,109 @@ static bool val_to_table_key(const TValue* key, std::string& out) {
 		out = getstr(gco2ts(key->value_.gco));
 		return true;
 	}
+	else if (ttislightuserdata(key)) {
+		out = std::string("$lightuserdata@") + std::to_string(intptr_t(key->value_.p));
+		return true;
+	}
 	else {
 		return false;
 	}
 }
 
 
-static unsigned int findindex_of_sorted_table(lua_State *L, uvm_types::GcTable *t, StkId key) {
+static bool findindex_of_sorted_table(lua_State *L, uvm_types::GcTable *t, StkId key, unsigned int* array_index, std::string* map_key, bool* is_map_key) {
 	unsigned int i = arrayindex(key);
+	/*if (i == 0 && ttisnil(key)) {
+		*array_index = 0;
+		*is_map_key = false;
+		return true;
+	}*/
+	// TODO: hash table part的排序顺序是先数组再字符串，由短到长由小到大，所以这里要记录keys中哪些是数字或者分离数字table和字符串table，优先排序数字
 	if (i != 0 && i <= t->array.size())  /* is 'key' inside array part? */
-		return i;  /* yes; that's the index */
+	{
+		*array_index = i;
+		*is_map_key = false;
+		return true;  /* yes; that's the index */
+	}
 	else {
 		std::string key_str;
 		if (!val_to_table_key(key, key_str)) {
-			return 0;
+			return false;
 		}
-		int k=0;
-		for (auto iter = t->entries.begin(); iter != t->entries.end(); iter++) {
-			k++;
-			std::string iter_key_str;
-			if(val_to_table_key(&iter->first, iter_key_str) && iter_key_str == key_str)
-				return k + t->array.size();
-		}
-		return 0;
+		auto key_it = t->keys.find(key_str);
+		if (key_it == t->keys.end())
+			return false;
+		*map_key = key_str;
+		*is_map_key = true;
+		return true;
 	}
 }
+
+static const char* NOT_FOUND_KEY = "$NOT_FOUND$";
 
 
 int luaH_next(lua_State *L, uvm_types::GcTable *t, StkId key) {
-    unsigned int i = findindex_of_sorted_table(L, t, key);  /* find original element */
-    if (nullptr == t)
-        return 0;
-	
-    for (; i < t->array.size(); i++) {  /* try first array part */
-        if (!ttisnil(&t->array[i])) {  /* a non-nil value? */
-            setivalue(key, i + 1);
-            setobj2s(L, key + 1, &t->array[i]);
-            return 1;
-        }
-    }
-
-	auto i_in_hash_part = i - t->array.size();
-	int k = 0;
-	for (auto it = t->entries.begin(); it != t->entries.end(); it++) {
-		k++;
-		if (k >= i_in_hash_part + 1) {
-			if (!ttisnil(&it->second)) {  // a non-nil value?
-				setobj2s(L, key, &it->first);
-				setobj2s(L, key + 1, &it->second);
+	unsigned int array_index;
+	std::string map_key;
+	bool is_map_key;
+	bool use_first_map_key = false;
+	// array_index is index of key，1-based，0 means not found
+    bool found_key = findindex_of_sorted_table(L, t, key, &array_index, &map_key, &is_map_key);  /* find original element */
+	if (nullptr == t) {
+		return 0;
+	}
+	if (ttisnil(key)) {
+		array_index = 0;
+		is_map_key = false;
+	}
+	auto array_part_size = t->array.size();
+	if (!is_map_key) {
+		// key in array part
+		for (auto i = array_index; i < array_part_size; i++) {
+			if (!ttisnil(&t->array[i])) {  /* a non-nil value? */
+				setivalue(key, i + 1);
+				setobj2s(L, key + 1, &t->array[i]);
 				return 1;
 			}
 		}
+		use_first_map_key = true;
 	}
+	// key in map part
+	auto item_value_it = t->entries.begin();
+	if (!use_first_map_key) {
+		auto it = t->keys.find(map_key);
+		if (it == t->keys.end()) {
+			return 0;
+		}
+		const auto& item_key = it->second;
+		item_value_it = t->entries.find(item_key);
+		if (item_value_it != t->entries.end())
+			item_value_it++;
+	}
+	do {
+		if (item_value_it == t->entries.end())
+			return 0;
+		if (ttisnil(&item_value_it->second))
+		{
+			item_value_it++;
+			continue;
+		}
+		bool isNewStr = false;
+		std::string item_key_str;
+		if (!val_to_table_key(&item_value_it->first, item_key_str)) {
+			item_value_it++;
+			continue;
+		}
+		auto s = L->gc_state->gc_intern_string<uvm_types::GcString>(item_key_str.c_str(), item_key_str.size(), &isNewStr);
+		if (!s) {
+			return 0;
+		}
+		setsvalue(L, key, s);
+		setobj2s(L, key + 1, &item_value_it->second);
+		return 1;
+	} while (true);
+	
 	return 0;
-}
-
-
-/*
-** {=============================================================
-** Rehash
-** ==============================================================
-*/
-
-/*
-** Compute the optimal size for the array part of table 't'. 'nums' is a
-** "count array" where 'nums[i]' is the number of integers in the table
-** between 2^(i - 1) + 1 and 2^i. 'pna' enters with the total number of
-** integer keys in the table and leaves with the number of keys that
-** will go to the array part; return the optimal size.
-*/
-static unsigned int computesizes(unsigned int nums[], unsigned int *pna) {
-    int i;
-    unsigned int twotoi;  /* 2^i (candidate for optimal size) */
-    unsigned int a = 0;  /* number of elements smaller than 2^i */
-    unsigned int na = 0;  /* number of elements to go to array part */
-    unsigned int optimal = 0;  /* optimal size for array part */
-    /* loop while keys can fill more than half of total size */
-    for (i = 0, twotoi = 1; *pna > twotoi / 2; i++, twotoi *= 2) {
-        if (nums[i] > 0) {
-            a += nums[i];
-            if (a > twotoi / 2) {  /* more than half elements present? */
-                optimal = twotoi;  /* optimal size (till now) */
-                na = a;  /* all elements up to 'optimal' will go to array part */
-            }
-        }
-    }
-    lua_assert((optimal == 0 || optimal / 2 < na) && na <= optimal);
-    *pna = na;
-    return optimal;
-}
-
-
-static int countint(const TValue *key, unsigned int *nums) {
-    unsigned int k = arrayindex(key);
-    if (k != 0) {  /* is 'key' an appropriate array index? */
-        nums[luaO_ceillog2(k)]++;  /* count as such */
-        return 1;
-    }
-    else
-        return 0;
 }
 
 void luaH_resize(lua_State *L, uvm_types::GcTable *t, unsigned int nasize,
@@ -265,31 +269,42 @@ void luaH_free(lua_State *L, uvm_types::GcTable *t) {
 ** put new key in its main position; otherwise (colliding node is in its main
 ** position), new key goes to an empty position.
 */
-TValue *luaH_newkey(lua_State *L, uvm_types::GcTable *t, const TValue *key) {
+TValue *luaH_newkey(lua_State *L, uvm_types::GcTable *t, const TValue *key, bool allow_lightuserdata) {
     TValue aux;
+	bool is_int = false;
+	lua_Integer k;
     if (ttisnil(key)) luaG_runerror(L, "table index is nil");
-    else if (ttisfloat(key)) {
-        lua_Integer k;
+    else if (ttisfloat(key) || ttisinteger(key)) {
         if (luaV_tointeger(key, &k, 0)) {  /* index is int? */
             setivalue(&aux, k);
             key = &aux;  /* insert it as an integer */
+			is_int = true;
         }
         else if (luai_numisnan(fltvalue(key)))
             luaG_runerror(L, "table index is NaN");
+	}if (!allow_lightuserdata) {
+		// not support lightuserdata as key by default. need lightuserdata key sometimes because of lua_rawsetp
+		if (ttislightuserdata(key)) {
+			luaG_runerror(L, "invalid table key type");
+			return nullptr;
+		}
+	}
+	// if key is int and == len(array+1), newkey put to array part
+	if (is_int && k == (t->array.size() + 1)) {
+		t->array.push_back(*luaO_nilobject);
+		return &t->array[k-1];
 	}
 	TValue key_obj(*key);
-	t->entries[key_obj] = *luaO_nilobject;
-	for (auto& p : t->entries) {
-		std::string p_key_str;
-		std::string key_str;
-		if (ttislightuserdata(&p.first) && ttislightuserdata(key) && p.first.value_.p == key->value_.p) {
-			return &p.second;
-		}
-		if (val_to_table_key(&p.first, p_key_str) && val_to_table_key(key, key_str) && p_key_str == key_str)
-			return &p.second;
+	std::string key_str;
+	if (!val_to_table_key(key, key_str)) {
+		luaG_runerror(L, "invalid table key type");
+		return nullptr;
 	}
-	luaG_runerror(L, "can't new this key in this table");
-	return nullptr;
+	
+	t->entries[key_obj] = *luaO_nilobject;
+	t->keys[key_str] = key_obj;
+	auto it = t->entries.find(key_obj);
+	return &it->second;
 }
 
 
@@ -301,12 +316,14 @@ const TValue *luaH_getint(uvm_types::GcTable *t, lua_Integer key) {
         return &t->array[key - 1];
     else {
 		const auto& key_str = std::to_string(key);
-		for (const auto& p : t->entries) {
-			std::string p_key_str;
-			if (val_to_table_key(&p.first, p_key_str) && p_key_str == key_str)
-				return &p.second;
-		}
-		return luaO_nilobject;
+		auto key_obj_it = t->keys.find(key_str);
+		if (key_obj_it == t->keys.end())
+			return luaO_nilobject;
+		const auto& key_obj = key_obj_it->second;
+		auto val_it = t->entries.find(key_obj);
+		if(val_it == t->entries.end())
+			return luaO_nilobject;
+		return &val_it->second;
     }
 }
 
@@ -316,12 +333,14 @@ const TValue *luaH_getint(uvm_types::GcTable *t, lua_Integer key) {
 */
 const TValue *luaH_getshortstr(uvm_types::GcTable *t, uvm_types::GcString *key) {
 	std::string key_str = key->value;
-	for (auto& p : t->entries) {
-		std::string p_key_str;
-		if (val_to_table_key(&p.first, p_key_str) && p_key_str == key_str)
-			return &p.second;
-	}
-	return luaO_nilobject;
+	auto key_obj_it = t->keys.find(key_str);
+	if (key_obj_it == t->keys.end())
+		return luaO_nilobject;
+	const auto& key_obj = key_obj_it->second;
+	auto val_it = t->entries.find(key_obj);
+	if (val_it == t->entries.end())
+		return luaO_nilobject;
+	return &val_it->second;
 }
 
 
@@ -334,12 +353,14 @@ static const TValue *getgeneric(uvm_types::GcTable *t, const TValue *key) {
 	if (!val_to_table_key(key, key_str)) {
 		return luaO_nilobject;
 	}
-	for (auto& p : t->entries) {
-		std::string p_key_str;
-		if (val_to_table_key(&p.first, p_key_str) && p_key_str == key_str)
-			return &p.second;
-	}
-	return luaO_nilobject;
+	auto key_obj_it = t->keys.find(key_str);
+	if (key_obj_it == t->keys.end())
+		return luaO_nilobject;
+	const auto& key_obj = key_obj_it->second;
+	auto val_it = t->entries.find(key_obj);
+	if (val_it == t->entries.end())
+		return luaO_nilobject;
+	return &val_it->second;
 }
 
 
@@ -379,11 +400,11 @@ const TValue *luaH_get(uvm_types::GcTable *t, const TValue *key) {
 ** beware: when using this function you probably need to check a GC
 ** barrier and invalidate the TM cache.
 */
-TValue *luaH_set(lua_State *L, uvm_types::GcTable *t, const TValue *key) {
+TValue *luaH_set(lua_State *L, uvm_types::GcTable *t, const TValue *key, bool allow_lightuserdata) {
     const TValue *p = luaH_get(t, key);
     if (p != luaO_nilobject)
         return lua_cast(TValue *, p);
-    else return luaH_newkey(L, t, key);
+    else return luaH_newkey(L, t, key, allow_lightuserdata);
 }
 
 

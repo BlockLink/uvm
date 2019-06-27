@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/zoowii/ecdsatools"
 	gosmt "github.com/zoowii/go_sparse_merkle_tree"
+	"log"
 )
 
 func findUvmSinglePath() string {
@@ -333,7 +334,7 @@ func TestGlobalApis(t *testing.T) {
 	assert.Equal(t, err, "")
 	assert.True(t, strings.Contains(out, `now is 	0`))
 	assert.True(t, strings.Contains(out, `TEST_ADDRESS	 is valid address? 	true`))
-	assert.True(t, strings.Contains(out, `TEST_ADDRESS	 is valid contract address? 	false`))
+	assert.True(t, strings.Contains(out, `TEST_ADDRESS	 is valid contract address? 	true`))
 	assert.True(t, strings.Contains(out, `systemAssetSymbol: 	COIN`))
 	assert.True(t, strings.Contains(out, `blockNum: 	0`))
 	assert.True(t, strings.Contains(out, `precision: 	10000`))
@@ -546,6 +547,9 @@ func TestSimpleChainMintAndTransfer(t *testing.T) {
 	caller2 := "SPLtest2"
 	res, err = simpleChainRPC("mint", caller1, 0, 1000)
 	println(res)
+	if err != nil {
+		log.Println("mint error", err.Error())
+	}
 	assert.True(t, err == nil)
 	res, err = simpleChainRPC("mint", caller2, 0, 100)
 	assert.True(t, err == nil)
@@ -1385,15 +1389,8 @@ func TestPlasmaChallengeEvilExit(t *testing.T) {
 	caller2 := "SPLtest2"
 	caller3 := "SPLtest3"
 
-	plasmaContractAddress, err := createPlasmaContract(caller1)
-	assert.True(t, err == nil)
 
-	res, err = invokeContractOffline(caller1, plasmaContractAddress, "get_config", " ")
-	assert.True(t, err == nil)
-	configJSONStr := res.Get("api_result").MustString()
-	fmt.Printf("plasma root chain config: %s\n", configJSONStr)
-
-	privateKey, err := ecdsatools.GenerateKey()
+	privateKey, err := ecdsatools.PrivateKeyFromHex("8d20188655bcf36bfd25defdd754e17f1795700121fb134f547786b3a6d15a1e")
 	if err != nil {
 		panic(err)
 	}
@@ -1406,6 +1403,16 @@ func TestPlasmaChallengeEvilExit(t *testing.T) {
 	simpleChainRPC("register_account", caller1, pubKeyHex)
 	simpleChainRPC("register_account", caller2, pubKeyHex)
 	simpleChainRPC("register_account", caller3, pubKeyHex)
+	simpleChainRPC("generate_block")
+
+	plasmaContractAddress, err := createPlasmaContract(caller1)
+	assert.True(t, err == nil)
+
+	res, err = invokeContractOffline(caller1, plasmaContractAddress, "get_config", " ")
+	assert.True(t, err == nil)
+	configJSONStr := res.Get("api_result").MustString()
+	fmt.Printf("plasma root chain config: %s\n", configJSONStr)
+
 	simpleChainRPC("generate_block")
 
 	caller1ReceiveCoin, err := createCoinForAccountToReceive(caller1, plasmaContractAddress, caller1, 50000)

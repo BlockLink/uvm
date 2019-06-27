@@ -245,11 +245,6 @@ namespace simplechain {
 				auto contract = get_contract_by_address(o.contract_address);
 				FC_ASSERT(contract, "Can't find contract by address");
 				if (contract->native_contract_key.empty()) {
-					ContractEngineBuilder builder;
-					auto engine = builder.build();
-					engine->set_caller(o.caller_address, o.caller_address);
-					engine->set_state_pointer_value("invoke_evaluate_state", this);
-					engine->clear_exceptions();
 					engine->set_gas_limit(limit);
 					engine->execute_contract_api_by_address(o.contract_address, o.contract_api, arr, &result_json_str);
 					invoke_contract_result.api_result = result_json_str;

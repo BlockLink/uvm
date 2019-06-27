@@ -38,8 +38,8 @@ LUAI_FUNC void luaH_setint(lua_State *L, uvm_types::GcTable *t, lua_Integer key,
 LUAI_FUNC const TValue *luaH_getshortstr(uvm_types::GcTable *t, uvm_types::GcString *key);
 LUAI_FUNC const TValue *luaH_getstr(uvm_types::GcTable *t, uvm_types::GcString *key);
 LUAI_FUNC const TValue *luaH_get(uvm_types::GcTable *t, const TValue *key);
-LUAI_FUNC TValue *luaH_newkey(lua_State *L, uvm_types::GcTable *t, const TValue *key);
-LUAI_FUNC TValue *luaH_set(lua_State *L, uvm_types::GcTable* t, const TValue *key);
+LUAI_FUNC TValue *luaH_newkey(lua_State *L, uvm_types::GcTable *t, const TValue *key, bool allow_lightuserdata = false);
+LUAI_FUNC TValue *luaH_set(lua_State *L, uvm_types::GcTable* t, const TValue *key, bool allow_lightuserdata = false);
 LUAI_FUNC uvm_types::GcTable *luaH_new(lua_State *L);
 LUAI_FUNC void luaH_resize(lua_State *L, uvm_types::GcTable *t, unsigned int nasize,
     unsigned int nhsize);
