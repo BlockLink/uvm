@@ -545,6 +545,7 @@ function M:startExit(arg: string)
 
     let from_caller = get_from_address()
     let from_caller_pubkey = caller
+    print("startExit with caller pubkey " .. from_caller_pubkey)
 
     let existingTx: Transaction = totable(simpleCborDecode(exitingTxHex))
     if (not existingTx) or (not existingTx.owner) then

@@ -478,7 +478,8 @@ namespace uvm_types {
 		typedef TValue GcTableItemType;
 		const static vmgc::gc_type type = LUA_TTABLE;
 		int tt_ = LUA_TTABLE;
-		std::map<TValue, GcTableItemType, table_sort_comparator> entries;
+		std::map<TValue, GcTableItemType, table_sort_comparator> entries; // must use map, not unordered_map
+		std::map<std::string, TValue> keys;
 		std::vector<GcTableItemType> array;
 		GcTable* metatable;
 		lu_byte flags; // flag to mask meta methods

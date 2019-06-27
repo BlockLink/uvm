@@ -137,6 +137,8 @@ namespace vmgc {
 			return new_p;
 		}
 
+		void fill_gc_string(GcObject* p, const char* str, size_t size);
+
 		// short string into str pool, reused
 		template <typename T>
 		T* gc_intern_string(const char* str, size_t size, bool* isNewStr)
@@ -152,12 +154,14 @@ namespace vmgc {
 				GcObject* obj_p = static_cast<GcObject*>(p);
 				if (*isNewStr) {
 					new (obj_p)T();
+					fill_gc_string(obj_p, str, size);
 					obj_p->tt = T::type;
 				}
 				ts = static_cast<T*>(obj_p);
 			}
 			else {
 				ts = gc_new_object<T>();
+				fill_gc_string(ts, str, size);
 			}
 			return ts;
 		}

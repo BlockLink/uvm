@@ -304,6 +304,12 @@ namespace vmgc {
 		return _used_size;
 	}
 
+	void GcState::fill_gc_string(GcObject* p, const char* str, size_t size) {
+		auto sp = static_cast<uvm_types::GcString*>(p);
+		sp->value = str;
+		sp->tt = sp->tt_;
+	}
+
 	//支持长度小于2^5的hash，大于等于此数字会较大概率发生碰撞
 	static unsigned int gc_str_hash(const char *str, size_t l, unsigned int seed) {
 		unsigned int h = seed ^ lua_cast(unsigned int, l);

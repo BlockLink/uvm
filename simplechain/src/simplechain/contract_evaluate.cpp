@@ -255,11 +255,6 @@ namespace simplechain {
 					if (o.deposit_amount > 0) {
 						update_account_asset_balance(o.contract_address, o.deposit_asset_id, o.deposit_amount);
 					}
-					ContractEngineBuilder builder;
-					auto engine = builder.build();
-					engine->set_caller(o.caller_address, o.caller_address);
-					engine->set_state_pointer_value("invoke_evaluate_state", this);
-					engine->clear_exceptions();
 					engine->set_gas_limit(limit);
 					engine->execute_contract_api_by_address(o.contract_address, o.contract_api, arr, &result_json_str);
 					invoke_contract_result.api_result = result_json_str;

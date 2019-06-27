@@ -829,7 +829,7 @@ LUA_API void lua_rawset(lua_State *L, int idx) {
     api_checknelems(L, 2);
     o = index2addr(L, idx);
     api_check(L, ttistable(o), "table expected");
-    slot = luaH_set(L, hvalue(o), L->top - 2);
+    slot = luaH_set(L, hvalue(o), L->top - 2, true);
     setobj2t(L, slot, L->top - 1);
 	invalidateTMcache(hvalue(o));
     L->top -= 2;
@@ -857,7 +857,7 @@ LUA_API void lua_rawsetp(lua_State *L, int idx, const void *p) {
     o = index2addr(L, idx);
     api_check(L, ttistable(o), "table expected");
     setpvalue(&k, lua_cast(void *, p));
-    slot = luaH_set(L, hvalue(o), &k);
+    slot = luaH_set(L, hvalue(o), &k, true);
     setobj2t(L, slot, L->top - 1);
     L->top--;
     lua_unlock(L);
@@ -1302,7 +1302,7 @@ size_t luaL_traverse_table_with_nested(lua_State *L, int index, lua_table_traver
                 lua_pop(L, 1);
                 continue;
             }
-        }
+		}
         ++keys_count;
         if (nullptr != traverser)
             traverser(L, ud, len, jsons, recur_depth+1);

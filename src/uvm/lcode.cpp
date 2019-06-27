@@ -326,7 +326,7 @@ static void freeexp(FuncState *fs, expdesc *e) {
 static int addk(FuncState *fs, TValue *key, TValue *v) {
     lua_State *L = fs->ls->L;
 	uvm_types::GcProto *f = fs->f;
-    TValue *idx = luaH_set(L, fs->ls->h, key);  /* index scanner table */
+    TValue *idx = luaH_set(L, fs->ls->h, key, true);  /* index scanner table */
     int k, oldsize;
     if (ttisinteger(idx)) {  /* is there an index there? */
         k = cast_int(ivalue(idx));
