@@ -306,7 +306,7 @@ namespace vmgc {
 
 	void GcState::fill_gc_string(GcObject* p, const char* str, size_t size) {
 		auto sp = static_cast<uvm_types::GcString*>(p);
-		sp->value = str;
+		sp->value = std::string(str,size);
 		sp->tt = sp->tt_;
 	}
 

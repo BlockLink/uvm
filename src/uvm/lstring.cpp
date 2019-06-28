@@ -136,11 +136,11 @@ uvm_types::GcString *luaS_newlstr(lua_State *L, const char *str, size_t l) {
         return ts;
     }*/
 	
-	bool isNewStr = true;
-	auto ts = L->gc_state->gc_intern_string<uvm_types::GcString>(str,l,&isNewStr);
-	if (isNewStr) {
-		ts->value = std::string(str, l);
-	}
+	
+	auto ts = L->gc_state->gc_intern_string<uvm_types::GcString>(str,l);
+	//if (isNewStr) {
+	//	ts->value = std::string(str, l);
+	//}
 	return ts;
 
 }
