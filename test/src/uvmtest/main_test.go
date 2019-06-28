@@ -325,7 +325,15 @@ func TestGlobalApis(t *testing.T) {
 	assert.True(t, strings.Contains(out, `random: 	0`))
 	assert.True(t, strings.Contains(out, `prevContractAddr: 	nil`))
 	assert.True(t, strings.Contains(out, `prevContractApiName: 	nil`))
-	assert.True(t, strings.Contains(out, `result: {"_data":{"id":"../../tests_lua/test_global_apis.lua.out","name":"@self","storage":{"contract":"address"}},"start":"userdata"}`))
+	assert.True(t, strings.Contains(out, `result: nil`))
+}
+
+func TestContractReturnTostring(t *testing.T) {
+	execCommand(uvmCompilerPath, "../../tests_lua/test_contract_tostring.lua")
+	out, err := execCommand(uvmSinglePath, "-k", "../../tests_lua/test_contract_tostring.lua.out", "start", "")
+	fmt.Println(out)
+	assert.Equal(t, err, "")
+	assert.True(t, strings.Contains(out, `result: 123`))
 }
 
 func TestCallContractItself(t *testing.T) {
