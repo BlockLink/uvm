@@ -210,13 +210,13 @@ int luaH_next(lua_State *L, uvm_types::GcTable *t, StkId key) {
 			setobj2s(L, key + 1, &item_value_it->second);
 			return 1;
 		}
-		bool isNewStr = false;
+
 		std::string item_key_str;
 		if (!val_to_table_key(&item_value_it->first, item_key_str)) {
 			item_value_it++;
 			continue;
 		}
-		auto s = L->gc_state->gc_intern_string<uvm_types::GcString>(item_key_str.c_str(), item_key_str.size(), &isNewStr);
+		auto s = luaS_new(L, item_key_str.c_str());
 		if (!s) {
 			return 0;
 		}

@@ -141,18 +141,18 @@ namespace vmgc {
 
 		// short string into str pool, reused
 		template <typename T>
-		T* gc_intern_string(const char* str, size_t size, bool* isNewStr)
+		T* gc_intern_string(const char* str, size_t size)
 		{
 			T* ts = nullptr;
-			*isNewStr = true;
+			bool isNewStr = true;
 			if (size < DEFAULT_MAX_GC_SHORT_STRING_SIZE) { 
 				size_t sz = sizeof(T);
-				auto p = gc_intern_strpool(sz, size, str, isNewStr);
+				auto p = gc_intern_strpool(sz, size, str, &isNewStr);
 				if (!p) {
 					return nullptr;
 				}
 				GcObject* obj_p = static_cast<GcObject*>(p);
-				if (*isNewStr) {
+				if (isNewStr) {
 					new (obj_p)T();
 					fill_gc_string(obj_p, str, size);
 					obj_p->tt = T::type;
