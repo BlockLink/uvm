@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/zoowii/ecdsatools"
 	gosmt "github.com/zoowii/go_sparse_merkle_tree"
+	"log"
 )
 
 func findUvmSinglePath() string {
@@ -827,6 +828,9 @@ func TestPlasmaRootChain(t *testing.T) {
 	simpleChainRPC("generate_block")
 
 	deposit1TxID, coin1Slot, err := depositToPlasmaContract(caller1, plasmaContractAddress, 50000, 0)
+	if err != nil {
+		log.Println("error " + err.Error())
+	}
 	assert.True(t, err == nil)
 	println("deposit1TxID: ", deposit1TxID)
 	balance1, _ := getAccountBalanceOfAssetID(plasmaContractAddress, 0)

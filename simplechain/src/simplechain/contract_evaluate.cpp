@@ -58,6 +58,7 @@ namespace simplechain {
 			auto gas_count = gas_used;
 			invoke_contract_result.exec_succeed = true;
 			invoke_contract_result.gas_used = gas_count;
+			invoke_contract_result.validate();
 		}
 		catch (const std::exception& e)
 		{
@@ -129,6 +130,7 @@ namespace simplechain {
 			auto gas_count = gas_used;
 			invoke_contract_result.exec_succeed = true;
 			invoke_contract_result.gas_used = gas_count;
+			invoke_contract_result.validate();
 		}
 		catch (const std::exception& e)
 		{
@@ -193,6 +195,7 @@ namespace simplechain {
 				}
 				if (contract->native_contract_key.empty()) {
 					if (o.deposit_amount > 0) {
+						update_account_asset_balance(o.caller_address, o.deposit_asset_id, - int64_t(o.deposit_amount));
 						update_account_asset_balance(o.contract_address, o.deposit_asset_id, o.deposit_amount);
 					}
 					ContractEngineBuilder builder;
@@ -232,6 +235,7 @@ namespace simplechain {
 
 					gas_used = invoke_contract_result.gas_used;
 				}
+				invoke_contract_result.validate();
 			}
 			catch (fc::exception &e)
 			{

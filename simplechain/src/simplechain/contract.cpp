@@ -86,6 +86,52 @@ namespace simplechain {
 		exec_succeed = false;
 	}
 
+	void contract_invoke_result::validate() {
+		// in >= out + fee
+		std::map<asset_id_t, amount_change_type> in_totals;
+		std::map<asset_id_t, amount_change_type> out_totals;
+		for (const auto& p : account_balances_changes) {
+			auto asset = p.first.second;
+			auto change = p.second;
+			if (change < 0) {
+				// in
+				amount_change_type total = 0;
+				if (in_totals.find(asset) != in_totals.end())
+					total = in_totals[asset];
+				total += (-change);
+				in_totals[asset] = total;
+			}
+			else if (change > 0) {
+				// out
+				amount_change_type total = 0;
+				if (out_totals.find(asset) != out_totals.end())
+					total = out_totals[asset];
+				total += change;
+				out_totals[asset] = total;
+			}
+		}
+		// add fees to out
+		for (const auto& p : transfer_fees) {
+			auto asset = p.first;
+			auto change = p.second;
+			amount_change_type total = 0;
+			if (out_totals.find(asset) != out_totals.end())
+				total = out_totals[asset];
+			total += amount_change_type(change);
+		}
+		// each asset in out must have large in
+		for (const auto& p : out_totals) {
+			auto asset = p.first;
+			auto out_total = p.second;
+			if (out_total == 0) {
+				continue;
+			}
+			if (in_totals.find(asset) == in_totals.end() || in_totals[asset] < out_total) {
+				throw uvm::core::UvmException("contract evaluate result must in >= out + fee");
+			}
+		}
+	}
+
 	void contract_invoke_result::apply_pendings(blockchain* chain, const std::string& tx_id) {
 		auto tx_receipt = chain->get_tx_receipt(tx_id);
 		if (!tx_receipt) {
