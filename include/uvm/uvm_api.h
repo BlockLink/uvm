@@ -564,6 +564,33 @@ namespace uvm {
             virtual lua_Integer transfer_from_contract_to_address(lua_State *L, const char *contract_address, const char *to_address,
               const char *asset_type, int64_t amount) = 0;
 
+			/**
+			 * lockbalance and payback
+			 */
+			virtual bool lock_contract_balance_to_miner(lua_State *L, const char* cid, const char* asset_sym, const char* amount, const char* mid) {
+				throw_exception(L, UVM_API_SIMPLE_ERROR, "no implemented method");
+				return false;
+			}
+			virtual bool obtain_pay_back_balance(lua_State *L, const char* contract_addr, const char* mid, const char* sym_to_obtain, const char* amount) {
+				throw_exception(L, UVM_API_SIMPLE_ERROR, "no implemented method");
+				return false; 
+			}
+			virtual bool foreclose_balance_from_miners(lua_State *L, const char* foreclose_account, const char* mid, const char* sym_to_foreclose, const const char* amount) {
+				throw_exception(L, UVM_API_SIMPLE_ERROR, "no implemented method");
+				return false;
+			}
+			virtual std::string get_contact_lock_balance_info(lua_State *L, const char* mid) {
+				throw_exception(L, UVM_API_SIMPLE_ERROR, "no implemented method");
+				return "";
+			}
+			virtual std::string get_contact_lock_balance_info(lua_State *L, const char* cid, const char* aid)const {
+				return "";
+			}
+			virtual std::string get_pay_back_balacne(lua_State *L, const char* contract_addr, const char* symbol_type) {
+				throw_exception(L, UVM_API_SIMPLE_ERROR, "no implemented method");
+				return "";
+			}
+
             /************************************************************************/
             /* transfer asset from contract by account name on chain                */
             /************************************************************************/
@@ -576,6 +603,7 @@ namespace uvm {
             virtual uint32_t get_chain_random(lua_State *L) = 0;
 			virtual uint32_t get_chain_safe_random(lua_State *L) = 0;
             virtual std::string get_transaction_id(lua_State *L) = 0;
+			virtual std::string get_transaction_id_without_gas(lua_State *L) const = 0;
             virtual uint32_t get_header_block_num(lua_State *L) = 0;
 			virtual uint32_t get_header_block_num_without_gas(lua_State *L) = 0;
             virtual uint32_t wait_for_future_random(lua_State *L, int next) = 0;
@@ -609,6 +637,13 @@ namespace uvm {
 			}
 
 			virtual std::string pubkey_to_address_string(const fc::ecc::public_key& pub) const = 0;
+
+			virtual bool use_gas_log(lua_State* L) const {
+				return false;
+			}
+			virtual bool use_step_log(lua_State* L) const {
+				return false;
+			}
 
           };
 

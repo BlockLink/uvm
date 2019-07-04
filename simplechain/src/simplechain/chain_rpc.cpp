@@ -139,6 +139,7 @@ namespace simplechain {
 			auto api_args_json = params.at(3).as<fc::variants>();
 			std::vector<std::string> api_args;
 			for (const auto& api_arg_json : api_args_json) {
+				params_assert(api_arg_json.is_string(), "api arguments must be string");
 				api_args.push_back(api_arg_json.as_string());
 			}
 			auto deposit_asset_id = params.at(4).as_uint64();

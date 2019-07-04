@@ -544,10 +544,15 @@ namespace simplechain {
 						changes_size = jsondiff::json_dumps(changes_parsed_to_array).size();
 					}*/
 					// printf("changes size: %d bytes\n", changes_size);
-					storage_gas += changes_size * 10; // 1 byte storage cost 10 gas
+					auto gas_change = changes_size * 10; // 1 byte storage cost 10 gas
+					storage_gas += gas_change;
 					if (storage_gas < 0 && gas_limit > 0) {
 						throw_exception(L, UVM_API_LVM_LIMIT_OVER_ERROR, out_of_gas_error);
 						return false;
+					}
+					if (global_uvm_chain_api->use_gas_log(L)) {
+						const auto& txid = get_transaction_id_without_gas(L);
+						printf("txid %s, contract %s storage change gas %d\n", txid.c_str(), contract_id.c_str());
 					}
 					put_contract_storage_changes_to_evaluator(evaluator, contract_id, contract_storage_change);
 				}
@@ -808,6 +813,10 @@ namespace simplechain {
 			std::string SimpleChainUvmChainApi::get_transaction_id(lua_State *L)
 			{
 				uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
+				return get_transaction_id_without_gas(L);
+			}
+
+			std::string SimpleChainUvmChainApi::get_transaction_id_without_gas(lua_State *L) const {
 				try {
 					auto evaluator = get_contract_evaluator(L);
 					return evaluator->get_current_tx()->tx_hash();
@@ -1004,6 +1013,15 @@ namespace simplechain {
 				auto checksum = fc::ripemd160::hash((char*)&bin_addr, bin_addr.size() - 4);
 				memcpy(((char*)&bin_addr) + 21, (char*)&checksum._hash[0], 4);
 				return prefix + fc::to_base58(bin_addr.data, sizeof(bin_addr));
+			}
+
+			bool SimpleChainUvmChainApi::use_gas_log(lua_State* L) const {
+				const auto& txid = get_transaction_id_without_gas(L);
+				return false;
+			}
+			bool SimpleChainUvmChainApi::use_step_log(lua_State* L) const {
+				const auto& txid = get_transaction_id_without_gas(L);
+				return false;
 			}
 
 }

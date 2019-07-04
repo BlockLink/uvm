@@ -37,6 +37,45 @@ namespace uvm
     {
         namespace lib
         {
+			GasManager::GasManager(lua_State* L): _L(L) {}
+
+			void GasManager::add_gas(int64_t gas) {
+				auto ref = gas_ref_or_new();
+				if (nullptr == ref) {
+					return;
+				}
+				*ref += gas;
+			}
+
+			int64_t GasManager::gas() const {
+				auto ref = gas_ref();
+				if (nullptr == ref) {
+					return 0;
+				}
+				return *ref;
+			}
+
+			int64_t* GasManager::gas_ref() const {
+				int64_t *insts_executed_count = uvm::lua::lib::get_lua_state_value(_L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
+				return insts_executed_count;
+			}
+
+			int64_t* GasManager::gas_ref_or_new() {
+				int64_t* ref = gas_ref();
+				if (nullptr == ref)
+				{
+					ref = static_cast<int64_t*>(lua_malloc(_L, sizeof(int64_t)));
+					if (nullptr == ref) {
+						return nullptr;
+					}
+					*ref = 0;
+					UvmStateValue lua_state_value_of_exected_count;
+					lua_state_value_of_exected_count.int_pointer_value = ref;
+					uvm::lua::lib::set_lua_state_value(_L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY, lua_state_value_of_exected_count, LUA_STATE_VALUE_INT_POINTER);
+				}
+				return ref;
+			}
+
             UvmStateScope::UvmStateScope(bool use_contract)
                 :_use_contract(use_contract) {
                 this->_L = create_lua_state(use_contract);
