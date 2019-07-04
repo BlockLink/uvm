@@ -467,7 +467,7 @@ namespace uvm {
 				return 0;
 			}
 
-			uint32_t DemoUvmChainApi::get_header_block_num_without_gas(lua_State *L)
+			uint32_t DemoUvmChainApi::get_header_block_num_without_gas(lua_State *L) const
 			{
 				return 0;
 			}
