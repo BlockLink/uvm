@@ -888,15 +888,8 @@ newframe:  /* reentry point when frame changes (call/return) */
         stopped_pointer = uvm::lua::lib::get_lua_state_value(L, LUA_STATE_STOP_TO_RUN_IN_LVM_STATE_MAP_KEY).int_pointer_value;
     }
     int has_insts_limit = insts_limit > 0 ? 1 : 0;
-	int64_t *insts_executed_count = uvm::lua::lib::get_lua_state_value(L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
-    if (nullptr == insts_executed_count)
-    {
-        insts_executed_count = static_cast<int64_t*>(lua_malloc(L, sizeof(int)));
-        *insts_executed_count = 0;
-        UvmStateValue lua_state_value_of_exected_count;
-        lua_state_value_of_exected_count.int_pointer_value = insts_executed_count;
-        uvm::lua::lib::set_lua_state_value(L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY, lua_state_value_of_exected_count, LUA_STATE_VALUE_INT_POINTER);
-    }
+	uvm::lua::lib::GasManager gas_manager(L);
+	int64_t *insts_executed_count = gas_manager.gas_ref_or_new();
     if (*insts_executed_count < 0)
         *insts_executed_count = 0;
 
@@ -906,6 +899,9 @@ newframe:  /* reentry point when frame changes (call/return) */
 
 	int last_debug_line_in_file = -1;
 
+	bool use_step_log = global_uvm_chain_api != nullptr && global_uvm_chain_api->use_step_log(L);
+	bool use_gas_log = global_uvm_chain_api != nullptr && global_uvm_chain_api->use_gas_log(L);
+
     /* main loop of interpreter */
     for (;;) {
         if (!ci || ci->u.l.savedpc == nullptr) {
@@ -914,9 +910,9 @@ newframe:  /* reentry point when frame changes (call/return) */
         }
         Instruction i = *(ci->u.l.savedpc++);
 
-#ifdef DEBUG
-	printf("%d\n", GET_OPCODE(i));
-#endif // DEBUG
+		if (use_step_log) {
+			printf("opcode %s, now gas %d\n", luaP_opnames[GET_OPCODE(i)], *insts_executed_count);
+		}
 
         StkId ra;
 
@@ -995,6 +991,12 @@ newframe:  /* reentry point when frame changes (call/return) */
                 }
                 TValue *upval = cl->upvals[upval_index]->v;
                 TValue *rc = RKC(i);
+				if (use_step_log) {
+					if (ttisstring(rc)) {
+						auto rc_str = svalue(rc);
+						printf("GETTABUP upval %s\n", rc_str);
+					}
+				}
                 gettableProtected(L, upval, rc, ra);
                 vmbreak;
             }

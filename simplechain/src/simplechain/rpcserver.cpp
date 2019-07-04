@@ -93,6 +93,7 @@ namespace simplechain {
 	}
 
 	void RpcServer::start() {
+		_server->config.address = "0.0.0.0";
 		_server->config.port = _port;
 
 		_server->resource["^/api"]["POST"] = [&](shared_ptr<HttpServer::Response> response, shared_ptr<HttpServer::Request> request) {
@@ -107,6 +108,11 @@ namespace simplechain {
 				try {
 					auto result = handler(this->_chain, this->_server.get(), rpc_req.params);
 					rpc_res.result = result;
+				}
+				catch (const fc::exception& e) {
+					rpc_res.has_error = true;
+					rpc_res.error = e.to_detail_string();
+					rpc_res.error_code = 100;
 				}
 				catch (const std::exception& e) {
 					rpc_res.has_error = true;
