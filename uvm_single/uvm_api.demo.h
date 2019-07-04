@@ -152,7 +152,7 @@ namespace uvm {
         virtual std::string get_transaction_id(lua_State *L);
 		virtual std::string get_transaction_id_without_gas(lua_State *L) const override;
         virtual uint32_t get_header_block_num(lua_State *L);
-		virtual uint32_t get_header_block_num_without_gas(lua_State *L);
+		virtual uint32_t get_header_block_num_without_gas(lua_State *L) const override;
         virtual uint32_t wait_for_future_random(lua_State *L, int next);
 
         virtual int32_t get_waited(lua_State *L, uint32_t num);

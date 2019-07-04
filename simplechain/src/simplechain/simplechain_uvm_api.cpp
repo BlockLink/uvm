@@ -844,7 +844,7 @@ namespace simplechain {
 				}
 			}
 
-			uint32_t SimpleChainUvmChainApi::get_header_block_num_without_gas(lua_State *L)
+			uint32_t SimpleChainUvmChainApi::get_header_block_num_without_gas(lua_State *L) const
 			{
 				try {
 					auto evaluator = get_contract_evaluator(L);
