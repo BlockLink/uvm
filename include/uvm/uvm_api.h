@@ -575,7 +575,7 @@ namespace uvm {
 				throw_exception(L, UVM_API_SIMPLE_ERROR, "no implemented method");
 				return false; 
 			}
-			virtual bool foreclose_balance_from_miners(lua_State *L, const char* foreclose_account, const char* mid, const char* sym_to_foreclose, const const char* amount) {
+			virtual bool foreclose_balance_from_miners(lua_State *L, const char* foreclose_account, const char* mid, const char* sym_to_foreclose, const char* amount) {
 				throw_exception(L, UVM_API_SIMPLE_ERROR, "no implemented method");
 				return false;
 			}
