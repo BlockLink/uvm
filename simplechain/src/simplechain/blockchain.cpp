@@ -5,6 +5,8 @@
 #include <iostream>
 #include <fc/io/json.hpp>
 #include <fc/log/logger.hpp>
+#include <fc/variant.hpp>
+#include <fc/variant_object.hpp>
 #include <cbor_diff/cbor_diff.h>
 
 namespace simplechain {
@@ -234,6 +236,31 @@ namespace simplechain {
 		}
 		else {
 			return std::make_shared<transaction_receipt>(it->second);
+		}
+	}
+
+	void blockchain::load_contract_state(const std::string& contract_addr, const std::string& contract_state_json_str) {
+		try {
+			auto contract_state_json = fc::json::from_string(contract_state_json_str).as<fc::mutable_variant_object>();
+			auto balances_json = contract_state_json["balances"].as<fc::variants>();
+			auto storages_json = contract_state_json["storages"].as<fc::mutable_variant_object>();
+			auto ignored_address = contract_state_json["address"].as_string(); // ignore_this
+			for (const auto& p : balances_json) {
+				auto item = p.as<fc::variants>();
+				auto asset_id = item[0].as_int64();
+				auto balance = item[1].as_int64();
+				this->update_account_asset_balance(contract_addr, asset_id, balance);
+			}
+			for (const auto& p : storages_json) {
+				auto value_json = p.value();
+				uvm::lua::lib::UvmStateScope scope;
+				auto value = ::json_to_uvm_storage_value(scope.L(), value_json);
+				auto storage_val = StorageDataType::get_storage_data_from_lua_storage(value);
+				this->set_storage(contract_addr, p.key(), storage_val);
+			}
+		}
+		catch (const fc::exception& e) {
+			throw uvm::core::UvmException(e.to_string());
 		}
 	}
 

@@ -18,6 +18,7 @@
 #include <map>
 #include <unordered_map>
 #include <memory>
+#include <iostream>
 
 #include <uvm/lua.h>
 #include <jsondiff/jsondiff.h>
@@ -644,6 +645,11 @@ namespace uvm {
 			virtual bool use_step_log(lua_State* L) const {
 				return false;
 			}
+
+			// invoked before contract execution
+			virtual void before_contract_invoke(lua_State* L, const std::string& contract_addr, const std::string& txid) {}
+			// dump contract's balances, storages to json
+			virtual void dump_contract_state(lua_State* L, const std::string& contract_addr, const std::string& txid, std::ostream& out) {}
 
           };
 

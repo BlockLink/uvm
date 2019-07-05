@@ -65,6 +65,8 @@ namespace simplechain {
 
 		RpcResultType generate_key(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		RpcResultType sign_info(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
-		// TODO: deposit to contract
+		// load_contract_state(contract_address: string, contract_state_json_string: string)
+		RpcResultType load_contract_state(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		
 	}
 }

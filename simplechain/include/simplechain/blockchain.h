@@ -56,6 +56,8 @@ namespace simplechain {
 		void set_tx_receipt(const std::string& tx_id, const transaction_receipt& tx_receipt);
 		std::shared_ptr<transaction_receipt> get_tx_receipt(const std::string& tx_id);
 
+		void load_contract_state(const std::string& contract_addr, const std::string& contract_state_json_str);
+
 		void accept_transaction_to_mempool(const transaction& tx);
 		std::vector<transaction> get_tx_mempool() const;
 		void generate_block();

@@ -33,7 +33,8 @@ namespace simplechain {
 		{ "get_storage", &get_storage },
 		{ "add_asset", &add_asset },
 		{ "generate_key", &generate_key },
-		{ "sign_info", &sign_info }
+		{ "sign_info", &sign_info },
+		{ "load_contract_state", &load_contract_state }
 		
 	};
 
