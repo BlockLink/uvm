@@ -20,6 +20,8 @@
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/ripemd160.hpp>
 #include <fc/crypto/hex.hpp>
+#include <fc/variant_object.hpp>
+#include <fc/variant.hpp>
 #include <Keccak.hpp>
 #include <simplechain/simplechain_uvm_api.h>
 #include <simplechain/evaluate_state.h>
@@ -550,7 +552,7 @@ namespace simplechain {
 						throw_exception(L, UVM_API_LVM_LIMIT_OVER_ERROR, out_of_gas_error);
 						return false;
 					}
-					if (global_uvm_chain_api->use_gas_log(L)) {
+					if (use_gas_log(L)) {
 						const auto& txid = get_transaction_id_without_gas(L);
 						printf("txid %s, contract %s storage change gas %d\n", txid.c_str(), contract_id.c_str());
 					}
@@ -1022,6 +1024,47 @@ namespace simplechain {
 			bool SimpleChainUvmChainApi::use_step_log(lua_State* L) const {
 				const auto& txid = get_transaction_id_without_gas(L);
 				return false;
+			}
+
+			void SimpleChainUvmChainApi::before_contract_invoke(lua_State* L, const std::string& contract_addr, const std::string& txid) {
+				std::stringstream out;
+				dump_contract_state(L, contract_addr, txid, out);
+				std::string out_ss = out.str();
+				std::cout << "contract " << contract_addr << " state before txid " << txid << ":" << std::endl;
+				std::cout << out_ss << std::endl;
+			}
+			
+			void SimpleChainUvmChainApi::dump_contract_state(lua_State* L, const std::string& contract_addr, const std::string& txid, std::ostream& out) {
+				try {
+					auto evaluator = get_contract_evaluator(L);
+					const auto& contract_storages = evaluator->get_contract_storages(contract_addr);
+					const auto& contract_balances = evaluator->chain->get_account_balances(contract_addr);
+					fc::mutable_variant_object result_json;
+					fc::mutable_variant_object storages_json;
+					fc::variants balances_json;
+					for (const auto& p : contract_storages) {
+						const auto& storage_data = p.second;
+						const auto& storage_val = StorageDataType::create_lua_storage_from_storage_data(L, storage_data);
+						storages_json[p.first] = ::uvm_storage_value_to_json(storage_val);
+					}
+					for (const auto& p : contract_balances) {
+						fc::variants item;
+						item.push_back(p.first);
+						item.push_back(p.second);
+						balances_json.push_back(item);
+					}
+					result_json["storages"] = storages_json;
+					result_json["balances"] = balances_json;
+					result_json["address"] = contract_addr;
+					const auto& result_json_str = fc::json::to_string(result_json, fc::json::legacy_generator);
+					out << result_json_str;
+				}
+				catch (...)
+				{
+					L->force_stopping = true;
+					L->exit_code = LUA_API_INTERNAL_ERROR;
+					return;
+				}
 			}
 
 }

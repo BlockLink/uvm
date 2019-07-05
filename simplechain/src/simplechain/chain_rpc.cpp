@@ -363,6 +363,7 @@ namespace simplechain {
 			}
 			catch (fc::exception e) {
 				res["exec_succeed"] = false;
+				res["error"] = e.to_string();
 				return res;
 			}
 			return res;
@@ -402,10 +403,33 @@ namespace simplechain {
 				res["id"] = id;
 				res["exec_succeed"] = true;
 			}
-			catch (fc::exception e) {
+			catch (const fc::exception& e) {
 				res["exec_succeed"] = false;
+				res["error"] = e.to_string();
 				return res;
 
+			}
+			return res;
+		}
+
+		RpcResultType load_contract_state(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			fc::mutable_variant_object res;
+			try {
+				auto contract_addr = params.at(0).as_string();
+				auto contract_state_json_string = params.at(1).as_string();
+				chain->load_contract_state(contract_addr, contract_state_json_string);
+				res["exec_succeed"] = true;
+				res["result"] = true;
+			}
+			catch (const fc::exception& e) {
+				res["exec_succeed"] = false;
+				res["error"] = e.to_string();
+				return res;
+			}
+			catch (const std::exception& e) {
+				res["exec_succeed"] = false;
+				res["error"] = e.what();
+				return res;
 			}
 			return res;
 		}

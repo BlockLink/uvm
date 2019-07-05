@@ -177,6 +177,9 @@ namespace simplechain {
 		virtual bool use_gas_log(lua_State* L) const override;
 		virtual bool use_step_log(lua_State* L) const override;
 
+		virtual void before_contract_invoke(lua_State* L, const std::string& contract_addr, const std::string& txid) override;
+		virtual void dump_contract_state(lua_State* L, const std::string& contract_addr, const std::string& txid, std::ostream& out) override;
+
       };
 
 }
