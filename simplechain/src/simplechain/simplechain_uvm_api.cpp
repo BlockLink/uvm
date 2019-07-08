@@ -10,6 +10,8 @@
 #include <unordered_map>
 #include <memory>
 #include <mutex>
+#include <fstream>
+#include <boost/filesystem.hpp>
 #include <uvm/uvm_api.h>
 #include <uvm/uvm_lib.h>
 #include <uvm/uvm_lutil.h>
@@ -1026,12 +1028,31 @@ namespace simplechain {
 				return false;
 			}
 
+			namespace fs = boost::filesystem;
+
+			static void dump_text_to_file(const std::string& filepath, const std::string& text) {
+				auto fpath = fs::path(filepath);
+				auto file_dir = fpath.parent_path();
+				if (!fs::exists(file_dir)) {
+					fs::create_directories(file_dir);
+					if (!fs::exists(file_dir)) {
+						std::cout << "directory " << file_dir << " for dump not exist" << std::endl;
+						return;
+					}
+				}
+				std::ofstream of(filepath, std::ios::app);
+				of << text;
+				of.close();
+			}
+
 			void SimpleChainUvmChainApi::before_contract_invoke(lua_State* L, const std::string& contract_addr, const std::string& txid) {
 				std::stringstream out;
 				dump_contract_state(L, contract_addr, txid, out);
 				std::string out_ss = out.str();
 				std::cout << "contract " << contract_addr << " state before txid " << txid << ":" << std::endl;
 				std::cout << out_ss << std::endl;
+				fs::path full_path(fs::current_path());
+				dump_text_to_file((full_path / "logs" / "tmp_contract_state.log").string(), out_ss);
 			}
 			
 			void SimpleChainUvmChainApi::dump_contract_state(lua_State* L, const std::string& contract_addr, const std::string& txid, std::ostream& out) {
@@ -1056,8 +1077,21 @@ namespace simplechain {
 					result_json["storages"] = storages_json;
 					result_json["balances"] = balances_json;
 					result_json["address"] = contract_addr;
+					result_json["txid"] = txid;
 					const auto& result_json_str = fc::json::to_string(result_json, fc::json::legacy_generator);
 					out << result_json_str;
+				}
+				catch (const fc::exception& e) {
+					std::cout << "dump_contract_state error: " << e.to_detail_string() << std::endl;
+					L->force_stopping = true;
+					L->exit_code = LUA_API_INTERNAL_ERROR;
+					return;
+				}
+				catch (const std::exception& e) {
+					std::cout << "dump_contract_state error: " << e.what() << std::endl;
+					L->force_stopping = true;
+					L->exit_code = LUA_API_INTERNAL_ERROR;
+					return;
 				}
 				catch (...)
 				{

@@ -112,7 +112,6 @@ namespace simplechain
 	{
 		clear_exceptions();
 		auto L = _scope->L();
-		uvm::lua::api::global_uvm_chain_api->before_contract_invoke(L, contract_id, uvm::lua::api::global_uvm_chain_api->get_transaction_id_without_gas(L));
 		uvm::lua::lib::execute_contract_init_by_address(L, contract_id.c_str(), argument.c_str(), result_json_string);
 		if (L->force_stopping == true && L->exit_code == LUA_API_INTERNAL_ERROR)
 			throw uvm::core::UvmException("uvm_executor_internal_error");
