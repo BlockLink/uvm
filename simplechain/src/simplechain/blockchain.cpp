@@ -264,6 +264,23 @@ namespace simplechain {
 		}
 	}
 
+	std::string blockchain::load_new_contract_from_json(const std::string& contract_info_json_str) {
+		try {
+			auto contract_json = fc::json::from_string(contract_info_json_str);
+			contract_object contract;
+			fc::from_variant(contract_json, contract);
+			contract_create_operation op;
+			op.contract_code = contract.code;
+			op.op_time = fc::time_point_sec(fc::time_point::now());
+			auto contract_id = op.calculate_contract_id();
+			this->store_contract(contract_id, contract);
+			return contract_id;
+		}
+		catch (const fc::exception& e) {
+			throw uvm::core::UvmException(e.to_string());
+		}
+	}
+
 	std::shared_ptr<generic_evaluator> blockchain::get_operation_evaluator(transaction* tx, const operation& op)
 	{
 		auto type = op.which();

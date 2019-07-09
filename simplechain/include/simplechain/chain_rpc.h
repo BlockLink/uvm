@@ -67,6 +67,7 @@ namespace simplechain {
 		RpcResultType sign_info(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		// load_contract_state(contract_address: string, contract_state_json_string: string)
 		RpcResultType load_contract_state(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+		RpcResultType load_new_contract_from_json(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		
 	}
 }
