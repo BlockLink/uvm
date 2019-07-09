@@ -1021,11 +1021,11 @@ namespace simplechain {
 
 			bool SimpleChainUvmChainApi::use_gas_log(lua_State* L) const {
 				const auto& txid = get_transaction_id_without_gas(L);
-				return false;
+				return true;
 			}
 			bool SimpleChainUvmChainApi::use_step_log(lua_State* L) const {
 				const auto& txid = get_transaction_id_without_gas(L);
-				return false;
+				return true;
 			}
 
 			namespace fs = boost::filesystem;
@@ -1046,6 +1046,8 @@ namespace simplechain {
 			}
 
 			void SimpleChainUvmChainApi::before_contract_invoke(lua_State* L, const std::string& contract_addr, const std::string& txid) {
+				if (true)
+					return;
 				std::stringstream out;
 				dump_contract_state(L, contract_addr, txid, out);
 				std::string out_ss = out.str();

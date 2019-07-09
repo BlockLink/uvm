@@ -434,5 +434,26 @@ namespace simplechain {
 			return res;
 		}
 
+		RpcResultType load_new_contract_from_json(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			fc::mutable_variant_object res;
+			try {
+				auto contract_info_json_string = params.at(0).as_string();
+				auto contract_id = chain->load_new_contract_from_json(contract_info_json_string);
+				res["exec_succeed"] = true;
+				res["result"] = contract_id;
+			}
+			catch (const fc::exception& e) {
+				res["exec_succeed"] = false;
+				res["error"] = e.to_string();
+				return res;
+			}
+			catch (const std::exception& e) {
+				res["exec_succeed"] = false;
+				res["error"] = e.what();
+				return res;
+			}
+			return res;
+		}
+
 	}
 }

@@ -31,6 +31,7 @@ namespace simplechain {
 		native_contract,
 		contract_based_on_template
 	};
+
 	enum ContractApiType
 	{
 		chain = 1,
@@ -72,6 +73,13 @@ namespace simplechain {
 	typedef uint64_t gas_price_type;
 	typedef uint64_t gas_count_type;
 
+}
+
+namespace fc {
+	void from_variant(const fc::variant& var, simplechain::contract_type& vo);
+	void from_variant(const fc::variant& var, std::vector<unsigned char>& vo);
+	void from_variant(const fc::variant& var, fc::enum_type<fc::unsigned_int, uvm::blockchain::StorageValueTypes>& vo);
+	void from_variant(const fc::variant& var, uvm::blockchain::Code& vo);
 }
 
 FC_REFLECT_ENUM(simplechain::contract_type, (normal_contract)(native_contract)(contract_based_on_template))

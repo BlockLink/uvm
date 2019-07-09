@@ -34,7 +34,8 @@ namespace simplechain {
 		{ "add_asset", &add_asset },
 		{ "generate_key", &generate_key },
 		{ "sign_info", &sign_info },
-		{ "load_contract_state", &load_contract_state }
+		{ "load_contract_state", &load_contract_state },
+	    { "load_new_contract_from_json", &load_new_contract_from_json }
 		
 	};
 
