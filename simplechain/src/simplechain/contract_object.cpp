@@ -39,4 +39,31 @@ namespace fc {
 		obj("inherit_from", var.inherit_from);
 		vo = std::move(obj);
 	}
+	void from_variant(const fc::variant& var, simplechain::contract_object& vo) {
+		const auto& varobj = var.as<fc::mutable_variant_object>();
+		vo.registered_block = varobj["registered_block"].as_uint64();
+		vo.owner_address = varobj["owner_address"].as_string();
+		
+		if (varobj.find("code") != varobj.end())
+			fc::from_variant(varobj["code"], vo.code);
+		else if (varobj.find("code_printable") != varobj.end())
+			fc::from_variant(varobj["code_printable"], vo.code);
+		// fc::from_variant(varobj["create_time"], vo.create_time);
+		if (varobj.find("contract_address") != varobj.end())
+			vo.contract_address = varobj["contract_address"].as_string();
+		else if(varobj.find("id") != varobj.end())
+			vo.contract_address = varobj["id"].as_string();
+		if(varobj.find("contract_name") != varobj.end())
+			vo.contract_name = varobj["contract_name"].as_string();
+		if(varobj.find("contract_desc") != varobj.end())
+			vo.contract_desc = varobj["contract_desc"].as_string();
+		if(varobj.find("type_of_contract") != varobj.end())
+			fc::from_variant(varobj["type_of_contract"], vo.type_of_contract);
+		if(varobj.find("native_contract_key") != varobj.end())
+			vo.native_contract_key = varobj["native_contract_key"].as_string();
+		if(varobj.find("derived") != varobj.end())
+			vo.derived = varobj["derived"].as <std::vector<std::string>>();
+		if(varobj.find("inherit_from") != varobj.end())
+			vo.inherit_from = varobj["inherit_from"].as_string();
+	}
 }

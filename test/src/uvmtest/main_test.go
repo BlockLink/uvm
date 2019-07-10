@@ -23,6 +23,7 @@ import (
 	"github.com/zoowii/ecdsatools"
 	gosmt "github.com/zoowii/go_sparse_merkle_tree"
 	"log"
+	"io/ioutil"
 )
 
 func findUvmSinglePath() string {
@@ -346,7 +347,15 @@ func TestGlobalApis(t *testing.T) {
 	assert.True(t, strings.Contains(out, `random: 	0`))
 	assert.True(t, strings.Contains(out, `prevContractAddr: 	nil`))
 	assert.True(t, strings.Contains(out, `prevContractApiName: 	nil`))
-	assert.True(t, strings.Contains(out, `result: {"_data":{"id":"../../tests_lua/test_global_apis.lua.out","name":"@self","storage":{"contract":"address"}},"start":"userdata"}`))
+	assert.True(t, strings.Contains(out, `result: nil`))
+}
+
+func TestContractReturnTostring(t *testing.T) {
+	execCommand(uvmCompilerPath, "../../tests_lua/test_contract_tostring.lua")
+	out, err := execCommand(uvmSinglePath, "-k", "../../tests_lua/test_contract_tostring.lua.out", "start", "")
+	fmt.Println(out)
+	assert.Equal(t, err, "")
+	assert.True(t, strings.Contains(out, `result: 123`))
 }
 
 func TestCallContractItself(t *testing.T) {
@@ -979,6 +988,9 @@ func TestPlasmaRootChain(t *testing.T) {
 	simpleChainRPC("generate_block")
 
 	deposit1TxID, coin1Slot, err := depositToPlasmaContract(caller1, plasmaContractAddress, 50000, 0)
+	if err != nil {
+		log.Println("error " + err.Error())
+	}
 	assert.True(t, err == nil)
 	println("deposit1TxID: ", deposit1TxID)
 	balance1, _ := getAccountBalanceOfAssetID(plasmaContractAddress, 0)
@@ -2094,4 +2106,52 @@ func TestNativeExchangeContract(t *testing.T) {
 	simpleChainRPC("generate_block")
 
 	test0xExchangeContractInSimplechain(t, contract1Addr)
+}
+
+func TestContractLoadState(t *testing.T) {
+	cmd := execCommandBackground(simpleChainPath)
+	assert.True(t, cmd != nil)
+	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
+	defer func() {
+		kill(cmd)
+	}()
+
+	if true {
+		return
+	}
+	
+	time.Sleep(1 * time.Second)
+	var res *simplejson.Json
+	var err error
+	//caller1 := "SPLtest1"
+	caller2 := "SPLtest2"
+
+	// TODO: register contract by bytecode hex and contract apis/events
+	contractJsonFilepath := "C:\\Users\\kk\\test\\contract1.json"
+	contractJsonBytes, err := ioutil.ReadFile(contractJsonFilepath)
+	assert.True(t, err == nil)
+	contractJsonStr := string(contractJsonBytes)
+	res, err = simpleChainRPC("load_new_contract_from_json", contractJsonStr)
+	// TODO: load contract state
+	assert.True(t, err == nil)
+	log.Println("contract1: ", res)
+	contract1Addr, err := res.Get("result").String()
+	assert.True(t, err == nil)
+
+	contractStateFilepath := "C:\\Users\\kk\\test\\state1.txt"
+	contractStateBytes, err := ioutil.ReadFile(contractStateFilepath)
+	assert.True(t, err == nil)
+
+	res, err = simpleChainRPC("load_contract_state", contract1Addr, string(contractStateBytes))
+	assert.True(t, err == nil)
+
+	// get contract storage state and balances state
+	res, err = simpleChainRPC("get_storage", contract1Addr, "contractCreater")
+	assert.True(t, err == nil)
+	log.Println("contractCreater", res)
+
+	simpleChainRPC("invoke_contract", caller2, contract1Addr, "start_new_bet", []string{"HX,50,1"}, 0, 0, 50000, 10)
+
+	simpleChainRPC("generate_block")
+
 }

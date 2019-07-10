@@ -10,6 +10,8 @@
 #include <unordered_map>
 #include <memory>
 #include <mutex>
+#include <fstream>
+#include <boost/filesystem.hpp>
 #include <uvm/uvm_api.h>
 #include <uvm/uvm_lib.h>
 #include <uvm/uvm_lutil.h>
@@ -20,6 +22,8 @@
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/ripemd160.hpp>
 #include <fc/crypto/hex.hpp>
+#include <fc/variant_object.hpp>
+#include <fc/variant.hpp>
 #include <Keccak.hpp>
 #include <simplechain/simplechain_uvm_api.h>
 #include <simplechain/evaluate_state.h>
@@ -549,10 +553,15 @@ namespace simplechain {
 						changes_size = jsondiff::json_dumps(changes_parsed_to_array).size();
 					}*/
 					// printf("changes size: %d bytes\n", changes_size);
-					storage_gas += changes_size * 10; // 1 byte storage cost 10 gas
+					auto gas_change = changes_size * 10; // 1 byte storage cost 10 gas
+					storage_gas += gas_change;
 					if (storage_gas < 0 && gas_limit > 0) {
 						throw_exception(L, UVM_API_LVM_LIMIT_OVER_ERROR, out_of_gas_error);
 						return false;
+					}
+					if (use_gas_log(L)) {
+						const auto& txid = get_transaction_id_without_gas(L);
+						printf("txid %s, contract %s storage change gas %d\n", txid.c_str(), contract_id.c_str());
 					}
 					put_contract_storage_changes_to_evaluator(evaluator, contract_id, contract_storage_change);
 				}
@@ -813,6 +822,10 @@ namespace simplechain {
 			std::string SimpleChainUvmChainApi::get_transaction_id(lua_State *L)
 			{
 				uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
+				return get_transaction_id_without_gas(L);
+			}
+
+			std::string SimpleChainUvmChainApi::get_transaction_id_without_gas(lua_State *L) const {
 				try {
 					auto evaluator = get_contract_evaluator(L);
 					return evaluator->get_current_tx()->tx_hash();
@@ -840,7 +853,7 @@ namespace simplechain {
 				}
 			}
 
-			uint32_t SimpleChainUvmChainApi::get_header_block_num_without_gas(lua_State *L)
+			uint32_t SimpleChainUvmChainApi::get_header_block_num_without_gas(lua_State *L) const
 			{
 				try {
 					auto evaluator = get_contract_evaluator(L);
@@ -1009,6 +1022,90 @@ namespace simplechain {
 				auto checksum = fc::ripemd160::hash((char*)&bin_addr, bin_addr.size() - 4);
 				memcpy(((char*)&bin_addr) + 21, (char*)&checksum._hash[0], 4);
 				return prefix + fc::to_base58(bin_addr.data, sizeof(bin_addr));
+			}
+
+			bool SimpleChainUvmChainApi::use_gas_log(lua_State* L) const {
+				const auto& txid = get_transaction_id_without_gas(L);
+				return true;
+			}
+			bool SimpleChainUvmChainApi::use_step_log(lua_State* L) const {
+				const auto& txid = get_transaction_id_without_gas(L);
+				return true;
+			}
+
+			namespace fs = boost::filesystem;
+
+			static void dump_text_to_file(const std::string& filepath, const std::string& text) {
+				auto fpath = fs::path(filepath);
+				auto file_dir = fpath.parent_path();
+				if (!fs::exists(file_dir)) {
+					fs::create_directories(file_dir);
+					if (!fs::exists(file_dir)) {
+						std::cout << "directory " << file_dir << " for dump not exist" << std::endl;
+						return;
+					}
+				}
+				std::ofstream of(filepath, std::ios::app);
+				of << text;
+				of.close();
+			}
+
+			void SimpleChainUvmChainApi::before_contract_invoke(lua_State* L, const std::string& contract_addr, const std::string& txid) {
+				if (true)
+					return;
+				std::stringstream out;
+				dump_contract_state(L, contract_addr, txid, out);
+				std::string out_ss = out.str();
+				std::cout << "contract " << contract_addr << " state before txid " << txid << ":" << std::endl;
+				std::cout << out_ss << std::endl;
+				fs::path full_path(fs::current_path());
+				dump_text_to_file((full_path / "logs" / "tmp_contract_state.log").string(), out_ss);
+			}
+			
+			void SimpleChainUvmChainApi::dump_contract_state(lua_State* L, const std::string& contract_addr, const std::string& txid, std::ostream& out) {
+				try {
+					auto evaluator = get_contract_evaluator(L);
+					const auto& contract_storages = evaluator->get_contract_storages(contract_addr);
+					const auto& contract_balances = evaluator->chain->get_account_balances(contract_addr);
+					fc::mutable_variant_object result_json;
+					fc::mutable_variant_object storages_json;
+					fc::variants balances_json;
+					for (const auto& p : contract_storages) {
+						const auto& storage_data = p.second;
+						const auto& storage_val = StorageDataType::create_lua_storage_from_storage_data(L, storage_data);
+						storages_json[p.first] = ::uvm_storage_value_to_json(storage_val);
+					}
+					for (const auto& p : contract_balances) {
+						fc::variants item;
+						item.push_back(p.first);
+						item.push_back(p.second);
+						balances_json.push_back(item);
+					}
+					result_json["storages"] = storages_json;
+					result_json["balances"] = balances_json;
+					result_json["address"] = contract_addr;
+					result_json["txid"] = txid;
+					const auto& result_json_str = fc::json::to_string(result_json, fc::json::legacy_generator);
+					out << result_json_str;
+				}
+				catch (const fc::exception& e) {
+					std::cout << "dump_contract_state error: " << e.to_detail_string() << std::endl;
+					L->force_stopping = true;
+					L->exit_code = LUA_API_INTERNAL_ERROR;
+					return;
+				}
+				catch (const std::exception& e) {
+					std::cout << "dump_contract_state error: " << e.what() << std::endl;
+					L->force_stopping = true;
+					L->exit_code = LUA_API_INTERNAL_ERROR;
+					return;
+				}
+				catch (...)
+				{
+					L->force_stopping = true;
+					L->exit_code = LUA_API_INTERNAL_ERROR;
+					return;
+				}
 			}
 
 }

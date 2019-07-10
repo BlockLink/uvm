@@ -74,6 +74,9 @@ namespace simplechain {
 		void reset();
 		void set_failed();
 
+		// @throws exception
+		void validate();
+
 		void apply_pendings(blockchain* chain, const std::string& tx_id);
 
 		// count storage gas and events gas

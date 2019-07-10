@@ -181,6 +181,11 @@ namespace simplechain {
 			//cbor::CborArrayValue api_args;
 			//convertArgs2Cbor(api_args_json, api_args);
 
+			std::vector<std::string> api_args;
+			for (const auto& api_arg_json : api_args_json) {
+				params_assert(api_arg_json.is_string(), "api arguments must be string");
+				api_args.push_back(api_arg_json.as_string());
+			}
 			auto deposit_asset_id = params.at(4).as_uint64();
 			auto deposit_amount = params.at(5).as_uint64();
 			auto gas_limit = params.at(6).as_uint64();
@@ -555,6 +560,7 @@ namespace simplechain {
 			}
 			catch (fc::exception e) {
 				res["exec_succeed"] = false;
+				res["error"] = e.to_string();
 				return res;
 			}
 			return res;
@@ -594,10 +600,54 @@ namespace simplechain {
 				res["id"] = id;
 				res["exec_succeed"] = true;
 			}
-			catch (fc::exception e) {
+			catch (const fc::exception& e) {
 				res["exec_succeed"] = false;
+				res["error"] = e.to_string();
 				return res;
 
+			}
+			return res;
+		}
+
+		RpcResultType load_contract_state(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			fc::mutable_variant_object res;
+			try {
+				auto contract_addr = params.at(0).as_string();
+				auto contract_state_json_string = params.at(1).as_string();
+				chain->load_contract_state(contract_addr, contract_state_json_string);
+				res["exec_succeed"] = true;
+				res["result"] = true;
+			}
+			catch (const fc::exception& e) {
+				res["exec_succeed"] = false;
+				res["error"] = e.to_string();
+				return res;
+			}
+			catch (const std::exception& e) {
+				res["exec_succeed"] = false;
+				res["error"] = e.what();
+				return res;
+			}
+			return res;
+		}
+
+		RpcResultType load_new_contract_from_json(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			fc::mutable_variant_object res;
+			try {
+				auto contract_info_json_string = params.at(0).as_string();
+				auto contract_id = chain->load_new_contract_from_json(contract_info_json_string);
+				res["exec_succeed"] = true;
+				res["result"] = contract_id;
+			}
+			catch (const fc::exception& e) {
+				res["exec_succeed"] = false;
+				res["error"] = e.to_string();
+				return res;
+			}
+			catch (const std::exception& e) {
+				res["exec_succeed"] = false;
+				res["error"] = e.what();
+				return res;
 			}
 			return res;
 		}

@@ -1068,6 +1068,10 @@ namespace uvm {
 			if (L->state != lua_VMState::LVM_STATE_NONE) {
 				L->state = lua_VMState::LVM_STATE_NONE;
 			}
+
+			bool use_step_log = global_uvm_chain_api != nullptr && global_uvm_chain_api->use_step_log(L);
+                        bool use_gas_log = global_uvm_chain_api != nullptr && global_uvm_chain_api->use_gas_log(L);
+
 			
 				if (!ci || ci->u.l.savedpc == nullptr) {
 					global_uvm_chain_api->throw_exception(L, UVM_API_LVM_LIMIT_OVER_ERROR, "wrong bytecode instruction, can't find savedpc");
@@ -1075,12 +1079,12 @@ namespace uvm {
 					return false;
 				}
 				Instruction i = *(ci->u.l.savedpc++);
-#ifdef DEBUG
-				ci->u.l.savedpc--;
-				const auto cur_line = current_line();
-				printf("%s\tline:%d\n", luaP_opnames[GET_OPCODE(i)], cur_line);
-				ci->u.l.savedpc++;
-#endif // DEBUG
+				if(use_step_log) {
+					ci->u.l.savedpc--;
+					const auto cur_line = current_line();
+					printf("%s\tline:%d, now gas %d\n", luaP_opnames[GET_OPCODE(i)], cur_line, *insts_executed_count);
+					ci->u.l.savedpc++;
+				}
 
 				StkId ra;
 

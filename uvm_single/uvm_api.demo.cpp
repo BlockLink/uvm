@@ -580,6 +580,10 @@ namespace uvm {
 			std::string DemoUvmChainApi::get_transaction_id(lua_State *L)
 			{
               uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
+			  return get_transaction_id_without_gas(L);
+			}
+
+			std::string DemoUvmChainApi::get_transaction_id_without_gas(lua_State *L) const {
 				return "";
 			}
 
@@ -589,7 +593,7 @@ namespace uvm {
 				return 0;
 			}
 
-			uint32_t DemoUvmChainApi::get_header_block_num_without_gas(lua_State *L)
+			uint32_t DemoUvmChainApi::get_header_block_num_without_gas(lua_State *L) const
 			{
 				return 0;
 			}

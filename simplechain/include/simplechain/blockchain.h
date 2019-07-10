@@ -67,6 +67,31 @@ namespace simplechain {
 
 		void register_account(const std::string& addr, const std::string& pub_key_hex);
 		std::string get_address_pubkey_hex(const std::string& addr) const;
+		void load_contract_state(const std::string& contract_addr, const std::string& contract_state_json_str);
+		/**
+		 * 从json格式的合约信息中创建新合约，但是不调用init，只恢复数据，之后需要再load_contract_state恢复数据状态。用来复原正式链上合约状态以及测试调试
+		 * {"id":"",
+		    "owner_address":"",
+			"owner_name":"",
+			"name":"",
+			"description":"",
+			"type_of_contract":"normal_contract",
+			"registered_block": 0,
+			"registered_trx":"",
+			"native_contract_key":"",
+			"derived":[],
+			"code_printable": {
+			   "abi":["init", "xxxx"],
+			   "offline_abi":["xxxx"],
+			   "events":["xxxx"],
+			   "printable_storage_properties":[],
+			   "printable_code":"",
+			   "code_hash":""
+			 },
+		    "createtime":"2019-03-18T10:24:01"}
+		 * @throws std::exception
+		 */
+		std::string load_new_contract_from_json(const std::string& contract_info_json_str);
 
 		void accept_transaction_to_mempool(const transaction& tx);
 		std::vector<transaction> get_tx_mempool() const;

@@ -3,6 +3,7 @@
 #include <fc/crypto/ripemd160.hpp>
 #include <fc/crypto/elliptic.hpp>
 #include <fc/crypto/base58.hpp>
+#include <fc/crypto/hex.hpp>
 #include <boost/uuid/sha1.hpp>
 #include <exception>
 
@@ -110,5 +111,45 @@ namespace simplechain {
 		}
 
 		free(code_buf);
+	}
+}
+
+namespace fc {
+	void from_variant(const fc::variant& var, simplechain::contract_type& vo) {
+		auto varstr = var.as_string();
+		if (varstr == "normal_contract") {
+			vo = simplechain::contract_type::normal_contract;
+		}
+		else if (varstr == "native_contract") {
+			vo = simplechain::contract_type::native_contract;
+		}
+		else if (varstr == "contract_based_on_template") {
+			vo = simplechain::contract_type::contract_based_on_template;
+		}
+	}
+
+	void from_variant(const fc::variant& var, std::vector<unsigned char>& vo) {
+		const auto& varstr = var.as_string();
+		vo.resize(varstr.size() / 2);
+		fc::from_hex(varstr, (char*) vo.data(), vo.size());
+	}
+
+	void from_variant(const fc::variant& var, fc::enum_type<fc::unsigned_int, uvm::blockchain::StorageValueTypes>& vo) {
+		vo = var.as_int64();
+	}
+
+	void from_variant(const fc::variant& var, uvm::blockchain::Code& vo) {
+		const auto& varobj = var.as<fc::mutable_variant_object>();
+		if (varobj.find("code") != varobj.end())
+			fc::from_variant(varobj["code"], vo.code);
+		else if (varobj.find("printable_code") != varobj.end())
+			fc::from_variant(varobj["printable_code"], vo.code);
+		
+		fc::from_variant(varobj["abi"], vo.abi);
+		fc::from_variant(varobj["offline_abi"], vo.offline_abi);
+		fc::from_variant(varobj["events"], vo.events);
+		fc::from_variant(varobj["printable_storage_properties"], vo.storage_properties);
+		// TODO: fc::from_variant(varobj["contract_api_arg_types"], vo.contract_api_arg_types);
+		fc::from_variant(varobj["code_hash"], vo.code_hash);
 	}
 }

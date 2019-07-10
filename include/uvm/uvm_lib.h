@@ -81,6 +81,18 @@ namespace uvm
 			// special contract api names with string argument
 			extern std::vector<std::string> contract_string_argument_special_api_names;
 
+			class GasManager
+			{
+			private:
+				lua_State *_L;
+			public:
+				GasManager(lua_State* L);
+				void add_gas(int64_t gas);
+				int64_t gas() const;
+				int64_t* gas_ref() const;
+				int64_t* gas_ref_or_new();
+			};
+
             class UvmStateScope
             {
             private:
