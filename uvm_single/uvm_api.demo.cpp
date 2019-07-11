@@ -447,15 +447,28 @@ namespace uvm {
 				return 0;
 			}
 
+			uint32_t DemoUvmChainApi::get_chain_safe_random(lua_State *L) {
+				return get_chain_random(L);
+			}
+
 			std::string DemoUvmChainApi::get_transaction_id(lua_State *L)
 			{
               uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
+			  return get_transaction_id_without_gas(L);
+			}
+
+			std::string DemoUvmChainApi::get_transaction_id_without_gas(lua_State *L) const {
 				return "";
 			}
 
 			uint32_t DemoUvmChainApi::get_header_block_num(lua_State *L)
 			{
               uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
+				return 0;
+			}
+
+			uint32_t DemoUvmChainApi::get_header_block_num_without_gas(lua_State *L) const
+			{
 				return 0;
 			}
 
@@ -544,7 +557,7 @@ namespace uvm {
 			}
 
 			int64_t DemoUvmChainApi::get_fork_height(lua_State* L, const std::string& fork_key) {
-				return -1;
+				return 1;
 			}
 
 			bool DemoUvmChainApi::use_cbor_diff(lua_State* L) const {

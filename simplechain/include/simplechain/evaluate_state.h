@@ -1,4 +1,6 @@
 #pragma once
+#include <vector>
+#include <map>
 #include <simplechain/config.h>
 #include <simplechain/contract_entry.h>
 #include <simplechain/storage.h>
@@ -27,6 +29,7 @@ namespace simplechain {
 		virtual transaction* get_current_tx() const;
 
 		StorageDataType get_storage(const std::string& contract_address, const std::string& key) const;
+		std::map<std::string, StorageDataType> get_contract_storages(const std::string& contract_addr) const;
 		void emit_event(const std::string& contract_address, const std::string& event_name, const std::string& event_arg);
 		void store_contract(const std::string& contract_address,
 			const contract_object& contract_obj);

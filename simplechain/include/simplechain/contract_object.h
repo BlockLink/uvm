@@ -24,4 +24,7 @@ namespace simplechain {
 
 namespace fc {
 	void to_variant(const simplechain::contract_object& var, variant& vo);
+	void from_variant(const fc::variant& var, simplechain::contract_object& vo);
 }
+
+// FC_REFLECT(simplechain::contract_object, (registered_block)(code)(owner_address)(create_time)(contract_address)(contract_name)(contract_desc)(type_of_contract)(native_contract_key)(derived)(inherit_from))

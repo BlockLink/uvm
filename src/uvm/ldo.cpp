@@ -395,6 +395,22 @@ int luaD_precall(lua_State *L, StkId func, int nresults) {
         lua_lock(L);
         api_checknelems(L, n);
         luaD_poscall(L, ci, L->top - n, n);
+		// set last_return
+		bool use_last_return = true;
+		if (use_last_return) {
+			if (n > 0) {
+				lua_getglobal(L, "_G");
+				lua_pushvalue(L, - n - 1);
+				lua_setfield(L, -2, "last_return");
+				lua_pop(L, 1);
+			}
+			else {
+				lua_getglobal(L, "_G");
+				lua_pushnil(L);
+				lua_setfield(L, -2, "last_return");
+				lua_pop(L, 1);
+			}
+		}
         return 1;
     }
     case LUA_TLCL: {  /* Lua function: prepare its call */

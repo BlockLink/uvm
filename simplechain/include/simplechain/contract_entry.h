@@ -11,6 +11,7 @@ namespace uvm {
 			std::set<std::string> offline_abi;
 			std::set<std::string> events;
 			std::map<std::string, fc::enum_type<fc::unsigned_int, uvm::blockchain::StorageValueTypes>> storage_properties;
+			std::map<std::string, std::vector<fc::enum_type<fc::unsigned_int, UvmTypeInfoEnum> >> contract_api_arg_types;
 			std::vector<unsigned char> code;
 			std::string code_hash;
 			Code() {}
@@ -30,6 +31,7 @@ namespace simplechain {
 		native_contract,
 		contract_based_on_template
 	};
+
 	enum ContractApiType
 	{
 		chain = 1,
@@ -71,6 +73,13 @@ namespace simplechain {
 	typedef uint64_t gas_price_type;
 	typedef uint64_t gas_count_type;
 
+}
+
+namespace fc {
+	void from_variant(const fc::variant& var, simplechain::contract_type& vo);
+	void from_variant(const fc::variant& var, std::vector<unsigned char>& vo);
+	void from_variant(const fc::variant& var, fc::enum_type<fc::unsigned_int, uvm::blockchain::StorageValueTypes>& vo);
+	void from_variant(const fc::variant& var, uvm::blockchain::Code& vo);
 }
 
 FC_REFLECT_ENUM(simplechain::contract_type, (normal_contract)(native_contract)(contract_based_on_template))

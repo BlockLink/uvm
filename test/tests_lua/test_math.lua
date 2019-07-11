@@ -1,3 +1,4 @@
+print("test_math begin")
 let a1 = 123
 let a2 = 123.456
 let a3 = math.abs(-a1)
@@ -11,11 +12,14 @@ let a10 = math.min(3, 4, 2)
 let a11 = math.type(a1)
 let a12 = math.type(a2)
 let a13 = math.type('123')
-print("test_math begin")
 
 let a14 = math.pi
 let a15 = math.maxinteger
 let a16 = math.mininteger
+
+let a17 = a1 / 3
+let a18 = {value: a17, a1: a1}
+let a18_json = json.dumps(a18)
 
 print('a1=', a1)
 print('a2=', a2)
@@ -33,5 +37,8 @@ print('a13=', a13)
 print('a14=', a14)
 print('a15=', a15)
 print('a16=', a16)
+print("a17=", a17)
+print("a18=", a18)
+print("a18_json=", a18_json)
 
 print("test_math end")

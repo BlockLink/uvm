@@ -30,6 +30,10 @@ namespace simplechain {
 		return chain->get_storage(contract_address, key);
 	}
 
+	std::map<std::string, StorageDataType> evaluate_state::get_contract_storages(const std::string& contract_addr) const {
+		return chain->get_contract_storages(contract_addr);
+	}
+
 	void evaluate_state::emit_event(const std::string& contract_address, const std::string& event_name, const std::string& event_arg) {
 		contract_event_notify_info event_notify_info;
 		event_notify_info.block_num = get_chain()->latest_block().block_number + 1;

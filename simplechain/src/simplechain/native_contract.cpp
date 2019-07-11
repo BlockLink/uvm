@@ -1,6 +1,7 @@
 #include <simplechain/native_contract.h>
 #include <native_contract/native_token_contract.h>
 #include <native_contract/native_exchange_contract.h>
+#include <native_contract/native_uniswap_contract.h>
 #include <simplechain/blockchain.h>
 #include <boost/algorithm/string.hpp>
 #include <jsondiff/jsondiff.h>
@@ -163,7 +164,8 @@ namespace simplechain {
 
 	void native_contract_store::throw_error(const std::string& err) const {
 		printf("native contract error %s\n", err.c_str());
-		FC_THROW_EXCEPTION(fc::assert_exception, err);
+		throw uvm::core::UvmException(err);
+		// FC_THROW_EXCEPTION(fc::assert_exception, err);
 	}
 
 	void native_contract_store::add_gas(uint64_t gas) {
@@ -215,6 +217,10 @@ namespace simplechain {
 		else if (key == exchange_native_contract::native_contract_key())
 		{
 			result = std::make_shared<exchange_native_contract>(store);
+		}
+		else if (key == uniswap_native_contract::native_contract_key())
+		{
+			result = std::make_shared<uniswap_native_contract>(store);
 		}
 		else
 		{

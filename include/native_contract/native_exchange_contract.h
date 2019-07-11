@@ -36,7 +36,7 @@ namespace uvm {
 		}
 
 		// this is native contract for exchange    //match by relayer off chain, replay matched orders on chain
-		class exchange_native_contract : public uvm::contract::native_contract_interface
+		class exchange_native_contract : public uvm::contract::abstract_native_contract_impl
 		{
 		private:
 			std::shared_ptr<uvm::contract::native_contract_interface> _proxy;

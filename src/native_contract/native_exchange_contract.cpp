@@ -62,7 +62,7 @@ namespace uvm {
 		}
 
 		std::set<std::string> exchange_native_contract::apis() const {
-			return { "init", "init_config", "fillOrder","cancelOrders","setMinFee","withdraw", "state", "feeReceiver","balanceOf","getOrder", "minFee","balanceOfPubk","getAddrByPubk" };
+			return { "init", "init_config", "fillOrder","cancelOrders","setMinFee","withdraw", "state", "feeReceiver","balanceOf","getOrder", "minFee","balanceOfPubk","getAddrByPubk", "on_deposit_asset" };
 		}
 		std::set<std::string> exchange_native_contract::offline_apis() const {
 			return { "state", "feeReceiver","balanceOf","getOrder", "minFee","balanceOfPubk","getAddrByPubk"};

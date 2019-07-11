@@ -52,7 +52,7 @@ namespace uvm
 		namespace lib
 		{
 
-			std::vector<std::string> contract_special_api_names = { "init", "on_deposit", "on_deposit_asset", "on_destroy", "on_upgrade" };
+			std::vector<std::string> contract_special_api_names = { "init", "on_deposit", "on_deposit_asset", "on_destroy", "on_upgrade", "on_missing" };
 			std::vector<std::string> contract_int_argument_special_api_names = { "on_deposit" };
 			std::vector<std::string> contract_string_argument_special_api_names = { "on_deposit_asset" };
 
@@ -68,7 +68,7 @@ namespace uvm
                 "caller", "caller_address",
                 "contract_transfer", "contract_transfer_to", "transfer_from_contract_to_address",
 				"transfer_from_contract_to_public_account",
-                "get_chain_random", "get_transaction_fee", "fast_map_get", "fast_map_set",
+                "get_chain_random", "get_chain_safe_random", "get_transaction_fee", "fast_map_get", "fast_map_set",
                 "get_transaction_id", "get_header_block_num", "wait_for_future_random", "get_waited",
                 "get_contract_balance_amount", "get_chain_now", "get_current_contract_address", "get_system_asset_symbol", "get_system_asset_precision",
                 "pairs", "ipairs", "pairsByKeys", "collectgarbage", "error", "getmetatable", "_VERSION",
@@ -76,6 +76,7 @@ namespace uvm
                 "next", "rawequal", "rawlen", "rawget", "rawset", "select",
                 "setmetatable",
 				"hex_to_bytes", "bytes_to_hex", "sha256_hex", "sha1_hex", "sha3_hex", "ripemd160_hex", "get_address_role",
+				"get_pay_back_balance", "get_contract_lock_balance_info_by_asset", "get_contract_lock_balance_info", "foreclose_balance_from_miners", "obtain_pay_back_balance", "lock_contract_balance_to_miner",
 				"cbor_encode", "cbor_decode", "signature_recover"
             };
 
@@ -588,6 +589,30 @@ namespace uvm
 				}
 			}
 
+			static int delegate_call(lua_State* L) {
+				// delegate_call(contractAddr: string, apiName: string, params args: object[]): object
+				auto top = lua_gettop(L);
+				if (top < 2 || !lua_isstring(L, 1) || !lua_isstring(L, 2)) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"delegate_call arguments invalid");
+					return 0;
+				}
+				auto contract_addr = luaL_checkstring(L, 1);
+				std::string api_name(luaL_checkstring(L, 2));
+				if (api_name.empty()) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"delegate_call argument api_name can't be empty");
+					return 0;
+				}
+				if (std::find(contract_special_api_names.begin(), contract_special_api_names.end(), api_name) != contract_special_api_names.end()) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"delegate_call can't call special api name");
+					return 0;
+				}
+				// TODO: 需要维护contract id stack和storage contract id stack，使用target字节码，但是storage和余额使用当前的数据栈的合约的数据
+				return 0;
+			}
+
             // pair: (value_string, is_upvalue)
             typedef std::unordered_map<std::string, std::pair<std::string, bool>> LuaDebuggerInfoList;
 
@@ -702,6 +727,14 @@ namespace uvm
                 lua_pushinteger(L, rand);
                 return 1;
             }
+
+			static int get_chain_safe_random(lua_State *L)
+			{
+				auto rand = uvm::lua::api::global_uvm_chain_api->get_chain_safe_random(L);
+				lua_pushinteger(L, rand);
+				return 1;
+			}
+
             static int get_transaction_id(lua_State *L)
             {
                 std::string tid = uvm::lua::api::global_uvm_chain_api->get_transaction_id(L);
@@ -738,6 +771,125 @@ namespace uvm
                 lua_pushinteger(L, result);
                 return 1;
             }
+
+			//lock_contract_balance_to_miner(symbol,amount,miner_id)
+			static int lock_contract_balance_to_miner(lua_State *L)
+			{
+				if (lua_gettop(L) < 3)
+				{
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "lock_contract_balance_to_miner need 4 arguments");
+					return 0;
+				}
+				const char *contract_id = get_contract_id_in_api(L);
+				if (!contract_id)
+				{
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "lock_contract_balance_to_miner must be called in contract api");
+					return 0;
+				}
+				const char *asset_sym = luaL_checkstring(L, 1);
+				const char *asset_amount = luaL_checkstring(L, 2);
+				auto mid = luaL_checkstring(L, 3);
+				int transfer_result = uvm::lua::api::global_uvm_chain_api->lock_contract_balance_to_miner(L, contract_id, asset_sym, asset_amount, mid);
+				lua_pushboolean(L, transfer_result);
+				return 1;
+			}
+			//obtain_pay_back_balance(miner_id,asset_sym,asset_amount)
+			static int obtain_pay_back_balance(lua_State *L)
+			{
+				if (lua_gettop(L) < 3)
+				{
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "obtain_pay_back_balance need 4 arguments");
+					return 0;
+				}
+				const char *contract_id = get_contract_id_in_api(L);
+				if (!contract_id)
+				{
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "obtain_pay_back_balance must be called in contract api");
+					return 0;
+				}
+
+				auto mid = luaL_checkstring(L, 1);
+				const char *asset_sym = luaL_checkstring(L, 2);
+				const char *asset_amount = luaL_checkstring(L, 3);
+				int transfer_result = uvm::lua::api::global_uvm_chain_api->obtain_pay_back_balance(L, contract_id, mid, asset_sym, asset_amount);
+				lua_pushboolean(L, transfer_result);
+				return 1;
+			}
+			//foreclose_balance_from_miners(miner_id,asset_sym,asset_amount)
+			static int foreclose_balance_from_miners(lua_State *L)
+			{
+				if (lua_gettop(L) < 3)
+				{
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "foreclose_balance_from_miners need 4 arguments");
+					return 0;
+				}
+				const char *contract_id = get_contract_id_in_api(L);
+				if (!contract_id)
+				{
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "foreclose_balance_from_miners must be called in contract api");
+					return 0;
+				}
+
+				auto mid = luaL_checkstring(L, 1);
+				const char *asset_sym = luaL_checkstring(L, 2);
+				const char *asset_amount = luaL_checkstring(L, 3);
+				int transfer_result = uvm::lua::api::global_uvm_chain_api->foreclose_balance_from_miners(L, contract_id, mid, asset_sym, asset_amount);
+				lua_pushboolean(L, transfer_result);
+				return 1;
+			}
+			//get_contract_lock_balance_info()
+			static int get_contract_lock_balance_info(lua_State *L)
+			{
+				const char *contract_id = get_contract_id_in_api(L);
+				if (!contract_id)
+				{
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "get_contract_lock_balance_info must be called in contract api");
+					return 0;
+				}
+				std::string res = uvm::lua::api::global_uvm_chain_api->get_contact_lock_balance_info(L, contract_id);
+				lua_pushstring(L, res.c_str());
+				return 1;
+			}
+			//get_contract_lock_balance_info_by_asset()
+			static int get_contract_lock_balance_info_by_asset(lua_State *L)
+			{
+				if (lua_gettop(L) < 1)
+				{
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "get_contract_lock_balance_info_by_asset must be called in contract api");
+					return 0;
+				}
+				const char *asset_sym = luaL_checkstring(L, 2);
+				const char *contract_id = get_contract_id_in_api(L);
+
+				if (!contract_id)
+				{
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "get_contract_lock_balance_info must be called in contract api");
+					return 0;
+				}
+				std::string res = uvm::lua::api::global_uvm_chain_api->get_contact_lock_balance_info(L, contract_id, asset_sym);
+				lua_pushstring(L, res.c_str());
+				return 1;
+			}
+			//get_pay_back_balance(symbol)
+			static int get_pay_back_balance(lua_State *L)
+			{
+				if (lua_gettop(L) < 1)
+				{
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "get_pay_back_balance must be called in contract api");
+					return 0;
+				}
+				const char *asset_sym = luaL_checkstring(L, 2);
+				const char *contract_id = get_contract_id_in_api(L);
+
+				if (!contract_id)
+				{
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "get_pay_back_balance must be called in contract api");
+					return 0;
+				}
+				std::string res = uvm::lua::api::global_uvm_chain_api->get_pay_back_balacne(L, contract_id, asset_sym);
+				lua_pushstring(L, res.c_str());
+				return 1;
+			}
 
 			/**
 			 * get pseudo random number generate by some block(maybe future block or past block's data
@@ -1323,6 +1475,7 @@ end
                     add_global_c_function(L, "get_contract_balance_amount", get_contract_balance_amount);
                     add_global_c_function(L, "get_chain_now", get_chain_now);
                     add_global_c_function(L, "get_chain_random", get_chain_random);
+					add_global_c_function(L, "get_chain_safe_random", get_chain_safe_random);
                     add_global_c_function(L, "get_current_contract_address", get_contract_address_lua_api);
                     add_global_c_function(L, "get_transaction_id", get_transaction_id);
                     add_global_c_function(L, "get_header_block_num", get_header_block_num);
@@ -1341,6 +1494,12 @@ end
 					add_global_c_function(L, "cbor_decode", &cbor_decode);
 					add_global_c_function(L, "signature_recover", &signature_recover);
 					add_global_c_function(L, "get_address_role", &get_address_role);
+					add_global_c_function(L, "lock_contract_balance_to_miner", &lock_contract_balance_to_miner);
+					add_global_c_function(L, "obtain_pay_back_balance", &obtain_pay_back_balance);
+					add_global_c_function(L, "foreclose_balance_from_miners", &foreclose_balance_from_miners);
+					add_global_c_function(L, "get_contract_lock_balance_info", &get_contract_lock_balance_info);
+					add_global_c_function(L, "get_contract_lock_balance_info_by_asset", &get_contract_lock_balance_info_by_asset);
+					add_global_c_function(L, "get_pay_back_balance", &get_pay_back_balance);
                 }
                 return L;
             }
