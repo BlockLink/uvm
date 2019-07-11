@@ -10,6 +10,7 @@
 #include <fc/log/logger.hpp>
 #include <fc/variant.hpp>
 #include <fc/variant_object.hpp>
+#include <fc/crypto/hex.hpp>
 #include <cbor_diff/cbor_diff.h>
 
 namespace simplechain {

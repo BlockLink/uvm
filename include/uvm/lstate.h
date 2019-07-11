@@ -151,6 +151,7 @@ typedef enum lua_VMState {
 
 struct contract_info_stack_entry {
 	std::string contract_id;
+	std::string storage_contract_id; // storage和余额使用的合约地址(可能代码和数据用的不是同一个合约的，因为delegate_call的存在)
 	std::string api_name;
 	std::string call_type;
 };

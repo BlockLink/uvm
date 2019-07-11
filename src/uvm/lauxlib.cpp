@@ -1123,6 +1123,8 @@ static int contract_api_wrapper_func(lua_State *L)
 		return 0;
 	contract_info_stack_entry stack_entry;
 	stack_entry.contract_id = contract_id;
+	// TODO: 如果是被delegate_call调用的，storage_contract_id填上一层的storage contract id
+	stack_entry.storage_contract_id = contract_id;
 	stack_entry.api_name = api_name;
 	if (L->call_op_msg == UOP_CSTATICCALL) {
 		stack_entry.call_type = std::string("STATIC_CALL");
