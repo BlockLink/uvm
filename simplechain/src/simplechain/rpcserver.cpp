@@ -52,10 +52,10 @@ namespace simplechain {
 	{ "clear_breakpoints_in_last_debugger_state", &clear_breakpoints_in_last_debugger_state },
 	{ "debugger_invoke_contract", &debugger_invoke_contract },
 	{ "view_current_contract_storage_value", &view_current_contract_storage_value },
-	{ "view_call_stack", &view_call_stack }
+	{ "view_call_stack", &view_call_stack },
 
 	{ "load_contract_state", &load_contract_state },
-            { "load_new_contract_from_json", &load_new_contract_from_json }
+    { "load_new_contract_from_json", &load_new_contract_from_json }
 
 	};
 

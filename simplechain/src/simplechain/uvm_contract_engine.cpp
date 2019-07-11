@@ -123,8 +123,8 @@ namespace simplechain
 		uvm::lua::lib::execute_contract_init_by_address(_scope->L(), contract_id.c_str(), args, result_json_string);
 		if (_scope->L()->force_stopping == true && _scope->L()->exit_code == LUA_API_INTERNAL_ERROR)
 			throw uvm::core::UvmException("uvm_executor_internal_error");
-		auto exception_code = uvm::lua::lib::get_lua_state_value(L, "exception_code").int_value;
-		char* exception_msg = (char*)uvm::lua::lib::get_lua_state_value(L, "exception_msg").string_value;
+		auto exception_code = uvm::lua::lib::get_lua_state_value(_scope->L(), "exception_code").int_value;
+		char* exception_msg = (char*)uvm::lua::lib::get_lua_state_value(_scope->L(), "exception_msg").string_value;
 		if (exception_code > 0)
 		{
 			if (exception_code == UVM_API_LVM_LIMIT_OVER_ERROR)

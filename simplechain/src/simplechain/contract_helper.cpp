@@ -444,7 +444,7 @@ free(storage_buf); \
 						free(api_buf);
 						throw uvm::core::UvmException("Read verify code fail!");
 					}
-					std::vector<fc::enum_type<fc::unsigned_int, UvmTypeInfoEnum>> api_args;
+					std::vector<UvmTypeInfoEnum> api_args;
 					for (int j = 0; j < args_count; j++) {
 						int arg_type = 0;
 						read_count = common_fread_int(f, (int*)&arg_type);
@@ -455,7 +455,7 @@ free(storage_buf); \
 						}
 						api_args.push_back(static_cast<UvmTypeInfoEnum>(arg_type));
 					}
-					code.contract_api_arg_types[api_name] = api_args;
+					code.api_arg_types[api_name] = api_args;
 				}
 			}
 		}
