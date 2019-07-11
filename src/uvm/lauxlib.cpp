@@ -2782,10 +2782,10 @@ static void luatablemap_to_json_stream(UvmTableMapP map, uvm::util::stringbuffer
             ss.put(value.value.int_value);
             break;
 		case uvm::blockchain::StorageValueTypes::storage_value_number:
-			char buff[50];
-			l_sprintf(buff, sizeof(buff), LUA_NUMBER_FMT, value.value.number_value);
-			ss.put(std::string(buff));
-            //ss.put(value.value.number_value);
+			// char buff[50];
+			// l_sprintf(buff, sizeof(buff), LUA_NUMBER_FMT, value.value.number_value);
+			// ss.put(std::string(buff));
+            ss.put(value.value.number_value);
             break;
 		case uvm::blockchain::StorageValueTypes::storage_value_string:
         {

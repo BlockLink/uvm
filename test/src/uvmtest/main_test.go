@@ -619,7 +619,7 @@ func testTokenContractInSimplechain(t *testing.T, contract1Addr string) {
 
 	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("newtoken.gpc"), 50000, 10)
 	assert.True(t, err == nil)
-	contract1Addr := res.Get("contract_address").MustString()
+	// contract1Addr := res.Get("contract_address").MustString()
 	fmt.Printf("contract address: %s\n", contract1Addr)
 	simpleChainRPC("generate_block")
 
@@ -811,84 +811,6 @@ func invokeContract(caller string, contractAddress string, apiName, apiArg strin
 }
 
 func createPlasmaContract(caller1 string) (string, error) {
-	compileOut, compileErr := execCommand(uvmCompilerPath, "-g", testContractPath("sparse_merkle_tree.lua"))
-	fmt.Printf("compile out: %s\n", compileOut)
-	if compileErr != "" {
-		return "", errors.New(compileErr)
-	}
-	var res *simplejson.Json
-	var err error
-	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("sparse_merkle_tree.lua.gpc"), 50000, 10)
-	if err != nil {
-		return "", err
-	}
-	smtContractAddress := res.Get("contract_address").MustString()
-	fmt.Printf("contract address: %s\n", smtContractAddress)
-	simpleChainRPC("generate_block")
-	res, err = simpleChainRPC("get_contract_info", smtContractAddress)
-	if err != nil {
-		return "", err
-	}
-	if !(res.Get("owner_address").MustString() == caller1 && res.Get("contract_address").MustString() == smtContractAddress) {
-		return "", errors.New("invalid smt contract address or owner address")
-	}
-
-	compileOut2, compileErr2 := execCommand(uvmCompilerPath, "-g", testContractPath("plasma_root_chain.lua"))
-	fmt.Printf("compile out: %s\n", compileOut2)
-	if compileErr2 != "" {
-		return "", errors.New(compileErr2)
-	}
-	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("plasma_root_chain.lua.gpc"), 50000, 10)
-	if err != nil {
-		return "", err
-	}
-	plasmaContractAddress := res.Get("contract_address").MustString()
-	fmt.Printf("contract address: %s\n", plasmaContractAddress)
-	simpleChainRPC("generate_block")
-	res, err = simpleChainRPC("get_contract_info", plasmaContractAddress)
-	if err != nil {
-		return "", err
-	}
-	if !(res.Get("owner_address").MustString() == caller1 && res.Get("contract_address").MustString() == plasmaContractAddress) {
-		return "", errors.New("invalid plasma contract address or owner address")
-	}
-
-	compileOut3, compileErr3 := execCommand(uvmCompilerPath, "-g", testContractPath("validator_manager_contract.lua"))
-	fmt.Printf("compile out: %s\n", compileOut3)
-	if compileErr3 != "" {
-		return "", errors.New(compileErr3)
-	}
-	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("validator_manager_contract.lua.gpc"), 50000, 10)
-	if err != nil {
-		return "", err
-	}
-	vmcContractAddress := res.Get("contract_address").MustString()
-	fmt.Printf("contract address: %s\n", vmcContractAddress)
-	simpleChainRPC("generate_block")
-	res, err = simpleChainRPC("get_contract_info", vmcContractAddress)
-	if err != nil {
-		return "", err
-	}
-	if !(res.Get("owner_address").MustString() == caller1 && res.Get("contract_address").MustString() == vmcContractAddress) {
-		return "", errors.New("invalid vmc contract address or owner address")
-	}
-
-	simpleChainRPC("invoke_contract", caller1, plasmaContractAddress, "set_config", []string{caller1 + "," + vmcContractAddress + "," + smtContractAddress + ",1000"}, 0, 0, 50000, 10)
-	simpleChainRPC("generate_block")
-	return plasmaContractAddress, nil
-}
-
-func TestPlasmaRootChain(t *testing.T) {
-	cmd := execCommandBackground(simpleChainPath)
-	assert.True(t, cmd != nil)
-	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
-	defer func() {
-		kill(cmd)
-	}()
-	time.Sleep(1 * time.Second)
-	var res *simplejson.Json
-	var err error
-	caller1 := "SPLtest1"
 	compileOut, compileErr := execCommand(uvmCompilerPath, "-g", testContractPath("sparse_merkle_tree.lua"))
 	fmt.Printf("compile out: %s\n", compileOut)
 	if compileErr != "" {

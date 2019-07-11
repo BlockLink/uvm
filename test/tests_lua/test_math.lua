@@ -20,6 +20,7 @@ let a16 = math.mininteger
 let a17 = a1 / 3
 let a18 = {value: a17, a1: a1}
 let a18_json = json.dumps(a18)
+let a19 = json.dumps({value:4 * 1.0})
 
 print('a1=', a1)
 print('a2=', a2)
@@ -40,5 +41,6 @@ print('a16=', a16)
 print("a17=", a17)
 print("a18=", a18)
 print("a18_json=", a18_json)
+print("a19=", a19)
 
 print("test_math end")
