@@ -213,6 +213,9 @@ func TestMath(t *testing.T) {
 	assert.True(t, strings.Contains(out, `a14=	3.141593`))
 	assert.True(t, strings.Contains(out, `a15=	9223372036854775807`))
 	assert.True(t, strings.Contains(out, `a16=	-9223372036854775808`))
+	assert.True(t, strings.Contains(out, `a17=	41.000000`))
+	assert.True(t, strings.Contains(out, `a18=	table: 0`))
+	assert.True(t, strings.Contains(out, `a18_json=	{"a1":123,"value":41.000000}`))
 }
 
 func TestTooManyLocalVars(t *testing.T) {
@@ -1430,7 +1433,7 @@ func TestContractLoadState(t *testing.T) {
 	if true {
 		return
 	}
-	
+
 	time.Sleep(1 * time.Second)
 	var res *simplejson.Json
 	var err error

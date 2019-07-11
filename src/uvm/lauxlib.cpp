@@ -1122,6 +1122,8 @@ static int contract_api_wrapper_func(lua_State *L)
 		return 0;
 	uvm::lua::lib::contract_info_stack_entry stack_entry;
 	stack_entry.contract_id = contract_id;
+	// TODO: 如果是被delegate_call调用的，storage_contract_id填上一层的storage contract id
+	stack_entry.storage_contract_id = contract_id;
 	stack_entry.api_name = api_name;
 	contract_info_stack->push(stack_entry);
 	lua_pushvalue(L, api_func_index);

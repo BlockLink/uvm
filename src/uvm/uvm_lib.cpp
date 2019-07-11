@@ -52,7 +52,7 @@ namespace uvm
 		namespace lib
 		{
 
-			std::vector<std::string> contract_special_api_names = { "init", "on_deposit", "on_deposit_asset", "on_destroy", "on_upgrade" };
+			std::vector<std::string> contract_special_api_names = { "init", "on_deposit", "on_deposit_asset", "on_destroy", "on_upgrade", "on_missing" };
 			std::vector<std::string> contract_int_argument_special_api_names = { "on_deposit" };
 			std::vector<std::string> contract_string_argument_special_api_names = { "on_deposit_asset" };
 
@@ -587,6 +587,30 @@ namespace uvm
 						"error when ripemd160_hex");
 					return 0;
 				}
+			}
+
+			static int delegate_call(lua_State* L) {
+				// delegate_call(contractAddr: string, apiName: string, params args: object[]): object
+				auto top = lua_gettop(L);
+				if (top < 2 || !lua_isstring(L, 1) || !lua_isstring(L, 2)) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"delegate_call arguments invalid");
+					return 0;
+				}
+				auto contract_addr = luaL_checkstring(L, 1);
+				std::string api_name(luaL_checkstring(L, 2));
+				if (api_name.empty()) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"delegate_call argument api_name can't be empty");
+					return 0;
+				}
+				if (std::find(contract_special_api_names.begin(), contract_special_api_names.end(), api_name) != contract_special_api_names.end()) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"delegate_call can't call special api name");
+					return 0;
+				}
+				// TODO: 需要维护contract id stack和storage contract id stack，使用target字节码，但是storage和余额使用当前的数据栈的合约的数据
+				return 0;
 			}
 
             // pair: (value_string, is_upvalue)
