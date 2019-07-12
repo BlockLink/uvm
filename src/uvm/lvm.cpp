@@ -2079,7 +2079,7 @@ namespace uvm {
 
 		TValue ExecuteContext::view_contract_storage_value(lua_State* L, const char *name, const char* fast_map_key, bool is_fast_map) const {
 			TValue result = *luaO_nilobject; //NILCONSTANT			
-			auto cur_contract_id = uvm::lua::lib::get_current_using_contract_id(L);
+			auto cur_contract_id = uvm::lua::lib::get_current_using_storage_contract_id(L);
 			auto ret_count = uvm::lib::uvmlib_get_storage_impl(L, cur_contract_id.c_str(), name, fast_map_key, is_fast_map);
 			if (ret_count>0)
 			{			

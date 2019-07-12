@@ -379,6 +379,8 @@ namespace uvm
 
             const char *get_contract_id_in_api(lua_State *L);
 
+			const char* get_storage_contract_id_in_api(lua_State* L);
+
             /**
             * diff from execute_contract_api is the contract bytestream is loaded by pointer and uvm
             */
@@ -404,6 +406,9 @@ namespace uvm
 
 			// get top contract address of call stack
 			std::string get_current_using_contract_id(lua_State *L);
+
+			// get top storage contract address of call stack(which contract's storage using in current contract)
+			std::string get_current_using_storage_contract_id(lua_State* L);
 
             /**
             * load one chunk from lua bytecode file

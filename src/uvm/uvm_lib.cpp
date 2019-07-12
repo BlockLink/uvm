@@ -123,7 +123,7 @@ namespace uvm
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "transfer_from_contract_to_public_account need 3 arguments");
 					return 0;
 				}
-				const char *contract_id = get_contract_id_in_api(L);
+				const char *contract_id = get_storage_contract_id_in_api(L);
 				if (nullptr == contract_id)
 				{
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "contract transfer must be called in contract api");
@@ -152,7 +152,7 @@ namespace uvm
                     uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "transfer_from_contract_to_address need 3 arguments");
                     return 0;
                 }
-                const char *contract_id = get_contract_id_in_api(L);
+                const char *contract_id = get_storage_contract_id_in_api(L);
                 if (!contract_id)
                 {
                     uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "contract transfer must be called in contract api");
@@ -173,7 +173,7 @@ namespace uvm
 
             static int get_contract_address_lua_api(lua_State *L)
             {
-                const char *cur_contract_id = get_contract_id_in_api(L);
+                const char *cur_contract_id = get_storage_contract_id_in_api(L);
                 if (!cur_contract_id)
                 {
                     uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "can't get current contract address");
@@ -782,7 +782,7 @@ namespace uvm
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "lock_contract_balance_to_miner need 4 arguments");
 					return 0;
 				}
-				const char *contract_id = get_contract_id_in_api(L);
+				const char *contract_id = get_storage_contract_id_in_api(L);
 				if (!contract_id)
 				{
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "lock_contract_balance_to_miner must be called in contract api");
@@ -803,7 +803,7 @@ namespace uvm
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "obtain_pay_back_balance need 4 arguments");
 					return 0;
 				}
-				const char *contract_id = get_contract_id_in_api(L);
+				const char *contract_id = get_storage_contract_id_in_api(L);
 				if (!contract_id)
 				{
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "obtain_pay_back_balance must be called in contract api");
@@ -825,7 +825,7 @@ namespace uvm
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "foreclose_balance_from_miners need 4 arguments");
 					return 0;
 				}
-				const char *contract_id = get_contract_id_in_api(L);
+				const char *contract_id = get_storage_contract_id_in_api(L);
 				if (!contract_id)
 				{
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "foreclose_balance_from_miners must be called in contract api");
@@ -842,7 +842,7 @@ namespace uvm
 			//get_contract_lock_balance_info()
 			static int get_contract_lock_balance_info(lua_State *L)
 			{
-				const char *contract_id = get_contract_id_in_api(L);
+				const char *contract_id = get_storage_contract_id_in_api(L);
 				if (!contract_id)
 				{
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "get_contract_lock_balance_info must be called in contract api");
@@ -861,7 +861,7 @@ namespace uvm
 					return 0;
 				}
 				const char *asset_sym = luaL_checkstring(L, 2);
-				const char *contract_id = get_contract_id_in_api(L);
+				const char *contract_id = get_storage_contract_id_in_api(L);
 
 				if (!contract_id)
 				{
@@ -881,7 +881,7 @@ namespace uvm
 					return 0;
 				}
 				const char *asset_sym = luaL_checkstring(L, 2);
-				const char *contract_id = get_contract_id_in_api(L);
+				const char *contract_id = get_storage_contract_id_in_api(L);
 
 				if (!contract_id)
 				{
@@ -916,7 +916,7 @@ namespace uvm
                     uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "emit need 2 string params");
                     return 0;
                 }
-                const char *contract_id = get_contract_id_in_api(L);
+                const char *contract_id = get_storage_contract_id_in_api(L);
                 const char *event_name = luaL_checkstring(L, 1);
                 const char *event_param = luaL_checkstring(L, 2);
 				if (!contract_id || strlen(contract_id) < 1)
@@ -1296,7 +1296,7 @@ namespace uvm
 					lua_pushnil(L);
 					return 1;
 				}
-				auto cur_contract_id = get_current_using_contract_id(L);
+				auto cur_contract_id = get_current_using_storage_contract_id(L);
 				auto storage_name = luaL_checkstring(L, 1);
 				auto fast_map_key = luaL_checkstring(L, 2);
 				return uvm::lib::uvmlib_get_storage_impl(L, cur_contract_id.c_str(), storage_name, fast_map_key, true);
@@ -1318,7 +1318,7 @@ namespace uvm
 					lua_pushnil(L);
 					return 1;
 				}
-				auto cur_contract_id = get_current_using_contract_id(L);
+				auto cur_contract_id = get_current_using_storage_contract_id(L);
 				auto storage_name = luaL_checkstring(L, 1);
 				auto fast_map_key = luaL_checkstring(L, 2);
 				auto value_index = 3;
@@ -2376,6 +2376,13 @@ end
 				return contract_id_stack->top().contract_id;
             }
 
+			std::string get_current_using_storage_contract_id(lua_State* L) {
+				auto contract_id_stack = get_using_contract_id_stack(L, true);
+				if (!contract_id_stack || contract_id_stack->size() < 1)
+					return "";
+				return contract_id_stack->top().storage_contract_id;
+			}
+
             UvmTableMapP create_managed_lua_table_map(lua_State *L)
             {
                 return luaL_create_lua_table_map_in_memory_pool(L);
@@ -2741,6 +2748,15 @@ end
 				auto contract_id_str = malloc_and_copy_string(L, contract_id.c_str());
 				return contract_id_str;
             }
+
+			/**
+			 * only used in contract api directly
+			 */
+			const char* get_storage_contract_id_in_api(lua_State* L) {
+				const auto &contract_id = get_current_using_storage_contract_id(L);
+				auto contract_id_str = malloc_and_copy_string(L, contract_id.c_str());
+				return contract_id_str;
+			}
 
         }
     }
