@@ -224,6 +224,7 @@ namespace simplechain {
 				std::string first_contract_arg = o.contract_args.empty() ? "" : o.contract_args[0].as_string();
 				auto argsNum = o.contract_args.size();
 				cbor::CborArrayValue arr;
+				std::string raw_first_contract_arg = first_contract_arg;
 				
 				// only can call on_deposit_asset when deposit_amount > 0
 				if (o.deposit_amount > 0) {
@@ -240,6 +241,7 @@ namespace simplechain {
 					depositArgs["param"] = first_contract_arg;
 
 					auto argStr = fc::json::to_string(depositArgs);	
+					raw_first_contract_arg = argStr;
 					arr.push_back(cbor::CborObject::from_string(argStr));
 				}
 				else {
@@ -268,7 +270,8 @@ namespace simplechain {
 					this->caller_address = o.caller_address;
 					auto native_contract = native_contract_finder::create_native_contract_by_key(this, contract->native_contract_key, o.contract_address);
 					FC_ASSERT(native_contract, "native contract with the key not found");
-					native_contract->invoke(o.contract_api, first_contract_arg);
+					// TODO: ²ÎÊýÓÃarr
+					native_contract->invoke(o.contract_api, raw_first_contract_arg);
 					if (o.deposit_amount > 0) {
 						auto deposit_asset = get_chain()->get_asset(o.deposit_asset_id);
 						FC_ASSERT(deposit_asset);

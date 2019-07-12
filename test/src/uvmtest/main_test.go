@@ -180,7 +180,7 @@ func TestTypes(t *testing.T) {
 	execCommand(uvmCompilerPath, "../../tests_lua/test_types.lua")
 	out, _ := execCommand(uvmSinglePath, "../../tests_lua/test_types.lua.out")
 	fmt.Println(out)
-	assert.True(t, strings.Contains(out, "123	4.56	abc	true	[123,4.56,\"abc\",true]"))
+	assert.True(t, strings.Contains(out, "123	4.56	abc	true	[123,4.560000,\"abc\",true]"))
 	assert.True(t, strings.Contains(out, `b=table: 0`))
 	assert.True(t, strings.Contains(out, `c={"b":"userdata","c":{"a":1,"b":"hi"},"name":1}`))
 }
@@ -1971,6 +1971,7 @@ func test0xExchangeContractInSimplechain(t *testing.T, contract1Addr string) {
 		
 		res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "balanceOf", []string{user+",COIN"}, 0, 0)
 		assert.True(t, err == nil)
+		log.Println("balance " + res.Get("api_result").MustString())
 		assert.True(t, res.Get("api_result").MustString() == "5000000")
 		res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "balanceOf", []string{user+",HC"}, 0, 0)
 		assert.True(t, err == nil)
