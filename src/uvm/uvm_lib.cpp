@@ -39,6 +39,7 @@
 #include <uvm/exceptions.h>
 #include <cborcpp/cbor.h>
 #include <uvm/lvm.h>
+#include <boost/scope_exit.hpp>
 
 namespace uvm
 {
@@ -599,6 +600,7 @@ namespace uvm
 						"delegate_call arguments invalid");
 					return 0;
 				}
+				auto args_count = top - 2;
 				auto contract_addr = luaL_checkstring(L, 1);
 				std::string api_name(luaL_checkstring(L, 2));
 				if (api_name.empty()) {
@@ -612,7 +614,56 @@ namespace uvm
 					return 0;
 				}
 				// TODO: 需要维护contract id stack和storage contract id stack，使用target字节码，但是storage和余额使用当前的数据栈的合约的数据
-				return 0;
+				// 修改栈顶的storage_contract_id为之前一层的storage_contract_id或者不变
+				L->next_delegate_call_flag = true;
+				BOOST_SCOPE_EXIT_ALL(L) {
+					if (L->force_stopping) {
+						L->next_delegate_call_flag = false;
+					}
+				};
+				// import合约然后调用合约API
+
+				//import
+				lua_getglobal(L, "import_contract_from_address");
+				if (!lua_iscfunction(L, 4)) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "no import_contract_from_address");
+					L->force_stopping = true;
+					return 0;
+				}
+				lua_pushvalue(L, 1); // stack: con_id,apiname,args,import_func,con_id
+				lua_call(L, 1, 1);
+				//con_id,apiname,args,con_table
+				if (lua_gettop(L) < 4 || !lua_istable(L, 4)) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "contract not found when delegate_call");
+					L->force_stopping = true;
+					return 0;
+				}
+
+				//get api func
+				lua_pushvalue(L, 2);//push api name //con_id,apiname,args,con_table,api_name
+				lua_gettable(L, 4); //con_id,apiname,args,con_table,api_func
+
+				if (!lua_isfunction(L, 5)) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "no api funcion");
+					L->force_stopping = true;
+					return 0;
+				}
+				// push contract as first arg("self")
+				lua_pushvalue(L, 4); // con_id,apiname,args,con_table,api_func,con_table
+				// push other args
+				for (auto i = 3; i <= args_count; i++) {
+					lua_pushvalue(L, i);
+				}
+				// con_id,apiname,args,con_table,api_func,con_table, arg1, arg2, ...
+
+				auto ret_code = lua_pcall(L, (1 + args_count), 1, 0); // result 1 ???
+												  //con_id,apiname,args, con_table, result
+				if (ret_code != LUA_OK) {
+					return 0;
+				}
+				// 根据栈的大小判断得到返回值数量
+				auto ret_count = lua_gettop(L) - 4;
+				return ret_count;
 			}
 
             // pair: (value_string, is_upvalue)
@@ -1736,6 +1787,7 @@ end
 					add_global_c_function(L, "signature_recover", &signature_recover);
 					add_global_c_function(L, "get_address_role", &get_address_role);
 
+					add_global_c_function(L, "delegate_call", &delegate_call);
 					add_global_c_function(L, "send_message", &send_message);
 					add_global_c_function(L, "lock_contract_balance_to_miner", &lock_contract_balance_to_miner);
 					add_global_c_function(L, "obtain_pay_back_balance", &obtain_pay_back_balance);

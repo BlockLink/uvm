@@ -216,6 +216,7 @@ struct lua_State : vmgc::GcObject {
 	bool allow_debug;
 	std::map<std::string, std::list<uint32_t> >* breakpoints; // contract_address => list of line_number
 	std::stack<contract_info_stack_entry>* using_contract_id_stack;
+	bool next_delegate_call_flag = false;
 	OpCode call_op_msg;
 	uint32_t ci_depth;
     

@@ -1123,8 +1123,15 @@ static int contract_api_wrapper_func(lua_State *L)
 		return 0;
 	contract_info_stack_entry stack_entry;
 	stack_entry.contract_id = contract_id;
-	// TODO: 如果是被delegate_call调用的，storage_contract_id填上一层的storage contract id
+	// 如果是被delegate_call调用的，storage_contract_id填上一层的storage contract id
 	stack_entry.storage_contract_id = contract_id;
+	if (L->next_delegate_call_flag) {
+		// 取stack前一项的storage_contract_id用来继承
+		if (!contract_info_stack->empty()) {
+			stack_entry.storage_contract_id = contract_info_stack->top().storage_contract_id;
+		}
+		L->next_delegate_call_flag = false; // next_delegate_call_flag标记每次只生效一次
+	}
 	stack_entry.api_name = api_name;
 	if (L->call_op_msg == UOP_CSTATICCALL) {
 		stack_entry.call_type = std::string("STATIC_CALL");
