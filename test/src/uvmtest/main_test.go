@@ -2052,13 +2052,13 @@ func TestContractLoadState(t *testing.T) {
 	//caller1 := "SPLtest1"
 	caller2 := "SPLtest2"
 
-	// TODO: register contract by bytecode hex and contract apis/events
+	// register contract by bytecode hex and contract apis/events
 	contractJsonFilepath := "C:\\Users\\kk\\test\\contract1.json"
 	contractJsonBytes, err := ioutil.ReadFile(contractJsonFilepath)
 	assert.True(t, err == nil)
 	contractJsonStr := string(contractJsonBytes)
 	res, err = simpleChainRPC("load_new_contract_from_json", contractJsonStr)
-	// TODO: load contract state
+	// load contract state
 	assert.True(t, err == nil)
 	log.Println("contract1: ", res)
 	contract1Addr, err := res.Get("result").String()
@@ -2080,4 +2080,88 @@ func TestContractLoadState(t *testing.T) {
 
 	simpleChainRPC("generate_block")
 
+}
+
+func TestDelegateCall(t *testing.T) {
+	cmd := execCommandBackground(simpleChainPath)
+	assert.True(t, cmd != nil)
+	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
+	defer func() {
+		kill(cmd)
+	}()
+	caller1 := "SPLtest1"
+	compileOut, compileErr := execCommand(uvmCompilerPath, "-g", testContractPath("test_delegate_call.lua"))
+	fmt.Printf("compile out: %s\n", compileOut)
+	if compileErr != "" {
+		log.Println(compileErr)
+	}
+	assert.True(t, compileErr == "")
+	compileOut, compileErr = execCommand(uvmCompilerPath, "-g", testContractPath("test_be_delegate_called.lua"))
+	fmt.Printf("compile out: %s\n", compileOut)
+	if compileErr != "" {
+		log.Println(compileErr)
+	}
+	assert.True(t, compileErr == "")
+	var res *simplejson.Json
+	var err error
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("test_delegate_call.lua.gpc"), 50000, 10)
+	if err != nil {
+		log.Println(err)
+	}
+	assert.True(t, err == nil)
+	contract1Addr := res.Get("contract_address").MustString()
+	fmt.Printf("contract1 address: %s\n", contract1Addr)
+	simpleChainRPC("generate_block")
+
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("test_be_delegate_called.lua.gpc"), 50000, 10)
+	if err != nil {
+		log.Println(err)
+	}
+	assert.True(t, err == nil)
+	contract2Addr := res.Get("contract_address").MustString()
+	fmt.Printf("contract2 address: %s\n", contract2Addr)
+	simpleChainRPC("generate_block")
+
+	res, err = simpleChainRPC("invoke_contract", caller1, contract1Addr, "set_proxy", []string{contract2Addr}, 0, 0, 50000, 10)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+
+	res, err = simpleChainRPC("invoke_contract", caller1, contract1Addr, "set_data", []string{"data10086"}, 0, 0, 50000, 10)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "hello", []string{"testcase"}, 0, 0)
+	assert.True(t, err == nil)
+	assert.True(t, res.Get("exec_succeed").MustBool())
+	log.Println("hello response", res)
+	assert.True(t, res.Get("api_result").MustString() == "hello, name is testcase and data is data10086")
+
+	// call contract2's api and check
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract2Addr, "hello", []string{"testcase"}, 0, 0)
+	assert.True(t, err == nil)
+	assert.True(t, res.Get("exec_succeed").MustBool())
+	log.Println("hello response", res)
+	assert.True(t, res.Get("api_result").MustString() == "hello, name is testcase and data is data10086")
+	// get storage of contract2
+	contract2Storage, err := simpleChainRPC("get_storage", contract2Addr, "data")
+	assert.True(t, err == nil)
+	log.Println(contract2Storage)
+	assert.True(t, contract2Storage.MustString() == "data10086")
+
+	// deposit to contract1 and check contract1 and contract2's balances
+	res, err = simpleChainRPC("mint", caller1, 0, 100)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("invoke_contract", caller1, contract1Addr, "on_deposit_asset", []string{""}, 0, 100, 50000, 10)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+	contract1Balances, err := simpleChainRPC("get_account_balances", contract1Addr)
+	assert.True(t, err == nil)
+	log.Println("contract1 balance", contract1Balances)
+	contract1BalancesBytes, err := json.Marshal(contract1Balances)
+	log.Println(string(contract1BalancesBytes))
+	assert.True(t, string(contract1BalancesBytes) == "[[0,100]]")
+	contract2Balances, err := simpleChainRPC("get_account_balances", contract2Addr)
+	assert.True(t, err == nil)
+	log.Println("contract2 balance", contract2Balances)
+	assert.True(t, len(contract2Balances.MustArray()) == 0)
 }
