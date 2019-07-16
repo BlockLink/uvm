@@ -8,7 +8,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(CMAKE_CXX_FLAGS "-std=c++11 -D_DARWIN_C_SOURCE -Wno-invalid-partial-specialization")
 endif()
 
-file(GLOB HEADERS "include/uvm/*.h" "include/cborcpp/*.h" "include/cbor_diff/*.h" "include/safenumber/*.h" "include/native_contract/*.h" "deps/jsondiff-cpp/jsondiff-cpp/include/jsondiff/*.h" "vmgc/include/vmgc/*.h")
+file(GLOB HEADERS "include/uvm/*.h" "include/cborcpp/*.h" "include/cbor_diff/*.h" "include/safenumber/*.h" "include/native_contract/*.h" "../jsondiff/jsondiff-cpp/include/jsondiff/*.h" "vmgc/include/vmgc/*.h")
 
 set(SOURCES src/uvm/lapi.cpp
     src/uvm/lauxlib.cpp
@@ -109,7 +109,7 @@ add_library( uvm ${SOURCES} ${HEADERS} )
 target_link_libraries( uvm 
   PUBLIC fc)
 target_include_directories( uvm 
-  PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/deps/jsondiff-cpp/jsondiff-cpp/include" "${CMAKE_CURRENT_SOURCE_DIR}/vmgc/include"
+  PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/../jsondiff/jsondiff-cpp/include" "${CMAKE_CURRENT_SOURCE_DIR}/vmgc/include"
 )
 
 #aux_source_directory(./simplechain/src simplechain_src1)
