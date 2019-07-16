@@ -65,7 +65,7 @@ namespace uvm
 
             static const char *globalvar_whitelist[] = {
                 "print", "pprint", "table", "string", "time", "math", "safemath", "json", "type", "require", "Array", "Stream",
-                "import_contract_from_address", "import_contract", "emit", "is_valid_address", "is_valid_contract_address",
+                "import_contract_from_address", "import_contract", "emit", "is_valid_address", "is_valid_contract_address", "delegate_call",
 				"get_prev_call_frame_contract_address", "get_prev_call_frame_api_name", "get_contract_call_frame_stack_size",
                 "uvm", "storage", "exit", "self", "debugger", "exit_debugger",
                 "caller", "caller_address",
@@ -613,7 +613,7 @@ namespace uvm
 						"delegate_call can't call special api name");
 					return 0;
 				}
-				// TODO: 需要维护contract id stack和storage contract id stack，使用target字节码，但是storage和余额使用当前的数据栈的合约的数据
+				// 需要维护contract id stack和storage contract id stack，使用target字节码，但是storage和余额使用当前的数据栈的合约的数据
 				// 修改栈顶的storage_contract_id为之前一层的storage_contract_id或者不变
 				L->next_delegate_call_flag = true;
 				BOOST_SCOPE_EXIT_ALL(L) {
@@ -651,7 +651,7 @@ namespace uvm
 				// push contract as first arg("self")
 				lua_pushvalue(L, 4); // con_id,apiname,args,con_table,api_func,con_table
 				// push other args
-				for (auto i = 3; i <= args_count; i++) {
+				for (auto i = 3; i < 3 + args_count; i++) {
 					lua_pushvalue(L, i);
 				}
 				// con_id,apiname,args,con_table,api_func,con_table, arg1, arg2, ...
