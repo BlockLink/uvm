@@ -783,7 +783,11 @@ namespace uvm
 
 			static int get_chain_safe_random(lua_State *L)
 			{
-				auto rand = uvm::lua::api::global_uvm_chain_api->get_chain_safe_random(L);
+				bool diff_in_diff_txs = false;
+				if (lua_gettop(L) >= 1 && lua_isboolean(L, 1) && lua_toboolean(L, 1)) {
+					diff_in_diff_txs = true;
+				}
+				auto rand = uvm::lua::api::global_uvm_chain_api->get_chain_safe_random(L, diff_in_diff_txs);
 				lua_pushinteger(L, rand);
 				return 1;
 			}
