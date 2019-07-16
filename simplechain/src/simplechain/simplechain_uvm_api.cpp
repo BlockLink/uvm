@@ -815,7 +815,7 @@ namespace simplechain {
 				}
 			}
 
-			uint32_t SimpleChainUvmChainApi::get_chain_safe_random(lua_State *L) {
+			uint32_t SimpleChainUvmChainApi::get_chain_safe_random(lua_State *L, bool diff_in_diff_txs) {
 				return get_chain_random(L);
 			}
 
