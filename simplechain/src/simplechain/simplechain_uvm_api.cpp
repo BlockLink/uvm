@@ -1026,11 +1026,11 @@ namespace simplechain {
 
 			bool SimpleChainUvmChainApi::use_gas_log(lua_State* L) const {
 				const auto& txid = get_transaction_id_without_gas(L);
-				return true;
+				return false;
 			}
 			bool SimpleChainUvmChainApi::use_step_log(lua_State* L) const {
 				const auto& txid = get_transaction_id_without_gas(L);
-				return true;
+				return false;
 			}
 
 			namespace fs = boost::filesystem;
