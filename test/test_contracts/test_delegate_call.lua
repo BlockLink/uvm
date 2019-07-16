@@ -27,4 +27,12 @@ function M:on_deposit_asset(arg: string)
     delegate_call(self.storage.proxyAddr, 'on_deposit_asset_by_call', arg)
 end
 
+function M:withdraw(arg: string)
+    return delegate_call(self.storage.proxyAddr, 'withdraw', arg)
+end
+
+function M:query_balance(arg: string)
+    return delegate_call(self.storage.proxyAddr, 'query_balance', arg)
+end
+
 return M

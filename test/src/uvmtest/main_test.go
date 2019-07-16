@@ -24,6 +24,7 @@ import (
 	gosmt "github.com/zoowii/go_sparse_merkle_tree"
 	"log"
 	"io/ioutil"
+	"reflect"
 )
 
 func findUvmSinglePath() string {
@@ -2082,6 +2083,47 @@ func TestContractLoadState(t *testing.T) {
 
 }
 
+func getAssetBalanceFromSimpleChainAccountBalancesResponse(resp *simplejson.Json, assetId int64) (amount int64, err error) {
+	respArray, err := resp.Array()
+	if err != nil {
+		return
+	}
+	for _, itemJson := range respArray {
+		t := reflect.TypeOf(itemJson)
+		log.Println("type", t.String())
+		var item []interface{}
+		var ok bool
+		item, ok = itemJson.([]interface{})
+		if !ok {
+			err = errors.New("invalid []object from json")
+			return
+		}
+		var itemAssetId int64
+		var itemAssetIdNum json.Number
+		itemAssetIdNum, ok = item[0].(json.Number)
+		if !ok {
+			err = errors.New("invalid int64 from json")
+			return
+		}
+		itemAssetId, err = itemAssetIdNum.Int64()
+		if err != nil {
+			return
+		}
+		if assetId == itemAssetId {
+			var amountNum json.Number
+			amountNum, ok = item[1].(json.Number)
+			if !ok {
+				err = errors.New("invalid int64 from json")
+				return
+			}
+			amount, err = amountNum.Int64()
+			return
+		}
+	}
+	amount = 0
+	return
+}
+
 func TestDelegateCall(t *testing.T) {
 	cmd := execCommandBackground(simpleChainPath)
 	assert.True(t, cmd != nil)
@@ -2120,6 +2162,11 @@ func TestDelegateCall(t *testing.T) {
 	assert.True(t, err == nil)
 	contract2Addr := res.Get("contract_address").MustString()
 	fmt.Printf("contract2 address: %s\n", contract2Addr)
+	simpleChainRPC("generate_block")
+
+	// set contract1 as contract2's admin
+	res, err = simpleChainRPC("invoke_contract", caller1, contract2Addr, "set_admin", []string{contract1Addr}, 0, 0, 50000, 10)
+	assert.True(t, err == nil)
 	simpleChainRPC("generate_block")
 
 	res, err = simpleChainRPC("invoke_contract", caller1, contract1Addr, "set_proxy", []string{contract2Addr}, 0, 0, 50000, 10)
@@ -2164,4 +2211,37 @@ func TestDelegateCall(t *testing.T) {
 	assert.True(t, err == nil)
 	log.Println("contract2 balance", contract2Balances)
 	assert.True(t, len(contract2Balances.MustArray()) == 0)
+
+	// caller1 get balance
+	caller1BalancesBeforeWithdraw, err := simpleChainRPC("get_account_balances", caller1)
+	assert.True(t, err == nil)
+	caller1BalanceAmountBeforeWithdraw, err := getAssetBalanceFromSimpleChainAccountBalancesResponse(caller1BalancesBeforeWithdraw, 0)
+	if err != nil {
+		log.Println(err)
+	}
+	assert.True(t, err == nil)
+	log.Println("caller1BalanceAmountBeforeWithdraw", caller1BalanceAmountBeforeWithdraw)
+
+	// query contract1's balance by api
+	contract1BalanceByApi, err := simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "query_balance", []string{""}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("contract1BalanceByApi", contract1BalanceByApi)
+	assert.True(t, contract1BalanceByApi.Get("api_result").MustString() == "100")
+	var withdrawAmount int64 = 90
+	// caller1 withdraw from contract1
+	res, err = simpleChainRPC("invoke_contract", caller1, contract1Addr, "withdraw", []string{fmt.Sprintf("%d", withdrawAmount)}, 0, 0, 50000, 10)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+	// query caller1's balance
+	caller1BalancesAfterWithdraw, err := simpleChainRPC("get_account_balances", caller1)
+	assert.True(t, err == nil)
+	caller1BalanceAmountAfterWithdraw, err := getAssetBalanceFromSimpleChainAccountBalancesResponse(caller1BalancesAfterWithdraw, 0)
+	assert.True(t, err == nil)
+	log.Println("caller1BalanceAmountAfterWithdraw", caller1BalanceAmountAfterWithdraw)
+	assert.True(t, caller1BalanceAmountAfterWithdraw - caller1BalanceAmountBeforeWithdraw == withdrawAmount)
+	// query contract1's balance
+	contract1BalanceByApiAfterWithdraw, err := simpleChainRPC("invoke_contract_offline", caller1, contract1Addr, "query_balance", []string{""}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("contract1BalanceByApiAfterWithdraw", contract1BalanceByApiAfterWithdraw)
+	assert.True(t, contract1BalanceByApiAfterWithdraw.Get("api_result").MustString() == fmt.Sprintf("%d", 100 - withdrawAmount))
 }
