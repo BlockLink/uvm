@@ -62,9 +62,9 @@ end
 function M:set_admin(arg: string)
     let from = get_from_address()
     print("from: " .. from)
-    if self.storage.admin ~= from then
-        return error("only admin can change admin")
-    end
+    --if self.storage.admin ~= from then
+    --    return error("only admin can change admin")
+    --end
     if not is_valid_address(arg) then
         return error("invalid admin address")
     end
@@ -77,9 +77,9 @@ end
 
 function M:set_data(arg: string)
     let from = get_from_address()
-    if self.storage.admin ~= from then
-        return error("only admin can call this api")
-    end
+    --if self.storage.admin ~= from then
+    --    return error("only admin can call this api")
+    --end
     self.storage.data = arg
 end
 
@@ -89,17 +89,17 @@ end
 
 function M:on_deposit_asset_by_call(arg: string)
     let from = get_from_address()
-    if self.storage.admin ~= from then
-        return error("only admin can call this api")
-    end
+    --if self.storage.admin ~= from then
+    --    return error("only admin can call this api")
+    --end
     print("called by proxy with arg " .. arg)
 end
 
 function M:withdraw(arg: string)
     let from = get_from_address()
-    if self.storage.admin ~= from then
-        return error("only admin can call this api")
-    end
+    --if self.storage.admin ~= from then
+    --    return error("only admin can call this api")
+    --end
     let symbol = get_system_asset_symbol()
     let amount = tointeger(arg)
     let res = transfer_from_contract_to_address(caller_address, symbol, amount)

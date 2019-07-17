@@ -104,7 +104,7 @@ static struct UvmStorageValue get_last_storage_changed_value(lua_State *L, const
 
 static std::string get_contract_id_string_in_storage_operation(lua_State *L)
 {
-	return uvm::lua::lib::get_current_using_contract_id(L);
+	return uvm::lua::lib::get_current_using_storage_contract_id(L);
 }
 
 static std::string global_key_for_storage_prop(const std::string& contract_id, const std::string& key, const std::string& fast_map_key, bool is_fast_map)
@@ -930,14 +930,15 @@ namespace uvm {
 		{
 			uvm::lua::lib::increment_lvm_instructions_executed_count(L, CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT - 1);
 
-			const auto &code_contract_id = get_contract_id_string_in_storage_operation(L);
-			if (code_contract_id != contract_id)
+			const auto &code_storage_contract_id = get_contract_id_string_in_storage_operation(L);
+			/*if (code_storage_contract_id != contract_id)
 			{
 				global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "contract can only access its own storage directly");
 				uvm::lua::lib::notify_lua_state_stop(L);
 				L->force_stopping = true;
 				return 0;
-			}
+			}*/
+			contract_id = code_storage_contract_id.c_str(); // storage改成只用当前所在合约
 			std::string fast_map_key_str = fast_map_key ? fast_map_key : "";
 			const auto &global_key = global_key_for_storage_prop(contract_id, name, fast_map_key_str, is_fast_map);
 			lua_getglobal(L, global_key.c_str());
@@ -985,14 +986,15 @@ namespace uvm {
 		int uvmlib_set_storage_impl(lua_State *L,
 			const char *contract_id, const char *name, const char* fast_map_key, bool is_fast_map, int value_index)
 		{
-			const auto &code_contract_id = get_contract_id_string_in_storage_operation(L);
-			if (code_contract_id != contract_id && code_contract_id != contract_id)
+			const auto &code_storage_contract_id = get_contract_id_string_in_storage_operation(L);
+			/*if (code_storage_contract_id != contract_id)
 			{
 				global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "contract can only access its own storage directly");
 				uvm::lua::lib::notify_lua_state_stop(L);
 				L->force_stopping = true;
 				return 0;
-			}
+			}*/
+			contract_id = code_storage_contract_id.c_str(); // storage改成只用当前所在合约
 			auto contract_id_stack = uvm::lua::lib::get_using_contract_id_stack(L, true);
 			if (contract_id_stack && contract_id_stack->size()>0 && contract_id_stack->top().call_type == "STATIC_CALL") {
 				global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "static call can not modify contract storage");

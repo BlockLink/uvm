@@ -2146,6 +2146,7 @@ func TestDelegateCall(t *testing.T) {
 	assert.True(t, compileErr == "")
 	var res *simplejson.Json
 	var err error
+
 	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("test_delegate_call.lua.gpc"), 50000, 10)
 	if err != nil {
 		log.Println(err)
@@ -2162,6 +2163,15 @@ func TestDelegateCall(t *testing.T) {
 	assert.True(t, err == nil)
 	contract2Addr := res.Get("contract_address").MustString()
 	fmt.Printf("contract2 address: %s\n", contract2Addr)
+	simpleChainRPC("generate_block")
+
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("test_delegate_call.lua.gpc"), 50000, 10)
+	if err != nil {
+		log.Println(err)
+	}
+	assert.True(t, err == nil)
+	contract3Addr := res.Get("contract_address").MustString()
+	fmt.Printf("contract3 address: %s\n", contract3Addr)
 	simpleChainRPC("generate_block")
 
 	// set contract1 as contract2's admin
@@ -2181,18 +2191,23 @@ func TestDelegateCall(t *testing.T) {
 	assert.True(t, res.Get("exec_succeed").MustBool())
 	log.Println("hello response", res)
 	assert.True(t, res.Get("api_result").MustString() == "hello, name is testcase and data is data10086")
+	// get storage of contract1
+	contract1Storage, err := simpleChainRPC("get_storage", contract1Addr, "data")
+	assert.True(t, err == nil)
+	log.Println(contract1Storage)
+	assert.True(t, contract1Storage.MustString() == "data10086")
 
 	// call contract2's api and check
 	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract2Addr, "hello", []string{"testcase"}, 0, 0)
 	assert.True(t, err == nil)
 	assert.True(t, res.Get("exec_succeed").MustBool())
 	log.Println("hello response", res)
-	assert.True(t, res.Get("api_result").MustString() == "hello, name is testcase and data is data10086")
+	assert.True(t, res.Get("api_result").MustString() == "hello, name is testcase and data is ")
 	// get storage of contract2
 	contract2Storage, err := simpleChainRPC("get_storage", contract2Addr, "data")
 	assert.True(t, err == nil)
 	log.Println(contract2Storage)
-	assert.True(t, contract2Storage.MustString() == "data10086")
+	assert.True(t, contract2Storage.MustString() == "")
 
 	// deposit to contract1 and check contract1 and contract2's balances
 	res, err = simpleChainRPC("mint", caller1, 0, 100)
@@ -2244,4 +2259,32 @@ func TestDelegateCall(t *testing.T) {
 	assert.True(t, err == nil)
 	log.Println("contract1BalanceByApiAfterWithdraw", contract1BalanceByApiAfterWithdraw)
 	assert.True(t, contract1BalanceByApiAfterWithdraw.Get("api_result").MustString() == fmt.Sprintf("%d", 100 - withdrawAmount))
+
+	// A(contract3) delegatecall B(contract1) call C(contract2)
+	res, err = simpleChainRPC("invoke_contract", caller1, contract3Addr, "pass_call_data2", []string{contract1Addr + "," + contract2Addr + ",data_from_contract3"}, 0, 0, 50000, 10)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+
+	// call contract's api and check
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract2Addr, "hello", []string{"testcase"}, 0, 0)
+	assert.True(t, err == nil)
+	assert.True(t, res.Get("exec_succeed").MustBool())
+	log.Println("hello response", res)
+	assert.True(t, res.Get("api_result").MustString() == "hello, name is testcase and data is data_from_contract3")
+	// get storage of contract2
+	contract2Storage, err = simpleChainRPC("get_storage", contract2Addr, "data")
+	assert.True(t, err == nil)
+	log.Println(contract2Storage)
+	assert.True(t, contract2Storage.MustString() == "data_from_contract3")
+
+	// A(contract3) delegatecall B(contract1) delegatecall C(contract2)
+	res, err = simpleChainRPC("invoke_contract", caller1, contract3Addr, "pass_set_data2", []string{contract1Addr + "," + contract2Addr + ",data_from_contract3_delegate"}, 0, 0, 50000, 10)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+
+	// get storage of contract3
+	contract3Storage, err := simpleChainRPC("get_storage", contract3Addr, "data")
+	assert.True(t, err == nil)
+	log.Println(contract3Storage)
+	assert.True(t, contract3Storage.MustString() == "data_from_contract3_delegate")
 }
