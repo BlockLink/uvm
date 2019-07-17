@@ -1693,6 +1693,7 @@ int luaL_import_contract_module_from_address(lua_State *L)
         lua_setfield(L, -2, "name");
         lua_pushstring(L, contract_id);
         lua_setfield(L, -2, "id");
+		
 
 		auto starting_contract_address = uvm::lua::lib::get_starting_contract_address(L);
         bool is_starting_contract = false;
