@@ -2288,7 +2288,7 @@ func TestDelegateCall(t *testing.T) {
 	log.Println(contract3Storage)
 	assert.True(t, contract3Storage.MustString() == "data_from_contract3_delegate")
 
-	// TODO: A(contract3) delegatecall B(contract1) call A(contract3)
+	// A(contract3) delegatecall B(contract1) call A(contract3)
 	res, err = simpleChainRPC("invoke_contract", caller1, contract3Addr, "pass_call_data2", []string{contract1Addr + "," + contract3Addr + ",data_from_contract32"}, 0, 0, 50000, 10)
 	assert.True(t, err == nil)
 	simpleChainRPC("generate_block")
@@ -2305,7 +2305,7 @@ func TestDelegateCall(t *testing.T) {
 	log.Println(contract3Storage)
 	assert.True(t, contract3Storage.MustString() == "data_from_contract32")
 
-	// TODO: A(contract3) delegatecall B(contract1) delegatecall A(contract3)
+	// A(contract3) delegatecall B(contract1) delegatecall A(contract3)
 	res, err = simpleChainRPC("invoke_contract", caller1, contract3Addr, "pass_set_data2", []string{contract1Addr + "," + contract3Addr + ",data_from_contract33_delegate"}, 0, 0, 50000, 10)
 	assert.True(t, err == nil)
 	simpleChainRPC("generate_block")
