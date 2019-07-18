@@ -2287,4 +2287,33 @@ func TestDelegateCall(t *testing.T) {
 	assert.True(t, err == nil)
 	log.Println(contract3Storage)
 	assert.True(t, contract3Storage.MustString() == "data_from_contract3_delegate")
+
+	// TODO: A(contract3) delegatecall B(contract1) call A(contract3)
+	res, err = simpleChainRPC("invoke_contract", caller1, contract3Addr, "pass_call_data2", []string{contract1Addr + "," + contract3Addr + ",data_from_contract32"}, 0, 0, 50000, 10)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+
+	// call contract's api and check
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract3Addr, "hello", []string{"testcase"}, 0, 0)
+	assert.True(t, err == nil)
+	assert.True(t, res.Get("exec_succeed").MustBool())
+	log.Println("hello response", res)
+	assert.True(t, res.Get("api_result").MustString() == "hello, name is testcase and data is data_from_contract32")
+	// get storage of contract2
+	contract3Storage, err = simpleChainRPC("get_storage", contract3Addr, "data")
+	assert.True(t, err == nil)
+	log.Println(contract3Storage)
+	assert.True(t, contract3Storage.MustString() == "data_from_contract32")
+
+	// TODO: A(contract3) delegatecall B(contract1) delegatecall A(contract3)
+	res, err = simpleChainRPC("invoke_contract", caller1, contract3Addr, "pass_set_data2", []string{contract1Addr + "," + contract3Addr + ",data_from_contract33_delegate"}, 0, 0, 50000, 10)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+
+	// get storage of contract3
+	contract3Storage, err = simpleChainRPC("get_storage", contract3Addr, "data")
+	assert.True(t, err == nil)
+	log.Println(contract3Storage)
+	assert.True(t, contract3Storage.MustString() == "data_from_contract33_delegate")
+
 }
