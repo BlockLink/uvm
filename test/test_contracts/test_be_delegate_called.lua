@@ -83,7 +83,7 @@ function M:set_data(arg: string)
     self.storage.data = arg
 end
 
-function M:hello(name: string)
+offline function M:hello(name: string)
     return "hello, name is " .. name .. " and data is " .. (self.storage.data)
 end
 

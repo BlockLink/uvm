@@ -196,6 +196,18 @@ namespace uvm
 				return prev.contract_id;
 			}
 
+			static std::string get_prev_call_frame_storage_contract_id(lua_State *L)
+			{
+				auto contract_id_stack = get_using_contract_id_stack(L, true);
+				if (!contract_id_stack || contract_id_stack->size() < 2)
+					return "";
+				auto top = contract_id_stack->top();
+				contract_id_stack->pop();
+				auto prev = contract_id_stack->top();
+				contract_id_stack->push(top);
+				return prev.storage_contract_id;
+			}
+
 			static std::string get_prev_call_frame_api_name(lua_State *L)
 			{
 				auto contract_id_stack = get_using_contract_id_stack(L, true);
@@ -215,6 +227,13 @@ namespace uvm
 				return contract_id_str;
 			}
 
+			static const char *get_prev_call_frame_storage_contract_id_in_api(lua_State *L)
+			{
+				const auto &contract_id = get_prev_call_frame_storage_contract_id(L);
+				auto contract_id_str = malloc_and_copy_string(L, contract_id.c_str());
+				return contract_id_str;
+			}
+
 			static const char *get_prev_call_frame_api_name_in_api(lua_State *L)
 			{
 				const auto &api_name = get_prev_call_frame_api_name(L);
@@ -224,7 +243,7 @@ namespace uvm
 
 			static int get_prev_call_frame_contract_address_lua_api(lua_State *L)
 			{
-				auto prev_contract_id = get_prev_call_frame_contract_id_in_api(L);
+				auto prev_contract_id = get_prev_call_frame_storage_contract_id_in_api(L);
 				if (!prev_contract_id || strlen(prev_contract_id)< 1)
 				{
 					lua_pushnil(L);

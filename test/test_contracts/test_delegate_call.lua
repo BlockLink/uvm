@@ -73,7 +73,7 @@ function M:pass_call_data2(arg: string)
     return res
 end
 
-function M:hello(name: string)
+offline function M:hello(name: string)
     let res = delegate_call(self.storage.proxyAddr, 'hello', name)
     print("proxy target response", res)
     return res
