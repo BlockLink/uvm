@@ -581,14 +581,14 @@ namespace uvm {
 				throw_exception(L, UVM_API_SIMPLE_ERROR, "no implemented method");
 				return false;
 			}
-			virtual std::string get_contact_lock_balance_info(lua_State *L, const char* mid) {
+			virtual std::string get_contract_lock_balance_info(lua_State *L, const char* mid) {
 				throw_exception(L, UVM_API_SIMPLE_ERROR, "no implemented method");
 				return "";
 			}
-			virtual std::string get_contact_lock_balance_info(lua_State *L, const char* cid, const char* aid)const {
+			virtual std::string get_contract_lock_balance_info(lua_State *L, const char* cid, const char* aid)const {
 				return "";
 			}
-			virtual std::string get_pay_back_balacne(lua_State *L, const char* contract_addr, const char* symbol_type) {
+			virtual std::string get_pay_back_balance(lua_State *L, const char* contract_addr, const char* symbol_type) {
 				throw_exception(L, UVM_API_SIMPLE_ERROR, "no implemented method");
 				return "";
 			}

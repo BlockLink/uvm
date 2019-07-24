@@ -922,11 +922,11 @@ namespace uvm
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "get_contract_lock_balance_info must be called in contract api");
 					return 0;
 				}
-				std::string res = uvm::lua::api::global_uvm_chain_api->get_contact_lock_balance_info(L, contract_id);
+				std::string res = uvm::lua::api::global_uvm_chain_api->get_contract_lock_balance_info(L, contract_id);
 				lua_pushstring(L, res.c_str());
 				return 1;
 			}
-			//get_contract_lock_balance_info_by_asset()
+			//get_contract_lock_balance_info_by_asset(asset_sym: string)
 			static int get_contract_lock_balance_info_by_asset(lua_State *L)
 			{
 				if (lua_gettop(L) < 1)
@@ -934,7 +934,7 @@ namespace uvm
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "get_contract_lock_balance_info_by_asset must be called in contract api");
 					return 0;
 				}
-				const char *asset_sym = luaL_checkstring(L, 2);
+				const char *asset_sym = luaL_checkstring(L, 1);
 				const char *contract_id = get_storage_contract_id_in_api(L);
 
 				if (!contract_id)
@@ -942,7 +942,7 @@ namespace uvm
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "get_contract_lock_balance_info must be called in contract api");
 					return 0;
 				}
-				std::string res = uvm::lua::api::global_uvm_chain_api->get_contact_lock_balance_info(L, contract_id, asset_sym);
+				std::string res = uvm::lua::api::global_uvm_chain_api->get_contract_lock_balance_info(L, contract_id, asset_sym);
 				lua_pushstring(L, res.c_str());
 				return 1;
 			}
@@ -954,7 +954,7 @@ namespace uvm
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "get_pay_back_balance must be called in contract api");
 					return 0;
 				}
-				const char *asset_sym = luaL_checkstring(L, 2);
+				const char *asset_sym = luaL_checkstring(L, 1);
 				const char *contract_id = get_storage_contract_id_in_api(L);
 
 				if (!contract_id)
@@ -962,7 +962,7 @@ namespace uvm
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "get_pay_back_balance must be called in contract api");
 					return 0;
 				}
-				std::string res = uvm::lua::api::global_uvm_chain_api->get_pay_back_balacne(L, contract_id, asset_sym);
+				std::string res = uvm::lua::api::global_uvm_chain_api->get_pay_back_balance(L, contract_id, asset_sym);
 				lua_pushstring(L, res.c_str());
 				return 1;
 			}
