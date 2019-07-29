@@ -441,6 +441,13 @@ LUA_API const void *lua_topointer(lua_State *L, int idx) {
     }
 }
 
+LUA_API void lua_settableonlyread(lua_State *L, int idx, bool isOnlyRead) {
+	StkId o = index2addr(L, idx);
+	if (ttype(o) == LUA_TTABLE) {
+		luaH_setisonlyread(L, hvalue(o), isOnlyRead);
+	}
+}
+
 
 
 /*

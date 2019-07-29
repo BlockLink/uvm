@@ -1391,6 +1391,7 @@ bool luaL_get_contract_apis(lua_State *L, UvmModuleByteStream *stream, char *err
 void lua_fill_contract_info_for_use(lua_State *L)
 {
     lua_newtable(L);
+	lua_settableonlyread(L, -1, true);
     lua_setfield(L, -2, "_data");
     lua_getglobal(L, "contract_mt");
     lua_setmetatable(L, -2); // contractmetatablecontract_mt
