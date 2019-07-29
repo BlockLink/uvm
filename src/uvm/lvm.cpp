@@ -837,6 +837,10 @@ void luaV_finishOp(lua_State *L) {
 			luaG_runerror(L, "can't modify contract properties"); \
 			return false; \
 		} \
+		if (((uvm_types::GcTable*)table_addr)->isOnlyRead) {\
+			luaG_runerror(L, "can't modify table because is onlyread");\
+			return false;\
+		}\
 	} \
 	); \
   if (!luaV_fastset(L,t,k,slot,luaH_get,v)) \

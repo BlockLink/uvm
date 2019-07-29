@@ -191,6 +191,7 @@ LUA_API void	       *(lua_touserdata)(lua_State *L, int idx);
 LUA_API lua_State      *(lua_tothread)(lua_State *L, int idx);
 LUA_API const void     *(lua_topointer)(lua_State *L, int idx);
 
+LUA_API void lua_settableonlyread(lua_State *L, int idx, bool isOnlyRead);
 
 /*
 ** Comparison and arithmetic functions

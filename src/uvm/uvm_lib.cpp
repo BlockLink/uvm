@@ -1819,6 +1819,10 @@ end
 					add_global_c_function(L, "get_contract_lock_balance_info_by_asset", &get_contract_lock_balance_info_by_asset);
 					add_global_c_function(L, "get_pay_back_balance", &get_pay_back_balance);
                 }
+
+				lua_getglobal(L, "_G");
+				lua_settableonlyread(L, -1, true);
+				lua_pop(L, 1);
                 return L;
             }
 

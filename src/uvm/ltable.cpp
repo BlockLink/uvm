@@ -266,6 +266,10 @@ void luaH_free(lua_State *L, uvm_types::GcTable *t) {
 	L->gc_state->gc_free(t);
 }
 
+void luaH_setisonlyread(lua_State *L, uvm_types::GcTable *t, bool isOnlyRead) {
+	t->isOnlyRead = isOnlyRead;
+}
+
 /*
 ** inserts a new key into a hash table; first, check whether key's main
 ** position is free. If not, check whether colliding node is in its main

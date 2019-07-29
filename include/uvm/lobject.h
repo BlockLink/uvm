@@ -483,6 +483,7 @@ namespace uvm_types {
 		std::vector<GcTableItemType> array;
 		GcTable* metatable;
 		lu_byte flags; // flag to mask meta methods
+		bool isOnlyRead = false; 
 		inline GcTable() : metatable(nullptr), flags(0) { }
 		virtual ~GcTable() {}
 	};
