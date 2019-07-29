@@ -1407,6 +1407,11 @@ namespace uvm
 				lua_pop(L, 1);
 				if (exist)
 					return 0;
+
+				lua_getglobal(L, "_G");
+				lua_settableonlyread(L, -1, false);
+				lua_pop(L, 1);
+
 				// pairsByKeys' iterate order is number first(than string), short string first(than long string), little ASCII string first
 				const char *code = R"END(
 function __real_pairs_by_keys_func(t)
@@ -1439,6 +1444,11 @@ function __real_pairs_by_keys_func(t)
 end
 )END";
 				luaL_dostring(L, code);
+
+				lua_getglobal(L, "_G");
+				lua_settableonlyread(L, -1, true);
+				lua_pop(L, 1);
+
 				return 0;
 			}
 
