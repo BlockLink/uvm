@@ -1408,10 +1408,6 @@ namespace uvm
 				if (exist)
 					return 0;
 
-				lua_getglobal(L, "_G");
-				lua_settableonlyread(L, -1, false);
-				lua_pop(L, 1);
-
 				// pairsByKeys' iterate order is number first(than string), short string first(than long string), little ASCII string first
 				const char *code = R"END(
 function __real_pairs_by_keys_func(t)
@@ -1443,11 +1439,20 @@ function __real_pairs_by_keys_func(t)
     end  
 end
 )END";
+				uvm_types::GcTable *reg = hvalue(&L->l_registry);
+				auto env_table = hvalue(luaH_getint(reg, LUA_RIDX_GLOBALS));
+				if (env_table->isOnlyRead) {
+					lua_getglobal(L, "_G");
+					lua_settableonlyread(L, -1, false);
+					lua_pop(L, 1);
+				}
+				
 				luaL_dostring(L, code);
-
-				lua_getglobal(L, "_G");
-				lua_settableonlyread(L, -1, true);
-				lua_pop(L, 1);
+				if (env_table->isOnlyRead) {
+					lua_getglobal(L, "_G");
+					lua_settableonlyread(L, -1, true);
+					lua_pop(L, 1);
+				}
 
 				return 0;
 			}
@@ -1828,11 +1833,13 @@ end
 					add_global_c_function(L, "get_contract_lock_balance_info", &get_contract_lock_balance_info);
 					add_global_c_function(L, "get_contract_lock_balance_info_by_asset", &get_contract_lock_balance_info_by_asset);
 					add_global_c_function(L, "get_pay_back_balance", &get_pay_back_balance);
+
+					lua_getglobal(L, "_G");
+					lua_settableonlyread(L, -1, true);
+					lua_pop(L, 1);
                 }
 
-				lua_getglobal(L, "_G");
-				lua_settableonlyread(L, -1, true);
-				lua_pop(L, 1);
+				
                 return L;
             }
 

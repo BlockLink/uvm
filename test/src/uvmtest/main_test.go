@@ -2182,6 +2182,10 @@ func TestDelegateCall(t *testing.T) {
 	res, err = simpleChainRPC("invoke_contract", caller1, contract1Addr, "set_proxy", []string{contract2Addr}, 0, 0, 50000, 10)
 	assert.True(t, err == nil)
 	simpleChainRPC("generate_block")
+	
+	res, err = simpleChainRPC("invoke_contract", caller1, contract3Addr, "set_proxy", []string{contract2Addr}, 0, 0, 50000, 10)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
 
 	res, err = simpleChainRPC("invoke_contract", caller1, contract1Addr, "set_data", []string{"data10086"}, 0, 0, 50000, 10)
 	assert.True(t, err == nil)
