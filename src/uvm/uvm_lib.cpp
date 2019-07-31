@@ -1441,14 +1441,15 @@ end
 )END";
 				uvm_types::GcTable *reg = hvalue(&L->l_registry);
 				auto env_table = hvalue(luaH_getint(reg, LUA_RIDX_GLOBALS));
-				if (env_table->isOnlyRead) {
+				auto isOnlyRead = env_table->isOnlyRead;
+				if (isOnlyRead) {
 					lua_getglobal(L, "_G");
 					lua_settableonlyread(L, -1, false);
 					lua_pop(L, 1);
 				}
 				
 				luaL_dostring(L, code);
-				if (env_table->isOnlyRead) {
+				if (isOnlyRead) {
 					lua_getglobal(L, "_G");
 					lua_settableonlyread(L, -1, true);
 					lua_pop(L, 1);
