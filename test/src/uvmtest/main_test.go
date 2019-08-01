@@ -158,13 +158,14 @@ func TestChangeOtherContractProperty(t *testing.T) {
 	// change other contract's property should throw error
 }
 
-func TestDefineGlobalInContract(t *testing.T) {
-	_, compileErr := execCommand(uvmCompilerPath, "../../tests_typed/test_define_global_in_contract_loader.lua")
-	assert.Equal(t, compileErr, "")
-	out, _ := execCommand(uvmSinglePath, "../../tests_typed/test_define_global_in_contract_loader.lua.out")
-	fmt.Println(out)
-	assert.True(t, strings.Contains(out, `_ENV or _G set hello is forbidden`) || strings.Contains(out, `can't modify table because is onlyread`))
-}
+// func TestDefineGlobalInContract(t *testing.T) {
+// 	// because not check bytecode proto when not registering contract, this testcase not affect
+// 	_, compileErr := execCommand(uvmCompilerPath, "../../tests_typed/test_define_global_in_contract_loader.lua")
+// 	assert.Equal(t, compileErr, "")
+// 	out, _ := execCommand(uvmSinglePath, "../../tests_typed/test_define_global_in_contract_loader.lua.out")
+// 	fmt.Println(out)
+// 	assert.True(t, strings.Contains(out, `_ENV or _G set hello is forbidden`))
+// }
 
 func TestManyStringOperations(t *testing.T) {
 	out, _ := execCommand(uvmSinglePath, "../../test_many_string_operations.lua.out")

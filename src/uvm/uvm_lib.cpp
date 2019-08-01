@@ -1714,7 +1714,7 @@ end
 			}
 
 
-            lua_State *create_lua_state(bool use_contract)
+            lua_State *create_lua_state(bool use_contract, bool allow_change_global)
             {
                 lua_State *L = luaL_newstate();
                 luaL_openlibs(L);
@@ -1835,9 +1835,11 @@ end
 					add_global_c_function(L, "get_contract_lock_balance_info_by_asset", &get_contract_lock_balance_info_by_asset);
 					add_global_c_function(L, "get_pay_back_balance", &get_pay_back_balance);
 
-					lua_getglobal(L, "_G");
-					lua_settableonlyread(L, -1, true);
-					lua_pop(L, 1);
+					if (!allow_change_global) {
+						lua_getglobal(L, "_G");
+						lua_settableonlyread(L, -1, true);
+						lua_pop(L, 1);
+					}
                 }
 
 				
