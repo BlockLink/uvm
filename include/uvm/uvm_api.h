@@ -68,6 +68,8 @@
 // uvm API
 #define CHAIN_GLUA_API_EACH_INSTRUCTIONS_COUNT 50
 
+#define CHECK_CONTRACT_CODE_EVERY_TIME 0
+
 // ，register_object_in_pool
 enum UvmOutsideObjectTypes
 {
