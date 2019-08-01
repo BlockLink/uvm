@@ -75,6 +75,15 @@ namespace simplechain {
 			contract.create_time = o.op_time;
 			contract.registered_block = get_chain()->latest_block().block_number + 1;
 			contract.type_of_contract = contract_type::normal_contract;
+			// verify contract bytecode stream format
+			auto L = engine->scope()->L();
+			auto code_stream = uvm::lua::api::global_uvm_chain_api->get_bytestream_from_code(L, contract.code);
+			if (!code_stream)
+				throw uvm::core::UvmException("invalid contract bytecode format");
+			char contract_format_err[LUA_COMPILE_ERROR_MAX_LENGTH] = { 0 };
+			if(!uvm::lua::lib::check_contract_bytecode_stream(L, code_stream.get(), contract_format_err))
+				throw uvm::core::UvmException("invalid contract bytecode format");
+			lua_pop(L, 1); // pop stream
 			store_contract(contract_address, contract);
 			try
 			{
