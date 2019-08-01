@@ -98,8 +98,9 @@ namespace uvm
             private:
                 lua_State *_L;
                 bool _use_contract;
+				bool _allow_change_global;
             public:
-                UvmStateScope(bool use_contract = true);
+                UvmStateScope(bool use_contract = true, bool allow_change_global = false);
                 UvmStateScope(const UvmStateScope &other);
                 ~UvmStateScope();
 
@@ -302,7 +303,7 @@ namespace uvm
 
 			};
 
-            lua_State *create_lua_state(bool use_contract = true);
+            lua_State *create_lua_state(bool use_contract = true, bool allow_change_global = false);
 
             bool commit_storage_changes(lua_State *L);
 

@@ -76,9 +76,9 @@ namespace uvm
 				return ref;
 			}
 
-            UvmStateScope::UvmStateScope(bool use_contract)
-                :_use_contract(use_contract) {
-                this->_L = create_lua_state(use_contract);
+            UvmStateScope::UvmStateScope(bool use_contract, bool allow_change_global)
+                :_use_contract(use_contract), _allow_change_global(allow_change_global){
+                this->_L = create_lua_state(use_contract, allow_change_global);
             }
             UvmStateScope::UvmStateScope(const UvmStateScope &other) : _L(other._L) {}
             UvmStateScope::~UvmStateScope() {
