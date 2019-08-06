@@ -1,6 +1,7 @@
-e = {name="uvm", age=25}
+var e = {name="uvm", age=25}
 e["123"] = "test"
-s = ''
+var s = ''
+var k
 for k in pairs(e) do
 	s = s .. ';' .. k .. ':' .. tostring(e[k])
 end

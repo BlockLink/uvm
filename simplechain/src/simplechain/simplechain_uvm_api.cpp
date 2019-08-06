@@ -164,6 +164,16 @@ namespace simplechain {
 				}FC_CAPTURE_AND_LOG((contract_id))
 			}
 
+			static bool contains_contract_by_id(evaluate_state* evaluator, const std::string& contract_id) {
+				try {
+					if (evaluator) {
+						auto res = evaluator->contains_contract_by_address(contract_id);
+						return res;
+					}
+					return nullptr;
+				}FC_CAPTURE_AND_LOG((contract_id))
+			}
+
 			static std::shared_ptr<uvm::blockchain::Code> get_contract_code_by_name(evaluate_state* evaluator, const std::string& contract_name) {
 				try {
 					if (evaluator) {
@@ -174,6 +184,16 @@ namespace simplechain {
 						else {
 							return nullptr;
 						}
+					}
+					return nullptr;
+				}FC_CAPTURE_AND_LOG((contract_name))
+			}
+
+			static bool contains_contract_by_name(evaluate_state* evaluator, const std::string& contract_name) {
+				try {
+					if (evaluator) {
+						auto res = evaluator->contains_contract_by_name(contract_name);
+						return res;
 					}
 					return nullptr;
 				}FC_CAPTURE_AND_LOG((contract_name))
@@ -297,15 +317,15 @@ namespace simplechain {
             bool SimpleChainUvmChainApi::check_contract_exist_by_address(lua_State *L, const char *address)
             {
 				auto evaluator = get_contract_evaluator(L);
-				auto code = get_contract_code_by_id(evaluator, std::string(address));
-				return code ? true : false;
+				auto res = contains_contract_by_id(evaluator, std::string(address));
+				return res;
             }
 
 			bool SimpleChainUvmChainApi::check_contract_exist(lua_State *L, const char *name)
 			{
 				auto evaluator = get_contract_evaluator(L);
-				auto code = get_contract_code_by_name(evaluator, std::string(name));
-				return code ? true : false;
+				auto res = contains_contract_by_name(evaluator, std::string(name));
+				return res;
 			}
 
 			/**
@@ -352,8 +372,8 @@ namespace simplechain {
 
 				auto evaluator = get_contract_evaluator(L);
 				std::string contract_id = uvm::lua::lib::unwrap_any_contract_name(contract_name);
-				auto code = get_contract_code_by_id(evaluator, contract_id);
-				if (!code)
+
+				if (!check_contract_exist_by_address(L, contract_id.c_str()))
 				{
 					return null_storage;
 				}
@@ -459,8 +479,7 @@ namespace simplechain {
 
 				auto evaluator = get_contract_evaluator(L);
 				std::string contract_id(contract_address);
-				auto code = get_contract_code_by_id(evaluator, contract_id);
-				if (!code)
+				if (!check_contract_exist_by_address(L, contract_address))
 				{
 					return null_storage;
 				}

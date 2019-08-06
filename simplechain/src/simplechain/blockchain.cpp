@@ -162,6 +162,22 @@ namespace simplechain {
 		return nullptr;
 	}
 
+	bool blockchain::contains_contract_by_address(const std::string& contract_address) const {
+		for (const auto& it : contracts) {
+			if (it.first == contract_address) {
+				return true;
+			}
+		}
+		return false;
+	}
+	bool blockchain::contains_contract_by_name(const std::string& name) const {
+		for (const auto& it : contracts) {
+			if (it.second.contract_name == name) {
+				return true;
+			}
+		}
+		return false;
+	}
 
 
 	void blockchain::register_account(const std::string& addr, const std::string& pub_key_hex) {
