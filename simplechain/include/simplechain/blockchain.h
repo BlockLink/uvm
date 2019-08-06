@@ -52,6 +52,8 @@ namespace simplechain {
 		void update_account_asset_balance(const std::string& account_address, asset_id_t asset_id, int64_t balance_change);
 		std::shared_ptr<contract_object> get_contract_by_address(const std::string& addr) const;
 		std::shared_ptr<contract_object> get_contract_by_name(const std::string& name) const;
+		bool contains_contract_by_address(const std::string& contract_address) const;
+		bool contains_contract_by_name(const std::string& name) const;
 		void store_contract(const std::string& addr, const contract_object& contract_obj);
 		StorageDataType get_storage(const std::string& contract_address, const std::string& key) const;
 		std::map<std::string, StorageDataType> get_contract_storages(const std::string& contract_address) const;

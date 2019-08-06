@@ -54,6 +54,23 @@ namespace simplechain {
 		invoke_contract_result.new_contracts.push_back(std::make_pair(contract_address, contract_obj));
 	}
 
+	bool evaluate_state::contains_contract_by_address(const std::string& contract_address) const {
+		for (auto& p : invoke_contract_result.new_contracts) {
+			if (p.first == contract_address) {
+				return true;
+			}
+		}
+		return chain->contains_contract_by_address(contract_address);
+	}
+	bool evaluate_state::contains_contract_by_name(const std::string& name) const {
+		for (auto& p : invoke_contract_result.new_contracts) {
+			if (p.second.contract_name == name) {
+				return true;
+			}
+		}
+		return chain->contains_contract_by_name(name);
+	}
+
 	std::shared_ptr<contract_object> evaluate_state::get_contract_by_address(const std::string& contract_address) const {
 		for (auto& p : invoke_contract_result.new_contracts) {
 			if (p.first == contract_address) {
