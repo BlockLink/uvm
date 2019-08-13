@@ -99,6 +99,8 @@ public:
 	ErrorInfo error;
 	//Errors errors_;
 	bool parse(lua_State *L, std::string& str, UvmStorageValue* root);
+
+	static bool vm_disable_json_loads_negative;
 };
 
 #endif
