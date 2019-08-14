@@ -330,7 +330,7 @@ namespace vmgc {
 		}
 		else {
 			*isNewStr = false;
-			p = (void *)((*_gc_strpool)[h].first);
+			p = (void *)(it->second.first);
 			uvm_types::GcString* gcstr = static_cast<uvm_types::GcString*>(p);
 			if (strncmp(gcstr->value.c_str(), str, strsize) != 0) { //Åö×²
 				//new it 
