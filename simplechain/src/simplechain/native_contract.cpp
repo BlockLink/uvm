@@ -7,6 +7,8 @@
 #include <jsondiff/jsondiff.h>
 #include <memory>
 
+
+
 namespace simplechain {
 	using namespace cbor_diff;
 	using namespace cbor;
@@ -172,9 +174,6 @@ namespace simplechain {
 		_contract_invoke_result.gas_used += gas;
 	}
 
-	void native_contract_store::set_invoke_result_caller() {
-		_contract_invoke_result.invoker = caller_address();
-	}
 
 	bool native_contract_store::is_valid_address(const std::string& addr) {
 		if (addr.compare(0, 2, "SL") == 0 || addr.compare(0, 3, "CON") == 0) {
@@ -183,9 +182,29 @@ namespace simplechain {
 		return false;
 	}
 
+	bool native_contract_store::is_valid_contract_address(const std::string& addr) {
+		if (addr.compare(0, 3, "CON") == 0) {
+			return true;
+		}
+		return false;
+	}
+
 	uint32_t native_contract_store::get_chain_now() const {
 		return _evaluate->get_chain()->latest_block().block_time.sec_since_epoch();
 	}
+
+	cbor::CborObjectP native_contract_store::call_contract_api(const std::string& contractAddr, const std::string& apiName, cbor::CborArrayValue& args) {
+		return _evaluate->call_contract_api(contractAddr, apiName, args);
+	}
+	
+	std::string native_contract_store::get_api_result() const {
+		return _contract_invoke_result.api_result;
+	}
+
+	std::stack<contract_info_stack_entry>* native_contract_store::get_contract_call_stack() {
+		return &(_evaluate->contract_call_stack);
+	}
+
 
 	// class native_contract_finder
 
@@ -200,6 +219,11 @@ namespace simplechain {
 	}
 	shared_ptr<native_contract_interface> native_contract_finder::create_native_contract_by_key(evaluate_state* evaluate, const std::string& key, const address& contract_address)
 	{
+		auto it = evaluate->invoked_native_contracts.find(contract_address);
+		if (it != evaluate->invoked_native_contracts.end()) {
+			return it->second;
+		}
+
 		auto store = std::make_shared<native_contract_store>();
 		store->init_config(evaluate, contract_address);
 
@@ -226,6 +250,8 @@ namespace simplechain {
 		{
 			return nullptr;
 		}
+		(evaluate->invoked_native_contracts)[contract_address] = result;
+
 		return result;
 	}
 	

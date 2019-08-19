@@ -242,9 +242,9 @@ static void close_state(lua_State *L) {
 	if (L->breakpoints) {
 		delete L->breakpoints;
 	}
-	if (L->using_contract_id_stack) {
-		delete L->using_contract_id_stack;
-	}
+	//if (L->using_contract_id_stack) {
+	//	delete L->using_contract_id_stack;
+	//}
 	if (L->gc_state) {
 		delete L->gc_state;
 		// L->ud = nullptr;
@@ -294,10 +294,14 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
 
 	L->allow_contract_modify = 0;
 	L->contract_table_addresses = new std::list<intptr_t>();
-	L->using_contract_id_stack = new std::stack<contract_info_stack_entry>();
+	L->using_contract_id_stack = nullptr;
+	L->invoked_native_contracts = nullptr;
+	L->next_delegate_call_flag = false;
+	//L->using_contract_id_stack = new std::stack<contract_info_stack_entry>();
+	
 	L->call_op_msg = OpCode(0);
 	L->ci_depth = 0;
-
+	
     for (i = 0; i < LUA_NUMTAGS; i++) L->mt[i] = nullptr;
     if (luaD_rawrunprotected(L, f_luaopen, nullptr) != LUA_OK) {
         /* memory allocation error: free partial state */

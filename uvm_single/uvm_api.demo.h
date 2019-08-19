@@ -178,6 +178,10 @@ namespace uvm {
 
 		virtual std::string pubkey_to_address_string(const fc::ecc::public_key& pub) const override;
 
+		//return "" "exchange" "token"
+		virtual std::string get_native_contract_key(lua_State *L, const char *contract_address) const override;
+
+		virtual std::shared_ptr<uvm::contract::native_contract_interface> import_native_contract_by_key(lua_State *L, std::string &native_contract_key, std::string &contract_address) override;
       };
 
     }

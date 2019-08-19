@@ -32,6 +32,8 @@
 #include <simplechain/blockchain.h>
 #include <simplechain/address_helper.h>
 
+#include <simplechain/native_contract.h>
+
 namespace simplechain {
 	using namespace uvm::lua::api;
 
@@ -507,10 +509,14 @@ namespace simplechain {
 				data[json_str.size()] = '\0';
 				return data;
 			}
-			
+
 			bool SimpleChainUvmChainApi::commit_storage_changes_to_uvm(lua_State *L, AllContractsChangesMap &changes)
 			{
 				auto evaluator = get_contract_evaluator(L);
+
+				if (!evaluator) {
+					return false;
+				}
 				//auto use_cbor_diff_flag = use_cbor_diff(L);
 				auto use_cbor_diff_flag = true;
 				cbor_diff::CborDiff differ;
@@ -519,6 +525,7 @@ namespace simplechain {
 
 				auto gas_limit = uvm::lua::lib::get_lua_state_instructions_limit(L);
 				const char* out_of_gas_error = "contract storage changes out of gas";
+
 
 				for (auto all_con_chg_iter = changes.begin(); all_con_chg_iter != changes.end(); ++all_con_chg_iter)
 				{
@@ -590,6 +597,7 @@ namespace simplechain {
 						return false;
 					}
 				}
+				//evaluator->gas_used += storage_gas;
 				uvm::lua::lib::increment_lvm_instructions_executed_count(L, storage_gas);
 				return true;
 			}
@@ -1126,5 +1134,33 @@ namespace simplechain {
 					return;
 				}
 			}
+			
+			//return "" "exchange" "token"
+			std::string SimpleChainUvmChainApi::get_native_contract_key(lua_State *L, const char *contract_address) const {
+				auto evaluator = get_contract_evaluator(L);
+				try {
+					if (evaluator) {
+						auto contract = evaluator->get_contract_by_address(contract_address);
+						if (contract) {
+							return contract->native_contract_key;
+						}
+					}
+					return "";
+				}FC_CAPTURE_AND_LOG((contract_address))
+			}
+
+			std::shared_ptr<uvm::contract::native_contract_interface> SimpleChainUvmChainApi::import_native_contract_by_key(lua_State *L, std::string &native_contract_key,std::string &contract_address) {
+				auto evaluator = get_contract_evaluator(L);
+				try {
+					if (evaluator) {
+						auto native_contract = native_contract_finder::create_native_contract_by_key(evaluator, native_contract_key, contract_address);
+						if (native_contract)
+							return native_contract;
+					}
+					return nullptr;
+				}FC_CAPTURE_AND_LOG((contract_address))
+			}
+
+
 
 }

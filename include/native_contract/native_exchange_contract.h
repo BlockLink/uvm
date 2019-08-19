@@ -80,6 +80,10 @@ namespace uvm {
 			void getAddrByPubk_api(const std::string& api_name, const std::string& api_arg);
 			void balanceOfPubk_api(const std::string& api_name, const std::string& api_arg);
 
+			void depositToken_api(const std::string& api_name, const std::string& api_arg);
+
+			void test_api(const std::string& api_name, const std::string& api_arg);
+
 		};
 
 	}

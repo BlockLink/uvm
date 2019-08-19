@@ -37,7 +37,7 @@ namespace uvm {
 			set_current_contract_storage("precision", CborObject::from_int(0));
 			// fast map storages: users, allowed
 			set_current_contract_storage("state", CborObject::from_string(not_inited_state_of_token_contract));
-			auto caller_addr = caller_address_string();
+			auto caller_addr = get_call_from_address();
 			if (caller_addr.empty())
 				throw_error("caller_address can't be empty");
 			set_current_contract_storage("admin", CborObject::from_string(caller_addr));
@@ -46,7 +46,7 @@ namespace uvm {
 
 		std::string token_native_contract::check_admin()
 		{
-			const auto& caller_addr = caller_address_string();
+			const auto& caller_addr = get_call_from_address();
 			const auto& admin = get_string_current_contract_storage("admin");
 			if (admin == caller_addr)
 				return admin;
@@ -102,7 +102,7 @@ namespace uvm {
 
 		std::string token_native_contract::get_from_address()
 		{
-			return caller_address_string(); // FIXME: when get from_address, caller maybe other contract
+			return get_call_from_address(); // FIXME: when get from_address, caller maybe other contract
 		}
 
 		static bool is_numeric(std::string number)
@@ -156,7 +156,7 @@ namespace uvm {
 			set_current_contract_storage("name", CborObject::from_string(name));
 			set_current_contract_storage("symbol", CborObject::from_string(symbol));
 
-			auto caller_addr = caller_address_string();
+			auto caller_addr = get_call_from_address();
 			current_fast_map_set("users", caller_addr, CborObject::from_int(supply));
 			emit_event("Inited", supply_str);
 			return;
@@ -388,9 +388,19 @@ namespace uvm {
 			};
 			if (apis.find(api_name) != apis.end())
 			{
+				auto contract_info_stack = get_contract_call_stack();
+				contract_info_stack_entry stack_entry;
+				stack_entry.contract_id = contract_address();
+				// 如果是被delegate_call调用的，storage_contract_id填上一层的storage contract id
+				stack_entry.storage_contract_id = stack_entry.contract_id;
+				stack_entry.call_type = "call";
+				stack_entry.api_name = api_name;
+				contract_info_stack->push(stack_entry);
+
+				set_api_result("");
 				apis[api_name](api_name, api_arg);
-				set_invoke_result_caller();
 				add_gas(gas_count_for_api_invoke(api_name));
+				contract_info_stack->pop();
 				return;
 			}
 			throw_error("token api not found");

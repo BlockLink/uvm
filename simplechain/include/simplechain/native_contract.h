@@ -14,6 +14,7 @@
 #include <simplechain/evaluate_state.h>
 #include <native_contract/native_contract_api.h>
 
+
 namespace simplechain {
 
 	class native_contract_store : public uvm::contract::native_contract_interface
@@ -110,7 +111,6 @@ namespace simplechain {
 		virtual void throw_error(const std::string& err) const;
 
 		virtual void add_gas(uint64_t gas);
-		virtual void set_invoke_result_caller();
 
 		virtual void* get_result() { return &_contract_invoke_result; }
 		virtual void set_api_result(const std::string& api_result) {
@@ -118,7 +118,33 @@ namespace simplechain {
 		}
 
 		virtual bool is_valid_address(const std::string& addr);
+		virtual bool is_valid_contract_address(const std::string& addr);
+		virtual cbor::CborObjectP call_contract_api(const std::string& contractAddr, const std::string& apiName, cbor::CborArrayValue& args);
+		//virtual cbor::CborObjectP call_contract_api(const std::string& contractAddr, const std::string& apiName, const fc::variants args);
 		virtual uint32_t get_chain_now() const;
+
+		virtual std::string get_api_result() const;
+
+		virtual std::stack<contract_info_stack_entry>* get_contract_call_stack();
+
+		virtual std::string get_call_from_address() const
+		{
+			/*if (_contract_invoke_result.invoker.empty()) {
+				return caller_address();
+			}
+			return _contract_invoke_result.invoker;*/
+
+			if (_evaluate->contract_call_stack.size() >= 2) {
+				auto top = _evaluate->contract_call_stack.top();
+				_evaluate->contract_call_stack.pop();
+				auto pre_contract_address = _evaluate->contract_call_stack.top().storage_contract_id;
+				_evaluate->contract_call_stack.push(top);
+				return pre_contract_address;
+			}
+			else {
+				return caller_address();
+			}
+		}
 	};
 
 	class native_contract_finder

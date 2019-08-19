@@ -686,7 +686,7 @@ namespace uvm {
 			if (symbol.empty()) {
 				throw_error("symbol is empty");
 			}
-			const auto& from_address = caller_address_string();
+			const auto& from_address = get_call_from_address();
 
 			auto balance = current_fast_map_get(from_address, symbol);
 			int64_t bal = 0;
@@ -825,9 +825,19 @@ namespace uvm {
 			};
 			if (apis.find(api_name) != apis.end())
 			{
+				auto contract_info_stack = get_contract_call_stack();
+				contract_info_stack_entry stack_entry;
+				stack_entry.contract_id = contract_address();
+				// 如果是被delegate_call调用的，storage_contract_id填上一层的storage contract id
+				stack_entry.storage_contract_id = stack_entry.contract_id;
+				stack_entry.call_type = "call";
+				stack_entry.api_name = api_name;
+				contract_info_stack->push(stack_entry);
+				set_api_result("");
 				apis[api_name](api_name, api_arg);
-				set_invoke_result_caller();
 				add_gas(gas_count_for_api_invoke(api_name));
+
+				contract_info_stack->pop();
 				return;
 			}
 			throw_error("api not found");

@@ -147,4 +147,10 @@ namespace simplechain
 		return code_stream;
 	}
 
+	cbor::CborObjectP UvmContractEngine::call_uvm_contract_api(const std::string& contractAddr, const std::string& apiName, cbor::CborArrayValue& args) {
+		std::string result_json_str;
+		uvm::lua::lib::call_contract_api_without_commit(_scope->L(), contractAddr, apiName, args, &result_json_str);
+		return cbor::CborObject::from_string(result_json_str);
+	}
+
 }

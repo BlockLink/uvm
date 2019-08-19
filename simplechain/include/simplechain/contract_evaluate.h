@@ -4,6 +4,9 @@
 #include <simplechain/evaluate_state.h>
 #include <simplechain/contract_engine.h>
 
+#include <uvm/lstate.h>
+#include <simplechain/contract_engine_builder.h>
+
 namespace simplechain {
 	std::shared_ptr<ContractEngine> get_last_contract_engine_for_debugger();
 

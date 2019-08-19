@@ -149,12 +149,7 @@ typedef enum lua_VMState {
 	LVM_STATE_SUSPEND = 1 << 3
 } lua_VMState;
 
-struct contract_info_stack_entry {
-	std::string contract_id;
-	std::string storage_contract_id; // storage和余额使用的合约地址(可能代码和数据用的不是同一个合约的，因为delegate_call的存在)
-	std::string api_name;
-	std::string call_type;
-};
+
 
 /*
 ** 'per thread' state
@@ -222,8 +217,7 @@ struct lua_State : vmgc::GcObject {
     
 	int cbor_diff_state; // 0: not_set, 1: true, 2: false
 
-	inline lua_State() :tt_(LUA_TTHREAD) {}
-	virtual ~lua_State() {}
+	std::map<std::string, std::shared_ptr<uvm::contract::native_contract_interface>> *invoked_native_contracts;
 };
 
 void *lua_malloc(lua_State *L, size_t size);

@@ -3,6 +3,8 @@
 #include <simplechain/blockchain.h>
 #include <iostream>
 
+#include <simplechain/native_contract.h>
+
 namespace simplechain {
 	evaluate_state::evaluate_state(blockchain* chain_, transaction* tx_)
 		: chain(chain_), current_tx(tx_) {
@@ -111,6 +113,103 @@ namespace simplechain {
 
 	void evaluate_state::set_contract_storage_changes(const std::string& contract_address, const contract_storage_changes_type& changes) {
 		invoke_contract_result.storage_changes[contract_address] = changes;
+	}
+
+	cbor::CborObjectP evaluate_state::call_contract_api(const std::string& contractAddr, const std::string& apiName, cbor::CborArrayValue& args) {
+		auto contract = get_contract_by_address(contractAddr);
+		if (!contract) {
+			throw uvm::core::UvmException(std::string("Can't find contract by address ") + contractAddr);
+		}
+		if (contract->native_contract_key.empty()) {
+			return engine->call_uvm_contract_api(contractAddr, apiName, args);
+		}
+		else { //native contract
+			auto native_contract = native_contract_finder::create_native_contract_by_key(this, contract->native_contract_key, contractAddr);
+			FC_ASSERT(native_contract, "native contract with the key not found");
+
+			// TODO: ²ÎÊýÓÃarr
+			std::string apiArg = "";
+			if (args.size() > 0) {
+				if(args.at(0)->is_string())
+					apiArg = args.at(0)->as_string();
+			}
+			native_contract->invoke(apiName, apiArg);
+			return cbor::CborObject::from_string(native_contract->get_api_result());
+		}
+	}
+
+	static void merge_other_changes_to_evaluator(evaluate_state* evaluator, contract_invoke_result *_contract_invoke_resultp) {
+		//merge result
+
+		auto target_invoke_contract_resultp = &(evaluator->invoke_contract_result);
+		//>>>>>>>>>>>>>>>...................................
+		auto &target_account_balances_changes = target_invoke_contract_resultp->account_balances_changes;
+		for (auto& p : _contract_invoke_resultp->account_balances_changes) {
+			if (target_account_balances_changes.find(p.first) == target_account_balances_changes.end()) {
+				target_account_balances_changes[p.first] = p.second;
+			}
+			else {
+				target_account_balances_changes[p.first] += p.second;
+			}
+		}
+
+		auto &target_events = target_invoke_contract_resultp->events;
+		for (auto& event : _contract_invoke_resultp->events) {
+			target_events.push_back(event);
+		}
+
+		auto &target_transfer_fees = target_invoke_contract_resultp->transfer_fees;
+		for (auto& p : _contract_invoke_resultp->transfer_fees) {
+			if (target_transfer_fees.find(p.first) == target_transfer_fees.end()) {
+				target_transfer_fees[p.first] = p.second;
+			}
+			else {
+				target_transfer_fees[p.first] += p.second;
+			}
+		}
+		//target_invoke_contract_resultp->gas_used += _contract_invoke_resultp->gas_used;
+	}
+
+	void evaluate_state::commit_invoked_native_storage_changes() {
+		int native_total_gas = 0;
+		int native_total_exe_gas = 0;
+		//calculate native contract storage and events gas
+		contract_invoke_result native_contract_invoke_result;
+		if ((gas_limit>0) && (invoked_native_contracts.size()> 0)) {
+			auto iter =invoked_native_contracts.begin();
+			while (iter != invoked_native_contracts.end()) {
+				auto s_resultp = static_cast<contract_invoke_result*>(iter->second->get_result());
+
+				auto &native_contract_id = iter->first;
+				auto schanges_size = s_resultp->storage_changes.size();
+				if (schanges_size > 0) {
+					if (schanges_size == 1 && s_resultp->storage_changes.find(native_contract_id) != s_resultp->storage_changes.end()) {
+						set_contract_storage_changes(native_contract_id, s_resultp->storage_changes[native_contract_id]);
+						native_contract_invoke_result.storage_changes[native_contract_id] = s_resultp->storage_changes[native_contract_id];
+					}
+					else {
+						throw uvm::core::UvmException("native contract can't set other contract storage");
+					}
+				}
+				merge_other_changes_to_evaluator(this, s_resultp);
+				for (auto& event : s_resultp->events) {
+					native_contract_invoke_result.events.push_back(event);
+				}
+				native_total_exe_gas += s_resultp->gas_used;
+				iter++;
+			}
+
+			int64_t native_storage_gas = native_contract_invoke_result.count_storage_gas();
+			int64_t native_event_gas = native_contract_invoke_result.count_event_gas();
+			native_total_gas += native_storage_gas;
+			native_total_gas += native_event_gas;
+			native_total_gas += native_total_exe_gas;
+			//total_gas += invoke_contract_result.gas_used; //add exec native contract api gas//?????
+
+			invoke_contract_result.gas_used += native_total_gas;
+			gas_used += native_total_gas; //add 
+		}
+		invoked_native_contracts.clear(); //clear to prevent calculate twice
 	}
 
 }

@@ -2318,3 +2318,285 @@ func TestDelegateCall(t *testing.T) {
 
 }
 
+
+func TestInterCallUvmAndNativeContract(t *testing.T) {
+	cmd := execCommandBackground(simpleChainPath)
+	assert.True(t, cmd != nil)
+	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
+	defer func() {
+		kill(cmd)
+	}()
+	time.Sleep(1 * time.Second)
+	var res *simplejson.Json
+	var err error
+	caller1 := "SPLtest1"
+	user := "user0"
+	
+	simpleChainRPC("mint", caller1, 0, 500000)
+	simpleChainRPC("mint", user, 0, 500000)
+	
+	//caller contract
+	res, err = simpleChainRPC("create_contract_from_file", user, testContractPath("intercall_uvm_native.lua.gpc"), 5000000, 10)
+	assert.True(t, err == nil)
+	caller_contract := res.Get("contract_address").MustString()
+	fmt.Printf("caller_contract address: %s\n", caller_contract)
+	simpleChainRPC("generate_block")
+	
+	//native exchange contract
+	res, err = simpleChainRPC("create_native_contract", caller1, "exchange", 50000, 10)
+	assert.True(t, err == nil)
+	contract0xExchangeAddr := res.Get("contract_address").MustString()
+	fmt.Printf("contract0xExchangeAddr: %s\n", contract0xExchangeAddr)
+	simpleChainRPC("generate_block")
+
+	simpleChainRPC("invoke_contract", caller1, contract0xExchangeAddr, "init_config", []string{"SL_feeReceiver"}, 0, 0, 50000, 10)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("get_storage", contract0xExchangeAddr, "state")
+	assert.True(t, res.MustString() == "COMMON")
+	fmt.Printf("state after init_config of contract0xExchangeAddr is: %s\n", res.MustString())
+	
+	// native token contract
+	res, err = simpleChainRPC("create_native_contract", caller1, "token", 500000, 10)
+	assert.True(t, err == nil)
+	native_token_contract := res.Get("contract_address").MustString()
+	fmt.Printf("native_token_contract: %s\n", native_token_contract)
+	simpleChainRPC("generate_block")
+
+	simpleChainRPC("invoke_contract", caller1, native_token_contract, "init_token", []string{"test,TEST,1000000,100"}, 0, 0, 500000, 10)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("get_storage", native_token_contract, "state")
+	assert.True(t, res.MustString() == "COMMON")
+	fmt.Printf("state after init_config of native_token_contract is: %s\n", res.MustString())
+	
+	res, err = simpleChainRPC("invoke_contract", caller1, native_token_contract, "transfer", []string{caller_contract+",10000"}, 0, 0, 500000, 10)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+	
+	//token contract
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("newtoken.gpc"), 50000, 10)
+	assert.True(t, err == nil)
+	tokenContractAddr := res.Get("contract_address").MustString()
+	fmt.Printf("token contract address: %s\n", tokenContractAddr)
+	simpleChainRPC("generate_block")
+
+	simpleChainRPC("invoke_contract", caller1, tokenContractAddr, "init_token", []string{"test,TEST,1000000,100"}, 0, 0, 500000, 10)
+	simpleChainRPC("generate_block")
+	res, err = simpleChainRPC("get_storage", tokenContractAddr, "state")
+	assert.True(t, res.MustString() == "COMMON")
+	
+	res, err = simpleChainRPC("invoke_contract", caller1, tokenContractAddr, "transfer", []string{caller_contract+",10000"}, 0, 0, 500000, 10)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+	
+	
+	// approve  tokenContract,spentAddress,amount
+	res, err = simpleChainRPC("invoke_contract", user, caller_contract, "approveToken", []string{tokenContractAddr +","+ contract0xExchangeAddr+",90000"}, 0, 0, 500000, 1)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+	
+	res, err = simpleChainRPC("invoke_contract", user, caller_contract, "approveToken", []string{native_token_contract +","+ contract0xExchangeAddr+",90000"}, 0, 0, 500000, 1)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+
+	//deposit token.......
+	res, err =simpleChainRPC("invoke_contract", user, caller_contract, "depositToken2ExchangeContract", []string{contract0xExchangeAddr+","+tokenContractAddr+",400"}, 0, 0, 500000, 10)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+	
+	res, err = simpleChainRPC("get_contract_storages",contract0xExchangeAddr)
+	print(res)
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract0xExchangeAddr, "balanceOf", []string{caller_contract + ","+tokenContractAddr}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "400")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, tokenContractAddr, "balanceOf", []string{contract0xExchangeAddr}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "400")
+	
+	//deposit native token.....
+	res, err =simpleChainRPC("invoke_contract", user, caller_contract, "depositToken2ExchangeContract", []string{contract0xExchangeAddr+","+native_token_contract+",400"}, 0, 0, 500000, 10)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract0xExchangeAddr, "balanceOf", []string{caller_contract + ","+native_token_contract}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "400")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, native_token_contract, "balanceOf", []string{contract0xExchangeAddr}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "400")
+	
+	
+	//withdraw token
+	res, err =simpleChainRPC("invoke_contract", user, caller_contract, "withdrawTokenFromExchangeContract", []string{contract0xExchangeAddr+","+tokenContractAddr+",250"}, 0, 0, 500000, 10)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract0xExchangeAddr, "balanceOf", []string{caller_contract + ","+tokenContractAddr}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "150")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, tokenContractAddr, "balanceOf", []string{contract0xExchangeAddr}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "150")
+	
+	//withdraw native token
+	res, err =simpleChainRPC("invoke_contract", user, caller_contract, "withdrawTokenFromExchangeContract", []string{contract0xExchangeAddr+","+native_token_contract+",250"}, 0, 0, 500000, 10)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract0xExchangeAddr, "balanceOf", []string{caller_contract + ","+native_token_contract}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "150")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, native_token_contract, "balanceOf", []string{contract0xExchangeAddr}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "150")
+	
+	//transfer token
+	res, err =simpleChainRPC("invoke_contract", user, caller_contract, "transferToken", []string{tokenContractAddr+","+user+",150"}, 0, 0, 500000, 10)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+		
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, tokenContractAddr, "balanceOf", []string{user}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "150")
+	
+	//transfer native token
+	res, err =simpleChainRPC("invoke_contract", user, caller_contract, "transferToken", []string{native_token_contract+","+user+",150"}, 0, 0, 500000, 10)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, native_token_contract, "balanceOf", []string{user}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "150")
+	
+	
+	///////////////////////
+	//deposit token twice.......
+	res, err =simpleChainRPC("invoke_contract", user, caller_contract, "depositToken2ExchangeContractTwice", []string{contract0xExchangeAddr+","+tokenContractAddr+",400"}, 0, 0, 500000, 10)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract0xExchangeAddr, "balanceOf", []string{caller_contract + ","+tokenContractAddr}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "950")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, tokenContractAddr, "balanceOf", []string{contract0xExchangeAddr}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "950")
+	
+	//deposit native token twice.....
+	res, err =simpleChainRPC("invoke_contract", user, caller_contract, "depositToken2ExchangeContractTwice", []string{contract0xExchangeAddr+","+native_token_contract+",400"}, 0, 0, 500000, 10)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract0xExchangeAddr, "balanceOf", []string{caller_contract + ","+native_token_contract}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "950")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, native_token_contract, "balanceOf", []string{contract0xExchangeAddr}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "950")
+	
+	///////////////////////
+	//deposit token and transfer .......
+	res, err =simpleChainRPC("invoke_contract", user, caller_contract, "depositToken2ExchangeAndTransfer", []string{contract0xExchangeAddr+","+tokenContractAddr+",400,"+tokenContractAddr+",55"}, 0, 0, 500000, 10)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract0xExchangeAddr, "balanceOf", []string{caller_contract + ","+tokenContractAddr}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "1350")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, tokenContractAddr, "balanceOf", []string{contract0xExchangeAddr}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "1350")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, tokenContractAddr, "balanceOf", []string{user}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "205")
+	
+	//deposit native token and transfer.....
+	res, err =simpleChainRPC("invoke_contract", user, caller_contract, "depositToken2ExchangeAndTransfer", []string{contract0xExchangeAddr+","+native_token_contract+",400,"+native_token_contract+",55"}, 0, 0, 500000, 10)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract0xExchangeAddr, "balanceOf", []string{caller_contract + ","+native_token_contract}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "1350")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, native_token_contract, "balanceOf", []string{contract0xExchangeAddr}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "1350")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, native_token_contract, "balanceOf", []string{user}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "205")
+	
+	///2222////////////////////
+	//deposit token and transfer dif.......
+	res, err =simpleChainRPC("invoke_contract", user, caller_contract, "depositToken2ExchangeAndTransfer", []string{contract0xExchangeAddr+","+tokenContractAddr+",400,"+native_token_contract+",55"}, 0, 0, 500000, 10)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract0xExchangeAddr, "balanceOf", []string{caller_contract + ","+tokenContractAddr}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "1750")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, tokenContractAddr, "balanceOf", []string{contract0xExchangeAddr}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "1750")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, native_token_contract, "balanceOf", []string{user}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "260")
+	
+	//deposit native token and transfer dif.....
+	res, err =simpleChainRPC("invoke_contract", user, caller_contract, "depositToken2ExchangeAndTransfer", []string{contract0xExchangeAddr+","+native_token_contract+",400,"+tokenContractAddr+",55"}, 0, 0, 500000, 10)
+	assert.True(t, err == nil)
+	simpleChainRPC("generate_block")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, contract0xExchangeAddr, "balanceOf", []string{caller_contract + ","+native_token_contract}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "1750")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, native_token_contract, "balanceOf", []string{contract0xExchangeAddr}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "1750")
+	
+	res, err = simpleChainRPC("invoke_contract_offline", caller1, tokenContractAddr, "balanceOf", []string{user}, 0, 0)
+	assert.True(t, err == nil)
+	log.Println("balance " + res.Get("api_result").MustString())
+	assert.True(t, res.Get("api_result").MustString() == "260")
+	
+	
+	
+}
+

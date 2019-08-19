@@ -8,6 +8,9 @@
 #include <simplechain/contract_object.h>
 #include <simplechain/asset.h>
 
+#include <uvm/lstate.h>
+#include <simplechain/contract_engine_builder.h>
+
 namespace simplechain {
 	class blockchain;
 	struct transaction;
@@ -20,6 +23,10 @@ namespace simplechain {
 		contract_invoke_result invoke_contract_result;
 		blockchain* chain = nullptr;
 		transaction* current_tx = nullptr;
+
+		std::stack<contract_info_stack_entry> contract_call_stack;
+		std::shared_ptr<ActiveContractEngine> engine = nullptr;
+		std::map<std::string, std::shared_ptr<uvm::contract::native_contract_interface>> invoked_native_contracts;
 
 		evaluate_state(blockchain* chain_, transaction* tx_);
 		virtual ~evaluate_state() {}
@@ -40,6 +47,8 @@ namespace simplechain {
 		void update_account_asset_balance(const std::string& account_address, asset_id_t asset_id, int64_t balance_change);
 		share_type get_account_asset_balance(const std::string& account_address, asset_id_t asset_id) const;
 		void set_contract_storage_changes(const std::string& contract_address, const contract_storage_changes_type& changes);
+		cbor::CborObjectP call_contract_api(const std::string& contractAddr, const std::string& apiName, cbor::CborArrayValue& args);
 
+		void evaluate_state::commit_invoked_native_storage_changes();
 	};
 }

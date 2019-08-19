@@ -1,12 +1,21 @@
 #pragma once
 #include <string>
+#include <stack>
 #include <set>
 #include <cstdint>
 #include <memory>
 #include <cborcpp/cbor.h>
 
+struct contract_info_stack_entry {
+	std::string contract_id;
+	std::string storage_contract_id; // storage和余额使用的合约地址(可能代码和数据用的不是同一个合约的，因为delegate_call的存在)
+	std::string api_name;
+	std::string call_type;
+};
+
 namespace uvm {
 	namespace contract {
+
 		class native_contract_interface
 		{
 		public:
@@ -43,13 +52,17 @@ namespace uvm {
 			virtual void throw_error(const std::string& err) const = 0;
 
 			virtual void add_gas(uint64_t gas) = 0;
-			virtual void set_invoke_result_caller() = 0;
 			// @return contract_invoke_result*
 			virtual void* get_result() = 0;
 			virtual void set_api_result(const std::string& api_result) = 0;
 			virtual bool is_valid_address(const std::string& addr) = 0;
-
+			virtual bool is_valid_contract_address(const std::string& addr) = 0;
 			virtual uint32_t get_chain_now() const = 0;
+			virtual std::string contract_address() const = 0;
+			virtual std::string get_api_result() const = 0;
+			virtual std::string get_call_from_address() const = 0;
+			virtual cbor::CborObjectP call_contract_api(const std::string& contractAddr, const std::string& apiName, cbor::CborArrayValue& args)  = 0;
+			virtual std::stack<contract_info_stack_entry>* get_contract_call_stack() = 0;
 		};
 
 		class abstract_native_contract_impl : public native_contract_interface {
@@ -98,9 +111,7 @@ namespace uvm {
 			virtual void add_gas(uint64_t gas) {
 				get_proxy()->add_gas(gas);
 			}
-			virtual void set_invoke_result_caller() {
-				get_proxy()->set_invoke_result_caller();
-			}
+
 			virtual void* get_result() {
 				return get_proxy()->get_result();
 			}
@@ -110,10 +121,34 @@ namespace uvm {
 			virtual bool is_valid_address(const std::string& addr) {
 				return get_proxy()->is_valid_address(addr);
 			}
+			virtual bool is_valid_contract_address(const std::string& addr) {
+				return get_proxy()->is_valid_contract_address(addr);
+			}
+
+			virtual cbor::CborObjectP call_contract_api(const std::string& contractAddr, const std::string& apiName,cbor::CborArrayValue& args) {
+				return get_proxy()->call_contract_api(contractAddr, apiName, args);
+			}
 
 			virtual uint32_t get_chain_now() const {
 				return get_proxy()->get_chain_now();
 			}
+			
+			virtual std::string get_call_from_address() const {
+				return get_proxy()->get_call_from_address();
+			}
+
+			virtual std::string contract_address() const {
+				return get_proxy()->contract_address();
+			}
+
+			virtual std::string get_api_result() const {
+				return get_proxy()->get_api_result();
+			}
+
+			virtual std::stack<contract_info_stack_entry>* get_contract_call_stack() {
+				return get_proxy()->get_contract_call_stack();
+			}
+
 		};
 	}
 }

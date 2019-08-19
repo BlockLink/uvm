@@ -714,6 +714,14 @@ namespace uvm {
 				return prefix + fc::to_base58(bin_addr.data, sizeof(bin_addr));
 			}
 
+			//return "" "exchange" "token"
+			std::string DemoUvmChainApi::get_native_contract_key(lua_State *L, const char *contract_address) const {
+				return "";
+			}
+
+			std::shared_ptr<uvm::contract::native_contract_interface> DemoUvmChainApi::import_native_contract_by_key(lua_State *L, std::string &native_contract_key, std::string &contract_address) {
+					return nullptr;
+			}
 		}
 	}
 }

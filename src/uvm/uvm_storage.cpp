@@ -568,6 +568,11 @@ bool luaL_commit_storage_changes(lua_State *L)
 		}
 		return false;
 	}
+
+	if (L->using_contract_id_stack->size() > 0) {
+		return true;
+	}
+
 	auto use_cbor_diff = global_uvm_chain_api->use_cbor_diff(L);
 	// merge changes
 	std::unordered_map<std::string, std::shared_ptr<std::unordered_map<std::string, UvmStorageChangeItem>>> changes; // contract_id => (storage_unique_key => change_item)

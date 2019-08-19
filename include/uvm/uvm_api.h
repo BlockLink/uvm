@@ -27,6 +27,7 @@
 #include <cbor_diff/cbor_diff.h>
 #include <fc/crypto/elliptic.hpp>
 #include <fc/crypto/base58.hpp>
+#include <native_contract/native_contract_api.h> 
 
 #define LOG_INFO(...)  fprintf(stderr, "[INFO] " ##__VA_ARGS__)
 
@@ -641,6 +642,13 @@ namespace uvm {
 			}
 
 			virtual std::string pubkey_to_address_string(const fc::ecc::public_key& pub) const = 0;
+			//native contract
+			////////////////////////////////////
+			//return "" "exchange" "token"
+			virtual std::string get_native_contract_key(lua_State *L, const char *contract_address) const=0;
+
+			//
+			virtual std::shared_ptr<uvm::contract::native_contract_interface> import_native_contract_by_key(lua_State *L, std::string &native_contract_key, std::string &contract_address)=0;
 
 			virtual bool use_gas_log(lua_State* L) const {
 				return false;

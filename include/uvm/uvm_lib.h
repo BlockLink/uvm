@@ -448,6 +448,8 @@ namespace uvm
 
             const std::string get_typed_lua_lib_code();
 
+			void call_contract_api_without_commit(lua_State *L, const std::string& contractAddr, const std::string& apiName, cbor::CborArrayValue& args, std::string* result_str);
+
 #define lerror_set(L, error, error_format, ...) do {			 \
      if (nullptr != error && strlen(error) < 1)					\
      {						\

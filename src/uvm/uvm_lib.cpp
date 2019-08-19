@@ -2857,6 +2857,53 @@ end
 				return contract_id_str;
 			}
 
+
+			static int wrap_lua_execute_contract_api_by_address(lua_State* L) {
+				auto contract_address = std::string(lua_tostring(L, lua_upvalueindex(1)));
+				auto api_name = std::string(lua_tostring(L, lua_upvalueindex(2)));
+				lua_pushvalue(L, lua_upvalueindex(3));
+				auto cbor_object = luaL_to_cbor(L, -1);
+				lua_pop(L, 1);
+
+				if (!cbor_object) {
+					luaL_error(L, "can't parse this uvm object to cbor object");
+					throw uvm::core::UvmException("can't parse this uvm object to cbor object");
+					return 0;
+				}
+				if (!cbor_object->is_array()) {
+					luaL_error(L, "wrap_lua_execute_contract_api_by_address api_args not array");
+					throw uvm::core::UvmException("wrap_lua_execute_contract_api_by_address api_args not array");
+					return 0;
+				}
+				auto args = cbor_object->as_array();
+				std::string result_string;
+				int r = lua_execute_contract_api_by_address(L, contract_address.c_str(), api_name.c_str(), args, &result_string);
+				if (r != LUA_OK) {
+					throw uvm::core::UvmException("lua_execute_contract_api_by_address fail");
+					return 0;
+				}
+
+				lua_settop(L, 0);
+				lua_pushstring(L, result_string.c_str());
+				return 1;
+			}
+
+			void call_contract_api_without_commit(lua_State *L, const std::string& contractAddr, const std::string& apiName, cbor::CborArrayValue& args, std::string* result_str) {
+				lua_pushstring(L, contractAddr.c_str());
+				lua_pushstring(L, apiName.c_str());
+
+				luaL_push_cbor_as_json(L, cbor::CborObject::create_array(args));
+				//lua_pushlightuserdata(L, &args);
+
+				lua_pushcclosure(L, wrap_lua_execute_contract_api_by_address, 3);
+				lua_call(L, 0, 1);
+				//luaL_checkstring(L, -1);
+				auto r = lua_tostring(L, -1);
+				auto rs = std::string(r);
+				*result_str = r;
+				lua_pop(L, 1);
+			}
+
         }
     }
 }

@@ -43,5 +43,7 @@ namespace simplechain {
 
 		virtual std::shared_ptr<VMModuleByteStream> get_bytestream_from_code(const uvm::blockchain::Code& code);
 
+		virtual cbor::CborObjectP UvmContractEngine::call_uvm_contract_api(const std::string& contractAddr, const std::string& apiName, cbor::CborArrayValue& args);
+
 	};
 }

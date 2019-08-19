@@ -62,7 +62,7 @@ namespace uvm {
 		}
 
 		std::set<std::string> exchange_native_contract::apis() const {
-			return { "init", "init_config", "fillOrder","cancelOrders","setMinFee","withdraw", "state", "feeReceiver","balanceOf","getOrder", "minFee","balanceOfPubk","getAddrByPubk", "on_deposit_asset" };
+			return { "init", "init_config", "fillOrder","cancelOrders","setMinFee","withdraw", "state", "feeReceiver","balanceOf","getOrder", "minFee","balanceOfPubk","getAddrByPubk", "on_deposit_asset","depositToken" };
 		}
 		std::set<std::string> exchange_native_contract::offline_apis() const {
 			return { "state", "feeReceiver","balanceOf","getOrder", "minFee","balanceOfPubk","getAddrByPubk"};
@@ -82,7 +82,7 @@ namespace uvm {
 
 			// fast map storages: canceledOrders, filledOrders
 			set_current_contract_storage("state", CborObject::from_string(not_inited_state_of_exchange_contract));
-			const auto& caller_addr = caller_address_string();
+			const auto& caller_addr = get_call_from_address();
 			FC_ASSERT(!caller_addr.empty(), "caller_address can't be empty");
 			set_current_contract_storage("admin", CborObject::from_string(caller_addr));
 			return;
@@ -90,7 +90,7 @@ namespace uvm {
 
 		std::string exchange_native_contract::check_admin()
 		{
-			const auto& caller_addr = caller_address_string();
+			const auto& caller_addr = get_call_from_address();
 			const auto& admin = get_string_current_contract_storage("admin");
 			if (admin == caller_addr)
 				return admin;
@@ -102,11 +102,6 @@ namespace uvm {
 		{
 			const auto& state = get_string_current_contract_storage("state");
 			return state;
-		}
-
-		std::string exchange_native_contract::get_from_address()
-		{
-			return caller_address_string(); // FIXME: when get from_address, caller maybe other contract
 		}
 
 		static bool is_numeric(std::string number)
@@ -604,7 +599,7 @@ namespace uvm {
 			std::vector<exchange::Order> orders;
 
 			fc::from_variant(args, orders);
-			auto callerAddr = caller_address_string();
+			auto callerAddr = get_call_from_address();
 
 			for (int i = 0; i < orders.size(); i++) {
 				std::string addr;
@@ -661,7 +656,10 @@ namespace uvm {
 				throw_error("amount must > 0");
 			}
 
-			const auto& addr = caller_address_string();
+			const auto& addr = get_call_from_address();
+			if (global_uvm_chain_api && global_uvm_chain_api->is_valid_contract_address(nullptr, addr.c_str())) {
+				throw_error("not allowed contract caller");
+			}
 
 			//check balance
 			auto balance = current_fast_map_get(addr, symbol);
@@ -683,7 +681,7 @@ namespace uvm {
 			emit_event("UserBalanceChange", uvm::util::json_ordered_dumps(event_arg));
 		}
 
-		//args:amount,symbol
+		//args:amount,symbol(token_contract_address)
 		void exchange_native_contract::withdraw_api(const std::string& api_name, const std::string& api_arg)
 		{
 			if (get_storage_state() != common_state_of_exchange_contract)
@@ -706,7 +704,7 @@ namespace uvm {
 			if (symbol.empty()) {
 				throw_error("symbol is empty");
 			}
-			const auto& caller = caller_address_string();
+			const auto& caller = get_call_from_address();
 			auto balance = current_fast_map_get(caller, symbol);
 			int64_t bal = 0;
 			if (!balance->is_integer()) {
@@ -720,13 +718,21 @@ namespace uvm {
 			}
 			auto newBalance = bal - amount;
 			if (newBalance == 0) {
-				current_fast_map_set(caller, parsed_args[1], CborObject::create_null());
+				current_fast_map_set(caller, symbol, CborObject::create_null());
 			}
 			else {
-				current_fast_map_set(caller, parsed_args[1], CborObject::from_int(newBalance));
+				current_fast_map_set(caller, symbol, CborObject::from_int(newBalance));
 			}
-
-			current_transfer_to_address(caller, symbol, amount);
+			if (is_valid_contract_address(symbol)) {
+				auto transArg = cbor::CborObject::from_string(caller + "," +  fc::to_string(amount));
+				cbor::CborArrayValue arr;
+				arr.push_back(transArg);
+				call_contract_api(symbol, "transfer", arr);
+			}
+			else {
+				current_transfer_to_address(caller, symbol, amount);
+			}
+			
 			//{"amount":35000,"realAmount":34996,"fee":4,"symbol":"HC","to_address":"test11"}
 			jsondiff::JsonObject event_arg;
 			event_arg["symbol"] = symbol;
@@ -823,6 +829,60 @@ namespace uvm {
 			return;
 		}
 
+
+		//args:amount,tokenContractAddr
+		void exchange_native_contract::depositToken_api(const std::string& api_name, const std::string& api_arg)
+		{
+			if (get_storage_state() != common_state_of_exchange_contract)
+				throw_error("this exchange contract state is not common");
+
+			std::vector<std::string> parsed_args;
+			boost::split(parsed_args, api_arg, [](char c) {return c == ','; });
+			if (parsed_args.size() != 2)
+				throw_error("argument format error, need format: amount,symbol");
+
+			if (!is_integral(parsed_args[0]))
+				throw_error("argument format error, amount must be integral");
+
+			int64_t amount = fc::to_int64(parsed_args[0]);
+
+			if (amount <= 0) {
+				throw_error("amount must > 0");
+			}
+			const auto& tokenContractAddr = parsed_args[1];
+			if (tokenContractAddr.empty()) {
+				throw_error("tokenContractAddr is empty");
+			}
+			if(!is_valid_contract_address(tokenContractAddr)) //contract 
+				throw_error("tokenContractAddr is not valid address");
+
+			const auto& caller = get_call_from_address();//from address 
+			auto transArg = cbor::CborObject::from_string(caller + "," + contract_address() + "," + fc::to_string(amount));
+			cbor::CborArrayValue arr;
+			arr.push_back(transArg);
+			auto r = call_contract_api(tokenContractAddr, "transferFrom", arr);
+			
+			//check balance
+			auto balance = current_fast_map_get(caller, tokenContractAddr);
+			int64_t bal = 0;
+			if (balance->is_integer()) {
+				bal = balance->force_as_int();
+			}
+			current_fast_map_set(caller, tokenContractAddr, CborObject::from_int(bal + amount));
+			
+			jsondiff::JsonObject event_arg;
+			event_arg["from_address"] = caller;
+			event_arg["symbol"] = tokenContractAddr;
+			event_arg["amount"] = amount;
+			emit_event("Deposited", uvm::util::json_ordered_dumps(event_arg));
+
+			//UserBalanceChange
+			event_arg.erase("from_address");
+			event_arg["address"] = caller;
+			emit_event("UserBalanceChange", uvm::util::json_ordered_dumps(event_arg));
+		}
+
+
 		void exchange_native_contract::invoke(const std::string& api_name, const std::string& api_arg) {
 			std::map<std::string, std::function<void(const std::string&, const std::string&)>> apis = {
 			{ "init", std::bind(&exchange_native_contract::init_api, this, std::placeholders::_1, std::placeholders::_2) },
@@ -837,13 +897,24 @@ namespace uvm {
 			{ "on_deposit_asset", std::bind(&exchange_native_contract::on_deposit_asset_api, this, std::placeholders::_1, std::placeholders::_2) },
 			{ "withdraw", std::bind(&exchange_native_contract::withdraw_api, this, std::placeholders::_1, std::placeholders::_2) },
 			{ "getAddrByPubk", std::bind(&exchange_native_contract::getAddrByPubk_api, this, std::placeholders::_1, std::placeholders::_2) },
-			{ "balanceOfPubk", std::bind(&exchange_native_contract::balanceOfPubk_api, this, std::placeholders::_1, std::placeholders::_2) }
+			{ "balanceOfPubk", std::bind(&exchange_native_contract::balanceOfPubk_api, this, std::placeholders::_1, std::placeholders::_2) },
+			{ "depositToken", std::bind(&exchange_native_contract::depositToken_api, this, std::placeholders::_1, std::placeholders::_2) }
 			};
 			if (apis.find(api_name) != apis.end())
 			{
+				auto contract_info_stack = get_contract_call_stack();
+				contract_info_stack_entry stack_entry;
+				stack_entry.contract_id = contract_address();
+				// 如果是被delegate_call调用的，storage_contract_id填上一层的storage contract id
+				stack_entry.storage_contract_id = stack_entry.contract_id;
+				stack_entry.call_type = "call";
+				stack_entry.api_name = api_name;
+				contract_info_stack->push(stack_entry);
+				set_api_result("");
 				apis[api_name](api_name, api_arg);
-				set_invoke_result_caller();
 				add_gas(gas_count_for_api_invoke(api_name));
+
+				contract_info_stack->pop();
 				return;
 			}
 			throw_error("exchange api not found");

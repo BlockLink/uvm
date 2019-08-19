@@ -179,6 +179,12 @@ namespace simplechain {
 
 		virtual void before_contract_invoke(lua_State* L, const std::string& contract_addr, const std::string& txid) override;
 		virtual void dump_contract_state(lua_State* L, const std::string& contract_addr, const std::string& txid, std::ostream& out) override;
+		
+		
+		//return "" "exchange" "token"
+		virtual std::string get_native_contract_key(lua_State *L, const char *contract_address) const override;
+
+		virtual std::shared_ptr<uvm::contract::native_contract_interface> import_native_contract_by_key(lua_State *L, std::string &native_contract_key, std::string &contract_address) override;
 
       };
 

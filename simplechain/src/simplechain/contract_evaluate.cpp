@@ -48,7 +48,8 @@ namespace simplechain {
 		last_contract_engine_for_debugger = nullptr;
 
 		ContractEngineBuilder builder;
-		auto engine = builder.build();
+		//auto engine = builder.build();
+		engine = builder.build();
 		if (engine->scope()->L()->breakpoints) {
 			*engine->scope()->L()->breakpoints = chain->get_breakpoints_in_last_debugger_state();
 		}
@@ -61,6 +62,8 @@ namespace simplechain {
 			engine->set_caller(caller_pubkey, o.caller_address);
 			engine->set_state_pointer_value("register_evaluate_state", this);
 			engine->clear_exceptions();
+			engine->scope()->L()->using_contract_id_stack = &contract_call_stack; //add 
+			engine->scope()->L()->invoked_native_contracts = &invoked_native_contracts; //add
 			auto limit = o.gas_limit;
 			if (limit < 0 || limit == 0)
 				throw uvm::core::UvmException("invalid_contract_gas_limit");
@@ -91,6 +94,7 @@ namespace simplechain {
 				cbor::CborArrayValue args;
 				engine->execute_contract_init_by_address(contract_address, args, &result_json_str);
 				invoke_contract_result.api_result = result_json_str;
+				commit_invoked_native_storage_changes();
 			}
 			catch (fc::exception &e)
 			{
@@ -101,7 +105,7 @@ namespace simplechain {
 				throw uvm::core::UvmException(e.what());
 			}
 
-			gas_used = engine->gas_used();
+			gas_used += engine->gas_used(); // add uvm gas
 			FC_ASSERT(gas_used <= gas_limit && gas_used > 0, "costs of execution can be only between 0 and init_cost");
 
 			auto gas_count = gas_used;
@@ -204,12 +208,14 @@ namespace simplechain {
 		invoke_contract_result.set_failed();
 	}
 
+
 	// contract_invoke_evaluator methods
 	std::shared_ptr<contract_invoke_evaluator::operation_type::result_type> contract_invoke_evaluator::do_evaluate(const operation_type& o) {
 		last_contract_engine_for_debugger = nullptr;
 
 		ContractEngineBuilder builder;
-		auto engine = builder.build();
+		//auto engine = builder.build();
+		engine = builder.build();
 		if (engine->scope()->L()->breakpoints) {
 			*engine->scope()->L()->breakpoints = chain->get_breakpoints_in_last_debugger_state();
 		}
@@ -223,6 +229,8 @@ namespace simplechain {
 			engine->set_caller(caller_pubkey, o.caller_address);
 			engine->set_state_pointer_value("invoke_evaluate_state", this);
 			engine->clear_exceptions();
+			engine->scope()->L()->using_contract_id_stack = &contract_call_stack; //add 
+			engine->scope()->L()->invoked_native_contracts = &invoked_native_contracts; //add
 			auto limit = o.gas_limit;
 			if (limit <= 0)
 				throw uvm::core::UvmException("invalid_contract_gas_limit");
@@ -269,39 +277,53 @@ namespace simplechain {
 						update_account_asset_balance(o.caller_address, o.deposit_asset_id, - int64_t(o.deposit_amount));
 						update_account_asset_balance(o.contract_address, o.deposit_asset_id, o.deposit_amount);
 					}
+					this->caller_address = o.caller_address;
 					engine->set_gas_limit(limit);
 					engine->execute_contract_api_by_address(o.contract_address, o.contract_api, arr, &result_json_str);
+					commit_invoked_native_storage_changes(); //add native gas
 					invoke_contract_result.api_result = result_json_str;
-					gas_used = engine->gas_used();
+					gas_used += engine->gas_used(); // add uvm gas
 				}
 				else {
 					// native contract
 					this->caller_address = o.caller_address;
+					engine->set_gas_limit(limit);
 					auto native_contract = native_contract_finder::create_native_contract_by_key(this, contract->native_contract_key, o.contract_address);
 					FC_ASSERT(native_contract, "native contract with the key not found");
-					// TODO: 参数用arr
-					native_contract->invoke(o.contract_api, raw_first_contract_arg);
+					
 					if (o.deposit_amount > 0) {
 						auto deposit_asset = get_chain()->get_asset(o.deposit_asset_id);
 						FC_ASSERT(deposit_asset);
 						native_contract->current_set_on_deposit_asset(deposit_asset->symbol, o.deposit_amount);
 					}
-					invoke_contract_result = *static_cast<contract_invoke_result*>(native_contract->get_result());
+
+					// TODO: 参数用arr
+					native_contract->invoke(o.contract_api, raw_first_contract_arg);
+
+					auto commit_result = luaL_commit_storage_changes(engine->scope()->L());
+					FC_ASSERT(commit_result, "luaL_commit_storage_changes fail");
+
+					commit_invoked_native_storage_changes();
+					invoke_contract_result.api_result = native_contract->get_api_result();
+					gas_used += engine->gas_used(); // add uvm gas
+
+					//invoke_contract_result = *static_cast<contract_invoke_result*>(native_contract->get_result());
 					
 					// count and add storage gas to gas_used
-					auto storage_gas = invoke_contract_result.count_storage_gas();
-					if (storage_gas < 0) {
-						throw uvm::core::UvmException("invalid storage gas");
-					}
-					invoke_contract_result.gas_used += storage_gas;
-					auto event_gas = invoke_contract_result.count_event_gas();
-					if (event_gas < 0) {
-						throw uvm::core::UvmException("invalid event gas");
-					}
-					invoke_contract_result.gas_used += event_gas;
+					//auto storage_gas = invoke_contract_result.count_storage_gas();
+					//if (storage_gas < 0) {
+					//	throw uvm::core::UvmException("invalid storage gas");
+					//}
+					//invoke_contract_result.gas_used += storage_gas;
+					//auto event_gas = invoke_contract_result.count_event_gas();
+					//if (event_gas < 0) {
+					//	throw uvm::core::UvmException("invalid event gas");
+					//}
+					//invoke_contract_result.gas_used += event_gas;
 
-					gas_used = invoke_contract_result.gas_used;
+					//gas_used = invoke_contract_result.gas_used;
 				}
+				FC_ASSERT(contract_call_stack.empty(), "contract call stack is not empty");
 				invoke_contract_result.validate();
 			}
 			catch (fc::exception &e)
@@ -316,6 +338,7 @@ namespace simplechain {
 			{
 				if (o.deposit_amount > 0) {
 					update_account_asset_balance(o.contract_address, o.deposit_asset_id, (0 - (o.deposit_amount)));
+					update_account_asset_balance(o.caller_address, o.deposit_asset_id, o.deposit_amount);
 				}
 				
 				throw uvm::core::UvmException(e.what());
