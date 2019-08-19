@@ -153,8 +153,6 @@ std::shared_ptr<UvmModuleByteStream> lua_common_open_contract(lua_State *L, cons
 UvmTableMapP luaL_create_lua_table_map_in_memory_pool(lua_State *L);
 
 
-LUA_API void luaL_call_contract_api_without_commit(lua_State *L, const std::string& contractAddr, const std::string& apiName, cbor::CborArrayValue& args,std::string *result_str);
-
 namespace fc {
 	void to_variant(std::map<std::string, TValue> m, variant& vo);
 }
