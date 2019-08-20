@@ -21,7 +21,7 @@
 #include <uvm/uvm_lutil.h>
 
 typedef const char* Location;
-#define StackLimit 100
+#define UvmStackLimit 100
 
 enum TokenType {
 	tokenEndOfStream = 0,
