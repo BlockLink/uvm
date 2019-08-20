@@ -575,7 +575,7 @@ bool Json_Reader::readValue() {
 	UvmStorageValue number;
 	auto value = currentValue();
 	//  To preserve the old behaviour we cast size_t to int.
-	if (static_cast<int>(nodes_.size()) > StackLimit)
+	if (static_cast<int>(nodes_.size()) > UvmStackLimit)
 		return addError("Exceeded stackLimit in readValue().", token, nullptr);
 
 	if (!readToken(token)) {
