@@ -205,6 +205,10 @@ namespace simplechain {
 		return &(_evaluate->contract_call_stack);
 	}
 
+	bool native_contract_store::is_contract_has_api(const std::string &contract_address,const std::string &api_name) {
+		return _evaluate->is_contract_has_api(contract_address, api_name);
+	}
+
 
 	// class native_contract_finder
 

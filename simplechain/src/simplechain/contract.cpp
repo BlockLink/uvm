@@ -73,6 +73,7 @@ namespace simplechain {
 		events.clear();
 		new_contracts.clear();
 		exec_succeed = true;
+		gas_used = 0;
 	}
 
 	void contract_invoke_result::set_failed()

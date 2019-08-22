@@ -62,7 +62,7 @@ namespace uvm {
 		}
 
 		std::set<std::string> exchange_native_contract::apis() const {
-			return { "init", "init_config", "fillOrder","cancelOrders","setMinFee","withdraw", "state", "feeReceiver","balanceOf","getOrder", "minFee","balanceOfPubk","getAddrByPubk", "on_deposit_asset","depositToken" };
+			return { "init", "init_config", "fillOrder","cancelOrders","setMinFee","withdraw", "state", "feeReceiver","balanceOf","getOrder", "minFee","balanceOfPubk","getAddrByPubk", "on_deposit_asset","depositToken","on_deposit_contract_token" };
 		}
 		std::set<std::string> exchange_native_contract::offline_apis() const {
 			return { "state", "feeReceiver","balanceOf","getOrder", "minFee","balanceOfPubk","getAddrByPubk"};
@@ -857,7 +857,7 @@ namespace uvm {
 				throw_error("tokenContractAddr is not valid address");
 
 			const auto& caller = get_call_from_address();//from address 
-			auto transArg = cbor::CborObject::from_string(caller + "," + contract_address() + "," + fc::to_string(amount));
+			auto transArg = cbor::CborObject::from_string(caller + "," + contract_address_string() + "," + fc::to_string(amount));
 			cbor::CborArrayValue arr;
 			arr.push_back(transArg);
 			auto r = call_contract_api(tokenContractAddr, "transferFrom", arr);
@@ -883,6 +883,44 @@ namespace uvm {
 		}
 
 
+		//args:amount
+		void exchange_native_contract::on_deposit_contract_token_api(const std::string& api_name, const std::string& api_arg)
+		{
+			if (get_storage_state() != common_state_of_exchange_contract)
+				throw_error("this exchange contract state is not common");
+
+			int64_t amount = fc::to_int64(api_arg);
+
+			if (amount <= 0) {
+				throw_error("amount must > 0");
+			}
+			const auto& tokenContractAddr = get_call_from_address();
+			const auto& deposit_caller = caller_address_string();
+			if (tokenContractAddr == deposit_caller) {
+				throw_error("on_deposit_contract_token can only called by token contract");
+			}
+
+			//check balance
+			auto balance = current_fast_map_get(deposit_caller, tokenContractAddr);
+			int64_t bal = 0;
+			if (balance->is_integer()) {
+				bal = balance->force_as_int();
+			}
+			current_fast_map_set(deposit_caller, tokenContractAddr, CborObject::from_int(bal + amount));
+
+			jsondiff::JsonObject event_arg;
+			event_arg["from_address"] = deposit_caller;
+			event_arg["symbol"] = tokenContractAddr;
+			event_arg["amount"] = amount;
+			emit_event("Deposited", uvm::util::json_ordered_dumps(event_arg));
+
+			//UserBalanceChange
+			event_arg.erase("from_address");
+			event_arg["address"] = deposit_caller;
+			emit_event("UserBalanceChange", uvm::util::json_ordered_dumps(event_arg));
+		}
+
+
 		void exchange_native_contract::invoke(const std::string& api_name, const std::string& api_arg) {
 			std::map<std::string, std::function<void(const std::string&, const std::string&)>> apis = {
 			{ "init", std::bind(&exchange_native_contract::init_api, this, std::placeholders::_1, std::placeholders::_2) },
@@ -898,13 +936,14 @@ namespace uvm {
 			{ "withdraw", std::bind(&exchange_native_contract::withdraw_api, this, std::placeholders::_1, std::placeholders::_2) },
 			{ "getAddrByPubk", std::bind(&exchange_native_contract::getAddrByPubk_api, this, std::placeholders::_1, std::placeholders::_2) },
 			{ "balanceOfPubk", std::bind(&exchange_native_contract::balanceOfPubk_api, this, std::placeholders::_1, std::placeholders::_2) },
-			{ "depositToken", std::bind(&exchange_native_contract::depositToken_api, this, std::placeholders::_1, std::placeholders::_2) }
+			{ "depositToken", std::bind(&exchange_native_contract::depositToken_api, this, std::placeholders::_1, std::placeholders::_2) },
+			{ "on_deposit_contract_token", std::bind(&exchange_native_contract::on_deposit_contract_token_api, this, std::placeholders::_1, std::placeholders::_2) }
 			};
 			if (apis.find(api_name) != apis.end())
 			{
 				auto contract_info_stack = get_contract_call_stack();
 				contract_info_stack_entry stack_entry;
-				stack_entry.contract_id = contract_address();
+				stack_entry.contract_id = contract_address_string();
 				// 如果是被delegate_call调用的，storage_contract_id填上一层的storage contract id
 				stack_entry.storage_contract_id = stack_entry.contract_id;
 				stack_entry.call_type = "call";

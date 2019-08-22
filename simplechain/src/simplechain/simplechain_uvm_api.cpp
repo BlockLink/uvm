@@ -514,9 +514,6 @@ namespace simplechain {
 			{
 				auto evaluator = get_contract_evaluator(L);
 
-				if (!evaluator) {
-					return false;
-				}
 				//auto use_cbor_diff_flag = use_cbor_diff(L);
 				auto use_cbor_diff_flag = true;
 				cbor_diff::CborDiff differ;

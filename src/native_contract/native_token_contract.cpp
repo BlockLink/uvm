@@ -278,6 +278,12 @@ namespace uvm {
 			}
 			auto to_amount = get_balance_of_user(to_address);
 			current_fast_map_set("users", to_address, CborObject::from_int(to_amount + amount));
+
+			if (is_valid_contract_address(to_address) && is_contract_has_api(to_address, "on_deposit_contract_token")) {
+				cbor::CborArrayValue arr;
+				arr.push_back(cbor::CborObject::from_string(fc::to_string(amount)));
+				call_contract_api(to_address, "on_deposit_contract_token", arr);
+			}
 			jsondiff::JsonObject event_arg;
 			event_arg["from"] = from_addr;
 			event_arg["to"] = to_address;
@@ -390,7 +396,7 @@ namespace uvm {
 			{
 				auto contract_info_stack = get_contract_call_stack();
 				contract_info_stack_entry stack_entry;
-				stack_entry.contract_id = contract_address();
+				stack_entry.contract_id = contract_address_string();
 				// 如果是被delegate_call调用的，storage_contract_id填上一层的storage contract id
 				stack_entry.storage_contract_id = stack_entry.contract_id;
 				stack_entry.call_type = "call";

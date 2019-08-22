@@ -8,7 +8,7 @@
 #include <simplechain/contract_object.h>
 #include <simplechain/asset.h>
 
-#include <uvm/lstate.h>
+
 #include <simplechain/contract_engine_builder.h>
 
 namespace simplechain {
@@ -47,8 +47,9 @@ namespace simplechain {
 		void update_account_asset_balance(const std::string& account_address, asset_id_t asset_id, int64_t balance_change);
 		share_type get_account_asset_balance(const std::string& account_address, asset_id_t asset_id) const;
 		void set_contract_storage_changes(const std::string& contract_address, const contract_storage_changes_type& changes);
-		cbor::CborObjectP call_contract_api(const std::string& contractAddr, const std::string& apiName, cbor::CborArrayValue& args);
 
-		void evaluate_state::commit_invoked_native_storage_changes();
+		cbor::CborObjectP call_contract_api(const std::string& contractAddr, const std::string& apiName, cbor::CborArrayValue& args);
+		void commit_invoked_native_storage_changes();
+		bool is_contract_has_api(const std::string &contract_address, const std::string &api_name);
 	};
 }

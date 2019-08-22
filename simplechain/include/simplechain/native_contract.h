@@ -104,6 +104,9 @@ namespace simplechain {
 		virtual void emit_event(const std::string& event_name, const std::string& event_arg) {
 			emit_event(contract_address(), event_name, event_arg);
 		}
+		virtual std::string contract_address_string() const {
+			return contract_id;
+		}
 
 		virtual uint64_t head_block_num() const;
 		virtual std::string caller_address_string() const;
@@ -145,6 +148,8 @@ namespace simplechain {
 				return caller_address();
 			}
 		}
+
+		virtual bool is_contract_has_api(const std::string &contract_address, const std::string &api_name);
 	};
 
 	class native_contract_finder

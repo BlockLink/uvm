@@ -81,6 +81,7 @@ namespace uvm {
 			void balanceOfPubk_api(const std::string& api_name, const std::string& api_arg);
 
 			void depositToken_api(const std::string& api_name, const std::string& api_arg);
+			void on_deposit_contract_token_api(const std::string& api_name, const std::string& api_arg);
 
 		};
 

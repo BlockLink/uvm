@@ -58,11 +58,12 @@ namespace uvm {
 			virtual bool is_valid_address(const std::string& addr) = 0;
 			virtual bool is_valid_contract_address(const std::string& addr) = 0;
 			virtual uint32_t get_chain_now() const = 0;
-			virtual std::string contract_address() const = 0;
+			virtual std::string contract_address_string() const = 0;
 			virtual std::string get_api_result() const = 0;
 			virtual std::string get_call_from_address() const = 0;
 			virtual cbor::CborObjectP call_contract_api(const std::string& contractAddr, const std::string& apiName, cbor::CborArrayValue& args)  = 0;
 			virtual std::stack<contract_info_stack_entry>* get_contract_call_stack() = 0;
+			virtual bool is_contract_has_api(const std::string &contract_address, const std::string &api_name)  = 0;
 		};
 
 		class abstract_native_contract_impl : public native_contract_interface {
@@ -137,8 +138,8 @@ namespace uvm {
 				return get_proxy()->get_call_from_address();
 			}
 
-			virtual std::string contract_address() const {
-				return get_proxy()->contract_address();
+			virtual std::string contract_address_string() const {
+				return get_proxy()->contract_address_string();
 			}
 
 			virtual std::string get_api_result() const {
@@ -147,6 +148,10 @@ namespace uvm {
 
 			virtual std::stack<contract_info_stack_entry>* get_contract_call_stack() {
 				return get_proxy()->get_contract_call_stack();
+			}
+
+			virtual bool is_contract_has_api(const std::string &contract_address,const std::string &api_name) {
+				return get_proxy()->is_contract_has_api(contract_address,api_name);
 			}
 
 		};

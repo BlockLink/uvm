@@ -1,5 +1,5 @@
 #include <simplechain/contract_evaluate.h>
-#include <simplechain/contract_engine_builder.h>
+//#include <simplechain/contract_engine_builder.h>
 #include <simplechain/contract_object.h>
 #include <simplechain/blockchain.h>
 #include <simplechain/address_helper.h>
@@ -167,9 +167,13 @@ namespace simplechain {
 			try
 			{
 				native_contract->invoke("init", "");
-				auto native_result = *static_cast<contract_invoke_result*>(native_contract->get_result());
-				native_result.new_contracts = invoke_contract_result.new_contracts;
-				invoke_contract_result = native_result;
+
+				commit_invoked_native_storage_changes();
+				invoke_contract_result.api_result = native_contract->get_api_result();
+
+				//auto native_result = *static_cast<contract_invoke_result*>(native_contract->get_result());
+				//native_result.new_contracts = invoke_contract_result.new_contracts;
+				//invoke_contract_result = native_result;
 			}
 			catch (fc::exception &e)
 			{
@@ -235,7 +239,9 @@ namespace simplechain {
 			if (limit <= 0)
 				throw uvm::core::UvmException("invalid_contract_gas_limit");
 			gas_limit = limit;
+			engine->set_gas_limit(limit);
 			invoke_contract_result.reset();
+			this->caller_address = o.caller_address;
 			try
 			{
 				std::string first_contract_arg = o.contract_args.empty() ? "" : o.contract_args[0].as_string();
@@ -277,8 +283,6 @@ namespace simplechain {
 						update_account_asset_balance(o.caller_address, o.deposit_asset_id, - int64_t(o.deposit_amount));
 						update_account_asset_balance(o.contract_address, o.deposit_asset_id, o.deposit_amount);
 					}
-					this->caller_address = o.caller_address;
-					engine->set_gas_limit(limit);
 					engine->execute_contract_api_by_address(o.contract_address, o.contract_api, arr, &result_json_str);
 					commit_invoked_native_storage_changes(); //add native gas
 					invoke_contract_result.api_result = result_json_str;
@@ -286,8 +290,6 @@ namespace simplechain {
 				}
 				else {
 					// native contract
-					this->caller_address = o.caller_address;
-					engine->set_gas_limit(limit);
 					auto native_contract = native_contract_finder::create_native_contract_by_key(this, contract->native_contract_key, o.contract_address);
 					FC_ASSERT(native_contract, "native contract with the key not found");
 					

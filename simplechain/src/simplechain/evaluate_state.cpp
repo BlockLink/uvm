@@ -138,6 +138,27 @@ namespace simplechain {
 		}
 	}
 
+	bool evaluate_state::is_contract_has_api(const std::string &contract_address, const std::string &api_name) {
+		auto contract = get_contract_by_address(contract_address);
+		if (contract) {
+			if (contract->native_contract_key.empty()) {
+				if (contract->code.abi.find(api_name) != contract->code.abi.end()) {
+					return true;
+				}
+				return false;
+			}
+			else { //native contract
+				auto native_contract = native_contract_finder::create_native_contract_by_key(this, contract->native_contract_key, contract_address);
+				auto &apis = native_contract->apis();
+				if (apis.find(api_name) != apis.end()) {
+					return true;
+				}
+				return false;
+			}
+		}
+		return false;
+	}
+
 	static void merge_other_changes_to_evaluator(evaluate_state* evaluator, contract_invoke_result *_contract_invoke_resultp) {
 		//merge result
 
