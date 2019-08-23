@@ -896,8 +896,8 @@ namespace uvm {
 			}
 			const auto& tokenContractAddr = get_call_from_address();
 			const auto& deposit_caller = caller_address_string();
-			if (tokenContractAddr == deposit_caller) {
-				throw_error("on_deposit_contract_token can only called by token contract");
+			if (get_contract_call_stack()->size() != 2) {
+				throw_error("token transfer from address must not be contract address");
 			}
 
 			//check balance
@@ -919,6 +919,7 @@ namespace uvm {
 			event_arg["address"] = deposit_caller;
 			emit_event("UserBalanceChange", uvm::util::json_ordered_dumps(event_arg));
 		}
+
 
 
 		void exchange_native_contract::invoke(const std::string& api_name, const std::string& api_arg) {
