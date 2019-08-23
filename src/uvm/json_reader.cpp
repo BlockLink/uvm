@@ -96,6 +96,9 @@ bool Json_Reader::readKeyToken(Token& token) {
 	token.end_ = current_;
 	return true;
 }
+
+bool Json_Reader::vm_disable_json_loads_negative = false;
+
 bool Json_Reader::readToken(Token& token) {
 	skipSpaces();
 	token.start_ = current_;
@@ -133,10 +136,19 @@ bool Json_Reader::readToken(Token& token) {
 	case '7':
 	case '8':
 	case '9':
-	/*case '-':*/
 		token.type_ = tokenNumber;
 		readNumber(false);
 		break; 
+	case '-':
+	{
+		if (!Json_Reader::vm_disable_json_loads_negative) {
+			token.type_ = tokenNumber;
+			readNumber(false);
+		}
+		else {
+			ok = false;
+		}
+	} break;
 	case 't':
 		token.type_ = tokenTrue;
 		ok = match("rue", 3);
@@ -563,7 +575,7 @@ bool Json_Reader::readValue() {
 	UvmStorageValue number;
 	auto value = currentValue();
 	//  To preserve the old behaviour we cast size_t to int.
-	if (static_cast<int>(nodes_.size()) > StackLimit)
+	if (static_cast<int>(nodes_.size()) > UvmStackLimit)
 		return addError("Exceeded stackLimit in readValue().", token, nullptr);
 
 	if (!readToken(token)) {

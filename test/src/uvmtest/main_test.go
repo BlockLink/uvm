@@ -188,6 +188,13 @@ func TestTypes(t *testing.T) {
 	assert.True(t, strings.Contains(out, `c={"b":"userdata","c":{"a":1,"b":"hi"},"name":1}`))
 }
 
+func TestDumpNegInt(t *testing.T) {
+	execCommand(uvmCompilerPath, "../../tests_lua/test_json_dumps_neg_int.lua")
+	out, _ := execCommand(uvmSinglePath, "../../tests_lua/test_json_dumps_neg_int.lua.out")
+	fmt.Println(out)
+	assert.True(t, !strings.Contains(out, `unknown token`))
+}
+
 func TestThrowError(t *testing.T) {
 	_, compilerErr := execCommand(uvmCompilerPath, "../../tests_lua/test_error.lua")
 	assert.Equal(t, compilerErr, "")
