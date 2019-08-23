@@ -632,6 +632,7 @@ function M:on_deposit_contract_token(amountStr: string)
         return error("invalid amount")
     end
     let token_addr = get_prev_call_frame_contract_address()
+    -- TODO: 检查用户是否真的充值了这么多的合约代币，不能直接给用户添加
     return on_asset_or_token_balance_deposit(self, addr, token_addr, amount)
 end
 
