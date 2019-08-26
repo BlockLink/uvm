@@ -78,7 +78,7 @@ namespace uvm
                 "tostring", "tojsonstring", "tonumber", "tointeger", "todouble", "totable", "toboolean",
                 "next", "rawequal", "rawlen", "rawget", "rawset", "select",
                 "setmetatable",
-				"hex_to_bytes", "bytes_to_hex", "sha256_hex", "sha1_hex", "sha3_hex", "ripemd160_hex", "get_address_role",
+				"hex_to_bytes", "bytes_to_hex", "sha256_hex", "sha1_hex", "sha3_hex", "ripemd160_hex", "get_address_role", "pubkey_to_address", "str_to_hex",
 				"get_pay_back_balance", "get_contract_lock_balance_info_by_asset", "get_contract_lock_balance_info", "foreclose_balance_from_miners", "obtain_pay_back_balance", "lock_contract_balance_to_miner",
 				"cbor_encode", "cbor_decode", "signature_recover", "get_address_role","send_message"
             };
@@ -377,6 +377,44 @@ namespace uvm
 				return 1;
 			}
 
+			static int pubkey_to_address(lua_State* L) {
+				try {
+					if (lua_gettop(L) < 1 || !lua_isstring(L, 1)) {
+						uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+							"pubkey_to_address need 1 pubkey hex string argument");
+						return 0;
+					}
+					std::string pubkey_hex(luaL_checkstring(L, 1));
+					std::vector<char> pubkey_chars(pubkey_hex.size() / 2);
+					if (fc::from_hex(pubkey_hex, pubkey_chars.data(), pubkey_chars.size()) != pubkey_chars.size()) {
+						throw uvm::core::UvmException("invalid pubkey hex");
+					}
+					fc::ecc::public_key_data pubkey_data;
+					if (pubkey_chars.size() != pubkey_data.size()) {
+						throw uvm::core::UvmException("invalid pubkey hex length");
+					}
+					memcpy(pubkey_data.data, pubkey_chars.data(), pubkey_data.size());
+					fc::ecc::public_key pubkey(pubkey_data);
+					auto addr = uvm::lua::api::global_uvm_chain_api->pubkey_to_address_string(pubkey);
+					lua_pushstring(L, addr.c_str());
+					return 1;
+				}
+				catch (const std::exception& e) {
+					auto msg = std::string("pubkey_to_address error ") + e.what();
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, msg.c_str());
+					return 0;
+				}
+				catch (const fc::exception& e) {
+					auto msg = std::string("pubkey_to_address error ") + e.to_detail_string();
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, msg.c_str());
+					return 0;
+				}
+				catch (...) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "pubkey_to_address error");
+					return 0;
+				}
+			}
+
 			static int hex_to_bytes(lua_State *L) {
 				if (lua_gettop(L) < 1 || !lua_isstring(L, 1)) {
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
@@ -401,6 +439,37 @@ namespace uvm
 				catch (...) {
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
 						"error when hex_to_bytes");
+					return 0;
+				}
+			}
+
+			static int str_to_hex(lua_State* L) {
+				if (lua_gettop(L) < 1 || !lua_isstring(L, 1)) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"str_to_hex need 1 string argument");
+					return 0;
+				}
+				try {
+					std::string str(luaL_checkstring(L, 1));
+					const auto& hex_str = fc::to_hex(str.c_str(), str.size());
+					lua_pushstring(L, hex_str.c_str());
+					return 1;
+				}
+				catch (const std::exception& e) {
+					auto msg = std::string("eror when str_to_hex ") + e.what();
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						msg.c_str());
+					return 0;
+				}
+				catch (const fc::exception& e) {
+					auto msg = std::string("eror when str_to_hex ") + e.to_detail_string();
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						msg.c_str());
+					return 0;
+				}
+				catch (...) {
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						"error when str_to_hex");
 					return 0;
 				}
 			}
@@ -533,6 +602,12 @@ namespace uvm
 				catch (const std::exception& e) {
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
 						e.what());
+					return 0;
+				}
+				catch (const fc::exception& e) {
+					auto msg = std::string("error when sha256_hex ") + e.to_detail_string();
+					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
+						msg.c_str());
 					return 0;
 				}
 				catch (...) {
@@ -1790,6 +1865,7 @@ end
 				lua_setglobal(L, "pairs");
 				//------------------------------------------------------------
 
+				add_global_c_function(L, "str_to_hex", &str_to_hex);
 				add_global_c_function(L, "hex_to_bytes", hex_to_bytes);
 				add_global_c_function(L, "bytes_to_hex", bytes_to_hex);
 				add_global_c_function(L, "sha256_hex", sha256_hex);
@@ -1825,6 +1901,7 @@ end
 					add_global_c_function(L, "cbor_decode", &cbor_decode);
 					add_global_c_function(L, "signature_recover", &signature_recover);
 					add_global_c_function(L, "get_address_role", &get_address_role);
+					add_global_c_function(L, "pubkey_to_address", &pubkey_to_address);
 
 					add_global_c_function(L, "delegate_call", &delegate_call);
 					add_global_c_function(L, "send_message", &send_message);

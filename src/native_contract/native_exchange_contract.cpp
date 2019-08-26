@@ -328,7 +328,7 @@ namespace uvm {
 				balance = current_fast_map_get(feeReceiver, orderInfo.payAsset);
 				int64_t feeReceiverBal = 0;
 				if (balance->is_integer()) {
-					bal = balance->force_as_int();
+					feeReceiverBal = balance->force_as_int();
 				}
 				current_fast_map_set(feeReceiver, orderInfo.payAsset, CborObject::from_int(feeReceiverBal + spentFee));
 			}

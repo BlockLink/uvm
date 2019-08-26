@@ -123,6 +123,14 @@ static bool val_to_table_key(const TValue* key, std::string& out) {
 		out = std::string("$lightuserdata@") + std::to_string(intptr_t(key->value_.p));
 		return true;
 	}
+	else if (ttistable(key)) {
+		out = std::string("$table@") + std::to_string(intptr_t(key->value_.gco));
+		return true;
+	}
+	else if (ttisboolean(key)) {
+		out = std::string("$boolean@") + (key->value_.b ? "true" : "false");
+		return true;
+	}
 	else {
 		return false;
 	}
@@ -293,7 +301,8 @@ TValue *luaH_newkey(lua_State *L, uvm_types::GcTable *t, const TValue *key, bool
 	}if (!allow_lightuserdata) {
 		// not support lightuserdata as key by default. need lightuserdata key sometimes because of lua_rawsetp
 		if (ttislightuserdata(key)) {
-			luaG_runerror(L, "invalid table key type");
+			auto msg = std::string("invalid table key type, got type ") + ttypename(key->tt_);
+			luaG_runerror(L, msg.c_str());
 			return nullptr;
 		}
 	}
@@ -305,7 +314,8 @@ TValue *luaH_newkey(lua_State *L, uvm_types::GcTable *t, const TValue *key, bool
 	TValue key_obj(*key);
 	std::string key_str;
 	if (!val_to_table_key(key, key_str)) {
-		luaG_runerror(L, "invalid table key type");
+		auto msg = std::string("invalid table key type, got type ") + ttypename(key->tt_);
+		luaG_runerror(L, msg.c_str());
 		return nullptr;
 	}
 	

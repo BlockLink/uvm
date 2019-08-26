@@ -257,7 +257,7 @@ namespace vmgc {
 			newp = gc_malloc(newsz);
 			if (newp == nullptr)return nullptr;
 			//copy data
-			memcpy(newp, p, oldsz * sizeof(ptrdiff_t));
+			memcpy(newp, p, oldsz);
 			//free old 
 			gc_free(p);
 			return newp;
@@ -325,12 +325,14 @@ namespace vmgc {
 		unsigned int h = gc_str_hash(str, strsize, seed);
 
 		auto it = _gc_strpool->find(h);
+
 		if (it == _gc_strpool->end()) {
 			*isNewStr = true;
 		}
 		else {
 			*isNewStr = false;
-			p = (void *)(it->second.first);
+			p = (void *)it->second.first; 
+
 			uvm_types::GcString* gcstr = static_cast<uvm_types::GcString*>(p);
 			if (strncmp(gcstr->value.c_str(), str, strsize) != 0) { //Åö×²
 				//new it 
@@ -343,7 +345,7 @@ namespace vmgc {
 			size_t align8sz = align8(sz);
 
 			if (align8sz <= _empty_str_buffer.second) {
-				(*_gc_strpool)[h] = std::pair<intptr_t, ptrdiff_t>(_empty_str_buffer.first, align8sz);
+				_gc_strpool->insert(std::pair<unsigned int, std::pair<intptr_t, ptrdiff_t>>(h, std::pair<intptr_t, ptrdiff_t>(_empty_str_buffer.first, align8sz)));
 				p = (void*) _empty_str_buffer.first;
 
 				_empty_str_buffer.first = _empty_str_buffer.first + align8sz;
@@ -366,7 +368,7 @@ namespace vmgc {
 				block.second = DEFAULT_GC_BLOCK_SIZE;
 				_malloced_str_blocks->push_back(block);
 
-				(*_gc_strpool)[h] = std::pair<intptr_t, ptrdiff_t>((intptr_t)p, align8sz);
+				_gc_strpool->insert(std::pair<unsigned int, std::pair<intptr_t, ptrdiff_t>>(h, std::pair<intptr_t, ptrdiff_t>((intptr_t)p, align8sz)));
 
 				if (align8sz < DEFAULT_GC_BLOCK_SIZE) {
 					_empty_str_buffer.first = (intptr_t)p + align8sz;

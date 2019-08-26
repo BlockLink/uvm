@@ -483,8 +483,20 @@ namespace uvm_types {
 			return true;
 		if (ttislightuserdata(&y) && !ttislightuserdata(&x))
 			return false;
+		if (ttistable(&x) && !ttistable(&y))
+			return true;
+		if (ttistable(&y) && !ttistable(&x))
+			return false;
+		if (ttisboolean(&x) && !ttisboolean(&y))
+			return true;
+		if (ttisboolean(&y) && !ttisboolean(&x))
+			return false;
 		if (ttislightuserdata(&x) && ttislightuserdata(&y))
 			return (intptr_t)x.value_.p < (intptr_t)y.value_.p;
+		if (ttistable(&x) && ttistable(&y))
+			return (intptr_t)x.value_.gco < (intptr_t)y.value_.gco;
+		if (ttisboolean(&x) && ttisboolean(&y))
+			return (intptr_t)x.value_.b < (intptr_t)y.value_.b;
 		if (ttisnumber(&x) && !ttisnumber(&y)) {
 			return true;
 		}
