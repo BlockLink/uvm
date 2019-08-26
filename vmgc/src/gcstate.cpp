@@ -257,7 +257,7 @@ namespace vmgc {
 			newp = gc_malloc(newsz);
 			if (newp == nullptr)return nullptr;
 			//copy data
-			memcpy(newp, p, oldsz * sizeof(ptrdiff_t));
+			memcpy(newp, p, oldsz);
 			//free old 
 			gc_free(p);
 			return newp;

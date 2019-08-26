@@ -825,7 +825,7 @@ func createPlasmaContract(caller1 string) (string, error) {
 	compileOut, compileErr := execCommand(uvmCompilerPath, "-g", testContractPath("sparse_merkle_tree.lua"))
 	fmt.Printf("compile out: %s\n", compileOut)
 	if compileErr != "" {
-		return "", errors.New(compileErr)
+		return "", errors.New("compile error " + compileErr)
 	}
 	var res *simplejson.Json
 	var err error
@@ -903,6 +903,9 @@ func TestPlasmaRootChain(t *testing.T) {
 	caller2 := "SPLtest2"
 
 	plasmaContractAddress, err := createPlasmaContract(caller1)
+	if err != nil {
+		log.Println("create plasma contract error", err)
+	}
 	assert.True(t, err == nil)
 
 	res, err = invokeContractOffline(caller1, plasmaContractAddress, "get_config", " ")
@@ -2036,6 +2039,43 @@ func TestNativeExchangeContract(t *testing.T) {
 	simpleChainRPC("generate_block")
 
 	test0xExchangeContractInSimplechain(t, contract1Addr)
+}
+
+func TestLuaExchangeContract(t *testing.T) {
+	cmd := execCommandBackground(simpleChainPath)
+	assert.True(t, cmd != nil)
+	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
+	defer func() {
+		kill(cmd)
+	}()
+	time.Sleep(1 * time.Second)
+	var res *simplejson.Json
+	var err error
+	caller1 := "SPLtest1"
+
+	// compile contracts
+	compileOut, compileErr := execCommand(uvmCompilerPath, "-g", testContractPath("out_dex_exchange.lua"))
+	fmt.Printf("compile out: %s\n", compileOut)
+	if compileErr != "" {
+		log.Println(compileErr)
+	}
+	assert.True(t, compileErr == "")
+
+	compileOut, compileErr = execCommand(uvmCompilerPath, "-g", testContractPath("out_dex_exchange_proxy.lua"))
+	fmt.Printf("compile out: %s\n", compileOut)
+	if compileErr != "" {
+		log.Println(compileErr)
+	}
+	assert.True(t, compileErr == "")
+
+	// create lua exchange contract
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("out_dex_exchange_proxy.lua.gpc"), 50000, 10)
+	assert.True(t, err == nil)
+	exchangeContractAddr := res.Get("contract_address").MustString()
+	fmt.Printf("exchange contract address: %s\n", exchangeContractAddr)
+	simpleChainRPC("generate_block")
+
+	test0xExchangeContractInSimplechain(t, exchangeContractAddr)
 }
 
 func TestContractLoadState(t *testing.T) {

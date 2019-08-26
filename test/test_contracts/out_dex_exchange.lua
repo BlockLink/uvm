@@ -3,6 +3,7 @@ type Storage = {
     feeReceiver: string,
     state: string,
     admin: string,
+    util_contract_addr: string,
     target_contract: string
 }
 
@@ -15,6 +16,7 @@ function M:init()
     self.storage.feeReceiver = ''
     self.storage.state = 'NOT_INITED'
     self.storage.admin = caller_address
+    self.storage.util_contract_addr = ''
     self.storage.target_contract = ''
 end
 

@@ -1,3 +1,4 @@
+-- out dex exchange real contract
 type Storage = {
     name: string,
     feeReceiver: string,
@@ -5,13 +6,9 @@ type Storage = {
     admin: string
 }
 
--- type State = "NOT_INITED" | "COMMON"
-
 let NATIVE_EXCHANGE_ORDER_STATE_CANCELED = 0
+
 let NATIVE_EXCHANGE_ORDER_STATE_COMPLETED = 1
-
-let util_contract_addr = 'TODO' -- 包含 getAddrByPubk 的合约，用于从公钥hex生成地址格式
-
 
 var M = Contract<Storage>()
 
@@ -52,17 +49,22 @@ let function parse_at_least_args(arg: string, count: int, error_msg: string)
     return parsed
 end
 
-let function arrayContains(col: Array<object>, item: object)
-    if not item then
-        return false
-    end
-    var value: object
-    for _, value in ipairs(col) do
-        if value == item then
-            return true
-        end
-    end
-    return false
+let function getAddrByPubk(self: table, pubkeyHex: string)
+    return pubkey_to_address(pubkeyHex)
+end
+
+let function onAssetOrTokenBalanceDeposit(self: table, from_addr: string, symbol: string, amount: int)
+    let balance = tointeger(fast_map_get(from_addr, symbol) or 0)
+    fast_map_set(from_addr, symbol, balance + amount)
+    let eventArg = {
+        from_address: from_addr,
+        symbol: symbol,
+        amount: amount
+    }
+    emit Deposited(json.dumps(eventArg))
+    eventArg.from_address = nil
+    eventArg.address = from_addr
+    emit UserBalanceChange(json.dumps(eventArg))
 end
 
 function M:init_config(arg: string)
@@ -79,14 +81,13 @@ function M:init_config(arg: string)
     emit Inited(feeReceiver)
 end
 
-
 -- return [addr, id, ok]
 let function getOrderOwnerAddressAndId(o: table)
     let sig_hex = tostring(o.sig)
     let infostr = tostring(o.orderInfo)
-    let orderinfoDigest = sha256_hex(infostr)
+    let orderinfoDigest = sha256_hex(str_to_hex(infostr))
     let temp = infostr .. sig_hex
-    let orderID = sha256_hex(temp)
+    let orderID = sha256_hex(str_to_hex(temp))
     let id = orderID
     if o.id ~= id then
         return ['', '', 'id not match']
@@ -95,11 +96,7 @@ let function getOrderOwnerAddressAndId(o: table)
     if (not recoved_public_key) or (#recoved_public_key < 1) then
         return error("invalid signature")
     end
-    let utilContract = import_contract_from_address(util_contract_addr)
-    if not utilContract then
-        return error("invalid util contract address")
-    end
-    let addr = utilContract:getAddrByPubk(recoved_public_key)
+    let addr = getAddrByPubk(self, recoved_public_key)
     return [addr, id, 'OK']
 end
 
@@ -200,10 +197,10 @@ let function checkOrder(self: table, fillOrder: table)
     if orderStore then
         let o = orderStore
         if o.state ~= nil then
-            let state = tointeger(o.state)
-            if state == NATIVE_EXCHANGE_ORDER_STATE_CANCELED then
+            let state = tointeger(o.state or 0)
+            if state == 0 then -- NATIVE_EXCHANGE_ORDER_STATE_CANCELED
                 return error("order has been canceled")
-            elseif state == NATIVE_EXCHANGE_ORDER_STATE_COMPLETED then
+            elseif state == 1 then -- NATIVE_EXCHANGE_ORDER_STATE_COMPLETED
                 return error("order has been completely filled")
             else
                 return error("wrong order state")
@@ -236,7 +233,7 @@ let function checkOrder(self: table, fillOrder: table)
 
     -- fee
     if spentFee > 0 then
-        let feeReceiverBal = tointeger(fast_map_get(feeReceiver, tostring(orderInfo.payAsset)))
+        let feeReceiverBal = tointeger(fast_map_get(feeReceiver, tostring(orderInfo.payAsset)) or 0)
         fast_map_set(feeReceiver, tostring(orderInfo.payAsset), feeReceiverBal + spentFee) 
     end
 
@@ -319,7 +316,6 @@ let function checkMatchedOrders(self: table, takerFillOrder: table, makerFillOrd
     let asset2 = tostring(orderInfo.payAsset)
 
     let takerOrderType = tostring(orderInfo['type'])
-
     let purchaseNum = tointeger(orderInfo.purchaseNum)
     let payNum = tointeger(orderInfo.payNum)
 
@@ -569,17 +565,8 @@ function M:withdraw(arg: string)
     emit UserBalanceChange(json.dumps(eventArg))
 end
 
-let function getAddrByPubk(pubkeyHex: string)
-    let utilContract = import_contract_from_address(util_contract_addr)
-    if not utilContract then
-        return error("invalid util contract address")
-    end
-    let addr = utilContract:getAddrByPubk(pubkeyHex)
-    return addr
-end
-
 offline function M:getAddrByPubk(pubkeyHex: string)
-    return getAddrByPubk(pubkeyHex)
+    return getAddrByPubk(self, pubkeyHex)
 end
 
 -- args: publicKey_hexString,symbol
@@ -597,21 +584,8 @@ offline function M:balanceOfPubk(arg: string)
     return tostring(balance)
 end
 
-let function on_asset_or_token_balance_deposit(self: table, from_addr: string, symbol: string, amount: int)
-    let balance = tointeger(fast_map_get(from_addr, symbol) or 0)
-    fast_map_set(from_addr, symbol, balance + amount)
-    let eventArg = {
-        from_address: from_addr,
-        symbol: symbol,
-        amount: amount
-    }
-    emit Deposited(json.dumps(eventArg))
-    eventArg.from_address = nil
-    eventArg.address = from_addr
-    emit UserBalanceChange(json.dumps(eventArg))
-end
-
 function M:on_deposit_asset_by_call(arg: string)
+    -- TODO: only called by proxy contract
     if self.storage.state ~= 'COMMON' then
         return error("this exchange contract state is not common")
     end
@@ -622,7 +596,7 @@ function M:on_deposit_asset_by_call(arg: string)
         return error("invalid amount")
     end
     let addr = caller_address
-    return on_asset_or_token_balance_deposit(self, addr, symbol, amount)
+    return onAssetOrTokenBalanceDeposit(self, addr, symbol, amount)
 end
 
 function M:on_deposit_contract_token(amountStr: string)
@@ -632,11 +606,12 @@ function M:on_deposit_contract_token(amountStr: string)
         return error("invalid amount")
     end
     let token_addr = get_prev_call_frame_contract_address()
-    return on_asset_or_token_balance_deposit(self, addr, token_addr, amount)
+    return onAssetOrTokenBalanceDeposit(self, addr, token_addr, amount)
 end
 
 function M:on_deposit_asset(arg: string)
-    error("only supported called by proxy contract")
+    self:on_deposit_asset_by_call(arg) -- TODO: change it
+    -- error("only supported called by proxy contract")
 end
 
 function M:on_upgrade()
