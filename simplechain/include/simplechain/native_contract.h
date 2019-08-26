@@ -121,7 +121,6 @@ namespace simplechain {
 		}
 
 		virtual bool is_valid_address(const std::string& addr);
-		virtual bool is_valid_contract_address(const std::string& addr);
 		virtual cbor::CborObjectP call_contract_api(const std::string& contractAddr, const std::string& apiName, cbor::CborArrayValue& args);
 		//virtual cbor::CborObjectP call_contract_api(const std::string& contractAddr, const std::string& apiName, const fc::variants args);
 		virtual uint32_t get_chain_now() const;

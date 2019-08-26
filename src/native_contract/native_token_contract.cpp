@@ -3,12 +3,15 @@
 #include <jsondiff/jsondiff.h>
 #include <cbor_diff/cbor_diff.h>
 #include <uvm/uvm_lutil.h>
+#include <uvm/uvm_lib.h>
 
 namespace uvm {
 	namespace contract {
 		using namespace cbor_diff;
 		using namespace cbor;
 		using namespace uvm::contract;
+		using uvm::lua::api::global_uvm_chain_api;
+
 
 		// token contract
 		std::string token_native_contract::contract_key() const
@@ -278,12 +281,15 @@ namespace uvm {
 			}
 			auto to_amount = get_balance_of_user(to_address);
 			current_fast_map_set("users", to_address, CborObject::from_int(to_amount + amount));
-
-			if (is_valid_contract_address(to_address) && is_contract_has_api(to_address, "on_deposit_contract_token")) {
-				cbor::CborArrayValue arr;
-				arr.push_back(cbor::CborObject::from_string(fc::to_string(amount)));
-				call_contract_api(to_address, "on_deposit_contract_token", arr);
+			
+			if (global_uvm_chain_api && global_uvm_chain_api->is_valid_contract_address(nullptr, to_address.c_str())) {
+				if (is_contract_has_api(to_address, "on_deposit_contract_token")) {
+					cbor::CborArrayValue arr;
+					arr.push_back(cbor::CborObject::from_string(fc::to_string(amount)));
+					call_contract_api(to_address, "on_deposit_contract_token", arr);
+				}
 			}
+
 			jsondiff::JsonObject event_arg;
 			event_arg["from"] = from_addr;
 			event_arg["to"] = to_address;

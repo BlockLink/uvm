@@ -723,7 +723,8 @@ namespace uvm {
 			else {
 				current_fast_map_set(caller, symbol, CborObject::from_int(newBalance));
 			}
-			if (is_valid_contract_address(symbol)) {
+
+			if (global_uvm_chain_api && global_uvm_chain_api->is_valid_contract_address(nullptr, symbol.c_str())) {
 				auto transArg = cbor::CborObject::from_string(caller + "," +  fc::to_string(amount));
 				cbor::CborArrayValue arr;
 				arr.push_back(transArg);
@@ -853,8 +854,9 @@ namespace uvm {
 			if (tokenContractAddr.empty()) {
 				throw_error("tokenContractAddr is empty");
 			}
-			if(!is_valid_contract_address(tokenContractAddr)) //contract 
+			if (global_uvm_chain_api && !global_uvm_chain_api->is_valid_contract_address(nullptr, tokenContractAddr.c_str())) {
 				throw_error("tokenContractAddr is not valid address");
+			}
 
 			const auto& caller = get_call_from_address();//from address 
 			auto transArg = cbor::CborObject::from_string(caller + "," + contract_address_string() + "," + fc::to_string(amount));

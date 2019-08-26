@@ -56,7 +56,6 @@ namespace uvm {
 			virtual void* get_result() = 0;
 			virtual void set_api_result(const std::string& api_result) = 0;
 			virtual bool is_valid_address(const std::string& addr) = 0;
-			virtual bool is_valid_contract_address(const std::string& addr) = 0;
 			virtual uint32_t get_chain_now() const = 0;
 			virtual std::string contract_address_string() const = 0;
 			virtual std::string get_api_result() const = 0;
@@ -121,9 +120,6 @@ namespace uvm {
 			}
 			virtual bool is_valid_address(const std::string& addr) {
 				return get_proxy()->is_valid_address(addr);
-			}
-			virtual bool is_valid_contract_address(const std::string& addr) {
-				return get_proxy()->is_valid_contract_address(addr);
 			}
 
 			virtual cbor::CborObjectP call_contract_api(const std::string& contractAddr, const std::string& apiName,cbor::CborArrayValue& args) {

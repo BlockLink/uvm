@@ -182,13 +182,6 @@ namespace simplechain {
 		return false;
 	}
 
-	bool native_contract_store::is_valid_contract_address(const std::string& addr) {
-		if (addr.compare(0, 3, "CON") == 0) {
-			return true;
-		}
-		return false;
-	}
-
 	uint32_t native_contract_store::get_chain_now() const {
 		return _evaluate->get_chain()->latest_block().block_time.sec_since_epoch();
 	}
