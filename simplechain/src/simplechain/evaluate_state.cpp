@@ -120,6 +120,10 @@ namespace simplechain {
 		if (!contract) {
 			throw uvm::core::UvmException(std::string("Can't find contract by address ") + contractAddr);
 		}
+		if (std::find(uvm::lua::lib::contract_special_api_names.begin(), uvm::lua::lib::contract_special_api_names.end(), apiName) != uvm::lua::lib::contract_special_api_names.end()) {
+			throw uvm::core::UvmException(std::string("can't call special api:") + apiName + " directly");
+		}
+
 		if (contract->native_contract_key.empty()) {
 			return engine->call_uvm_contract_api(contractAddr, apiName, args);
 		}
