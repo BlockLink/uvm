@@ -2061,7 +2061,7 @@ func TestLuaExchangeContract(t *testing.T) {
 	}
 	assert.True(t, compileErr == "")
 
-	compileOut, compileErr = execCommand(uvmCompilerPath, "-g", testContractPath("out_dex_exchange_proxy.lua"))
+	compileOut, compileErr = execCommand(uvmCompilerPath, "-g", testContractPath("out_dex_exchange_target.lua"))
 	fmt.Printf("compile out: %s\n", compileOut)
 	if compileErr != "" {
 		log.Println(compileErr)
@@ -2069,7 +2069,7 @@ func TestLuaExchangeContract(t *testing.T) {
 	assert.True(t, compileErr == "")
 
 	// create lua exchange contract
-	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("out_dex_exchange_proxy.lua.gpc"), 50000, 10)
+	res, err = simpleChainRPC("create_contract_from_file", caller1, testContractPath("out_dex_exchange_target.lua.gpc"), 50000, 10)
 	assert.True(t, err == nil)
 	exchangeContractAddr := res.Get("contract_address").MustString()
 	fmt.Printf("exchange contract address: %s\n", exchangeContractAddr)

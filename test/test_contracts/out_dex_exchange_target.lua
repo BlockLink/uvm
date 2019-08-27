@@ -585,7 +585,18 @@ offline function M:balanceOfPubk(arg: string)
 end
 
 function M:on_deposit_asset_by_call(arg: string)
-    -- TODO: only called by proxy contract
+    -- only called by caller/proxy contract
+    var ok: bool = false
+    if in_delegate_call() then
+        ok = true
+    else
+        if get_prev_call_frame_api_name() == "on_deposit_asset" then
+            ok = true
+        end
+    end
+    if not ok then
+        return error("only can be called by user or proxy contract")
+    end
     if self.storage.state ~= 'COMMON' then
         return error("this exchange contract state is not common")
     end
@@ -600,12 +611,28 @@ function M:on_deposit_asset_by_call(arg: string)
 end
 
 function M:on_deposit_contract_token(amountStr: string)
+    if self.storage.state ~= 'COMMON' then
+        return error("this exchange contract state is not common")
+    end
     let addr = get_from_address()
     let amount = tointeger(amountStr)
     if (not amount) or (amount <= 0) then
         return error("invalid amount")
     end
     let token_addr = get_prev_call_frame_contract_address()
+    
+    -- only called by token/proxy contract
+    var ok: bool = false
+    if in_delegate_call() then
+        ok = true
+    else
+        if get_prev_call_frame_contract_address() == token_addr then
+            ok = true
+        end
+    end
+    if not ok then
+        return error("only can be called by user or proxy contract")
+    end
     return onAssetOrTokenBalanceDeposit(self, addr, token_addr, amount)
 end
 

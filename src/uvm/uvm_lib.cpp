@@ -65,7 +65,7 @@ namespace uvm
 
             static const char *globalvar_whitelist[] = {
                 "print", "pprint", "table", "string", "time", "math", "safemath", "json", "type", "require", "Array", "Stream",
-                "import_contract_from_address", "import_contract", "emit", "is_valid_address", "is_valid_contract_address", "delegate_call",
+                "import_contract_from_address", "import_contract", "emit", "is_valid_address", "is_valid_contract_address", "delegate_call", "in_delegate_call",
 				"get_prev_call_frame_contract_address", "get_prev_call_frame_api_name", "get_contract_call_frame_stack_size",
                 "uvm", "storage", "exit", "self", "debugger", "exit_debugger",
                 "caller", "caller_address",
@@ -240,10 +240,22 @@ namespace uvm
 				auto api_name_str = malloc_and_copy_string(L, api_name.c_str());
 				return api_name_str;
 			}
+			
+			static int in_delegate_call(lua_State* L) {
+				const auto& cur_contract_id = get_current_using_contract_id(L);
+				const auto& cur_storage_contract_id = get_current_using_storage_contract_id(L);
+				bool result;
+				if (cur_contract_id == cur_storage_contract_id)
+					result = false;
+				else
+					result = true;
+				lua_pushboolean(L, result);
+				return 1;
+			}
 
 			static int get_prev_call_frame_contract_address_lua_api(lua_State *L)
 			{
-				auto prev_contract_id = get_prev_call_frame_storage_contract_id_in_api(L);
+				const auto& prev_contract_id = get_prev_call_frame_storage_contract_id_in_api(L);
 				if (!prev_contract_id || strlen(prev_contract_id)< 1)
 				{
 					lua_pushnil(L);
@@ -1902,6 +1914,7 @@ end
 					add_global_c_function(L, "signature_recover", &signature_recover);
 					add_global_c_function(L, "get_address_role", &get_address_role);
 					add_global_c_function(L, "pubkey_to_address", &pubkey_to_address);
+					add_global_c_function(L, "in_delegate_call", &in_delegate_call);
 
 					add_global_c_function(L, "delegate_call", &delegate_call);
 					add_global_c_function(L, "send_message", &send_message);
