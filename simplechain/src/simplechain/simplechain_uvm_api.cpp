@@ -170,7 +170,7 @@ namespace simplechain {
 						auto res = evaluator->contains_contract_by_address(contract_id);
 						return res;
 					}
-					return nullptr;
+					return false;
 				}FC_CAPTURE_AND_LOG((contract_id))
 			}
 
@@ -195,7 +195,7 @@ namespace simplechain {
 						auto res = evaluator->contains_contract_by_name(contract_name);
 						return res;
 					}
-					return nullptr;
+					return false;
 				}FC_CAPTURE_AND_LOG((contract_name))
 			}
 

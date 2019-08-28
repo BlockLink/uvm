@@ -107,29 +107,31 @@ LIST(APPEND BOOST_COMPONENTS thread iostreams date_time system filesystem progra
 add_library( uvm ${SOURCES} ${HEADERS} )
 
 target_link_libraries( uvm 
-  PUBLIC fc)
+  PUBLIC fc "/usr/local/lib/libsecp256k1.a")
 target_include_directories( uvm 
   PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/deps/jsondiff-cpp/jsondiff-cpp/include" "${CMAKE_CURRENT_SOURCE_DIR}/vmgc/include"
 )
 
-#aux_source_directory(./simplechain/src simplechain_src1)
-#aux_source_directory(./simplechain/src/simplechain simplechain_src2)
-#
-#include_directories(simplechain/include)
-#
-#link_directories(../fc /usr/local/lib/boost/lib)
-#link_libraries(fc boost_system boost_system boost_chrono boost_date_time boost_coroutine boost_context boost_thread boost_filesystem pthread)
-#
-#add_executable(simplechain_runner ${simplechain_src1} ${simplechain_src2})
-#
-#target_include_directories( simplechain_runner 
-  #PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/simplechain/include" "${CMAKE_CURRENT_SOURCE_DIR}/../jsondiff/jsondiff-cpp/include"
-#)
-#
-# target_link_libraries(simplechain_runner PUBLIC uvm fc OpenSSL::SSL ${CMAKE_SOURCE_DIR}/../jsondiff/libjsondiff_cpp.a)
+if(DEFINED ENV{SIMPLECHAIN})
+aux_source_directory(./simplechain/src simplechain_src1)
+aux_source_directory(./simplechain/src/simplechain simplechain_src2)
 
-# add_executable(uvm_single_exec uvm_single/main.cpp uvm_single/Keccak.cpp uvm_single/uvm_api.demo.cpp)
-# target_link_libraries(uvm_single_exec PUBLIC uvm fc OpenSSL::SSL ${CMAKE_SOURCE_DIR}/../jsondiff/libjsondiff_cpp.a)
+include_directories(simplechain/include)
+
+link_directories(../fc /usr/local/lib/boost/lib)
+link_libraries(fc boost_system boost_system boost_chrono boost_date_time boost_coroutine boost_context boost_thread boost_filesystem pthread "/usr/local/lib/libsecp256k1.a")
+
+add_executable(simplechain_runner ${simplechain_src1} ${simplechain_src2})
+
+target_include_directories( simplechain_runner 
+  PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/simplechain/include" "${CMAKE_CURRENT_SOURCE_DIR}/deps/jsondiff-cpp/jsondiff-cpp/include"
+)
+
+target_link_libraries(simplechain_runner PUBLIC uvm "/usr/local/lib/libsecp256k1.a" "${CMAKE_CURRENT_SOURCE_DIR}/deps/fc/libfc.a" OpenSSL::SSL "${CMAKE_CURRENT_SOURCE_DIR}/deps/jsondiff-cpp/libjsondiff_cpp.a")
+
+add_executable(uvm_single_exec uvm_single/main.cpp uvm_single/Keccak.cpp uvm_single/uvm_api.demo.cpp simplechain/src/simplechain/storage.cpp)
+target_link_libraries(uvm_single_exec PUBLIC uvm "/usr/local/lib/libsecp256k1.a" "${CMAKE_CURRENT_SOURCE_DIR}/deps/fc/libfc.a" OpenSSL::SSL ${CMAKE_SOURCE_DIR}/deps/jsondiff-cpp/libjsondiff_cpp.a)
+endif()
 
 if (USE_PCH)
   set_target_properties(uvm PROPERTIES COTIRE_ADD_UNITY_BUILD FALSE)

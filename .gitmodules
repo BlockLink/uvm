@@ -1,3 +1,9 @@
 [submodule "deps/jsondiff-cpp"]
 	path = deps/jsondiff-cpp
 	url = https://github.com/BlockLink/jsondiff-cpp.git
+[submodule "deps/secp256k1"]
+	path = deps/secp256k1
+	url = https://github.com/bitcoin-core/secp256k1.git
+[submodule "deps/fc"]
+	path = deps/fc
+	url = https://github.com/BlockLink/fc.git

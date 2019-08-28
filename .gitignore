@@ -210,3 +210,4 @@ FakesAssemblies/
 /test/src/uvmtest/go.mod
 /.vscode
 /libfc.a
+/test/src/uvmtest/core
