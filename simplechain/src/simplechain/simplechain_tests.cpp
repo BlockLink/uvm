@@ -115,8 +115,9 @@ void test2()
 		std::cerr << e.what() << std::endl;
 		//BOOST_CHECK(false);
 	}
-
+#ifdef _WIN32
 	_CrtDumpMemoryLeaks();
+#endif
 }
 
 //BOOST_AUTO_TEST_SUITE_END()
