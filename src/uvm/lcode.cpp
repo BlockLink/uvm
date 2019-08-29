@@ -348,7 +348,7 @@ static int addk(FuncState *fs, TValue *key, TValue *v) {
 		memset(f->ks.data() + oldsize, 0x0, sizeof(f->ks[0]) * (k - oldsize));
 	}
     while (oldsize < f->ks.size()) setnilvalue(&f->ks[oldsize++]);
-	if (f->ks.size() <= k)
+	if (f->ks.size() <= size_t(k))
 		f->ks.resize(k + 1);
     setobj(L, &f->ks[k], v);
     fs->nk++;

@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <locale.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <time.h>
 
@@ -19,6 +20,11 @@
 
 #include "uvm/lauxlib.h"
 #include "uvm/lualib.h"
+
+#ifdef _WIN32
+#include <Windows.h>
+#define mkstemp _mktemp
+#endif
 
 
 /*
@@ -116,7 +122,7 @@ static time_t l_checktime(lua_State *L, int arg) {
 
 /* ISO C definitions */
 #define LUA_TMPNAMBUFSIZE	L_tmpnam
-#define lua_tmpnam(b,e)		{ e = (tmpnam(b) == nullptr); }
+#define lua_tmpnam(b,e)		{ e = (mkstemp(b) == nullptr); }
 
 #endif				/* } */
 

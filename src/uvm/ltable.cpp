@@ -174,6 +174,7 @@ int luaH_next(lua_State *L, uvm_types::GcTable *t, StkId key) {
 	bool use_first_map_key = false;
 	// array_index is index of key£¬1-based£¬0 means not found
     bool found_key = findindex_of_sorted_table(L, t, key, &array_index, &map_key, &is_map_key);  /* find original element */
+	UNUSED(found_key);
 	if (nullptr == t) {
 		return 0;
 	}
@@ -243,7 +244,7 @@ void luaH_resize(lua_State *L, uvm_types::GcTable *t, unsigned int nasize,
     unsigned int oldasize = t->array.size();
 	if (nasize > oldasize)  /* array part must grow? */
 	{
-		for (auto i = 0; i < nasize - oldasize; i++) {
+		for (unsigned int i = 0; i < nasize - oldasize; i++) {
 			t->array.push_back(*luaO_nilobject);
 		}
 	}

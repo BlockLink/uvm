@@ -184,7 +184,7 @@ namespace uvm
                 return 1;
             }
 
-			static std::string get_prev_call_frame_contract_id(lua_State *L)
+			/*static std::string get_prev_call_frame_contract_id(lua_State *L)
 			{
 				auto contract_id_stack = get_using_contract_id_stack(L, true);
 				if (!contract_id_stack || contract_id_stack->size()<2)
@@ -194,7 +194,7 @@ namespace uvm
 				auto prev = contract_id_stack->top();
 				contract_id_stack->push(top);
 				return prev.contract_id;
-			}
+			}*/
 
 			static std::string get_prev_call_frame_storage_contract_id(lua_State *L)
 			{
