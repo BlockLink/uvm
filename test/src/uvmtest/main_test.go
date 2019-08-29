@@ -1511,6 +1511,13 @@ func TestPlasmaChallengeEvilExit(t *testing.T) {
 	simpleChainRPC("register_account", caller3, pubKeyHex)
 	simpleChainRPC("generate_block")
 
+	res, err = simpleChainRPC("get_account", caller3)
+	if err != nil {
+		log.Println("get_account error", err)
+	}
+	assert.True(t, err == nil)
+	assert.True(t, res.Get("pubkey").MustString() == pubKeyHex)
+
 	plasmaContractAddress, err := createPlasmaContract(caller1)
 	assert.True(t, err == nil)
 
