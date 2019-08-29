@@ -147,6 +147,7 @@ namespace simplechain {
 					}
 					return 0;
 				}FC_CAPTURE_AND_LOG((0))
+				return 0;
 			}
 
 			static std::shared_ptr<uvm::blockchain::Code> get_contract_code_by_id(evaluate_state* evaluator, const std::string& contract_id) {
@@ -162,6 +163,7 @@ namespace simplechain {
 					}
 					return nullptr;
 				}FC_CAPTURE_AND_LOG((contract_id))
+				return nullptr;
 			}
 
 			static bool contains_contract_by_id(evaluate_state* evaluator, const std::string& contract_id) {
@@ -172,6 +174,7 @@ namespace simplechain {
 					}
 					return false;
 				}FC_CAPTURE_AND_LOG((contract_id))
+				return false;
 			}
 
 			static std::shared_ptr<uvm::blockchain::Code> get_contract_code_by_name(evaluate_state* evaluator, const std::string& contract_name) {
@@ -187,6 +190,7 @@ namespace simplechain {
 					}
 					return nullptr;
 				}FC_CAPTURE_AND_LOG((contract_name))
+				return nullptr;
 			}
 
 			static bool contains_contract_by_name(evaluate_state* evaluator, const std::string& contract_name) {
@@ -197,6 +201,7 @@ namespace simplechain {
 					}
 					return false;
 				}FC_CAPTURE_AND_LOG((contract_name))
+				return false;
 			}
 
 			static void put_contract_storage_changes_to_evaluator(evaluate_state* evaluator, const std::string& contract_id, const contract_storage_changes_type& changes) {
@@ -223,6 +228,7 @@ namespace simplechain {
 					}
 					return nullptr;
 				}FC_CAPTURE_AND_LOG((contract_id))
+				return nullptr;
 			}
 
 			static std::shared_ptr<contract_object> get_contract_object_by_name(evaluate_state* evaluator, const std::string& contract_name) {
@@ -233,7 +239,7 @@ namespace simplechain {
 					}
 					return nullptr;
 				}FC_CAPTURE_AND_LOG((contract_name))
-
+				return nullptr;
 			}
 
 			int SimpleChainUvmChainApi::get_stored_contract_info(lua_State *L, const char *name, std::shared_ptr<UvmContractInfo> contract_info_ret)
