@@ -168,7 +168,7 @@ namespace vmgc {
 
 		//malloc new block
 		//check max size
-		auto mallocSize = DEFAULT_GC_BLOCK_SIZE;
+		size_t mallocSize = DEFAULT_GC_BLOCK_SIZE;
 		if (size > DEFAULT_GC_BLOCK_SIZE) {
 			mallocSize = size;
 		}
@@ -210,6 +210,7 @@ namespace vmgc {
 				auto gc_obj = (GcObject*)p;
 				auto objtt = gc_obj->tt;
 				auto ntt = novariant(objtt);
+				UNUSED(ntt);
 				gc_obj->~GcObject();
 			}
 			_malloced_gcbuffers->erase((intptr_t)p);  
@@ -344,7 +345,7 @@ namespace vmgc {
 			//add 
 			size_t align8sz = align8(sz);
 
-			if (align8sz <= _empty_str_buffer.second) {
+			if (align8sz <= size_t(_empty_str_buffer.second)) {
 				_gc_strpool->insert(std::pair<unsigned int, std::pair<intptr_t, ptrdiff_t>>(h, std::pair<intptr_t, ptrdiff_t>(_empty_str_buffer.first, align8sz)));
 				p = (void*) _empty_str_buffer.first;
 

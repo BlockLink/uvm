@@ -250,6 +250,8 @@ void luaH_resize(lua_State *L, uvm_types::GcTable *t, unsigned int nasize,
 	else {
 		t->array.resize(nasize);
 	}
+	UNUSED(i);
+	UNUSED(j);
 }
 
 
@@ -307,7 +309,7 @@ TValue *luaH_newkey(lua_State *L, uvm_types::GcTable *t, const TValue *key, bool
 		}
 	}
 	// if key is int and == len(array+1), newkey put to array part
-	if (is_int && k == (t->array.size() + 1)) {
+	if (is_int && size_t(k) == (t->array.size() + 1)) {
 		t->array.push_back(*luaO_nilobject);
 		return &t->array[k-1];
 	}

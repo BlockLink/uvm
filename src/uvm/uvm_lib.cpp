@@ -708,6 +708,7 @@ namespace uvm
 				}
 				auto args_count = top - 2;
 				auto contract_addr = luaL_checkstring(L, 1);
+				UNUSED(contract_addr);
 				std::string api_name(luaL_checkstring(L, 2));
 				if (api_name.empty()) {
 					uvm::lua::api::global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR,
@@ -811,10 +812,12 @@ namespace uvm
                 CallInfo *ci = L->ci;
                 CallInfo *oci = ci->previous;
 				uvm_types::GcProto *np = getproto(ci->func);
+				UNUSED(np);
 				uvm_types::GcProto *p = getproto(oci->func);
 				uvm_types::GcLClosure *ocl = clLvalue(oci->func);
                 int real_localvars_count = (int)(ci->func - oci->func - 1);
                 int linedefined = p->linedefined;
+				UNUSED(linedefined);
                 L->ci = oci;
                 int top = lua_gettop(L);
 
@@ -828,7 +831,7 @@ namespace uvm
                     if (i >= real_localvars_count) // the localvars is after the debugger() call
                         break;
                     // get local var name
-                    if (i < p->locvars.size())
+                    if (size_t(i) < p->locvars.size())
                     {
                         LocVar localvar = p->locvars[i];
                         const char *varname = getstr(localvar.varname);
@@ -839,7 +842,7 @@ namespace uvm
                 }
                 // capture upvalues vars and values(need get upvalue name from whereelse)
                 L->ci = ci;
-                for (int i = 0; i < p->upvalues.size(); ++i)
+                for (size_t i = 0; i < p->upvalues.size(); ++i)
                 {
                     Upvaldesc upval = p->upvalues[i];
                     const char *upval_name = getstr(upval.name);
@@ -1306,6 +1309,7 @@ namespace uvm
 				lua_pop(L, 1);
 
 				auto contract_id = contract_id_in_contract ? contract_id_in_contract : contract_id_in_data_prop;
+				UNUSED(contract_id);
 
 				lua_getfield(L, 3, key);
 				
@@ -1349,7 +1353,7 @@ namespace uvm
 				}
 				auto key = luaL_checkstring(L, 2);
 				std::string key_str(key);
-				if(key == "id" || key == "name" || key == "storage")
+				if(key_str == "id" || key_str == "name" || key_str == "storage")
 				{
 					lua_getfield(L, 4, key); // stack: t, k, v, _data, _data[k]
 					if(lua_isnil(L, 5))
@@ -1782,7 +1786,7 @@ end
 					}
 
 					sz = L->using_contract_id_stack->size();
-					for (; sz > origContractStackSize; sz--) {
+					for (; sz > size_t(origContractStackSize); sz--) {
 						L->using_contract_id_stack->pop();
 					}
 
@@ -2047,7 +2051,7 @@ end
                     return nil_value_node;
                 }
 
-                LStatesMap *states_map = get_lua_states_value_hashmap();
+                // LStatesMap *states_map = get_lua_states_value_hashmap();
                 L_V1 map = create_value_map_for_lua_state(L);
                 std::string key_str(key);
                 auto it = map->find(key_str);
@@ -2326,6 +2330,11 @@ end
                     int bx = GETARG_Bx(i);
                     int sbx = GETARG_sBx(i);
                     int line = getfuncline(proto, pc);
+					UNUSED(line);
+
+					UNUSED(ax);
+					UNUSED(sbx);
+					UNUSED(line);
 
 					if(is_importing_contract)
 					{
@@ -2335,7 +2344,7 @@ end
 						{
 							int idx = MYK(INDEXK(bx));
 							int idx_in_kst = -idx - 1;
-							if (idx_in_kst >= 0 && idx_in_kst < proto->ks.size())
+							if (idx_in_kst >= 0 && idx_in_kst < int(proto->ks.size()))
 							{
 								const char *contract_name = getstr(tsvalue(&proto->ks[idx_in_kst]));
 								if (contract_name && !uvm::lua::api::global_uvm_chain_api->check_contract_exist(L, contract_name))
@@ -2354,7 +2363,7 @@ end
 						{
 							int idx = MYK(INDEXK(bx));
 							int idx_in_kst = -idx - 1;
-							if (idx_in_kst >= 0 && idx_in_kst < proto->ks.size())
+							if (idx_in_kst >= 0 && idx_in_kst < int(proto->ks.size()))
 							{
 								const char *contract_address = getstr(tsvalue(&proto->ks[idx_in_kst]));
 								if (contract_address && !uvm::lua::api::global_uvm_chain_api->check_contract_exist_by_address(L, contract_address))
@@ -2384,13 +2393,14 @@ end
                         // when instack=1, find in parent localvars, when instack=0, find in parent upval pool
                         if (a == 0)
                             break;
-						if (b >= proto->upvalues.size() || b < 0)
+						if (b < 0 || size_t(b) >= proto->upvalues.size())
 						{
 							lcompile_error_set(L, error, "upvalue error");
 							return false;
 						}
                         const char *upvalue_name = UPVALNAME_OF_PROTO(proto, b);
                         int cidx = MYK(INDEXK(b));
+						UNUSED(cidx);
                         if (proto->ks.empty())
                             break;
                         // const char *cname = getstr(tsvalue(&proto->k[-cidx-1]));
@@ -2424,7 +2434,7 @@ end
                     }	 break;
                     case UOP_SETUPVAL:
                     {
-						if (b >= proto->upvalues.size() || b < 0)
+						if (b < 0 || size_t(b) >= proto->upvalues.size())
 						{
 							lcompile_error_set(L, error, "upvalue error");
 							return false;
@@ -2441,7 +2451,7 @@ end
                     }
                     case UOP_GETTABUP:
                     {
-						if (b >= proto->upvalues.size() || b < 0)
+						if (b < 0 || size_t(b) >= proto->upvalues.size())
 						{
 							lcompile_error_set(L, error, "upvalue error");
 							return false;
@@ -2477,7 +2487,7 @@ end
                     break;
                     case UOP_SETTABUP:
                     {
-						if (a >= proto->upvalues.size() || a < 0)
+						if (a < 0 || size_t(a) >= proto->upvalues.size())
 						{
 							lcompile_error_set(L, error, "upvalue error");
 							return false;
@@ -2822,16 +2832,16 @@ end
 								check_arg_type = true; //new gpc version has arg_types, support muti args, try check
 								std::copy(stored_contract_info->contract_api_arg_types[api_name].begin(), stored_contract_info->contract_api_arg_types[api_name].end(), std::back_inserter(arg_types));
 							}
-							int input_args_num = args.size();
+							size_t input_args_num = args.size();
 							if (check_arg_type) { //new version
 								if (arg_types.size() != input_args_num) {
-									global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "args num not match %d error", arg_types.size());
+									global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "args num not match %d error", int(arg_types.size()));
 									return 0;
 								}
 							}
 							else {  //old gpc version,  conctract api accept only one arg
 								if (input_args_num != 1) {
-									global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "old vesion gpc only accept 1 arg , but input %d args", input_args_num);
+									global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "old vesion gpc only accept 1 arg , but input %d args", int(input_args_num));
 									return 0;
 								}
 							}

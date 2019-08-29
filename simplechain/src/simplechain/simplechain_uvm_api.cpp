@@ -581,7 +581,7 @@ namespace simplechain {
 					}
 					if (use_gas_log(L)) {
 						const auto& txid = get_transaction_id_without_gas(L);
-						printf("txid %s, contract %s storage change gas %d\n", txid.c_str(), contract_id.c_str(), storage_gas);
+						printf("txid %s, contract %s storage change gas %ld\n", txid.c_str(), contract_id.c_str(), storage_gas);
 					}
 					put_contract_storage_changes_to_evaluator(evaluator, contract_id, contract_storage_change);
 				}
@@ -658,8 +658,9 @@ namespace simplechain {
 					auto pool = p.second;
 					for (const auto &object_item : *pool)
 					{
-						auto object_key = object_item.first;
-						auto object_addr = object_item.second;
+						const auto& object_key = object_item.first;
+						UNUSED(object_key);
+						const auto& object_addr = object_item.second;
 						if (object_addr == 0)
 							continue;
 						switch (type)
@@ -896,7 +897,7 @@ namespace simplechain {
 					auto evaluator = get_contract_evaluator(L);
 					const auto& chain = evaluator->get_chain();
 					auto target = chain->latest_block().block_number + next;
-					if (target < next)
+					if ((uint64_t)target < (uint64_t)next)
 						return 0;
 					return static_cast<uint32_t>(target);
 				}
@@ -920,7 +921,7 @@ namespace simplechain {
 						return -1;
 					const auto& block = chain->get_block_by_number(num);
 					auto hash = block->digest();
-					return hash._hash[3] % ((1 << 31) - 1);
+					return hash._hash[3] % ((uint32_t(1) << 31) - 1);
 				}
 				catch (...)
 				{

@@ -348,6 +348,8 @@ namespace simplechain {
 			invoke_contract_result.error = e.what();
 			invoke_contract_result.exec_succeed = false;
 		}
+		UNUSED(exception_code);
+		UNUSED(has_error);
 		return std::make_shared<contract_invoke_result>(invoke_contract_result);
 	}
 	std::shared_ptr<contract_invoke_evaluator::operation_type::result_type> contract_invoke_evaluator::do_apply(const operation_type& op) {

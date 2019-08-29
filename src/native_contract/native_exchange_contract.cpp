@@ -410,6 +410,8 @@ namespace uvm {
 
 			int64_t purchaseNum = orderInfo.purchaseNum;
 			int64_t payNum = orderInfo.payNum;
+			UNUSED(purchaseNum);
+			UNUSED(payNum);
 
 			int64_t takerGetNum = takerFillOrder.getNum;
 			int64_t takerSpentNum = takerFillOrder.spentNum;
@@ -606,7 +608,7 @@ namespace uvm {
 			fc::from_variant(args, orders);
 			auto callerAddr = caller_address_string();
 
-			for (int i = 0; i < orders.size(); i++) {
+			for (size_t i = 0; i < orders.size(); i++) {
 				std::string addr;
 				std::string id;
 				if (getOrderOwnerAddressAndId(orders[i], addr, id) == "OK") {

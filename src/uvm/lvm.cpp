@@ -850,7 +850,7 @@ void luaV_finishOp(lua_State *L) {
 static int get_line_in_current_proto(CallInfo* ci, uvm_types::GcProto *proto)
 {
 	int idx = (int)(ci->u.l.savedpc - proto->codes.data()); // proto
-	if (idx < proto->codes.size())
+	if (idx < int(proto->codes.size()))
 	{
 		int line_in_proto = proto->lineinfos[idx];
 		return line_in_proto;
@@ -867,7 +867,7 @@ if (!(cond)) {      \
      }                             \
 }
 
-static bool enum_has_flag(int enum_value, int flag) {
+static bool enum_has_flag(int enum_value, lua_VMState flag) {
 	return (enum_value | flag) == enum_value;
 }
 
@@ -939,6 +939,7 @@ namespace uvm {
 				|| enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT))
 				return;
 			int startline = startline = current_line();
+			UNUSED(startline);
 			bool from_break = false;
 			if (enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)) {
 				L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
@@ -954,7 +955,7 @@ namespace uvm {
 			{
 				while (!enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
 					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT)
-					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK) && L->ci_depth >= c )
+					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK) && int(L->ci_depth) >= c )
 				{
 					has_next_op = executeToNextOp(L);
 					if (from_break && enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK) && current_line() == startline) { //skip last break ins
@@ -1074,7 +1075,8 @@ namespace uvm {
 			}
 
 			bool use_step_log = global_uvm_chain_api != nullptr && global_uvm_chain_api->use_step_log(L);
-                        bool use_gas_log = global_uvm_chain_api != nullptr && global_uvm_chain_api->use_gas_log(L);
+            bool use_gas_log = global_uvm_chain_api != nullptr && global_uvm_chain_api->use_gas_log(L);
+			UNUSED(use_gas_log);
 
 			
 				if (!ci || ci->u.l.savedpc == nullptr) {
@@ -1942,7 +1944,7 @@ namespace uvm {
 					if (L->breakpoints->find(current_contract_address) != L->breakpoints->end()) {
 						const auto& contract_breakpoints = L->breakpoints->at(current_contract_address);
 						auto inst_index_in_proto = ci->u.l.savedpc - cl->p->codes.data();
-						if (cl->p->lineinfos.size() > inst_index_in_proto) {
+						if (cl->p->lineinfos.size() > size_t(inst_index_in_proto)) {
 							uint32_t line = cl->p->lineinfos[inst_index_in_proto];
 							if (std::find(contract_breakpoints.begin(), contract_breakpoints.end(), line) != contract_breakpoints.end()) {
 								union_change_state(L, lua_VMState::LVM_STATE_BREAK);
@@ -2046,10 +2048,10 @@ namespace uvm {
 			int line = current_line();
 			size_t numparas = (size_t)cl->p->numparams;
 			if (numparas > 0) {
-				printf("num paras = %d\n", numparas);
+				printf("num paras = %d\n", int(numparas));
 			}
 			auto currentpc = ci->u.l.savedpc - cl->p->codes.data();
-			printf("currentpc = %d\n", currentpc);
+			printf("currentpc = %d\n", int(currentpc));
 
 			for (size_t i = 0; i < cl->p->locvars.size(); i++) {
 				const auto& locvar = cl->p->locvars[i];
@@ -2078,6 +2080,7 @@ namespace uvm {
 				TValue value = *upval->v;
 				result[upval_name] = value;
 			}
+			UNUSED(level);
 			return result;
 		}
 
@@ -2099,9 +2102,9 @@ namespace uvm {
 			}
 			auto cl = clLvalue(ci->func);
 			auto inst_index_in_proto = ci->u.l.savedpc - cl->p->codes.data();
-			if (inst_index_in_proto < 0 || inst_index_in_proto >= cl->p->codes.size())
+			if (inst_index_in_proto < 0 || size_t(inst_index_in_proto) >= cl->p->codes.size())
 				return 0;
-			if (inst_index_in_proto >= cl->p->lineinfos.size())
+			if (size_t(inst_index_in_proto) >= cl->p->lineinfos.size())
 				return 0;
 			return cl->p->lineinfos[inst_index_in_proto];
 		}
@@ -2134,9 +2137,9 @@ namespace uvm {
 				return 0;
 			}
 			auto inst_index_in_proto = ci->u.l.savedpc - cl->p->codes.data();
-			if (inst_index_in_proto < 0 || inst_index_in_proto >= cl->p->codes.size())
+			if (inst_index_in_proto < 0 || size_t(inst_index_in_proto) >= cl->p->codes.size())
 				return 0;
-			if (inst_index_in_proto >= cl->p->lineinfos.size())
+			if (size_t(inst_index_in_proto) >= cl->p->lineinfos.size())
 				return 0;
 			return cl->p->lineinfos[inst_index_in_proto];
 		}
@@ -2162,6 +2165,9 @@ std::shared_ptr<uvm::core::ExecuteContext> luaV_execute(lua_State *L)
 	execute_ctx->ci = ci;
 	execute_ctx->enter_newframe(L);
 	last_execute_context = execute_ctx;
+	UNUSED(cl);
+	UNUSED(k);
+	UNUSED(base);
 	return execute_ctx;
 }
 
