@@ -98,19 +98,19 @@ namespace simplechain {
 		return storage_data;
 	}
 
-	static fc::variant json_from_chars(std::vector<char> data_chars)
+	/*static fc::variant json_from_chars(std::vector<char> data_chars)
 	{
 		std::vector<char> data(data_chars.size() + 1);
 		memcpy(data.data(), data_chars.data(), sizeof(char) * data_chars.size());
 		data[data_chars.size()] = '\0';
 		std::string storage_json_str(data.data());
 		return fc::json::from_string(storage_json_str);
-	}
+	}*/
 
-	static fc::variant json_from_str(const std::string &str)
+	/*static fc::variant json_from_str(const std::string &str)
 	{
 		return fc::json::from_string(str);
-	}
+	}*/
 
 
 	UvmStorageValue json_to_uvm_storage_value(lua_State *L, fc::variant json_value)

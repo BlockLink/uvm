@@ -112,7 +112,7 @@ void LArraylist_append(LArrayList *alist, void *data)
         {
             // realloc array
             void **old_items = items;
-            size_t old_length = alist->length;
+            // size_t old_length = alist->length;
             size_t old_max = alist->max_size;
             size_t new_size = alist->max_size + L_ARRAYLIST_EXPANSION_SIZE;
             alist->elements = (void**)calloc(new_size, alist->element_size);

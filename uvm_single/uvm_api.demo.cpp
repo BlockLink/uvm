@@ -39,12 +39,12 @@ namespace uvm {
 
 			static int has_error = 0;
 
-			static std::string get_file_name_str_from_contract_module_name(std::string name)
+			/*static std::string get_file_name_str_from_contract_module_name(std::string name)
 			{
 				std::stringstream ss;
 				ss << "uvm_contract_" << name;
 				return ss.str();
-			}
+			}*/
 
 			/**
 			* whether exception happen in L
@@ -226,7 +226,7 @@ namespace uvm {
 				if (nullptr == f)
 				{
 					std::string origin_filename(name);
-					char filesep = uvm::util::file_separator_str()[0];
+					// char filesep = uvm::util::file_separator_str()[0];
 					int pos = origin_filename.find('/');
 					while (pos > 0) {
 						origin_filename.replace(pos, 1, "\\");
@@ -504,7 +504,7 @@ namespace uvm {
 					auto pool = p.second;
 					for(const auto &object_item : *pool)
 					{
-						auto object_key = object_item.first;
+						// auto object_key = object_item.first;
 						auto object_addr = object_item.second;
 						if (object_addr == 0)
 							continue;

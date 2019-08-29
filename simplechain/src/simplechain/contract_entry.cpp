@@ -104,7 +104,7 @@ namespace simplechain {
 		unsigned char* code_buf = (unsigned char*)malloc(code.code.size());
 		FC_ASSERT(code_buf, "malloc failed");
 
-		for (int i = 0; i < code.code.size(); ++i)
+		for (size_t i = 0; i < code.code.size(); ++i)
 		{
 			code_buf[i] = code.code[i];
 			printable_code = printable_code + to_printable_hex(code_buf[i]);

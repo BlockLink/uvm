@@ -75,7 +75,6 @@ void test2()
 			chain->evaluate_transaction(tx);
 			chain->accept_transaction_to_mempool(*tx);
 		}
-		printf("");
 		{
 			auto tx1 = std::make_shared<transaction>();
 

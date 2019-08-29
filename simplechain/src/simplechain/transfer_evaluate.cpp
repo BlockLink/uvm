@@ -38,12 +38,12 @@ namespace simplechain {
 		params_assert(op.amount > 0);
 		params_assert(helper::is_valid_address(op.from_address) && !helper::is_valid_contract_address(op.from_address));
 		params_assert(helper::is_valid_address(op.to_address) && !helper::is_valid_contract_address(op.to_address));
-		params_assert(get_chain()->get_account_asset_balance(op.from_address, op.asset_id) >= op.amount);
+		params_assert(get_chain()->get_account_asset_balance(op.from_address, op.asset_id) >= balance_t(op.amount));
 		return std::make_shared<void_evaluate_result>();
 	}
 	std::shared_ptr<transfer_operation_evaluator::operation_type::result_type> transfer_operation_evaluator::do_apply(const operation_type& op) {
 		auto result = do_evaluate(op);
-		params_assert(get_chain()->get_account_asset_balance(op.from_address, op.asset_id) >= op.amount);
+		params_assert(get_chain()->get_account_asset_balance(op.from_address, op.asset_id) >= balance_t(op.amount));
 		get_chain()->update_account_asset_balance(op.to_address, op.asset_id, op.amount);
 		get_chain()->update_account_asset_balance(op.from_address, op.asset_id, - int64_t(op.amount));
 		return result;

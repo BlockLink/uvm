@@ -79,7 +79,7 @@ namespace simplechain {
 					}
 				}
 				else {
-					msg = "vm out of memory";
+					strcpy(msg, "vm out of memory");
 				}
 				lua_set_compile_error(L, msg);
 
@@ -142,7 +142,7 @@ namespace simplechain {
 						auto gas_limit = evaluator->gas_limit;
 						if (gas_limit == 0)
 							return 0;
-						auto gas_count = uvm::lua::lib::get_lua_state_instructions_executed_count(L);
+						auto gas_count = gas_count_type(uvm::lua::lib::get_lua_state_instructions_executed_count(L));
 						return gas_count > gas_limit;
 					}
 					return 0;
@@ -371,6 +371,7 @@ namespace simplechain {
 				null_storage.type = uvm::blockchain::StorageValueTypes::storage_value_null;
 
 				auto evaluator = get_contract_evaluator(L);
+				UNUSED(evaluator);
 				std::string contract_id = uvm::lua::lib::unwrap_any_contract_name(contract_name);
 
 				if (!check_contract_exist_by_address(L, contract_id.c_str()))
@@ -580,7 +581,7 @@ namespace simplechain {
 					}
 					if (use_gas_log(L)) {
 						const auto& txid = get_transaction_id_without_gas(L);
-						printf("txid %s, contract %s storage change gas %d\n", txid.c_str(), contract_id.c_str());
+						printf("txid %s, contract %s storage change gas %d\n", txid.c_str(), contract_id.c_str(), storage_gas);
 					}
 					put_contract_storage_changes_to_evaluator(evaluator, contract_id, contract_storage_change);
 				}
@@ -824,7 +825,7 @@ namespace simplechain {
 					const auto& chain = evaluator->get_chain();
 					const auto& block = chain->latest_block();
 					auto hash = block.digest();
-					return hash._hash[3] % ((1 << 31) - 1);
+					return hash._hash[3] % ((uint32_t(1) << 31) - 1);
 				}
 				catch (...)
 				{
@@ -960,6 +961,7 @@ namespace simplechain {
 			const char * SimpleChainUvmChainApi::get_system_asset_symbol(lua_State *L)
 			{
 				auto evaluator = get_contract_evaluator(L);
+				UNUSED(evaluator);
 				return SIMPLECHAIN_CORE_ASSET_SYMBOL;
 			}
 

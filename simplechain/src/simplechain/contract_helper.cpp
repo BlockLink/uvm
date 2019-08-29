@@ -122,10 +122,10 @@ else \
 		}
 		p_new_stream->is_bytes = stream->is_bytes;
 		p_new_stream->buff = stream->buff;
-		for (int i = 0; i < stream->contract_apis.size(); ++i)
+		for (size_t i = 0; i < stream->contract_apis.size(); ++i)
 		{
 			int new_flag = 1;
-			for (int j = 0; j < stream->offline_apis.size(); ++j)
+			for (size_t j = 0; j < stream->offline_apis.size(); ++j)
 			{
 				if (stream->contract_apis[i] == stream->offline_apis[j])
 				{

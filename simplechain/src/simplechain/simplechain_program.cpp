@@ -63,11 +63,13 @@ int main(int argc, char** argv) {
 				auto localvars1 = chain->view_localvars_in_last_debugger_state();
 				auto stack1 = chain->view_current_contract_stack_item_in_last_debugger_state();
 				auto line1 = chain->view_current_line_number_in_last_debugger_state();
+				UNUSED(line1);
 				chain->clear_breakpoints_in_last_debugger_state();
 
 				chain->debugger_step_out();
 				auto localvars2 = chain->view_localvars_in_last_debugger_state();
 				auto line2 = chain->view_current_line_number_in_last_debugger_state();
+				UNUSED(line2);
 				// TODO: get debugger state, debug, test step in/step out/step over/view info
 				
 				chain->evaluate_transaction(tx);

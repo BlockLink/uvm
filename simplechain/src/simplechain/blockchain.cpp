@@ -519,6 +519,7 @@ namespace simplechain {
 		breakpoints.clear();
 		auto engine = get_last_contract_engine_for_debugger();
 		std::map<std::string, std::list<uint32_t> > *breakpoints_pointer = nullptr;
+		UNUSED(breakpoints_pointer);
 		if (engine) {
 			breakpoints_pointer = &breakpoints;
 			auto uvm_engine = (UvmContractEngine*)engine.get();
