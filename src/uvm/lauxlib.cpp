@@ -984,27 +984,27 @@ static int handle_luainit(lua_State *L) {
         return dostring(L, init, name);
 }
 
-static int pmain_of_run_compiled_file(lua_State *L)
-{
-    int argc = (int)lua_tointeger(L, 1);
-    char **argv = (char **)lua_touserdata(L, 2);
-    int script;
-    int args = collectargs(argv, &script);
-    luaL_checkversion(L);  /* check that interpreter has correct version */
-    if (argv[0] && argv[0][0]) progname = argv[0];
-    createargtable(L, argv, argc, script);  /* create table 'arg' */
-    if (!(args & has_E)) {  /* no option '-E'? */
-        if (handle_luainit(L) != LUA_OK)  /* run LUA_INIT */
-            return 0;  /* error running LUA_INIT */
-    }
-    if (!runargs(L, argv, script))  /* execute arguments -e and -l */
-        return 0;  /* something failed */
-    if (script < argc &&  /* execute main script (if there is one) */
-        handle_script(L, argv + script) != LUA_OK)
-        return 0;
-    lua_pushboolean(L, 1);  /* signal no errors */
-    return 1;
-}
+//static int pmain_of_run_compiled_file(lua_State *L)
+//{
+//    int argc = (int)lua_tointeger(L, 1);
+//    char **argv = (char **)lua_touserdata(L, 2);
+//    int script;
+//    int args = collectargs(argv, &script);
+//    luaL_checkversion(L);  /* check that interpreter has correct version */
+//    if (argv[0] && argv[0][0]) progname = argv[0];
+//    createargtable(L, argv, argc, script);  /* create table 'arg' */
+//    if (!(args & has_E)) {  /* no option '-E'? */
+//        if (handle_luainit(L) != LUA_OK)  /* run LUA_INIT */
+//            return 0;  /* error running LUA_INIT */
+//    }
+//    if (!runargs(L, argv, script))  /* execute arguments -e and -l */
+//        return 0;  /* something failed */
+//    if (script < argc &&  /* execute main script (if there is one) */
+//        handle_script(L, argv + script) != LUA_OK)
+//        return 0;
+//    lua_pushboolean(L, 1);  /* signal no errors */
+//    return 1;
+//}
 
 LUA_API int lua_docompiledfile(lua_State *L, const char *filename)
 {
@@ -2364,24 +2364,24 @@ LUALIB_API int luaL_loadfilex(lua_State *L, const char *filename,
     return status;
 }
 
-static int writer(lua_State* L, const void* p, size_t size, void* u)
-{
-    UNUSED(L);
-    int status = (fwrite(p, size, 1, (FILE*)u) != 1) && (size != 0);
-    return status;
-}
+//static int writer(lua_State* L, const void* p, size_t size, void* u)
+//{
+//    UNUSED(L);
+//    int status = (fwrite(p, size, 1, (FILE*)u) != 1) && (size != 0);
+//    return status;
+//}
 
-static int writer_to_stream(lua_State *L, const void *p, size_t size, void *u)
-{
-    UNUSED(L);
-	UvmModuleByteStreamP stream = (UvmModuleByteStreamP) u;
-    if (!stream)
-        return 1;
-	auto old_buff_size = stream->buff.size();
-	stream->buff.resize(old_buff_size + size);
-    memcpy(stream->buff.data() + old_buff_size, p, size);
-    return 0;
-}
+//static int writer_to_stream(lua_State *L, const void *p, size_t size, void *u)
+//{
+//    UNUSED(L);
+//	UvmModuleByteStreamP stream = (UvmModuleByteStreamP) u;
+//    if (!stream)
+//        return 1;
+//	auto old_buff_size = stream->buff.size();
+//	stream->buff.resize(old_buff_size + size);
+//    memcpy(stream->buff.data() + old_buff_size, p, size);
+//    return 0;
+//}
 
 typedef struct LoadS {
     const char *s;

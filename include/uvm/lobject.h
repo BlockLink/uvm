@@ -206,11 +206,6 @@ typedef struct lua_TValue {
   { TValue *io = (obj); GCObject *i_g=(x); \
     val_(io).gc = i_g; settt_(io, ctb(i_g->tt)); }
 
-//#define setsvalue(L,obj,x) \
-//  { TValue *io = (obj); TString *x_ = (x); \
-//    val_(io).gc = obj2gco(x_); settt_(io, ctb(x_->tt)); \
-//    checkliveness(L,io); }
-
 #define setsvalue(L,obj,x) \
   { TValue *io = (obj); uvm_types::GcString *x_ = (x); \
     val_(io).gco = x_; settt_(io, ctb(x_->tt_)); \

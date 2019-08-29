@@ -51,7 +51,7 @@ static int currentpc(CallInfo *ci) {
 
 
 static int currentline(CallInfo *ci) {
-    return getfuncline(ci_func(ci)->p, currentpc(ci));
+    return getfuncline(ci_func(ci)->p, size_t(currentpc(ci)));
 }
 
 
@@ -255,7 +255,7 @@ static void collectvalidlines(lua_State *L, uvm_types::GcClosure *f) {
         api_incr_top(L);
     }
     else {
-        int i;
+        size_t i;
         TValue v;
         int *lineinfo = static_cast<uvm_types::GcLClosure*>(f)->p->lineinfos.empty() ? nullptr : static_cast<uvm_types::GcLClosure*>(f)->p->lineinfos.data();
         uvm_types::GcTable *t = luaH_new(L);  /* new table to store active lines */
@@ -693,10 +693,10 @@ void luaG_traceexec(lua_State *L) {
     if (mask & LUA_MASKLINE) {
 		uvm_types::GcProto *p = ci_func(ci)->p;
         int npc = pcRel(ci->u.l.savedpc, p);
-        int newline = getfuncline(p, npc);
-        if (npc == 0 ||  /* call linehook when enter a new function, */
-            ci->u.l.savedpc <= L->oldpc ||  /* when jump back (loop), or when */
-            newline != getfuncline(p, pcRel(L->oldpc, p)))  /* enter a new line */
+        auto newline = getfuncline(p, size_t(npc));
+		if (npc == 0 ||  /* call linehook when enter a new function, */
+			ci->u.l.savedpc <= L->oldpc ||  /* when jump back (loop), or when */
+			newline != getfuncline(p, size_t(pcRel(L->oldpc, p))))  /* enter a new line */
             luaD_hook(L, LUA_HOOKLINE, newline);  /* call line hook */
     }
     L->oldpc = ci->u.l.savedpc;

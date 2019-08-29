@@ -114,8 +114,7 @@ void luaF_freeproto(lua_State *L, uvm_types::GcProto *f) {
 ** Returns nullptr if not found.
 */
 const char *luaF_getlocalname(const uvm_types::GcProto *f, int local_number, int pc) {
-    int i;
-    for (i = 0; i < f->locvars.size() && f->locvars[i].startpc <= pc; i++) {
+    for (size_t i = 0; i < f->locvars.size() && f->locvars[i].startpc <= pc; i++) {
         if (pc < f->locvars[i].endpc) {  /* is variable active? */
             local_number--;
             if (local_number == 0)

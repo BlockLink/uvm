@@ -288,7 +288,7 @@ namespace simplechain {
 				auto item = p.as<fc::variants>();
 				auto asset_id = item[0].as_int64();
 				auto balance = item[1].as_int64();
-				this->update_account_asset_balance(contract_addr, asset_id, balance);
+				this->update_account_asset_balance(contract_addr, asset_id_t(asset_id), balance);
 			}
 			for (const auto& p : storages_json) {
 				auto value_json = p.value();

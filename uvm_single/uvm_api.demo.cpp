@@ -227,7 +227,7 @@ namespace uvm {
 				{
 					std::string origin_filename(name);
 					// char filesep = uvm::util::file_separator_str()[0];
-					int pos = origin_filename.find('/');
+					auto pos = origin_filename.find('/');
 					while (pos > 0) {
 						origin_filename.replace(pos, 1, "\\");
 						pos = origin_filename.find('/');
@@ -338,7 +338,7 @@ namespace uvm {
 				}
 
 				std::string contract_id = contract_name;
-				int pos = contract_id.find('\\');
+				auto pos = contract_id.find('\\');
 				while (pos > 0) {
 					contract_id.replace(pos, 1, "/");
 					pos = contract_id.find('\\');
@@ -368,7 +368,7 @@ namespace uvm {
 					is_init_storage_file = true;
 				}
 				std::string contract_id = contract_address;
-				int pos = contract_id.find('\\');
+				auto pos = contract_id.find('\\');
 				while (pos > 0) {
 					contract_id.replace(pos, 1, "/");
 					pos = contract_id.find('\\');
@@ -407,7 +407,7 @@ namespace uvm {
 					auto contract_id = change.first;
 
 
-					int pos = contract_id.find('\\');
+					auto pos = contract_id.find('\\');
 					while (pos > 0) {
 						contract_id.replace(pos, 1, "/");
 						pos = contract_id.find('\\');
@@ -661,12 +661,12 @@ namespace uvm {
 			}
 			std::string DemoUvmChainApi::sha256_hex(const std::string& hex_string) {
 				const auto& chars = hex_to_chars(hex_string);
-				auto hash_result = fc::sha256::hash(chars.data(), chars.size());
+				auto hash_result = fc::sha256::hash(chars.data(), uint32_t(chars.size()));
 				return hash_result.str();
 			}
 			std::string DemoUvmChainApi::sha1_hex(const std::string& hex_string) {
 				const auto& chars = hex_to_chars(hex_string);
-				auto hash_result = fc::sha1::hash(chars.data(), chars.size());
+				auto hash_result = fc::sha1::hash(chars.data(), uint32_t(chars.size()));
 				return hash_result.str();
 			}
 			std::string DemoUvmChainApi::sha3_hex(const std::string& hex_string) {
@@ -677,7 +677,7 @@ namespace uvm {
 			}
 			std::string DemoUvmChainApi::ripemd160_hex(const std::string& hex_string) {
 				const auto& chars = hex_to_chars(hex_string);
-				auto hash_result = fc::ripemd160::hash(chars.data(), chars.size());
+				auto hash_result = fc::ripemd160::hash(chars.data(), uint32_t(chars.size()));
 				return hash_result.str();
 			}
 
@@ -709,7 +709,7 @@ namespace uvm {
 				fc::array<char, 25> bin_addr;
 				memcpy((char*)&bin_addr, (char*)&version, sizeof(version));
 				memcpy((char*)&bin_addr + 1, (char*)&addr, sizeof(addr));
-				auto checksum = fc::ripemd160::hash((char*)&bin_addr, bin_addr.size() - 4);
+				auto checksum = fc::ripemd160::hash((char*)&bin_addr, uint32_t(bin_addr.size() - 4));
 				memcpy(((char*)&bin_addr) + 21, (char*)&checksum._hash[0], 4);
 				return prefix + fc::to_base58(bin_addr.data, sizeof(bin_addr));
 			}

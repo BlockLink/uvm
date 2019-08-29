@@ -72,23 +72,23 @@ static unsigned int arrayindex(const TValue *key) {
     return 0;  /* 'key' did not match some condition */
 }
 
-static std::string lua_value_to_str(const TValue *key)
-{
-	if (ttisstring(key))
-	{
-		return std::string(svalue(key));
-	}
-	else if (ttisinteger(key))
-	{
-		return std::to_string((lua_Integer)nvalue(key));
-	}
-	else if (ttisnumber(key))
-	{
-		return std::to_string(nvalue(key));
-	}
-	else
-		return "";
-}
+//static std::string lua_value_to_str(const TValue *key)
+//{
+//	if (ttisstring(key))
+//	{
+//		return std::string(svalue(key));
+//	}
+//	else if (ttisinteger(key))
+//	{
+//		return std::to_string((lua_Integer)nvalue(key));
+//	}
+//	else if (ttisnumber(key))
+//	{
+//		return std::to_string(nvalue(key));
+//	}
+//	else
+//		return "";
+//}
 
 
 static bool val_to_table_key(const TValue* key, std::string& out) {
@@ -164,7 +164,7 @@ static bool findindex_of_sorted_table(lua_State *L, uvm_types::GcTable *t, StkId
 	}
 }
 
-static const char* NOT_FOUND_KEY = "$NOT_FOUND$";
+//static const char* NOT_FOUND_KEY = "$NOT_FOUND$";
 
 
 int luaH_next(lua_State *L, uvm_types::GcTable *t, StkId key) {

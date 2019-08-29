@@ -532,7 +532,7 @@ static uvm_types::GcProto *addprototype(LexState *ls) {
     lua_State *L = ls->L;
     FuncState *fs = ls->fs;
 	uvm_types::GcProto *f = fs->f;  /* prototype of current function */
-    if (fs->np >= f->ps.size()) {
+    if (size_t(fs->np) >= f->ps.size()) {
         int oldsize = f->ps.size();
 		if (fs->np > oldsize) {
 			f->ps.resize(fs->np);
@@ -591,19 +591,19 @@ static void close_func(LexState *ls) {
 	uvm_types::GcProto *f = fs->f;
     luaK_ret(fs, 0, 0);  /* final return */
     leaveblock(fs);
-	if (fs->pc > f->codes.size()) {
+	if (size_t(fs->pc) > f->codes.size()) {
 		f->codes.resize(fs->pc);
 	}
-	if (fs->pc > f->lineinfos.size()) {
+	if (size_t(fs->pc) > f->lineinfos.size()) {
 		f->lineinfos.resize(fs->pc);
 	}
-	if (fs->nk > f->ks.size()) {
+	if (size_t(fs->nk) > f->ks.size()) {
 		f->ks.resize(fs->nk);
 	}
-	if (fs->np > f->ps.size()) {
+	if (size_t(fs->np) > f->ps.size()) {
 		f->ps.resize(fs->np);
 	}
-	if (fs->nlocvars > f->locvars.size()) {
+	if (size_t(fs->nlocvars) > f->locvars.size()) {
 		f->locvars.resize(fs->nlocvars);
 	}
 	if (fs->nups > f->upvalues.size()) {
@@ -612,6 +612,7 @@ static void close_func(LexState *ls) {
     lua_assert(fs->bl == nullptr);
     ls->fs = fs->prev;
     luaC_checkGC(L);
+	UNUSED(L);
 }
 
 

@@ -847,17 +847,17 @@ void luaV_finishOp(lua_State *L) {
     Protect(luaV_finishset(L,t,k,v,slot)); }
 // FIXME: end duplicate code in uvm_lib.cpp
 
-static int get_line_in_current_proto(CallInfo* ci, uvm_types::GcProto *proto)
-{
-	int idx = (int)(ci->u.l.savedpc - proto->codes.data()); // proto
-	if (idx < int(proto->codes.size()))
-	{
-		int line_in_proto = proto->lineinfos[idx];
-		return line_in_proto;
-	}
-	else
-		return 0;
-}
+//static int get_line_in_current_proto(CallInfo* ci, uvm_types::GcProto *proto)
+//{
+//	int idx = (int)(ci->u.l.savedpc - proto->codes.data()); // proto
+//	if (idx < int(proto->codes.size()))
+//	{
+//		int line_in_proto = proto->lineinfos[idx];
+//		return line_in_proto;
+//	}
+//	else
+//		return 0;
+//}
 
 #define lua_check_in_vm_error(cond, error_msg) {    \
 if (!(cond)) {      \
@@ -885,7 +885,7 @@ namespace uvm {
 			if (enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
 				|| enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT))
 				return;
-			int startline = current_line();
+			auto startline = current_line();
 			bool from_break = false;
 			if (enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)) {
 				L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
@@ -896,7 +896,7 @@ namespace uvm {
 
 			L->ci = ci;
 			*L->using_contract_id_stack = this->using_contract_id_stack;
-			int c = L->ci_depth;
+			auto c = L->ci_depth;
 			bool has_next_op = false;
 			try
 			{
@@ -949,13 +949,13 @@ namespace uvm {
 			L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_SUSPEND);
 			L->ci = ci;
 			*L->using_contract_id_stack = this->using_contract_id_stack;
-			int c = L->ci_depth;
+			auto c = L->ci_depth;
 			bool has_next_op = false;
 			try
 			{
 				while (!enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
 					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT)
-					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK) && int(L->ci_depth) >= c )
+					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK) && L->ci_depth >= c )
 				{
 					has_next_op = executeToNextOp(L);
 					if (from_break && enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK) && current_line() == startline) { //skip last break ins
@@ -1000,7 +1000,7 @@ namespace uvm {
 			L->ci = ci;
 			*L->using_contract_id_stack = this->using_contract_id_stack;
 			bool has_next_op = false;
-			int c = L->ci_depth;
+			auto c = L->ci_depth;
 			try {
 				do
 				{
@@ -1019,7 +1019,7 @@ namespace uvm {
 				} while (!enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
 					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT)
 					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)
-					&& (L->ci_depth > uint32_t(c) || startline == current_line()));
+					&& (L->ci_depth > c || startline == current_line()));
 			}
 			catch (std::exception &e)
 			{
@@ -1527,7 +1527,7 @@ namespace uvm {
 						int b = GETARG_B(i);
 						int nresults = GETARG_C(i) - 1;
 						if (b != 0) L->top = ra + b;  /* else previous instruction set top */
-													  // int line_in_proto = get_line_in_current_proto(ci, cl->p);
+						// int line_in_proto = get_line_in_current_proto(ci, cl->p);
 						if (luaD_precall(L, ra, nresults)) {  /* C function? */
 							if (nresults >= 0)
 								L->top = ci->top;  /* adjust results */
@@ -1553,6 +1553,7 @@ namespace uvm {
 						int nargs = GETARG_B(i) - 1;
 						int nresults = GETARG_C(i) - 1;
 						auto rarg = ra + 2;
+						UNUSED(rarg);
 						if (nargs > 10) {
 							luaG_runerror(L, "too many args");
 							vmbreak;
@@ -1616,6 +1617,7 @@ namespace uvm {
 						L->call_op_msg = GET_OPCODE(i);
 						
 						auto arg2 = ra + 2;
+						UNUSED(arg2);
 						//call api, ra:api function   ra+1:contract table  ra+2：arg
 						L->top = ra + 2 + nargs;
 						for (int j = 0; j < nargs; j++) {

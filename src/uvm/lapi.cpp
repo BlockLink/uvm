@@ -1190,7 +1190,7 @@ static const char *aux_upvalue(StkId fi, int n, TValue **val,
 		uvm_types::GcLClosure *f = clLvalue(fi);
 		uvm_types::GcString *name;
         uvm_types::GcProto *p = f->p;
-        if (!(1 <= n && n <= p->upvalues.size())) return nullptr;
+        if (!(1 <= n && size_t(n) <= p->upvalues.size())) return nullptr;
         *val = f->upvals[n - 1]->v;
         if (uv) *uv = f->upvals[n - 1];
         name = p->upvalues[n - 1].name;
@@ -1286,7 +1286,7 @@ size_t luaL_traverse_table_with_nested(lua_State *L, int index, lua_table_traver
     auto len = (size_t) lua_tointegerx(L, -1, nullptr);
     lua_pop(L, 1);
     size_t keys_count = 0;
-    for (auto i = 0; i < len; ++i)
+    for (size_t i = 0; i < len; ++i)
     {
         lua_pushinteger(L, i + 1);
         auto new_index = index < 0 ? (index - 1) : index;
@@ -1304,7 +1304,7 @@ size_t luaL_traverse_table_with_nested(lua_State *L, int index, lua_table_traver
         if (lua_isinteger(L, -2))
         {
             auto key_int = lua_tointeger(L, -2);
-            if (((int)key_int) <= len && key_int > 0)
+            if (((size_t)key_int) <= len && key_int > 0)
             {
                 lua_pop(L, 1);
                 continue;

@@ -542,18 +542,18 @@ static UvmStorageChangeItem diff_storage_change_if_is_table(lua_State *L, UvmSto
 	}
 	return change_item;
 }
-static bool has_property_changed_in_changelist(UvmStorageChangeList *list, std::string contract_id, std::string name)
-{
-	if (nullptr == list)
-		return false;
-	for (auto it = list->begin(); it != list->end(); ++it)
-	{
-		auto item = *it;
-		if (item.contract_id == contract_id && item.key == name)
-			return true;
-	}
-	return false;
-}
+//static bool has_property_changed_in_changelist(UvmStorageChangeList *list, std::string contract_id, std::string name)
+//{
+//	if (nullptr == list)
+//		return false;
+//	for (auto it = list->begin(); it != list->end(); ++it)
+//	{
+//		auto item = *it;
+//		if (item.contract_id == contract_id && item.key == name)
+//			return true;
+//	}
+//	return false;
+//}
 
 
 bool luaL_commit_storage_changes(lua_State *L)
@@ -1147,7 +1147,7 @@ namespace uvm {
 				{
 					for (auto it = before.value.table_value->begin(); it != before.value.table_value->end(); ++it)
 					{
-						auto found = after.value.table_value->find(it->first);
+						// auto found = after.value.table_value->find(it->first);
 						if (it->second.type != uvm::blockchain::StorageValueTypes::storage_value_null)
 						{
 							if (table_value_type < 0)

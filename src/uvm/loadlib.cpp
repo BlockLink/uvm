@@ -754,6 +754,7 @@ static void createsearcherstable(lua_State *L) {
 
     static const lua_CFunction uvm_searchers[] =
     { searcher_preload, searcher_uvm };
+	UNUSED(uvm_searchers);
 
     int i;
     /* create 'searchers' table */

@@ -220,12 +220,12 @@ namespace uvm
 				return prev.api_name;
 			}
 
-			static const char *get_prev_call_frame_contract_id_in_api(lua_State *L)
+			/*static const char *get_prev_call_frame_contract_id_in_api(lua_State *L)
 			{
 				const auto &contract_id = get_prev_call_frame_contract_id(L);
 				auto contract_id_str = malloc_and_copy_string(L, contract_id.c_str());
 				return contract_id_str;
-			}
+			}*/
 
 			static const char *get_prev_call_frame_storage_contract_id_in_api(lua_State *L)
 			{
@@ -2329,7 +2329,7 @@ end
                     int ax = GETARG_Ax(i);
                     int bx = GETARG_Bx(i);
                     int sbx = GETARG_sBx(i);
-                    int line = getfuncline(proto, pc);
+                    auto line = getfuncline(proto, size_t(pc));
 					UNUSED(line);
 
 					UNUSED(ax);
