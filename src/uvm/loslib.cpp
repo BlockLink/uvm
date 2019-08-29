@@ -21,12 +21,6 @@
 #include "uvm/lauxlib.h"
 #include "uvm/lualib.h"
 
-#ifdef _WIN32
-#include <Windows.h>
-#define mkstemp _mktemp
-#endif
-
-
 /*
 ** {==================================================================
 ** list of valid conversion specifiers for the 'strftime' function
@@ -122,7 +116,7 @@ static time_t l_checktime(lua_State *L, int arg) {
 
 /* ISO C definitions */
 #define LUA_TMPNAMBUFSIZE	L_tmpnam
-#define lua_tmpnam(b,e)		{ e = (mkstemp(b) == nullptr); }
+#define lua_tmpnam(b,e)		{ e = (tmpnam(b) == nullptr); }
 
 #endif				/* } */
 
