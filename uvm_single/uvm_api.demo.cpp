@@ -227,7 +227,7 @@ namespace uvm {
 				{
 					std::string origin_filename(name);
 					// char filesep = uvm::util::file_separator_str()[0];
-					auto pos = origin_filename.find('/');
+					int pos = int(origin_filename.find('/'));
 					while (pos > 0) {
 						origin_filename.replace(pos, 1, "\\");
 						pos = origin_filename.find('/');
@@ -270,7 +270,7 @@ namespace uvm {
 				f = fopen(filename.c_str(), "rb");
 				if (nullptr == f) {
 					filename = std::string(name);
-					auto pos = filename.find_last_of('.');
+					int pos = int(filename.find_last_of('.'));
 					
 					if (pos >= 0) {
 						filename = filename.substr(0, pos) + ".meta.json";
@@ -338,7 +338,7 @@ namespace uvm {
 				}
 
 				std::string contract_id = contract_name;
-				auto pos = contract_id.find('\\');
+				int pos = int(contract_id.find('\\'));
 				while (pos > 0) {
 					contract_id.replace(pos, 1, "/");
 					pos = contract_id.find('\\');
@@ -368,7 +368,7 @@ namespace uvm {
 					is_init_storage_file = true;
 				}
 				std::string contract_id = contract_address;
-				auto pos = contract_id.find('\\');
+				int pos = int(contract_id.find('\\'));
 				while (pos > 0) {
 					contract_id.replace(pos, 1, "/");
 					pos = contract_id.find('\\');
@@ -407,7 +407,7 @@ namespace uvm {
 					auto contract_id = change.first;
 
 
-					auto pos = contract_id.find('\\');
+					int pos = int(contract_id.find('\\'));
 					while (pos > 0) {
 						contract_id.replace(pos, 1, "/");
 						pos = contract_id.find('\\');
