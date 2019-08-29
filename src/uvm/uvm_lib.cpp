@@ -1780,7 +1780,7 @@ end
 					L->errorJmp = Lbak->errorJmp;
 
 					//»Ö¸´storage   native???
-					int sz = list->size();
+					size_t sz = list->size();
 					for (; sz > origChangelistSize; sz--) {
 						list->pop_back();
 					}
@@ -2845,7 +2845,7 @@ end
 									return 0;
 								}
 							}
-							for (int i = 0; i<input_args_num; i++) {
+							for (size_t i = 0; i<input_args_num; i++) {
 								const auto& arg = args[i];
 								//if (check_arg_type) {
 								//	if (!isArgTypeMatched(arg_types[i], arg->type)) {
