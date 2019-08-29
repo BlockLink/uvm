@@ -174,7 +174,7 @@ typedef struct lua_TValue {
 /* Macros for internal tests */
 #define righttt(obj)		(ttype(obj) == gcvalue(obj)->tt)
 
-#define checkliveness(L,obj) (0)
+#define checkliveness(L,obj) void(0)
 
 /* Macros to set values */
 #define settt_(o,t)	((o)->tt_=(t))

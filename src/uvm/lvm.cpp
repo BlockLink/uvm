@@ -938,7 +938,7 @@ namespace uvm {
 			if (enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
 				|| enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT))
 				return;
-			int startline = startline = current_line();
+			auto startline = current_line();
 			UNUSED(startline);
 			bool from_break = false;
 			if (enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)) {
@@ -990,7 +990,7 @@ namespace uvm {
 			if (enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
 				|| enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT))
 				return;
-			int startline = current_line();
+			auto startline = current_line();
 			bool from_break = false;
 			if (enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)) {
 				L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
@@ -1019,7 +1019,7 @@ namespace uvm {
 				} while (!enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
 					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT)
 					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)
-					&& (L->ci_depth > c || startline == current_line()));
+					&& (L->ci_depth > uint32_t(c) || startline == current_line()));
 			}
 			catch (std::exception &e)
 			{
@@ -1047,7 +1047,7 @@ namespace uvm {
 			if (!isLua(L->ci)) {
 				throw uvm::core::UvmException("not lua function to resume");
 			}
-			int startline = current_line();
+			auto startline = current_line();
 			bool from_break = false;
 			if (enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)) {
 				L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
@@ -1088,7 +1088,7 @@ namespace uvm {
 				if(use_step_log) {
 					ci->u.l.savedpc--;
 					const auto cur_line = current_line();
-					printf("%s\tline:%d, now gas %d\n", luaP_opnames[GET_OPCODE(i)], cur_line, *insts_executed_count);
+					printf("%s\tline:%d, now gas %d\n", luaP_opnames[GET_OPCODE(i)], cur_line, int(*insts_executed_count));
 					ci->u.l.savedpc++;
 				}
 
@@ -1806,7 +1806,7 @@ namespace uvm {
 					}
 					vmcase(UOP_CLOSURE) {
 						auto p_index = GETARG_Bx(i);
-						lua_check_in_vm_error(p_index < cl->p->ps.size(), "too large sub proto index");
+						lua_check_in_vm_error(p_index < int(cl->p->ps.size()), "too large sub proto index");
 						uvm_types::GcProto *p = cl->p->ps[p_index];
 						uvm_types::GcLClosure *ncl = getcached(p, cl->upvals.empty() ? nullptr : cl->upvals.data(), base);  /* cached closure */
 						if (ncl == nullptr) {  /* no match? */
@@ -1936,6 +1936,9 @@ namespace uvm {
 							)
 							vmbreak;
 					}
+					vmcase(UOP_DUMMY_COUNT) {
+						
+					}
 				}
 
 				if (!enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT) && L->allow_debug && L->using_contract_id_stack && !L->using_contract_id_stack->empty())
@@ -2045,7 +2048,8 @@ namespace uvm {
 			if (!ci || !ttisLclosure(ci->func)) {
 				return result;
 			}
-			int line = current_line();
+			auto line = current_line();
+			UNUSED(line);
 			size_t numparas = (size_t)cl->p->numparams;
 			if (numparas > 0) {
 				printf("num paras = %d\n", int(numparas));
