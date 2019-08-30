@@ -2,6 +2,7 @@
 #include <cbor_diff/helper.h>
 #include <uvm/uvm_lutil.h>
 #include <fc/crypto/hex.hpp>
+#include <boost/algorithm/hex.hpp>
 
 namespace cbor_diff {
 
@@ -38,9 +39,13 @@ namespace cbor_diff {
 	}
 
 	cbor::CborObjectP cbor_from_hex(const std::string& hex_str) {
-		std::vector<char> input_bytes(hex_str.size() / 2);
-		if (fc::from_hex(hex_str, input_bytes.data(), input_bytes.size()) < input_bytes.size())
+		std::vector<char> input_bytes;
+		try {
+			boost::algorithm::unhex(hex_str, std::inserter(input_bytes, input_bytes.begin()));
+		}
+		catch (...) {
 			throw CborDiffException("invalid hex string");
+		}
 		cbor::input input(input_bytes.data(), input_bytes.size());
 		cbor::decoder decoder(input);
 		auto result_cbor = decoder.run();

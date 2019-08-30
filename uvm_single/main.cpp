@@ -17,6 +17,8 @@
 #include <uvm/lualib.h>
 #include <uvm/uvm_lib.h>
 #include <boost/filesystem/path.hpp>
+#include <boost/algorithm/hex.hpp>
+#include <fc/crypto/hex.hpp>
 
 
 #if !defined(LUA_PROMPT)

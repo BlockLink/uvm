@@ -40,6 +40,7 @@
 #include <cborcpp/cbor.h>
 #include <uvm/lvm.h>
 #include <boost/scope_exit.hpp>
+#include <boost/algorithm/hex.hpp>
 
 namespace uvm
 {
@@ -397,8 +398,11 @@ namespace uvm
 						return 0;
 					}
 					std::string pubkey_hex(luaL_checkstring(L, 1));
-					std::vector<char> pubkey_chars(pubkey_hex.size() / 2);
-					if (fc::from_hex(pubkey_hex, pubkey_chars.data(), pubkey_chars.size()) != pubkey_chars.size()) {
+					std::vector<char> pubkey_chars;
+					try {
+						boost::algorithm::unhex(pubkey_hex, std::inserter(pubkey_chars, pubkey_chars.begin()));
+					}
+					catch (...) {
 						throw uvm::core::UvmException("invalid pubkey hex");
 					}
 					fc::ecc::public_key_data pubkey_data;
@@ -577,9 +581,13 @@ namespace uvm
 				}
 				try {
 					std::string hex_str(luaL_checkstring(L, 1));
-					std::vector<char> input_bytes(hex_str.size() / 2);
-					if (fc::from_hex(hex_str, input_bytes.data(), input_bytes.size()) < input_bytes.size())
+					std::vector<char> input_bytes;
+					try {
+						boost::algorithm::unhex(hex_str, std::inserter(input_bytes, input_bytes.begin()));
+					}
+					catch (...) {
 						throw uvm::core::UvmException("invalid hex string");
+					}
 					cbor::input input(input_bytes.data(), input_bytes.size());
 					cbor::decoder decoder(input);
 					auto result_cbor = decoder.run();

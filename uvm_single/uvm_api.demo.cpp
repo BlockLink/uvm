@@ -24,6 +24,7 @@
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/ripemd160.hpp>
 #include <fc/crypto/hex.hpp>
+#include <boost/algorithm/hex.hpp>
 #include "Keccak.hpp"
 #include "uvm_api.demo.h"
 
@@ -640,9 +641,11 @@ namespace uvm {
 			}
 
 			static std::vector<char> hex_to_chars(const std::string& hex_string) {
-				std::vector<char> chars(hex_string.size() / 2);
-				auto bytes_count = fc::from_hex(hex_string, chars.data(), chars.size());
-				if (bytes_count != chars.size()) {
+				std::vector<char> chars;
+				try {
+					boost::algorithm::unhex(hex_string, std::inserter(chars, chars.begin()));
+				}
+				catch (...) {
 					throw uvm::core::UvmException("parse hex to bytes error");
 				}
 				return chars;
