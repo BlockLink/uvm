@@ -334,7 +334,6 @@ static void process_http_request_async_read_data(lua_State *L, TcpSocket *socket
 // http.on_request_data(socket)
 static int lualib_http_on_request_data(lua_State *L)
 {
-	// TODO
 	if (lua_gettop(L) < 2 || !lua_isuserdata(L, 1) || !lua_islightuserdata(L, 2))
 	{
 		global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "http.on_request_data need arguments (socket: TcpSocket, handler: Function)");

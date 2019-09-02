@@ -1245,7 +1245,6 @@ static int cond(LexState *ls) {
 
 
 static void gotostat(LexState *ls, int pc) {
-	// TODO: 重新关闭goto。但是while循环也可能会触发goto
 	/*
 	比如:
 	var a = 1

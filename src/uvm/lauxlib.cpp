@@ -2070,7 +2070,7 @@ static int lua_real_execute_contract_api(lua_State *L
 		L->allow_contract_modify = 0;
 	};
 
-    luaL_import_contract_module(L); // FIXME: maybe searcher_Lua changed api_name
+    luaL_import_contract_module(L);
     
     lua_settop(L, 1);  /* _LOADED table will be at index 2 */
     

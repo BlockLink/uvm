@@ -209,7 +209,10 @@ void luaV_finishset(lua_State *L, const TValue *t, TValue *key,
 		auto table_addr = (intptr_t)t->value_.gco;
 		if (L->allow_contract_modify != table_addr && L->contract_table_addresses
 			&& std::find(L->contract_table_addresses->begin(), L->contract_table_addresses->end(), table_addr) != L->contract_table_addresses->end()) {
-			luaG_runerror(L, "can't modify contract properties");
+			auto msg = std::string("can't modify contract properties");
+			if (ttisstring(key))
+				msg += " " + tsvalue(key)->value;
+			luaG_runerror(L, msg.c_str());
 			return;
 		}
 	}
@@ -834,7 +837,10 @@ void luaV_finishOp(lua_State *L) {
 		auto table_addr = (intptr_t)t->value_.gco;             \
 		if (L->allow_contract_modify != table_addr && L->contract_table_addresses           \
 			&& std::find(L->contract_table_addresses->begin(), L->contract_table_addresses->end(), table_addr) != L->contract_table_addresses->end()) { \
-			luaG_runerror(L, "can't modify contract properties"); \
+			auto msg = std::string("can't modify contract properties");  \
+			if (ttisstring(k))                    \
+				msg += " " + tsvalue(k)->value;   \
+			luaG_runerror(L, msg.c_str()); \
 			return false; \
 		} \
 		if (((uvm_types::GcTable*)table_addr)->isOnlyRead) {\

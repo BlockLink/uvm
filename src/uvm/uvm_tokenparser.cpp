@@ -785,7 +785,6 @@ namespace uvm
 
         std::string UvmTokenParser::dump() const
         {
-			// TODO: ldf
             std::stringstream ss;
             size_t lastline = 1;
 			size_t lasttoken_lines_count = 0;

@@ -48,7 +48,6 @@ static const luaL_Reg loadedlibs[] = {
     { LUA_MATHLIBNAME, luaopen_math },
 	{ LUA_SAFEMATHLIBNAME, luaopen_safemath },
     { LUA_JSONLIBNAME, luaopen_json2 },
-	//{ LUA_JSONLIBNAME2, luaopen_json2 },// TODO: remove this module
     { LUA_UTF8LIBNAME, luaopen_utf8 },
     { nullptr, nullptr }
 };
