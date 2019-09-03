@@ -112,7 +112,9 @@ static bool val_to_table_key(const TValue* key, std::string& out) {
 			return true;
 		}
 		else {
-			return false;
+			lua_Number n = key->value_.n;
+			out = std::to_string(n);
+			return true;
 		}
 	}
 	else if (ttisstring(key)) {
