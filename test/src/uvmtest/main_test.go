@@ -132,6 +132,7 @@ func TestHelp(t *testing.T) {
 }
 
 func TestRunTestScript(t *testing.T) {
+	fmt.Println("TestRunTestScript")
 	out, _ := execCommand(uvmSinglePath, "-t", "../../result.out")
 	fmt.Println(out)
 	assert.True(t, strings.Contains(out, "say hi api called of contract to China"), "test script should call contract api")
@@ -139,6 +140,7 @@ func TestRunTestScript(t *testing.T) {
 }
 
 func TestRunContractApi(t *testing.T) {
+	fmt.Println("TestRunContractApi")
 	out, _ := execCommand(uvmSinglePath, "-k", "../../result.out", "sayHi", "China")
 	fmt.Println(out)
 	assert.True(t, strings.Contains(out, "say hi api called of contract to China"), "uvm should call contract api")
@@ -146,6 +148,7 @@ func TestRunContractApi(t *testing.T) {
 }
 
 func TestImportSimpleContract(t *testing.T) {
+	fmt.Println("TestImportSimpleContract")
 	out, _ := execCommand(uvmSinglePath, "../../load_simple_contract.lua.out")
 	fmt.Println(out)
 	assert.True(t, strings.Contains(out, "start api called of simple contract"), "uvm should support import contract by script")
@@ -153,6 +156,7 @@ func TestImportSimpleContract(t *testing.T) {
 }
 
 func TestChangeOtherContractProperty(t *testing.T) {
+	fmt.Println("TestChangeOtherContractProperty")
 	out, _ := execCommand(uvmSinglePath, "../../change_other_contract_property.lua.out")
 	fmt.Println(out)
 	// change other contract's property should throw error
@@ -168,11 +172,13 @@ func TestChangeOtherContractProperty(t *testing.T) {
 // }
 
 func TestManyStringOperations(t *testing.T) {
+	fmt.Println("TestManyStringOperations")
 	out, _ := execCommand(uvmSinglePath, "../../test_many_string_operations.lua.out")
 	fmt.Println(out)
 }
 
 func TestEmitEvents(t *testing.T) {
+	fmt.Println("TestEmitEvents")
 	_, compileErr := execCommand(uvmCompilerPath, "../../tests_typed/test_emit_events_valid.glua")
 	assert.Equal(t, compileErr, "")
 	out, _ := execCommand(uvmSinglePath, "../../tests_typed/test_emit_events_valid.glua.out")
@@ -180,6 +186,7 @@ func TestEmitEvents(t *testing.T) {
 }
 
 func TestTypes(t *testing.T) {
+	fmt.Println("TestTypes")
 	execCommand(uvmCompilerPath, "../../tests_lua/test_types.lua")
 	out, _ := execCommand(uvmSinglePath, "../../tests_lua/test_types.lua.out")
 	fmt.Println(out)
@@ -189,6 +196,7 @@ func TestTypes(t *testing.T) {
 }
 
 func TestDumpNegInt(t *testing.T) {
+	fmt.Println("TestDumpNegInt")
 	execCommand(uvmCompilerPath, "../../tests_lua/test_json_dumps_neg_int.lua")
 	out, _ := execCommand(uvmSinglePath, "../../tests_lua/test_json_dumps_neg_int.lua.out")
 	fmt.Println(out)
@@ -196,6 +204,7 @@ func TestDumpNegInt(t *testing.T) {
 }
 
 func TestThrowError(t *testing.T) {
+	fmt.Println("TestThrowError")
 	_, compilerErr := execCommand(uvmCompilerPath, "../../tests_lua/test_error.lua")
 	assert.Equal(t, compilerErr, "")
 	_, err := execCommand(uvmSinglePath, "../../tests_lua/test_error.lua.out")
@@ -204,6 +213,7 @@ func TestThrowError(t *testing.T) {
 }
 
 func TestMath(t *testing.T) {
+	fmt.Println("TestMath")
 	execCommand(uvmCompilerPath, "../../tests_lua/test_math.lua")
 	out, err := execCommand(uvmSinglePath, "../../tests_lua/test_math.lua.out")
 	fmt.Println(out)
@@ -230,6 +240,7 @@ func TestMath(t *testing.T) {
 }
 
 func TestTooManyLocalVars(t *testing.T) {
+	fmt.Println("TestTooManyLocalVars")
 	_, compilerErr := execCommand(uvmCompilerPath, "../../tests_lua/test_too_many_localvars.lua")
 	fmt.Println(compilerErr)
 	assert.True(t, strings.Contains(compilerErr, "too many local variables(129 variables), but limit count is 128"))
@@ -238,6 +249,7 @@ func TestTooManyLocalVars(t *testing.T) {
 }
 
 func TestStringOperators(t *testing.T) {
+	fmt.Println("TestStringOperators")
 	execCommand(uvmCompilerPath, "../../tests_lua/test_string_operators.lua")
 	out, err := execCommand(uvmSinglePath, "../../tests_lua/test_string_operators.lua.out")
 	fmt.Println(out)
@@ -251,6 +263,7 @@ func TestStringOperators(t *testing.T) {
 }
 
 func TestTableOperators(t *testing.T) {
+	fmt.Println("TestTableOperators")
 	execCommand(uvmCompilerPath, "../../tests_typed/test_table_module.glua")
 	out, err := execCommand(uvmSinglePath, "../../tests_typed/test_table_module.glua.out")
 	fmt.Println(out)
@@ -259,13 +272,23 @@ func TestTableOperators(t *testing.T) {
 }
 
 func TestPairs(t *testing.T) {
+	fmt.Println("TestPairs")
 	execCommand(uvmCompilerPath, "../../tests_typed/test_pairs.glua")
 	out, _ := execCommand(uvmSinglePath, "../../tests_typed/test_pairs.glua.out")
 	fmt.Println(out)
 	assert.True(t, strings.Contains(out, `[[100,200],["a",1],["m",234],["n",123],["ab",1]]`))
 }
 
+func TestGetNullAsTable(t *testing.T) {
+	fmt.Println("TestGetNullAsTable")
+	execCommand(uvmCompilerPath, "../../tests_lua/test_get_null_as_table.lua")
+	out, _ := execCommand(uvmSinglePath, "../../tests_lua/test_get_null_as_table.lua.out")
+	fmt.Println(out)
+	assert.True(t, strings.Contains(out, `getfield of nil, need table here in line 3`))
+}
+
 func TestStringGmatch(t *testing.T) {
+	fmt.Println("TestStringGmatch")
 	execCommand(uvmCompilerPath, "../../tests_lua/test_gmatch.lua")
 	out, _ := execCommand(uvmSinglePath, "../../tests_lua/test_gmatch.lua.out")
 	fmt.Println(out)
@@ -281,6 +304,7 @@ func TestContractImport(t *testing.T) {
 }
 
 func TestSafeMath(t *testing.T) {
+	fmt.Println("TestSafeMath")
 	execCommand(uvmCompilerPath, "../../test_safemath.lua")
 	out, err := execCommand(uvmSinglePath, "../../test_safemath.lua.out")
 	fmt.Println(out)
@@ -308,6 +332,7 @@ func TestSafeMath(t *testing.T) {
 }
 
 func TestJsonModule(t *testing.T) {
+	fmt.Println("TestJsonModule")
 	execCommand(uvmCompilerPath, "../../tests_lua/test_json.lua")
 	out, err := execCommand(uvmSinglePath, "../../tests_lua/test_json.lua.out")
 	fmt.Println(out)
@@ -321,6 +346,7 @@ func TestJsonModule(t *testing.T) {
 }
 
 func TestInvalidUpvalue(t *testing.T) {
+	fmt.Println("TestInvalidUpvalue")
 	_, assErr := execCommand(uvmAssPath, "../../tests_lua/test_invalid_upvalue.uvms")
 	fmt.Println(assErr)
 	out, err := execCommand(uvmSinglePath, "../../tests_lua/test_invalid_upvalue.out")
@@ -346,6 +372,7 @@ func TestStorage(t *testing.T) {
 }
 
 func TestGlobalApis(t *testing.T) {
+	fmt.Println("TestGlobalApis")
 	execCommand(uvmCompilerPath, "../../tests_lua/test_global_apis.lua")
 	out, err := execCommand(uvmSinglePath, "-k", "../../tests_lua/test_global_apis.lua.out", "start", "TEST_ADDRESS")
 	fmt.Println(out)
@@ -364,6 +391,7 @@ func TestGlobalApis(t *testing.T) {
 }
 
 func TestContractReturnTostring(t *testing.T) {
+	fmt.Println("TestContractReturnTostring")
 	execCommand(uvmCompilerPath, "../../tests_lua/test_contract_tostring.lua")
 	out, err := execCommand(uvmSinglePath, "-k", "../../tests_lua/test_contract_tostring.lua.out", "start", "")
 	fmt.Println(out)
@@ -372,6 +400,7 @@ func TestContractReturnTostring(t *testing.T) {
 }
 
 func TestCallContractItself(t *testing.T) {
+	fmt.Println("TestCallContractItself")
 	_, compileErr := execCommand(uvmCompilerPath, "../../tests_typed/test_call_contract_it_self.glua")
 	assert.Equal(t, compileErr, "")
 	out, _ := execCommand(uvmSinglePath, "-k", "../../tests_typed/test_call_contract_it_self.glua.out", "start", "test_arg")
@@ -380,6 +409,7 @@ func TestCallContractItself(t *testing.T) {
 }
 
 func TestImportNotFoundContract(t *testing.T) {
+	fmt.Println("TestImportNotFoundContract")
 	_, compileErr := execCommand(uvmCompilerPath, "../../tests_lua/test_import_not_found.lua")
 	assert.Equal(t, compileErr, "")
 	out, err := execCommand(uvmSinglePath, "-k", "../../tests_lua/test_import_not_found.lua.out", "start", "test")
@@ -389,6 +419,7 @@ func TestImportNotFoundContract(t *testing.T) {
 }
 
 func TestInvalidUpvalueInContract(t *testing.T) {
+	fmt.Println("TestInvalidUpvalueInContract")
 	_, compileErr := execCommand(uvmCompilerPath, "../../tests_lua/test_upval.lua")
 	fmt.Println(compileErr)
 	assert.True(t, strings.Contains(compileErr, `token c, type nil can't access property c`))
@@ -399,6 +430,7 @@ func TestContractWithoutInitApi(t *testing.T) {
 }
 
 func TestExitContractByError(t *testing.T) {
+	fmt.Println("TestExitContractByError")
 	execCommand(uvmCompilerPath, "../../tests_lua/test_exit_contract.lua")
 	out, err := execCommand(uvmSinglePath, "-k", "../../tests_lua/test_exit_contract.lua.out", "start", "test")
 	fmt.Println(out)
@@ -409,6 +441,7 @@ func TestExitContractByError(t *testing.T) {
 }
 
 func TestTimeModule(t *testing.T) {
+	fmt.Println("TestTimeModule")
 	execCommand(uvmCompilerPath, "../../tests_lua/test_time.lua")
 	out, err := execCommand(uvmSinglePath, "../../tests_lua/test_time.lua.out")
 	fmt.Println(out)
@@ -421,6 +454,7 @@ func TestTimeModule(t *testing.T) {
 }
 
 func TestForLoop(t *testing.T) {
+	fmt.Println("TestForLoop")
 	_, compileErr := execCommand(uvmCompilerPath, "../../tests_lua/test_for_loop_goto.lua")
 	assert.Equal(t, compileErr, "")
 	out, err := execCommand(uvmSinglePath, "../../tests_lua/test_for_loop_goto.lua.out")
@@ -430,6 +464,7 @@ func TestForLoop(t *testing.T) {
 }
 
 func TestFastMap(t *testing.T) {
+	fmt.Println("TestFastMap")
 	execCommand(uvmCompilerPath, "../../tests_lua/test_fastmap.lua")
 	out, err := execCommand(uvmSinglePath, "../../tests_lua/test_fastmap.lua.out")
 	fmt.Println(out)
@@ -443,6 +478,7 @@ func TestFastMap(t *testing.T) {
 }
 
 func TestSignatureRecover(t *testing.T) {
+	fmt.Println("TestSignatureRecover")
 	execCommand(uvmCompilerPath, "../../tests_lua/test_signature_recover.lua")
 	out, err := execCommand(uvmSinglePath, "../../tests_lua/test_signature_recover.lua.out")
 	fmt.Println(out)
@@ -451,6 +487,7 @@ func TestSignatureRecover(t *testing.T) {
 }
 
 func TestCborEncodeDecode(t *testing.T) {
+	fmt.Println("TestCborEncodeDecode")
 	execCommand(uvmCompilerPath, "../../tests_lua/test_cbor.lua")
 	out, err := execCommand(uvmSinglePath, "../../tests_lua/test_cbor.lua.out")
 	fmt.Println(out)
@@ -472,12 +509,14 @@ func TestCborEncodeDecode(t *testing.T) {
 }
 
 func TestInvalidByteHeaders(t *testing.T) {
+	fmt.Println("TestInvalidByteHeaders")
 	_, err := execCommand(uvmSinglePath, "../../tests_lua/test_invalid_bytecode_header.bytecode")
 	fmt.Println(err)
 	assert.True(t, strings.Contains(err, `endianness mismatch in precompiled chunk`))
 }
 
 func TestCryptoPrimitivesApis(t *testing.T) {
+	fmt.Println("TestCryptoPrimitivesApis")
 	execCommand(uvmCompilerPath, "../../tests_lua/test_crypto_primitives.lua")
 	out, err := execCommand(uvmSinglePath, "../../tests_lua/test_crypto_primitives.lua.out")
 	fmt.Println(out)
@@ -559,6 +598,7 @@ func getAccountBalanceOfAssetID(caller string, assetID int) (int, error) {
 }
 
 func TestSimpleChainMintAndTransfer(t *testing.T) {
+	fmt.Println("TestSimpleChainMintAndTransfer")
 	cmd := execCommandBackground(simpleChainPath)
 	assert.True(t, cmd != nil)
 	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
@@ -688,6 +728,7 @@ func testTokenContractInSimplechain(t *testing.T, contract1Addr string) {
 }
 
 func TestSimpleChainTokenContract(t *testing.T) {
+	fmt.Println("TestSimpleChainTokenContract")
 	cmd := execCommandBackground(simpleChainPath)
 	assert.True(t, cmd != nil)
 	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
@@ -890,6 +931,7 @@ func createPlasmaContract(caller1 string) (string, error) {
 }
 
 func TestPlasmaRootChain(t *testing.T) {
+	fmt.Println("TestPlasmaRootChain")
 	cmd := execCommandBackground(simpleChainPath)
 	assert.True(t, cmd != nil)
 	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
@@ -1197,6 +1239,7 @@ func TestPlasmaRootChain(t *testing.T) {
 }
 
 func TestPlasmaChallengeNormalExit(t *testing.T) {
+	fmt.Println("TestPlasmaChallengeNormalExit")
 	cmd := execCommandBackground(simpleChainPath)
 	assert.True(t, cmd != nil)
 	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
@@ -1483,6 +1526,7 @@ func makeDepositToPlasmaTx(caller string, callerPubKey []byte, callerPrivateKey 
 }
 
 func TestPlasmaChallengeEvilExit(t *testing.T) {
+	fmt.Println("TestPlasmaChallengeEvilExit")
 	cmd := execCommandBackground(simpleChainPath)
 	assert.True(t, cmd != nil)
 	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
@@ -1510,6 +1554,13 @@ func TestPlasmaChallengeEvilExit(t *testing.T) {
 	simpleChainRPC("register_account", caller2, pubKeyHex)
 	simpleChainRPC("register_account", caller3, pubKeyHex)
 	simpleChainRPC("generate_block")
+
+	res, err = simpleChainRPC("get_account", caller3)
+	if err != nil {
+		log.Println("get_account error", err)
+	}
+	assert.True(t, err == nil)
+	assert.True(t, res.Get("pubkey").MustString() == pubKeyHex)
 
 	plasmaContractAddress, err := createPlasmaContract(caller1)
 	assert.True(t, err == nil)
@@ -1626,6 +1677,7 @@ func TestPlasmaChallengeEvilExit(t *testing.T) {
 }
 
 func TestSparseMerkleTreeContract(t *testing.T) {
+	fmt.Println("TestSparseMerkleTreeContract")
 	cmd := execCommandBackground(simpleChainPath)
 	assert.True(t, cmd != nil)
 	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
@@ -1665,6 +1717,7 @@ func TestSparseMerkleTreeContract(t *testing.T) {
 }
 
 func TestSimpleChainContractCallContract(t *testing.T) {
+	fmt.Println("TestSimpleChainContractCallContract")
 	cmd := execCommandBackground(simpleChainPath)
 	assert.True(t, cmd != nil)
 	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
@@ -1727,6 +1780,7 @@ func TestSimpleChainContractCallContract(t *testing.T) {
 }
 
 func TestSimpleChainContractChangeOtherContractProperties(t *testing.T) {
+	fmt.Println("TestSimpleChainContractChangeOtherContractProperties")
 	cmd := execCommandBackground(simpleChainPath)
 	assert.True(t, cmd != nil)
 	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
@@ -1763,6 +1817,7 @@ func TestSimpleChainContractChangeOtherContractProperties(t *testing.T) {
 }
 
 func TestManyObjects(t *testing.T) {
+	fmt.Println("TestManyObjects")
 	cmd := execCommandBackground(simpleChainPath)
 	assert.True(t, cmd != nil)
 	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
@@ -1793,6 +1848,7 @@ func TestManyObjects(t *testing.T) {
 }
 
 func TestCallContractWithIdNumberStorage(t *testing.T) {
+	fmt.Println("TestCallContractWithIdNumberStorage")
 	cmd := execCommandBackground(simpleChainPath)
 	assert.True(t, cmd != nil)
 	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
@@ -1815,6 +1871,7 @@ func TestCallContractWithIdNumberStorage(t *testing.T) {
 }
 
 func TestCallContractManyTimes(t *testing.T) {
+	fmt.Println("TestCallContractManyTimes")
 	cmd := execCommandBackground(simpleChainPath)
 	assert.True(t, cmd != nil)
 	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
@@ -1848,6 +1905,7 @@ func TestCallContractManyTimes(t *testing.T) {
 }
 
 func TestNativeTokenContract(t *testing.T) {
+	fmt.Println("TestNativeTokenContract")
 	cmd := execCommandBackground(simpleChainPath)
 	assert.True(t, cmd != nil)
 	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
@@ -2021,6 +2079,7 @@ func test0xExchangeContractInSimplechain(t *testing.T, contract1Addr string) {
 }
 
 func TestNativeExchangeContract(t *testing.T) {
+	fmt.Println("TestNativeExchangeContract")
 	cmd := execCommandBackground(simpleChainPath)
 	assert.True(t, cmd != nil)
 	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
@@ -2042,6 +2101,7 @@ func TestNativeExchangeContract(t *testing.T) {
 }
 
 func TestLuaExchangeContract(t *testing.T) {
+	fmt.Println("TestLuaExchangeContract")
 	cmd := execCommandBackground(simpleChainPath)
 	assert.True(t, cmd != nil)
 	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
@@ -2079,6 +2139,7 @@ func TestLuaExchangeContract(t *testing.T) {
 }
 
 func TestContractLoadState(t *testing.T) {
+	fmt.Println("TestContractLoadState")
 	cmd := execCommandBackground(simpleChainPath)
 	assert.True(t, cmd != nil)
 	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)
@@ -2168,6 +2229,7 @@ func getAssetBalanceFromSimpleChainAccountBalancesResponse(resp *simplejson.Json
 }
 
 func TestDelegateCall(t *testing.T) {
+	fmt.Println("TestDelegateCall")
 	cmd := execCommandBackground(simpleChainPath)
 	assert.True(t, cmd != nil)
 	fmt.Printf("simplechain pid: %d\n", cmd.Process.Pid)

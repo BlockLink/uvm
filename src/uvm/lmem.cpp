@@ -77,6 +77,7 @@ l_noret luaM_toobig(lua_State *L) {
 void *luaM_realloc_(lua_State *L, void *block, size_t osize, size_t nsize) {
     void *newblock;
     size_t realosize = (block) ? osize : 0;
+	UNUSED(realosize);
     lua_assert((realosize == 0) == (block == nullptr));
 #if defined(HARDMEMTESTS)
     if (nsize > realosize && g->gcrunning)
@@ -97,6 +98,7 @@ void *luaM_realloc_(lua_State *L, void *block, size_t osize, size_t nsize) {
 void *luaM_realloc_inState(lua_State *L, void *block, size_t osize, size_t nsize) {
 	void *newblock;
 	size_t realosize = (block) ? osize : 0;
+	UNUSED(realosize);
 	lua_assert((realosize == 0) == (block == nullptr));
 #if defined(HARDMEMTESTS)
 	if (nsize > realosize && g->gcrunning)

@@ -602,7 +602,7 @@ static int auxgetstr(lua_State *L, const TValue *t, const char *k) {
     else {
         setsvalue2s(L, L->top, str);
         api_incr_top(L);
-        luaV_finishget(L, t, L->top - 1, L->top - 1, aux);
+        luaV_finishget(nullptr, L, t, L->top - 1, L->top - 1, aux); // TODO: ctx
     }
     lua_unlock(L);
     return ttnov(L->top - 1);
@@ -620,7 +620,7 @@ LUA_API int lua_gettable(lua_State *L, int idx) {
     StkId t;
     lua_lock(L);
     t = index2addr(L, idx);
-    luaV_gettable(L, t, L->top - 1, L->top - 1);
+    luaV_gettable(L, t, L->top - 1, L->top - 1); // TODO: ctx
     lua_unlock(L);
     return ttnov(L->top - 1);
 }
@@ -644,7 +644,7 @@ LUA_API int lua_geti(lua_State *L, int idx, lua_Integer n) {
     else {
         setivalue(L->top, n);
         api_incr_top(L);
-        luaV_finishget(L, t, L->top - 1, L->top - 1, aux);
+        luaV_finishget(nullptr, L, t, L->top - 1, L->top - 1, aux); // TODO: ctx
     }
     lua_unlock(L);
     return ttnov(L->top - 1);
@@ -752,7 +752,8 @@ static void auxsetstr(lua_State *L, const TValue *t, const char *k) {
 		auto table_addr = (intptr_t)t->value_.gco;
 		if (L->allow_contract_modify != table_addr && L->contract_table_addresses
 			&& std::find(L->contract_table_addresses->begin(), L->contract_table_addresses->end(), table_addr) != L->contract_table_addresses->end()) {
-			luaG_runerror(L, "can't modify contract properties");
+			auto msg = std::string("can't modify contract properties ") + k;
+			luaG_runerror(L, msg.c_str());
 			return;
 		}
 	}
@@ -764,7 +765,7 @@ static void auxsetstr(lua_State *L, const TValue *t, const char *k) {
     else {
         setsvalue2s(L, L->top, str);  /* push 'str' (to make it a TValue) */
         api_incr_top(L);
-        luaV_finishset(L, t, L->top - 1, L->top - 2, aux);
+        luaV_finishset(nullptr, L, t, L->top - 1, L->top - 2, aux); // TODO: ctx
         L->top -= 2;  /* pop value and key */
     }
     lua_unlock(L);  /* lock done by caller */
@@ -802,7 +803,8 @@ LUA_API void lua_setfield(lua_State *L, int idx, const char *k) {
 		auto table_addr = (intptr_t)lua_topointer(L, idx);
 		if (L->allow_contract_modify != table_addr && L->contract_table_addresses
 			&& std::find(L->contract_table_addresses->begin(), L->contract_table_addresses->end(), table_addr) != L->contract_table_addresses->end()) {
-			luaG_runerror(L, "can't modify contract properties");
+			auto msg = std::string("can't modify contract properties ") + k;
+			luaG_runerror(L, msg.c_str());
 			return;
 		}
 	}
@@ -822,7 +824,7 @@ LUA_API void lua_seti(lua_State *L, int idx, lua_Integer n) {
     else {
         setivalue(L->top, n);
         api_incr_top(L);
-        luaV_finishset(L, t, L->top - 1, L->top - 2, aux);
+        luaV_finishset(nullptr, L, t, L->top - 1, L->top - 2, aux); // TODO: ctx
         L->top -= 2;  /* pop value and key */
     }
     lua_unlock(L);
@@ -1125,7 +1127,7 @@ LUA_API void lua_concat(lua_State *L, int n) {
     api_checknelems(L, n);
     if (n >= 2) {
         luaC_checkGC(L);
-        luaV_concat(L, n);
+        luaV_concat(nullptr, L, n); // TODO: ctx
     }
     else if (n == 0) {  /* push empty string */
         setsvalue2s(L, L->top, luaS_newlstr(L, "", 0));
@@ -1190,7 +1192,7 @@ static const char *aux_upvalue(StkId fi, int n, TValue **val,
 		uvm_types::GcLClosure *f = clLvalue(fi);
 		uvm_types::GcString *name;
         uvm_types::GcProto *p = f->p;
-        if (!(1 <= n && n <= p->upvalues.size())) return nullptr;
+        if (!(1 <= n && size_t(n) <= p->upvalues.size())) return nullptr;
         *val = f->upvals[n - 1]->v;
         if (uv) *uv = f->upvals[n - 1];
         name = p->upvalues[n - 1].name;
@@ -1286,7 +1288,7 @@ size_t luaL_traverse_table_with_nested(lua_State *L, int index, lua_table_traver
     auto len = (size_t) lua_tointegerx(L, -1, nullptr);
     lua_pop(L, 1);
     size_t keys_count = 0;
-    for (auto i = 0; i < len; ++i)
+    for (size_t i = 0; i < len; ++i)
     {
         lua_pushinteger(L, i + 1);
         auto new_index = index < 0 ? (index - 1) : index;
@@ -1304,7 +1306,7 @@ size_t luaL_traverse_table_with_nested(lua_State *L, int index, lua_table_traver
         if (lua_isinteger(L, -2))
         {
             auto key_int = lua_tointeger(L, -2);
-            if (((int)key_int) <= len && key_int > 0)
+            if (((size_t)key_int) <= len && key_int > 0)
             {
                 lua_pop(L, 1);
                 continue;

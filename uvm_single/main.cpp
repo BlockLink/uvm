@@ -17,6 +17,8 @@
 #include <uvm/lualib.h>
 #include <uvm/uvm_lib.h>
 #include <boost/filesystem/path.hpp>
+#include <boost/algorithm/hex.hpp>
+#include <fc/crypto/hex.hpp>
 
 
 #if !defined(LUA_PROMPT)
@@ -231,26 +233,26 @@ static int dostring(lua_State *L, const char *s, const char *name) {
 ** Calls 'require(name)' and stores the result in a global variable
 ** with the given name.
 */
-static int dolibrary(lua_State *L, const char *name) {
-	int status;
-	lua_getglobal(L, "require");
-	lua_pushstring(L, name);
-	status = docall(L, 1, 1);  /* call 'require(name)' */
-	if (status == LUA_OK)
-		lua_setglobal(L, name);  /* global[name] = require return */
-	return report(L, status);
-}
+//static int dolibrary(lua_State *L, const char *name) {
+//	int status;
+//	lua_getglobal(L, "require");
+//	lua_pushstring(L, name);
+//	status = docall(L, 1, 1);  /* call 'require(name)' */
+//	if (status == LUA_OK)
+//		lua_setglobal(L, name);  /* global[name] = require return */
+//	return report(L, status);
+//}
 
 /*
 ** Returns the string to be used as a prompt by the interpreter.
 */
-static const char *get_prompt(lua_State *L, int firstline) {
-	const char *p;
-	lua_getglobal(L, firstline ? "_PROMPT" : "_PROMPT2");
-	p = lua_tostring(L, -1);
-	if (p == NULL) p = (firstline ? LUA_PROMPT : LUA_PROMPT2);
-	return p;
-}
+//static const char *get_prompt(lua_State *L, int firstline) {
+//	const char *p;
+//	lua_getglobal(L, firstline ? "_PROMPT" : "_PROMPT2");
+//	p = lua_tostring(L, -1);
+//	if (p == NULL) p = (firstline ? LUA_PROMPT : LUA_PROMPT2);
+//	return p;
+//}
 
 /* mark in error messages for incomplete statements */
 #define EOFMARK		"<eof>"
@@ -276,7 +278,7 @@ static int pushargs(lua_State *L) {
 	return n;
 }
 
-static bool use_type_check_compile = true;
+//static bool use_type_check_compile = true;
 
 static int handle_script(lua_State *L, char **argv, bool is_contract = false) {
 	int status;

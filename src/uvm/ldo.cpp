@@ -608,7 +608,7 @@ static void unroll(lua_State *L, void *ud) {
         if (!isLua(L->ci))  /* C function? */
             finishCcall(L, LUA_YIELD);  /* complete its execution */
         else {  /* Lua function */
-            luaV_finishOp(L);  /* finish interrupted instruction */
+            luaV_finishOp(nullptr, L);  /* finish interrupted instruction */ // TODO: ctx
             luaV_execute(L);  /* execute down to higher C 'boundary' */
 			if (L->state & (lua_VMState::LVM_STATE_BREAK | lua_VMState::LVM_STATE_SUSPEND)) {
 				return;

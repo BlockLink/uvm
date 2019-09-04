@@ -24,6 +24,7 @@
 #include <fc/crypto/hex.hpp>
 #include <fc/variant_object.hpp>
 #include <fc/variant.hpp>
+#include <boost/algorithm/hex.hpp>
 #include <Keccak.hpp>
 #include <simplechain/simplechain_uvm_api.h>
 #include <simplechain/evaluate_state.h>
@@ -79,7 +80,7 @@ namespace simplechain {
 					}
 				}
 				else {
-					msg = "vm out of memory";
+					strcpy(msg, "vm out of memory");
 				}
 				lua_set_compile_error(L, msg);
 
@@ -142,11 +143,12 @@ namespace simplechain {
 						auto gas_limit = evaluator->gas_limit;
 						if (gas_limit == 0)
 							return 0;
-						auto gas_count = uvm::lua::lib::get_lua_state_instructions_executed_count(L);
+						auto gas_count = gas_count_type(uvm::lua::lib::get_lua_state_instructions_executed_count(L));
 						return gas_count > gas_limit;
 					}
 					return 0;
 				}FC_CAPTURE_AND_LOG((0))
+				return 0;
 			}
 
 			static std::shared_ptr<uvm::blockchain::Code> get_contract_code_by_id(evaluate_state* evaluator, const std::string& contract_id) {
@@ -162,6 +164,7 @@ namespace simplechain {
 					}
 					return nullptr;
 				}FC_CAPTURE_AND_LOG((contract_id))
+				return nullptr;
 			}
 
 			static bool contains_contract_by_id(evaluate_state* evaluator, const std::string& contract_id) {
@@ -170,8 +173,9 @@ namespace simplechain {
 						auto res = evaluator->contains_contract_by_address(contract_id);
 						return res;
 					}
-					return nullptr;
+					return false;
 				}FC_CAPTURE_AND_LOG((contract_id))
+				return false;
 			}
 
 			static std::shared_ptr<uvm::blockchain::Code> get_contract_code_by_name(evaluate_state* evaluator, const std::string& contract_name) {
@@ -187,6 +191,7 @@ namespace simplechain {
 					}
 					return nullptr;
 				}FC_CAPTURE_AND_LOG((contract_name))
+				return nullptr;
 			}
 
 			static bool contains_contract_by_name(evaluate_state* evaluator, const std::string& contract_name) {
@@ -195,8 +200,9 @@ namespace simplechain {
 						auto res = evaluator->contains_contract_by_name(contract_name);
 						return res;
 					}
-					return nullptr;
+					return false;
 				}FC_CAPTURE_AND_LOG((contract_name))
+				return false;
 			}
 
 			static void put_contract_storage_changes_to_evaluator(evaluate_state* evaluator, const std::string& contract_id, const contract_storage_changes_type& changes) {
@@ -223,6 +229,7 @@ namespace simplechain {
 					}
 					return nullptr;
 				}FC_CAPTURE_AND_LOG((contract_id))
+				return nullptr;
 			}
 
 			static std::shared_ptr<contract_object> get_contract_object_by_name(evaluate_state* evaluator, const std::string& contract_name) {
@@ -233,7 +240,7 @@ namespace simplechain {
 					}
 					return nullptr;
 				}FC_CAPTURE_AND_LOG((contract_name))
-
+				return nullptr;
 			}
 
 			int SimpleChainUvmChainApi::get_stored_contract_info(lua_State *L, const char *name, std::shared_ptr<UvmContractInfo> contract_info_ret)
@@ -371,6 +378,7 @@ namespace simplechain {
 				null_storage.type = uvm::blockchain::StorageValueTypes::storage_value_null;
 
 				auto evaluator = get_contract_evaluator(L);
+				UNUSED(evaluator);
 				std::string contract_id = uvm::lua::lib::unwrap_any_contract_name(contract_name);
 
 				if (!check_contract_exist_by_address(L, contract_id.c_str()))
@@ -580,7 +588,7 @@ namespace simplechain {
 					}
 					if (use_gas_log(L)) {
 						const auto& txid = get_transaction_id_without_gas(L);
-						printf("txid %s, contract %s storage change gas %d\n", txid.c_str(), contract_id.c_str());
+						printf("txid %s, contract %s storage change gas %ld\n", txid.c_str(), contract_id.c_str(), storage_gas);
 					}
 					put_contract_storage_changes_to_evaluator(evaluator, contract_id, contract_storage_change);
 				}
@@ -657,8 +665,9 @@ namespace simplechain {
 					auto pool = p.second;
 					for (const auto &object_item : *pool)
 					{
-						auto object_key = object_item.first;
-						auto object_addr = object_item.second;
+						const auto& object_key = object_item.first;
+						UNUSED(object_key);
+						const auto& object_addr = object_item.second;
 						if (object_addr == 0)
 							continue;
 						switch (type)
@@ -824,7 +833,7 @@ namespace simplechain {
 					const auto& chain = evaluator->get_chain();
 					const auto& block = chain->latest_block();
 					auto hash = block.digest();
-					return hash._hash[3] % ((1 << 31) - 1);
+					return hash._hash[3] % ((uint32_t(1) << 31) - 1);
 				}
 				catch (...)
 				{
@@ -895,7 +904,7 @@ namespace simplechain {
 					auto evaluator = get_contract_evaluator(L);
 					const auto& chain = evaluator->get_chain();
 					auto target = chain->latest_block().block_number + next;
-					if (target < next)
+					if ((uint64_t)target < (uint64_t)next)
 						return 0;
 					return static_cast<uint32_t>(target);
 				}
@@ -919,7 +928,7 @@ namespace simplechain {
 						return -1;
 					const auto& block = chain->get_block_by_number(num);
 					auto hash = block->digest();
-					return hash._hash[3] % ((1 << 31) - 1);
+					return hash._hash[3] % ((uint32_t(1) << 31) - 1);
 				}
 				catch (...)
 				{
@@ -960,6 +969,7 @@ namespace simplechain {
 			const char * SimpleChainUvmChainApi::get_system_asset_symbol(lua_State *L)
 			{
 				auto evaluator = get_contract_evaluator(L);
+				UNUSED(evaluator);
 				return SIMPLECHAIN_CORE_ASSET_SYMBOL;
 			}
 
@@ -969,9 +979,11 @@ namespace simplechain {
 			}
 
 			static std::vector<char> hex_to_chars(const std::string& hex_string) {
-				std::vector<char> chars(hex_string.size() / 2);
-				auto bytes_count = fc::from_hex(hex_string, chars.data(), chars.size());
-				if (bytes_count != chars.size()) {
+				std::vector<char> chars;
+				try {
+					boost::algorithm::unhex(hex_string, std::inserter(chars, chars.begin()));
+				}
+				catch (...) {
 					throw uvm::core::UvmException("parse hex to bytes error");
 				}
 				return chars;

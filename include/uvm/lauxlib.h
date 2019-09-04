@@ -160,7 +160,7 @@ namespace fc {
 
 
 /************************************************************************/
-/* init storage, name, id, and some other info to contract, stack top
+/* init storage, name, id, and some other info to contract, stack top */
 /************************************************************************/
 void lua_fill_contract_info_for_use(lua_State *L);
 

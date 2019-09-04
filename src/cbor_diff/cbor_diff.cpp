@@ -2,6 +2,7 @@
 #include <cbor_diff/helper.h>
 #include <uvm/uvm_lutil.h>
 #include <fc/crypto/hex.hpp>
+#include <boost/algorithm/hex.hpp>
 
 namespace cbor_diff {
 
@@ -38,9 +39,13 @@ namespace cbor_diff {
 	}
 
 	cbor::CborObjectP cbor_from_hex(const std::string& hex_str) {
-		std::vector<char> input_bytes(hex_str.size() / 2);
-		if (fc::from_hex(hex_str, input_bytes.data(), input_bytes.size()) < input_bytes.size())
+		std::vector<char> input_bytes;
+		try {
+			boost::algorithm::unhex(hex_str, std::inserter(input_bytes, input_bytes.begin()));
+		}
+		catch (...) {
 			throw CborDiffException("invalid hex string");
+		}
 		cbor::input input(input_bytes.data(), input_bytes.size());
 		cbor::decoder decoder(input);
 		auto result_cbor = decoder.run();
@@ -177,6 +182,7 @@ namespace cbor_diff {
 				}
 				auto op_item = diff_item[0]->as_string();
 				auto pos = diff_item[1]->force_as_int();
+				(void)(pos);
 				auto inner_diff_json = diff_item[2];
 				// FIXME； 一个array有多项变化的时候， diff里的索引是用原始对象的index，所以这里应该找出 pos => old_json中同值的pos
 				if (op_item == std::string("+"))
@@ -285,6 +291,7 @@ namespace cbor_diff {
 			const auto& a_obj = old_val->as_map();
 			const auto& b_obj = new_val->as_map();
 			bool same = false;
+			(void)(same);
 			cbor::CborMapValue diff_json;
 			for (auto i = a_obj.begin(); i != a_obj.end(); i++)
 			{

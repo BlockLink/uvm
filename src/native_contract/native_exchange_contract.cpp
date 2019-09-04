@@ -10,6 +10,7 @@
 #include <fc/crypto/elliptic.hpp>
 #include <fc/array.hpp>
 #include <fc/crypto/ripemd160.hpp>
+#include <boost/algorithm/hex.hpp>
 #include <safenumber/safenumber.h>
 
 #define NATIVE_EXCHANGE_ORDER_STATE_CANCELED 0
@@ -130,9 +131,11 @@ namespace uvm {
 				return "id not match";
 			}
 
-			std::vector<char> sig_bytes(sig_hex.size() / 2);
-			auto bytes_count = fc::from_hex(sig_hex, sig_bytes.data(), sig_bytes.size());
-			if (bytes_count != sig_bytes.size()) {
+			std::vector<char> sig_bytes;
+			try {
+				boost::algorithm::unhex(sig_hex, std::inserter(sig_bytes, sig_bytes.begin()));
+			}
+			catch (...) {
 				return "parse sig hex to bytes error";
 			}
 
@@ -410,6 +413,8 @@ namespace uvm {
 
 			int64_t purchaseNum = orderInfo.purchaseNum;
 			int64_t payNum = orderInfo.payNum;
+			UNUSED(purchaseNum);
+			UNUSED(payNum);
 
 			int64_t takerGetNum = takerFillOrder.getNum;
 			int64_t takerSpentNum = takerFillOrder.spentNum;
@@ -606,7 +611,7 @@ namespace uvm {
 			fc::from_variant(args, orders);
 			auto callerAddr = caller_address_string();
 
-			for (int i = 0; i < orders.size(); i++) {
+			for (size_t i = 0; i < orders.size(); i++) {
 				std::string addr;
 				std::string id;
 				if (getOrderOwnerAddressAndId(orders[i], addr, id) == "OK") {

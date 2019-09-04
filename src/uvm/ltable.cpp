@@ -72,23 +72,23 @@ static unsigned int arrayindex(const TValue *key) {
     return 0;  /* 'key' did not match some condition */
 }
 
-static std::string lua_value_to_str(const TValue *key)
-{
-	if (ttisstring(key))
-	{
-		return std::string(svalue(key));
-	}
-	else if (ttisinteger(key))
-	{
-		return std::to_string((lua_Integer)nvalue(key));
-	}
-	else if (ttisnumber(key))
-	{
-		return std::to_string(nvalue(key));
-	}
-	else
-		return "";
-}
+//static std::string lua_value_to_str(const TValue *key)
+//{
+//	if (ttisstring(key))
+//	{
+//		return std::string(svalue(key));
+//	}
+//	else if (ttisinteger(key))
+//	{
+//		return std::to_string((lua_Integer)nvalue(key));
+//	}
+//	else if (ttisnumber(key))
+//	{
+//		return std::to_string(nvalue(key));
+//	}
+//	else
+//		return "";
+//}
 
 
 static bool val_to_table_key(const TValue* key, std::string& out) {
@@ -112,7 +112,9 @@ static bool val_to_table_key(const TValue* key, std::string& out) {
 			return true;
 		}
 		else {
-			return false;
+			lua_Number n = key->value_.n;
+			out = std::to_string(n);
+			return true;
 		}
 	}
 	else if (ttisstring(key)) {
@@ -164,7 +166,7 @@ static bool findindex_of_sorted_table(lua_State *L, uvm_types::GcTable *t, StkId
 	}
 }
 
-static const char* NOT_FOUND_KEY = "$NOT_FOUND$";
+//static const char* NOT_FOUND_KEY = "$NOT_FOUND$";
 
 
 int luaH_next(lua_State *L, uvm_types::GcTable *t, StkId key) {
@@ -174,6 +176,7 @@ int luaH_next(lua_State *L, uvm_types::GcTable *t, StkId key) {
 	bool use_first_map_key = false;
 	// array_index is index of key£¬1-based£¬0 means not found
     bool found_key = findindex_of_sorted_table(L, t, key, &array_index, &map_key, &is_map_key);  /* find original element */
+	UNUSED(found_key);
 	if (nullptr == t) {
 		return 0;
 	}
@@ -243,13 +246,15 @@ void luaH_resize(lua_State *L, uvm_types::GcTable *t, unsigned int nasize,
     unsigned int oldasize = t->array.size();
 	if (nasize > oldasize)  /* array part must grow? */
 	{
-		for (auto i = 0; i < nasize - oldasize; i++) {
+		for (unsigned int i = 0; i < nasize - oldasize; i++) {
 			t->array.push_back(*luaO_nilobject);
 		}
 	}
 	else {
 		t->array.resize(nasize);
 	}
+	UNUSED(i);
+	UNUSED(j);
 }
 
 
@@ -307,7 +312,7 @@ TValue *luaH_newkey(lua_State *L, uvm_types::GcTable *t, const TValue *key, bool
 		}
 	}
 	// if key is int and == len(array+1), newkey put to array part
-	if (is_int && k == (t->array.size() + 1)) {
+	if (is_int && size_t(k) == (t->array.size() + 1)) {
 		t->array.push_back(*luaO_nilobject);
 		return &t->array[k-1];
 	}

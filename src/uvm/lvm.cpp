@@ -175,7 +175,7 @@ static int forlimit(const TValue *obj, lua_Integer *p, lua_Integer step,
 ** Complete a table access: if 't' is a table, 'tm' has its metamethod;
 ** otherwise, 'tm' is nullptr.
 */
-void luaV_finishget(lua_State *L, const TValue *t, TValue *key, StkId val,
+void luaV_finishget(uvm::core::ExecuteContext* ctx, lua_State *L, const TValue *t, TValue *key, StkId val,
 	const TValue *tm) {
 	int loop;  /* counter to avoid infinite loops */
 	lua_assert(tm != nullptr || !ttistable(t));
@@ -203,13 +203,16 @@ void luaV_finishget(lua_State *L, const TValue *t, TValue *key, StkId val,
 ** Main function for table assignment (invoking metamethods if needed).
 ** Compute 't[key] = val'
 */
-void luaV_finishset(lua_State *L, const TValue *t, TValue *key,
+void luaV_finishset(uvm::core::ExecuteContext* ctx, lua_State *L, const TValue *t, TValue *key,
 	StkId val, const TValue *oldval) {
 	if (ttistable(t)) {
 		auto table_addr = (intptr_t)t->value_.gco;
 		if (L->allow_contract_modify != table_addr && L->contract_table_addresses
 			&& std::find(L->contract_table_addresses->begin(), L->contract_table_addresses->end(), table_addr) != L->contract_table_addresses->end()) {
-			luaG_runerror(L, "can't modify contract properties");
+			auto msg = std::string("can't modify contract properties");
+			if (ttisstring(key))
+				msg += " " + tsvalue(key)->value;
+			luaG_runerror(L, msg.c_str());
 			return;
 		}
 	}
@@ -525,7 +528,7 @@ static void copy2buff(StkId top, int n, char *buff) {
 ** Main operation for concatenation: concat 'total' values in the stack,
 ** from 'L->top - total' up to 'L->top - 1'.
 */
-void luaV_concat(lua_State *L, int total) {
+void luaV_concat(uvm::core::ExecuteContext* ctx, lua_State *L, int total) {
 	lua_assert(total >= 2);
 	do {
 		StkId top = L->top;
@@ -544,8 +547,13 @@ void luaV_concat(lua_State *L, int total) {
 			/* collect total length and number of strings */
 			for (n = 1; n < total && tostring(L, top - n - 1); n++) {
 				size_t l = vslen(top - n - 1);
-				if (l >= (UVM_MAX_SIZE / sizeof(char)) - tl)
-					luaG_runerror(L, "string length overflow");
+				if (l >= (UVM_MAX_SIZE / sizeof(char)) - tl) {
+					std::string msg("string length overflow");
+					if (ctx) {
+						msg += " in line " + std::to_string(ctx->current_line());
+					}
+					luaG_runerror(L, msg.c_str());
+				}
 				tl += l;
 			}
 			if (tl <= LUAI_MAXSHORTLEN) {  /* is result a short string? */
@@ -716,7 +724,7 @@ static void pushclosure(lua_State *L, uvm_types::GcProto *p, UpVal **encup, int 
 /*
 ** finish execution of an opcode interrupted by an yield
 */
-void luaV_finishOp(lua_State *L) {
+void luaV_finishOp(uvm::core::ExecuteContext* ctx, lua_State *L) {
 	CallInfo *ci = L->ci;
 	StkId base = ci->u.l.base;
 	Instruction inst = *(ci->u.l.savedpc - 1);  /* interrupted instruction */
@@ -750,7 +758,7 @@ void luaV_finishOp(lua_State *L) {
 		setobj2s(L, top - 2, top);  /* put TM result in proper position */
 		if (total > 1) {  /* are there elements to concat? */
 			L->top = top - 1;  /* top is one after last element (at top-2) */
-			luaV_concat(L, total);  /* concat them (may yield again) */
+			luaV_concat(ctx, L, total);  /* concat them (may yield again) */
 		}
 		/* move final result to final position */
 		setobj2s(L, ci->u.l.base + GETARG_A(inst), L->top - 1);
@@ -824,7 +832,7 @@ void luaV_finishOp(lua_State *L) {
 */
 #define gettableProtected(L,t,k,v)  { const TValue *aux; \
   if (luaV_fastget(L,t,k,aux,luaH_get)) { setobj2s(L, v, aux); } \
-    else Protect(luaV_finishget(L,t,k,v,aux)); }
+    else Protect(luaV_finishget(this, L,t,k,v,aux)); }
 
 
 /* same for 'luaV_settable' */
@@ -834,7 +842,10 @@ void luaV_finishOp(lua_State *L) {
 		auto table_addr = (intptr_t)t->value_.gco;             \
 		if (L->allow_contract_modify != table_addr && L->contract_table_addresses           \
 			&& std::find(L->contract_table_addresses->begin(), L->contract_table_addresses->end(), table_addr) != L->contract_table_addresses->end()) { \
-			luaG_runerror(L, "can't modify contract properties"); \
+			auto msg = std::string("can't modify contract properties");  \
+			if (ttisstring(k))                    \
+				msg += " " + tsvalue(k)->value;   \
+			luaG_runerror(L, msg.c_str()); \
 			return false; \
 		} \
 		if (((uvm_types::GcTable*)table_addr)->isOnlyRead) {\
@@ -844,20 +855,20 @@ void luaV_finishOp(lua_State *L) {
 	} \
 	); \
   if (!luaV_fastset(L,t,k,slot,luaH_get,v)) \
-    Protect(luaV_finishset(L,t,k,v,slot)); }
+    Protect(luaV_finishset(this, L,t,k,v,slot)); }
 // FIXME: end duplicate code in uvm_lib.cpp
 
-static int get_line_in_current_proto(CallInfo* ci, uvm_types::GcProto *proto)
-{
-	int idx = (int)(ci->u.l.savedpc - proto->codes.data()); // proto
-	if (idx < proto->codes.size())
-	{
-		int line_in_proto = proto->lineinfos[idx];
-		return line_in_proto;
-	}
-	else
-		return 0;
-}
+//static int get_line_in_current_proto(CallInfo* ci, uvm_types::GcProto *proto)
+//{
+//	int idx = (int)(ci->u.l.savedpc - proto->codes.data()); // proto
+//	if (idx < int(proto->codes.size()))
+//	{
+//		int line_in_proto = proto->lineinfos[idx];
+//		return line_in_proto;
+//	}
+//	else
+//		return 0;
+//}
 
 #define lua_check_in_vm_error(cond, error_msg) {    \
 if (!(cond)) {      \
@@ -867,7 +878,21 @@ if (!(cond)) {      \
      }                             \
 }
 
-static bool enum_has_flag(int enum_value, int flag) {
+#define lua_check_in_vm_error_in_current_line(cond, error_msg) {    \
+if (!(cond)) {      \
+  L->force_stopping = true; \
+  const auto& msg = std::string(error_msg) + " in line " + std::to_string(current_line()); \
+  luaG_runerror(L, msg.c_str()); \
+  vmbreak;                                   \
+     }                             \
+}
+
+#define luaG_runerror_in_current_line(L, error_msg) { \
+	const auto& msg = std::string(error_msg) + " in line " + std::to_string(current_line()); \
+	luaG_runerror(L, msg.c_str());    \
+}
+
+static bool enum_has_flag(int enum_value, lua_VMState flag) {
 	return (enum_value | flag) == enum_value;
 }
 
@@ -885,7 +910,7 @@ namespace uvm {
 			if (enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
 				|| enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT))
 				return;
-			int startline = current_line();
+			auto startline = current_line();
 			bool from_break = false;
 			if (enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)) {
 				L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
@@ -896,7 +921,7 @@ namespace uvm {
 
 			L->ci = ci;
 			*L->using_contract_id_stack = this->using_contract_id_stack;
-			int c = L->ci_depth;
+			auto c = L->ci_depth;
 			bool has_next_op = false;
 			try
 			{
@@ -938,7 +963,8 @@ namespace uvm {
 			if (enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
 				|| enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT))
 				return;
-			int startline = startline = current_line();
+			auto startline = current_line();
+			UNUSED(startline);
 			bool from_break = false;
 			if (enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)) {
 				L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
@@ -948,7 +974,7 @@ namespace uvm {
 			L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_SUSPEND);
 			L->ci = ci;
 			*L->using_contract_id_stack = this->using_contract_id_stack;
-			int c = L->ci_depth;
+			auto c = L->ci_depth;
 			bool has_next_op = false;
 			try
 			{
@@ -989,7 +1015,7 @@ namespace uvm {
 			if (enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
 				|| enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT))
 				return;
-			int startline = current_line();
+			auto startline = current_line();
 			bool from_break = false;
 			if (enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)) {
 				L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
@@ -999,7 +1025,7 @@ namespace uvm {
 			L->ci = ci;
 			*L->using_contract_id_stack = this->using_contract_id_stack;
 			bool has_next_op = false;
-			int c = L->ci_depth;
+			auto c = L->ci_depth;
 			try {
 				do
 				{
@@ -1046,7 +1072,7 @@ namespace uvm {
 			if (!isLua(L->ci)) {
 				throw uvm::core::UvmException("not lua function to resume");
 			}
-			int startline = current_line();
+			auto startline = current_line();
 			bool from_break = false;
 			if (enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK)) {
 				L->state = (lua_VMState)(L->state & ~lua_VMState::LVM_STATE_BREAK);
@@ -1074,7 +1100,8 @@ namespace uvm {
 			}
 
 			bool use_step_log = global_uvm_chain_api != nullptr && global_uvm_chain_api->use_step_log(L);
-                        bool use_gas_log = global_uvm_chain_api != nullptr && global_uvm_chain_api->use_gas_log(L);
+            bool use_gas_log = global_uvm_chain_api != nullptr && global_uvm_chain_api->use_gas_log(L);
+			UNUSED(use_gas_log);
 
 			
 				if (!ci || ci->u.l.savedpc == nullptr) {
@@ -1086,7 +1113,7 @@ namespace uvm {
 				if(use_step_log) {
 					ci->u.l.savedpc--;
 					const auto cur_line = current_line();
-					printf("%s\tline:%d, now gas %d\n", luaP_opnames[GET_OPCODE(i)], cur_line, *insts_executed_count);
+					printf("%s\tline:%d, now gas %d\n", luaP_opnames[GET_OPCODE(i)], cur_line, int(*insts_executed_count));
 					ci->u.l.savedpc++;
 				}
 
@@ -1113,7 +1140,8 @@ namespace uvm {
 				if ((GET_OPCODE(i) == UOP_CALL || GET_OPCODE(i) == UOP_TAILCALL)
 					&& global_uvm_chain_api->check_contract_api_instructions_over_limit(L))
 				{
-					global_uvm_chain_api->throw_exception(L, UVM_API_LVM_LIMIT_OVER_ERROR, "over instructions limit");
+					const auto& msg = std::string("over instructions limit at line ") + std::to_string(current_line());
+					global_uvm_chain_api->throw_exception(L, UVM_API_LVM_LIMIT_OVER_ERROR, msg.c_str());
 					//vmbreak;
 					return false;
 				}
@@ -1149,7 +1177,7 @@ namespace uvm {
 					}
 					vmcase(UOP_LOADNIL) {
 						int b = GETARG_B(i);
-						lua_check_in_vm_error(b >= 0, "loadnil instruction arg must be positive integer");
+						lua_check_in_vm_error_in_current_line(b >= 0, "loadnil instruction arg must be positive integer");
 						do {
 							setnilvalue(ra++);
 						} while (b--);
@@ -1157,13 +1185,13 @@ namespace uvm {
 					}
 					vmcase(UOP_GETUPVAL) {
 						int b = GETARG_B(i);
-						lua_check_in_vm_error(b < cl->nupvalues && b >= 0, "upvalue error");
+						lua_check_in_vm_error_in_current_line(b < cl->nupvalues && b >= 0, "upvalue error");
 						setobj2s(L, ra, cl->upvals[b]->v);
 						vmbreak;
 					}
 					vmcase(UOP_GETTABUP) {
 						auto upval_index = GETARG_B(i);
-						lua_check_in_vm_error(upval_index < cl->nupvalues && upval_index >= 0, "upvalue error");
+						lua_check_in_vm_error_in_current_line(upval_index < cl->nupvalues && upval_index >= 0, "upvalue error");
 						if (nullptr == cl->upvals[upval_index])
 						{
 							*stopped_pointer = 1;
@@ -1180,7 +1208,7 @@ namespace uvm {
 						bool istable = ttistable(rb);
 						if (!istable)
 						{
-							luaG_runerror(L, "getfield of nil, need table here");
+							luaG_runerror_in_current_line(L, "getfield of nil, need table here");
 							L->force_stopping = true;
 							vmbreak;
 						}
@@ -1189,10 +1217,10 @@ namespace uvm {
 					}
 					vmcase(UOP_SETTABUP) {
 						auto upval_index = GETARG_A(i);
-						lua_check_in_vm_error(upval_index < cl->nupvalues && upval_index >= 0, "upvalue error");
+						lua_check_in_vm_error_in_current_line(upval_index < cl->nupvalues && upval_index >= 0, "upvalue error");
 						if (!cl->upvals[upval_index])
 						{
-							luaG_runerror(L, "set upvalue of nil, need table here");
+							luaG_runerror_in_current_line(L, "set upvalue of nil, need table here");
 							L->force_stopping = true;
 							vmbreak;
 						}
@@ -1204,7 +1232,7 @@ namespace uvm {
 					}
 					vmcase(UOP_SETUPVAL) {
 						auto upval_index = GETARG_B(i);
-						lua_check_in_vm_error(upval_index < cl->nupvalues && upval_index >= 0, "upvalue error");
+						lua_check_in_vm_error_in_current_line(upval_index < cl->nupvalues && upval_index >= 0, "upvalue error");
 						UpVal *uv = cl->upvals[upval_index];
 						setobj(L, uv->v, ra);
 						luaC_upvalbarrier(L, uv);
@@ -1237,7 +1265,7 @@ namespace uvm {
 						}
 						else
 						{
-							Protect(luaV_finishget(L, rb, rc, ra, aux));
+							Protect(luaV_finishget(this, L, rb, rc, ra, aux));
 						}
 						vmbreak;
 					}
@@ -1253,7 +1281,7 @@ namespace uvm {
 							setfltvalue(ra, luai_numadd(L, nb, nc));
 						}
 						else {
-							luaG_runerror(L, "+ can only accept numbers");
+							luaG_runerror_in_current_line(L, "+ can only accept numbers");
 							Protect(luaT_trybinTM(L, rb, rc, ra, TM_ADD));
 						}
 						vmbreak;
@@ -1270,7 +1298,7 @@ namespace uvm {
 							setfltvalue(ra, luai_numsub(L, nb, nc));
 						}
 						else {
-							luaG_runerror(L, "- can only accept numbers");
+							luaG_runerror_in_current_line(L, "- can only accept numbers");
 							Protect(luaT_trybinTM(L, rb, rc, ra, TM_SUB));
 						}
 						vmbreak;
@@ -1287,7 +1315,7 @@ namespace uvm {
 							setfltvalue(ra, luai_nummul(L, nb, nc));
 						}
 						else {
-							luaG_runerror(L, "* can only accept numbers");
+							luaG_runerror_in_current_line(L, "* can only accept numbers");
 							Protect(luaT_trybinTM(L, rb, rc, ra, TM_MUL));
 						}
 						vmbreak;
@@ -1300,7 +1328,7 @@ namespace uvm {
 							setfltvalue(ra, luai_numdiv(L, nb, nc));
 						}
 						else {
-							luaG_runerror(L, "/ can only accept numbers");
+							luaG_runerror_in_current_line(L, "/ can only accept numbers");
 							Protect(luaT_trybinTM(L, rb, rc, ra, TM_DIV));
 						}
 						vmbreak;
@@ -1313,7 +1341,7 @@ namespace uvm {
 							setivalue(ra, intop(&, ib, ic));
 						}
 						else {
-							luaG_runerror(L, "& can only accept integer");
+							luaG_runerror_in_current_line(L, "& can only accept integer");
 							Protect(luaT_trybinTM(L, rb, rc, ra, TM_BAND));
 						}
 						vmbreak;
@@ -1326,7 +1354,7 @@ namespace uvm {
 							setivalue(ra, intop(| , ib, ic));
 						}
 						else {
-							luaG_runerror(L, "| can only accept integer");
+							luaG_runerror_in_current_line(L, "| can only accept integer");
 							Protect(luaT_trybinTM(L, rb, rc, ra, TM_BOR));
 						}
 						vmbreak;
@@ -1339,7 +1367,7 @@ namespace uvm {
 							setivalue(ra, intop(^, ib, ic));
 						}
 						else {
-							luaG_runerror(L, "~ can only accept integer");
+							luaG_runerror_in_current_line(L, "~ can only accept integer");
 							Protect(luaT_trybinTM(L, rb, rc, ra, TM_BXOR));
 						}
 						vmbreak;
@@ -1352,7 +1380,7 @@ namespace uvm {
 							setivalue(ra, luaV_shiftl(ib, ic));
 						}
 						else {
-							luaG_runerror(L, "<< can only accept integer");
+							luaG_runerror_in_current_line(L, "<< can only accept integer");
 							Protect(luaT_trybinTM(L, rb, rc, ra, TM_SHL));
 						}
 						vmbreak;
@@ -1365,7 +1393,7 @@ namespace uvm {
 							setivalue(ra, luaV_shiftl(ib, -ic));
 						}
 						else {
-							luaG_runerror(L, ">> can only accept integer");
+							luaG_runerror_in_current_line(L, ">> can only accept integer");
 							Protect(luaT_trybinTM(L, rb, rc, ra, TM_SHR));
 						}
 						vmbreak;
@@ -1384,7 +1412,7 @@ namespace uvm {
 							setfltvalue(ra, m);
 						}
 						else {
-							luaG_runerror(L, "% can only accept numbers");
+							luaG_runerror_in_current_line(L, "% can only accept numbers");
 							Protect(luaT_trybinTM(L, rb, rc, ra, TM_MOD));
 						}
 						vmbreak;
@@ -1401,7 +1429,7 @@ namespace uvm {
 							setfltvalue(ra, luai_numidiv(L, nb, nc));
 						}
 						else {
-							luaG_runerror(L, "// can only accept numbers");
+							luaG_runerror_in_current_line(L, "// can only accept numbers");
 							Protect(luaT_trybinTM(L, rb, rc, ra, TM_IDIV));
 						}
 						vmbreak;
@@ -1414,7 +1442,7 @@ namespace uvm {
 							setfltvalue(ra, luai_numpow(L, nb, nc));
 						}
 						else {
-							luaG_runerror(L, "^ can only accept numbers");
+							luaG_runerror_in_current_line(L, "^ can only accept numbers");
 							Protect(luaT_trybinTM(L, rb, rc, ra, TM_POW));
 						}
 						vmbreak;
@@ -1430,7 +1458,7 @@ namespace uvm {
 							setfltvalue(ra, luai_numunm(L, nb));
 						}
 						else {
-							luaG_runerror(L, "-<exp> can only accept numbers");
+							luaG_runerror_in_current_line(L, "-<exp> can only accept numbers");
 							Protect(luaT_trybinTM(L, rb, rb, ra, TM_UNM));
 						}
 						vmbreak;
@@ -1442,7 +1470,7 @@ namespace uvm {
 							setivalue(ra, intop(^, ~l_castS2U(0), ib));
 						}
 						else {
-							luaG_runerror(L, "~<exp> can only accept numbers");
+							luaG_runerror_in_current_line(L, "~<exp> can only accept numbers");
 							Protect(luaT_trybinTM(L, rb, rb, ra, TM_BNOT));
 						}
 						vmbreak;
@@ -1462,7 +1490,7 @@ namespace uvm {
 						int c = GETARG_C(i);
 						StkId rb;
 						L->top = base + c + 1;  /* mark the end of concat operands */
-						Protect(luaV_concat(L, c - b + 1));
+						Protect(luaV_concat(this, L, c - b + 1));
 						ra = RA(i);  /* 'luaV_concat' may invoke TMs and move the stack */
 						rb = base + b;
 						setobjs2s(L, ra, rb);
@@ -1525,7 +1553,7 @@ namespace uvm {
 						int b = GETARG_B(i);
 						int nresults = GETARG_C(i) - 1;
 						if (b != 0) L->top = ra + b;  /* else previous instruction set top */
-													  // int line_in_proto = get_line_in_current_proto(ci, cl->p);
+						// int line_in_proto = get_line_in_current_proto(ci, cl->p);
 						if (luaD_precall(L, ra, nresults)) {  /* C function? */
 							if (nresults >= 0)
 								L->top = ci->top;  /* adjust results */
@@ -1551,17 +1579,18 @@ namespace uvm {
 						int nargs = GETARG_B(i) - 1;
 						int nresults = GETARG_C(i) - 1;
 						auto rarg = ra + 2;
+						UNUSED(rarg);
 						if (nargs > 10) {
-							luaG_runerror(L, "too many args");
+							luaG_runerror_in_current_line(L, "too many args");
 							vmbreak;
 						}
 						//check 
 						if (nargs < 0 || L->top - ra < 2 + nargs) {
-							luaG_runerror(L, "exceed");
+							luaG_runerror_in_current_line(L, "exceed");
 							vmbreak;
 						}
 						if (!ttisstring(ra) || !ttisstring(ra + 1)) {
-							luaG_runerror(L, "args is not string");
+							luaG_runerror_in_current_line(L, "args is not string");
 							vmbreak;
 						}
 						auto save_last_execute_context = last_execute_context;
@@ -1585,7 +1614,7 @@ namespace uvm {
 							Protect((void)0);  // update 'base' 
 						}
 						else {  // Lua function 
-							luaG_runerror(L, "import_contract_from_address wrong ");
+							luaG_runerror_in_current_line(L, "import_contract_from_address wrong ");
 							vmbreak;
 						}
 						
@@ -1597,7 +1626,7 @@ namespace uvm {
 						
 						ra = RA(i);
 						if (!ttistable(ra)) {
-							luaG_runerror(L, "import_contract_from_address not return a table ");
+							luaG_runerror_in_current_line(L, "import_contract_from_address not return a table ");
 							vmbreak;
 						}
 
@@ -1607,13 +1636,14 @@ namespace uvm {
 
 						
 						if (!ttisfunction(ra)) {
-							luaG_runerror(L, "get api is not function ");
+							luaG_runerror_in_current_line(L, "get api is not function ");
 							vmbreak;
 						}
 						
 						L->call_op_msg = GET_OPCODE(i);
 						
 						auto arg2 = ra + 2;
+						UNUSED(arg2);
 						//call api, ra:api function   ra+1:contract table  ra+2：arg
 						L->top = ra + 2 + nargs;
 						for (int j = 0; j < nargs; j++) {
@@ -1748,13 +1778,13 @@ namespace uvm {
 						else {  /* try making all values floats */
 							lua_Number ninit; lua_Number nlimit; lua_Number nstep;
 							if (!tonumber(plimit, &nlimit))
-								luaG_runerror(L, "'for' limit must be a number");
+								luaG_runerror_in_current_line(L, "'for' limit must be a number");
 							setfltvalue(plimit, nlimit);
 							if (!tonumber(pstep, &nstep))
-								luaG_runerror(L, "'for' step must be a number");
+								luaG_runerror_in_current_line(L, "'for' step must be a number");
 							setfltvalue(pstep, nstep);
 							if (!tonumber(init, &ninit))
-								luaG_runerror(L, "'for' initial value must be a number");
+								luaG_runerror_in_current_line(L, "'for' initial value must be a number");
 							setfltvalue(init, luai_numsub(L, ninit, nstep));
 						}
 						ci->u.l.savedpc += GETARG_sBx(i);
@@ -1804,7 +1834,7 @@ namespace uvm {
 					}
 					vmcase(UOP_CLOSURE) {
 						auto p_index = GETARG_Bx(i);
-						lua_check_in_vm_error(p_index < cl->p->ps.size(), "too large sub proto index");
+						lua_check_in_vm_error_in_current_line(p_index < int(cl->p->ps.size()), "too large sub proto index");
 						uvm_types::GcProto *p = cl->p->ps[p_index];
 						uvm_types::GcLClosure *ncl = getcached(p, cl->upvals.empty() ? nullptr : cl->upvals.data(), base);  /* cached closure */
 						if (ncl == nullptr) {  /* no match? */
@@ -1842,7 +1872,7 @@ namespace uvm {
 					vmcase(UOP_PUSH) {
 						if (L->evalstacktop - L->evalstack >= L->evalstacksize) {
 							//  ............
-							luaG_runerror(L, "evalstack exceed");
+							luaG_runerror_in_current_line(L, "evalstack exceed");
 							vmbreak;
 						}
 						setobj(L, L->evalstacktop, ra);
@@ -1851,7 +1881,7 @@ namespace uvm {
 					}
 					vmcase(UOP_POP) {
 						if (L->evalstacktop <= L->evalstack) {
-							luaG_runerror(L, "evalstack exceed when pop");
+							luaG_runerror_in_current_line(L, "evalstack exceed when pop");
 							vmbreak;
 						}
 						setobj(L, ra, L->evalstacktop - 1);
@@ -1934,6 +1964,9 @@ namespace uvm {
 							)
 							vmbreak;
 					}
+					vmcase(UOP_DUMMY_COUNT) {
+						
+					}
 				}
 
 				if (!enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT) && L->allow_debug && L->using_contract_id_stack && !L->using_contract_id_stack->empty())
@@ -1942,7 +1975,7 @@ namespace uvm {
 					if (L->breakpoints->find(current_contract_address) != L->breakpoints->end()) {
 						const auto& contract_breakpoints = L->breakpoints->at(current_contract_address);
 						auto inst_index_in_proto = ci->u.l.savedpc - cl->p->codes.data();
-						if (cl->p->lineinfos.size() > inst_index_in_proto) {
+						if (cl->p->lineinfos.size() > size_t(inst_index_in_proto)) {
 							uint32_t line = cl->p->lineinfos[inst_index_in_proto];
 							if (std::find(contract_breakpoints.begin(), contract_breakpoints.end(), line) != contract_breakpoints.end()) {
 								union_change_state(L, lua_VMState::LVM_STATE_BREAK);
@@ -2043,13 +2076,14 @@ namespace uvm {
 			if (!ci || !ttisLclosure(ci->func)) {
 				return result;
 			}
-			int line = current_line();
+			auto line = current_line();
+			UNUSED(line);
 			size_t numparas = (size_t)cl->p->numparams;
 			if (numparas > 0) {
-				printf("num paras = %d\n", numparas);
+				printf("num paras = %d\n", int(numparas));
 			}
 			auto currentpc = ci->u.l.savedpc - cl->p->codes.data();
-			printf("currentpc = %d\n", currentpc);
+			printf("currentpc = %d\n", int(currentpc));
 
 			for (size_t i = 0; i < cl->p->locvars.size(); i++) {
 				const auto& locvar = cl->p->locvars[i];
@@ -2078,6 +2112,7 @@ namespace uvm {
 				TValue value = *upval->v;
 				result[upval_name] = value;
 			}
+			UNUSED(level);
 			return result;
 		}
 
@@ -2099,9 +2134,9 @@ namespace uvm {
 			}
 			auto cl = clLvalue(ci->func);
 			auto inst_index_in_proto = ci->u.l.savedpc - cl->p->codes.data();
-			if (inst_index_in_proto < 0 || inst_index_in_proto >= cl->p->codes.size())
+			if (inst_index_in_proto < 0 || size_t(inst_index_in_proto) >= cl->p->codes.size())
 				return 0;
-			if (inst_index_in_proto >= cl->p->lineinfos.size())
+			if (size_t(inst_index_in_proto) >= cl->p->lineinfos.size())
 				return 0;
 			return cl->p->lineinfos[inst_index_in_proto];
 		}
@@ -2134,9 +2169,9 @@ namespace uvm {
 				return 0;
 			}
 			auto inst_index_in_proto = ci->u.l.savedpc - cl->p->codes.data();
-			if (inst_index_in_proto < 0 || inst_index_in_proto >= cl->p->codes.size())
+			if (inst_index_in_proto < 0 || size_t(inst_index_in_proto) >= cl->p->codes.size())
 				return 0;
-			if (inst_index_in_proto >= cl->p->lineinfos.size())
+			if (size_t(inst_index_in_proto) >= cl->p->lineinfos.size())
 				return 0;
 			return cl->p->lineinfos[inst_index_in_proto];
 		}
@@ -2162,6 +2197,9 @@ std::shared_ptr<uvm::core::ExecuteContext> luaV_execute(lua_State *L)
 	execute_ctx->ci = ci;
 	execute_ctx->enter_newframe(L);
 	last_execute_context = execute_ctx;
+	UNUSED(cl);
+	UNUSED(k);
+	UNUSED(base);
 	return execute_ctx;
 }
 

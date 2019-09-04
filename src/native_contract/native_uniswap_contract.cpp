@@ -3,6 +3,7 @@
 #include <jsondiff/jsondiff.h>
 #include <cbor_diff/cbor_diff.h>
 #include <uvm/uvm_lutil.h>
+#include <uvm/llimits.h>
 #include <safenumber/safenumber.h>
 
 namespace uvm {
@@ -125,6 +126,7 @@ namespace uvm {
 			int64_t min_asset1_amount = std::stoll(min_amount1);
 			int64_t min_asset2_amount = std::stoll(min_amount2);
 			char* end = 0;
+			UNUSED(end);
 			
 			const auto& feeRate = safe_number_create(feestr);
 			if (min_asset1_amount <= 0 || min_asset2_amount <= 0)
@@ -190,7 +192,7 @@ namespace uvm {
 			if (expired_blocknum <= 0)
 				throw_error("argument format error, expired_blocknum must be positive integer");
 			auto head_blocknum = head_block_num();
-			if(expired_blocknum <= head_blocknum)
+			if(uint64_t(expired_blocknum) <= head_blocknum)
 				throw_error("expired blocknum:"+ expired_blocknum_str);
 
 			if (add_asset1_amount < get_int_current_contract_storage("min_asset1_amount")) {
@@ -322,7 +324,7 @@ namespace uvm {
 				throw_error("argument format error, input args must be positive integers");
 			
 			auto head_blocknum = head_block_num();
-			if (expired_blocknum <= head_blocknum)
+			if (uint64_t(expired_blocknum) <= head_blocknum)
 				throw_error("expired blocknum:" + expired_blocknum_str);
 
 			//check liquidity token 
@@ -475,7 +477,7 @@ namespace uvm {
 				}
 
 				auto head_blocknum = head_block_num();
-				if (expired_blocknum <= head_blocknum)
+				if (uint64_t(expired_blocknum) <= head_blocknum)
 					throw_error("expired blocknum:" + expired_blocknum_str);
 
 				if (want_buy_asset_symbol != asset1 && want_buy_asset_symbol != asset2) {

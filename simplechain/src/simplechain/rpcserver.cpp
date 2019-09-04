@@ -15,6 +15,7 @@ namespace simplechain {
 	{ "mint", &mint },
 	{ "add_asset", &add_asset },
 	{ "register_account", &register_account },
+	{ "get_account", &get_account },
 	{ "transfer", &transfer },
 	{ "create_contract_from_file", &create_contract_from_file },
 	{ "create_native_contract", &create_native_contract },
@@ -35,8 +36,8 @@ namespace simplechain {
 	{ "get_contract_storages", &get_contract_storages },
 	{ "get_storage", &get_storage },
 	{ "add_asset", &add_asset },
-        { "generate_key", &generate_key },
-        { "sign_info", &sign_info },
+    { "generate_key", &generate_key },
+    { "sign_info", &sign_info },
 	
         //add debug rpc
 	{ "set_breakpoint", &set_breakpoint },

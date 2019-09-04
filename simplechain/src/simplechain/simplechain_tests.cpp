@@ -75,7 +75,6 @@ void test2()
 			chain->evaluate_transaction(tx);
 			chain->accept_transaction_to_mempool(*tx);
 		}
-		printf("");
 		{
 			auto tx1 = std::make_shared<transaction>();
 
@@ -115,8 +114,9 @@ void test2()
 		std::cerr << e.what() << std::endl;
 		//BOOST_CHECK(false);
 	}
-
+#ifdef _WIN32
 	_CrtDumpMemoryLeaks();
+#endif
 }
 
 //BOOST_AUTO_TEST_SUITE_END()

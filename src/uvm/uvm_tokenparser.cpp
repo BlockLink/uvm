@@ -68,7 +68,7 @@ namespace uvm
 
         void UvmTokenParser::_reset_parse_buff()
         {
-            memset(_parsing_buff, 0x0, sizeof(_parsing_buff));
+            memset(_parsing_buff, 0x0, _parsing_buff_len);
             _parsing_buff_len = 0;
         }
 
@@ -785,7 +785,6 @@ namespace uvm
 
         std::string UvmTokenParser::dump() const
         {
-			// TODO: ldf
             std::stringstream ss;
             size_t lastline = 1;
 			size_t lasttoken_lines_count = 0;
@@ -810,6 +809,7 @@ namespace uvm
                     if (it->source_token.length() > 0)
                         lstr = it->source_token;
                     bool is_long_string = it->source_token.length() < 1;
+					UNUSED(is_long_string);
                     ss << lstr;
 					lasttoken_lines_count = uvm::util::string_lines_count(lstr);
                 }

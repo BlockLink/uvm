@@ -50,7 +50,7 @@ namespace cbor_diff {
 			auto json_decoded = jsondiff::json_loads(json_encoded).as_double();
 			auto a_decoded = cbor_decode(a_encoded);
 			auto cbor_decoded_value = a_decoded->as_float64();
-			printf("a: %.10f, a_encoded: %s, json_encoded: %s, json_decoded: %.10f, a_decoded: %.10f", a, a_encoded, json_encoded, json_decoded, cbor_decoded_value);
+			printf("a: %.10f, a_encoded size: %d, json_encoded: %s, json_decoded: %.10f, a_decoded: %.10f", a, int(a_encoded.size()), json_encoded.c_str(), json_decoded, cbor_decoded_value);
 		}
 		{
 			CborDiff differ;
@@ -168,6 +168,7 @@ namespace cbor_diff {
 			auto a_loaded = cbor_decode(a_json_str);
 			auto b_loaded = cbor_decode(b_json_str);
 			auto a_type = a_loaded->object_type();
+			UNUSED(a_type);
 			assert(a_loaded->is_extra_int() && a_loaded->as_extra_int() == a->as_extra_int());
 			assert(b_loaded->is_float() && abs(b_loaded->as_float64() - b->as_float64()) < 0.0001);
 			std::cout << "big int and big double tests passed" << std::endl;

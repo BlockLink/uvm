@@ -72,6 +72,8 @@ static void save(LexState *ls, int c) {
 void luaX_init(lua_State *L) {  //delete;  modify isreseved move to llex.h ?
     int i;
 	uvm_types::GcString *e = luaS_newliteral(L, LUA_ENV);  /* create env name */
+	UNUSED(i);
+	UNUSED(e);
     /*for (i = 0; i < NUM_RESERVED; i++) {
 		uvm_types::GcString *ts = luaS_new(L, luaX_tokens[i]);
         ts->extra = cast_byte(i + 1);  // reserved word 

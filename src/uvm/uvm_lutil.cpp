@@ -391,7 +391,7 @@ namespace uvm
 		int64_t hex_to_int(const std::string& hex_str) {
 			try {
 				Buffer bytes(hex_str.size() / 2);
-				auto decoded_bytes_count = fc::from_hex(hex_str, (char*)bytes.data(), bytes.size());
+				// const auto& decoded_bytes_count = fc::from_hex(hex_str, (char*)bytes.data(), bytes.size());
 				return little_endian_unpack_int<int64_t>(bytes);
 			}
 			catch (const std::exception& e) {
@@ -430,8 +430,8 @@ namespace uvm
 				return decode_result;
 			}
 			else if (first_byte <= 0xbf) {
-				auto llength = first_byte - 0xb6; // list length
-				auto length = hex_to_int(buffer_to_hex(*bytes.clone_slice(1, llength - 1)));
+				auto llength = size_t(first_byte - 0xb6); // list length
+				auto length = size_t(hex_to_int(buffer_to_hex(*bytes.clone_slice(1, llength - 1))));
 				result->bytes = *bytes.clone_slice(llength, length);
 				if (result->bytes.size() < length) {
 					throw uvm::core::UvmException("invalid RLP");
@@ -460,7 +460,7 @@ namespace uvm
 				// a list  over 55 bytes long
 				auto llength = first_byte - 0xf6;
 				auto length = hex_to_int(buffer_to_hex(*bytes.clone_slice(1, llength - 1)));
-				auto totalLength = llength + length;
+				auto totalLength = size_t(llength + length);
 				if (totalLength > bytes.size()) {
 					throw uvm::core::UvmException("invalid rlp: total length is larger than the data");
 				}
@@ -536,7 +536,7 @@ namespace uvm
 			int data[1010];
 			int output[1010];
 			memset(output, 0, sizeof(output));
-			for (int i = 0; i < source_str.length(); i++) {
+			for (size_t i = 0; i < source_str.length(); i++) {
 				if (i >= 1010)
 					throw uvm::core::UvmException("too long source string for convert_pre");
 				if (isalpha(source_str[i]))

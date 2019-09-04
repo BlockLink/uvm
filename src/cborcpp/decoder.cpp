@@ -30,16 +30,16 @@ decoder::~decoder() {
 
 }
 
-static CborObjectP cbor_object_error(const std::string& error_msg) {
-	auto result = std::make_shared<CborObject>();
-	result->type = CborObjectType::COT_ERROR;
-#if defined(CBOR_OBJECT_USE_VARIANT)
-	result->value = error_msg;
-#else
-	result->value.string_val = error_msg;
-#endif
-	return result;
-}
+//static CborObjectP cbor_object_error(const std::string& error_msg) {
+//	auto result = std::make_shared<CborObject>();
+//	result->type = CborObjectType::COT_ERROR;
+//#if defined(CBOR_OBJECT_USE_VARIANT)
+//	result->value = error_msg;
+//#else
+//	result->value.string_val = error_msg;
+//#endif
+//	return result;
+//}
 
 static void put_decoded_value(CborObjectP& result, std::vector<CborObjectP>& structures_stack, bool& iter_in_map_key, CborObjectP& map_key_temp, CborObjectP value) {
 	auto old_structures_stack_size = structures_stack.size();

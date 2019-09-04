@@ -174,7 +174,7 @@ typedef struct lua_TValue {
 /* Macros for internal tests */
 #define righttt(obj)		(ttype(obj) == gcvalue(obj)->tt)
 
-#define checkliveness(L,obj) (0)
+#define checkliveness(L,obj) void(0)
 
 /* Macros to set values */
 #define settt_(o,t)	((o)->tt_=(t))
@@ -205,11 +205,6 @@ typedef struct lua_TValue {
 #define setgcovalue(L,obj,x) \
   { TValue *io = (obj); GCObject *i_g=(x); \
     val_(io).gc = i_g; settt_(io, ctb(i_g->tt)); }
-
-//#define setsvalue(L,obj,x) \
-//  { TValue *io = (obj); TString *x_ = (x); \
-//    val_(io).gc = obj2gco(x_); settt_(io, ctb(x_->tt)); \
-//    checkliveness(L,io); }
 
 #define setsvalue(L,obj,x) \
   { TValue *io = (obj); uvm_types::GcString *x_ = (x); \

@@ -8,7 +8,7 @@ namespace cbor_diff
 	{
 		bool string_ends_with(std::string str, std::string end)
 		{
-			auto pos = str.find(end);
+			int pos = int(str.find(end));
 			return pos >= 0 && (pos + end.size() == str.size());
 		}
 

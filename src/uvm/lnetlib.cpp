@@ -31,7 +31,7 @@ namespace uvm
 		{
 			Uri result;
 
-			typedef std::wstring::const_iterator iterator_t;
+			//typedef std::wstring::const_iterator iterator_t;
 
 			if (uri.length() == 0)
 				return result;

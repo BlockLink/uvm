@@ -74,7 +74,7 @@ namespace simplechain {
 		op.gas_limit = gas_limit;
 		op.gas_price = gas_price;
 		op.deposit_asset_id = deposit_asset_id;
-		op.deposit_amount;
+		op.deposit_amount = deposit_amount;
 		op.op_time = fc::time_point_sec(fc::time_point::now());
 		return op;
 	}

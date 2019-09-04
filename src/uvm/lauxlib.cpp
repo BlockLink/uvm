@@ -984,27 +984,27 @@ static int handle_luainit(lua_State *L) {
         return dostring(L, init, name);
 }
 
-static int pmain_of_run_compiled_file(lua_State *L)
-{
-    int argc = (int)lua_tointeger(L, 1);
-    char **argv = (char **)lua_touserdata(L, 2);
-    int script;
-    int args = collectargs(argv, &script);
-    luaL_checkversion(L);  /* check that interpreter has correct version */
-    if (argv[0] && argv[0][0]) progname = argv[0];
-    createargtable(L, argv, argc, script);  /* create table 'arg' */
-    if (!(args & has_E)) {  /* no option '-E'? */
-        if (handle_luainit(L) != LUA_OK)  /* run LUA_INIT */
-            return 0;  /* error running LUA_INIT */
-    }
-    if (!runargs(L, argv, script))  /* execute arguments -e and -l */
-        return 0;  /* something failed */
-    if (script < argc &&  /* execute main script (if there is one) */
-        handle_script(L, argv + script) != LUA_OK)
-        return 0;
-    lua_pushboolean(L, 1);  /* signal no errors */
-    return 1;
-}
+//static int pmain_of_run_compiled_file(lua_State *L)
+//{
+//    int argc = (int)lua_tointeger(L, 1);
+//    char **argv = (char **)lua_touserdata(L, 2);
+//    int script;
+//    int args = collectargs(argv, &script);
+//    luaL_checkversion(L);  /* check that interpreter has correct version */
+//    if (argv[0] && argv[0][0]) progname = argv[0];
+//    createargtable(L, argv, argc, script);  /* create table 'arg' */
+//    if (!(args & has_E)) {  /* no option '-E'? */
+//        if (handle_luainit(L) != LUA_OK)  /* run LUA_INIT */
+//            return 0;  /* error running LUA_INIT */
+//    }
+//    if (!runargs(L, argv, script))  /* execute arguments -e and -l */
+//        return 0;  /* something failed */
+//    if (script < argc &&  /* execute main script (if there is one) */
+//        handle_script(L, argv + script) != LUA_OK)
+//        return 0;
+//    lua_pushboolean(L, 1);  /* signal no errors */
+//    return 1;
+//}
 
 LUA_API int lua_docompiledfile(lua_State *L, const char *filename)
 {
@@ -1095,6 +1095,7 @@ int luaL_require_module(lua_State *L)
     /* else must load package */
     lua_pop(L, 1);  /* remove 'getfield' result */
     bool loaderfound = findloader(L, name);
+	UNUSED(loaderfound);
     lua_pushstring(L, name);  /* pass name as argument to module loader */
     lua_insert(L, -2);  /* name is 1st argument (before search data) */
     lua_call(L, 2, 1);  /* run loader to load module */
@@ -1200,6 +1201,7 @@ static bool lua_get_contract_apis_direct(lua_State *L, UvmModuleByteStream *stre
     intptr_t stream_p = (intptr_t)stream;
     std::string name = std::string(STREAM_CONTRACT_PREFIX) + std::to_string(stream_p);
     const char *contract_name = name.c_str();
+	UNUSED(contract_name);
 
     lua_pushstring(L, name.c_str());
     const char *filename = name.c_str();
@@ -1597,10 +1599,10 @@ int luaL_import_contract_module_from_address(lua_State *L)
                     }
                 } exit_scope1(clear_stored_contract_info);
                 // found this contract stored in the uvm api before
-                if (stored_contract_info->contract_apis.size() != apis_count)
+                if (stored_contract_info->contract_apis.size() != size_t(apis_count))
                 {
                     char error_msg[LUA_COMPILE_ERROR_MAX_LENGTH];
-                    snprintf(error_msg, LUA_COMPILE_ERROR_MAX_LENGTH - 1, "this contract byte stream not matched with the info stored in uvm api, need %d apis but only found %d", stored_contract_info->contract_apis.size(), apis_count);
+                    snprintf(error_msg, LUA_COMPILE_ERROR_MAX_LENGTH - 1, "this contract byte stream not matched with the info stored in uvm api, need %d apis but only found %d", int(stored_contract_info->contract_apis.size()), apis_count);
                     if (strlen(L->compile_error) < 1)
                         memcpy(L->compile_error, error_msg, LUA_COMPILE_ERROR_MAX_LENGTH);
                     global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, error_msg);
@@ -1611,7 +1613,7 @@ int luaL_import_contract_module_from_address(lua_State *L)
                 {
                     auto a = stored_contract_info->contract_apis[i].c_str();
                     int matched = 0;
-                    for (int j = 0; j < stored_contract_info->contract_apis.size(); ++j)
+                    for (size_t j = 0; j < stored_contract_info->contract_apis.size(); ++j)
                     {
                         char *b = contract_apis[j];
                         if (!a || !b)
@@ -1785,6 +1787,7 @@ int luaL_import_contract_module(lua_State *L)
     else if (is_stream)
     {
         UvmModuleByteStream *stream = unwrap_get_contract_stream(namestr);
+		UNUSED(stream);
         exists = true;
     }
     else
@@ -1886,7 +1889,7 @@ int luaL_import_contract_module(lua_State *L)
             if (global_uvm_chain_api->get_stored_contract_info_by_address(L, address.c_str(), stored_contract_info))
             {
                 // found this contract stored in the uvm api before
-                if (stored_contract_info->contract_apis.size() != apis_count)
+                if (stored_contract_info->contract_apis.size() != size_t(apis_count))
                 {
                     global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "this contract byte stream not matched with the info stored in uvm api");
                     uvm::lua::lib::notify_lua_state_stop(L);
@@ -1896,7 +1899,7 @@ int luaL_import_contract_module(lua_State *L)
                 {
                     auto a = stored_contract_info->contract_apis[i].c_str();
                     int matched = 0;
-                    for (int j = 0; j < stored_contract_info->contract_apis.size(); ++j)
+                    for (size_t j = 0; j < stored_contract_info->contract_apis.size(); ++j)
                     {
                         char *b = contract_apis[j];
                         if (nullptr == a || nullptr == b)
@@ -2067,7 +2070,7 @@ static int lua_real_execute_contract_api(lua_State *L
 		L->allow_contract_modify = 0;
 	};
 
-    luaL_import_contract_module(L); // FIXME: maybe searcher_Lua changed api_name
+    luaL_import_contract_module(L);
     
     lua_settop(L, 1);  /* _LOADED table will be at index 2 */
     
@@ -2153,8 +2156,8 @@ static int lua_real_execute_contract_api(lua_State *L
 
 			int input_args_num = args.size();
 			if (check_arg_type) { //new version
-				if (arg_types.size() != input_args_num) {
-					global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "args num not match %d error", arg_types.size());
+				if (arg_types.size() != size_t(input_args_num)) {
+					global_uvm_chain_api->throw_exception(L, UVM_API_SIMPLE_ERROR, "args num not match %d error", int(arg_types.size()));
 					return 0;
 				}
 			}
@@ -2361,24 +2364,24 @@ LUALIB_API int luaL_loadfilex(lua_State *L, const char *filename,
     return status;
 }
 
-static int writer(lua_State* L, const void* p, size_t size, void* u)
-{
-    UNUSED(L);
-    int status = (fwrite(p, size, 1, (FILE*)u) != 1) && (size != 0);
-    return status;
-}
+//static int writer(lua_State* L, const void* p, size_t size, void* u)
+//{
+//    UNUSED(L);
+//    int status = (fwrite(p, size, 1, (FILE*)u) != 1) && (size != 0);
+//    return status;
+//}
 
-static int writer_to_stream(lua_State *L, const void *p, size_t size, void *u)
-{
-    UNUSED(L);
-	UvmModuleByteStreamP stream = (UvmModuleByteStreamP) u;
-    if (!stream)
-        return 1;
-	auto old_buff_size = stream->buff.size();
-	stream->buff.resize(old_buff_size + size);
-    memcpy(stream->buff.data() + old_buff_size, p, size);
-    return 0;
-}
+//static int writer_to_stream(lua_State *L, const void *p, size_t size, void *u)
+//{
+//    UNUSED(L);
+//	UvmModuleByteStreamP stream = (UvmModuleByteStreamP) u;
+//    if (!stream)
+//        return 1;
+//	auto old_buff_size = stream->buff.size();
+//	stream->buff.resize(old_buff_size + size);
+//    memcpy(stream->buff.data() + old_buff_size, p, size);
+//    return 0;
+//}
 
 typedef struct LoadS {
     const char *s;
@@ -2735,9 +2738,9 @@ static bool is_uvm_array_table(UvmTableMapP map) {
 	if (!has_wrong_array_format)
 	{
 		std::sort(all_int_keys.begin(), all_int_keys.end());
-		for (int i = 1; i <= all_int_keys.size(); ++i)
+		for (size_t i = 1; i <= all_int_keys.size(); ++i)
 		{
-			if (i != all_int_keys[i - 1])
+			if (i != size_t(all_int_keys[i - 1]))
 			{
 				has_wrong_array_format = true;
 				break;

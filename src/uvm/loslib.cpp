@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <locale.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <time.h>
 
@@ -19,7 +20,6 @@
 
 #include "uvm/lauxlib.h"
 #include "uvm/lualib.h"
-
 
 /*
 ** {==================================================================

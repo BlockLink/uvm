@@ -119,6 +119,8 @@ namespace simplechain {
 			undo_contract_effected();
 			std::cerr << e.what() << std::endl;
 		}
+		UNUSED(has_error);
+		UNUSED(exception_code);
 		return std::make_shared<contract_invoke_result>(invoke_contract_result);
 	}
 	std::shared_ptr<contract_create_evaluator::operation_type::result_type> contract_create_evaluator::do_apply(const operation_type& op) {
@@ -191,6 +193,8 @@ namespace simplechain {
 			std::cerr << e.what() << std::endl;
 			invoke_contract_result.error = e.what();
 		}
+		UNUSED(has_error);
+		UNUSED(exception_code);
 		return std::make_shared<contract_invoke_result>(invoke_contract_result);
 	}
 	std::shared_ptr<native_contract_create_evaluator::operation_type::result_type> native_contract_create_evaluator::do_apply(const operation_type& op) {
@@ -232,6 +236,7 @@ namespace simplechain {
 			{
 				std::string first_contract_arg = o.contract_args.empty() ? "" : o.contract_args[0].as_string();
 				auto argsNum = o.contract_args.size();
+				UNUSED(argsNum);
 				cbor::CborArrayValue arr;
 				std::string raw_first_contract_arg = first_contract_arg;
 				
@@ -343,6 +348,8 @@ namespace simplechain {
 			invoke_contract_result.error = e.what();
 			invoke_contract_result.exec_succeed = false;
 		}
+		UNUSED(exception_code);
+		UNUSED(has_error);
 		return std::make_shared<contract_invoke_result>(invoke_contract_result);
 	}
 	std::shared_ptr<contract_invoke_evaluator::operation_type::result_type> contract_invoke_evaluator::do_apply(const operation_type& op) {

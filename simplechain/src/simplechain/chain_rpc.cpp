@@ -123,6 +123,8 @@ namespace simplechain {
 			auto contract_type = params.at(1).as_string();
 			auto gas_limit = params.at(2).as_uint64();
 			auto gas_price = params.at(3).as_uint64();
+			UNUSED(gas_limit);
+			UNUSED(gas_price);
 			auto tx = std::make_shared<transaction>();
 			auto op = operations_helper::create_native_contract(caller_addr, contract_type);
 			tx->operations.push_back(op);

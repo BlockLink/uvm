@@ -230,23 +230,23 @@ static int luaK_code(FuncState *fs, Instruction i) {
 	uvm_types::GcProto *f = fs->f;
     dischargejpc(fs);  /* 'pc' will change */
     /* put new instruction in code array */
-	if (fs->pc > f->codes.size()) {
+	if (size_t(fs->pc) > f->codes.size()) {
 		auto oldsize = f->codes.size();
 		f->codes.resize(fs->pc);
 		memset(f->codes.data() + oldsize, 0x0, sizeof(f->codes[0]) * (fs->pc-oldsize));
 	}
-	if (fs->pc == f->codes.size()) {
+	if (size_t(fs->pc) == f->codes.size()) {
 		f->codes.resize(fs->pc + 1 );
 	}
     f->codes[fs->pc] = i;
     /* save corresponding line information */
-	if (fs->pc > f->lineinfos.size()) {
+	if (size_t(fs->pc) > f->lineinfos.size()) {
 		auto oldsize = f->lineinfos.size();
 		f->lineinfos.resize(fs->pc);
 		memset(f->lineinfos.data() + oldsize, 0x0, sizeof(f->lineinfos[0]) * (fs->pc - oldsize));
 	}
 
-	if (fs->pc == f->lineinfos.size()) {
+	if (size_t(fs->pc) == f->lineinfos.size()) {
 		f->lineinfos.resize(fs->pc + 1);
 	}
     f->lineinfos[fs->pc] = fs->ls->lastline;
@@ -327,7 +327,8 @@ static int addk(FuncState *fs, TValue *key, TValue *v) {
     lua_State *L = fs->ls->L;
 	uvm_types::GcProto *f = fs->f;
     TValue *idx = luaH_set(L, fs->ls->h, key, true);  /* index scanner table */
-    int k, oldsize;
+	int k;
+	size_t oldsize;
     if (ttisinteger(idx)) {  /* is there an index there? */
         k = cast_int(ivalue(idx));
         /* correct value? (warning: must distinguish floats from integers!) */
@@ -341,13 +342,13 @@ static int addk(FuncState *fs, TValue *key, TValue *v) {
     /* numerical value does not need GC barrier;
        table has no metatable, so it does not need to invalidate cache */
     setivalue(idx, k);
-	if (k > f->ks.size()) {
+	if (size_t(k) > f->ks.size()) {
 		auto oldsize = f->ks.size();
 		f->ks.resize(k);
 		memset(f->ks.data() + oldsize, 0x0, sizeof(f->ks[0]) * (k - oldsize));
 	}
     while (oldsize < f->ks.size()) setnilvalue(&f->ks[oldsize++]);
-	if (f->ks.size() <= k)
+	if (f->ks.size() <= size_t(k))
 		f->ks.resize(k + 1);
     setobj(L, &f->ks[k], v);
     fs->nk++;

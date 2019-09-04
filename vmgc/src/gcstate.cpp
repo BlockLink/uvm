@@ -127,14 +127,14 @@ namespace vmgc {
 		auto len = _empty_big_buffers->size();
 		if (len > 0) {
 			const auto &frontBuf = _empty_big_buffers->front();
-			if (size <= _empty_big_buffers->front().second) {
+			if (ptrdiff_t(size) <= _empty_big_buffers->front().second) {
 				auto bufpos = frontBuf.first;
 				auto bufsz = frontBuf.second;
 				b.pos = bufpos;
 
 				_empty_big_buffers->pop_front();
 
-				if (size < bufsz) {
+				if (size < size_t(bufsz)) {
 					std::pair<intptr_t, ptrdiff_t> eb;
 					eb.first = bufpos + size;
 					eb.second = bufsz - size;
@@ -147,14 +147,14 @@ namespace vmgc {
 			}
 
 			const auto &backBuf = _empty_big_buffers->back();
-			if (size <= backBuf.second) {
+			if (ptrdiff_t(size) <= backBuf.second) {
 				auto bufpos = backBuf.first;
 				auto bufsz = backBuf.second;
 				b.pos = bufpos;
 
 				_empty_big_buffers->pop_back();
 
-				if (size < bufsz) {
+				if (ptrdiff_t(size) < bufsz) {
 					std::pair<intptr_t, ptrdiff_t> eb;
 					eb.first = bufpos + size;
 					eb.second = bufsz - size;
@@ -168,11 +168,11 @@ namespace vmgc {
 
 		//malloc new block
 		//check max size
-		auto mallocSize = DEFAULT_GC_BLOCK_SIZE;
+		size_t mallocSize = DEFAULT_GC_BLOCK_SIZE;
 		if (size > DEFAULT_GC_BLOCK_SIZE) {
 			mallocSize = size;
 		}
-		if (mallocSize + _total_malloced_blocks_size > _max_gc_size) {
+		if (ptrdiff_t(mallocSize) + _total_malloced_blocks_size > _max_gc_size) {
 			_used_size -= size;
 			return nullptr;
 		}
@@ -210,6 +210,7 @@ namespace vmgc {
 				auto gc_obj = (GcObject*)p;
 				auto objtt = gc_obj->tt;
 				auto ntt = novariant(objtt);
+				UNUSED(ntt);
 				gc_obj->~GcObject();
 			}
 			_malloced_gcbuffers->erase((intptr_t)p);  
@@ -344,7 +345,7 @@ namespace vmgc {
 			//add 
 			size_t align8sz = align8(sz);
 
-			if (align8sz <= _empty_str_buffer.second) {
+			if (align8sz <= size_t(_empty_str_buffer.second)) {
 				_gc_strpool->insert(std::pair<unsigned int, std::pair<intptr_t, ptrdiff_t>>(h, std::pair<intptr_t, ptrdiff_t>(_empty_str_buffer.first, align8sz)));
 				p = (void*) _empty_str_buffer.first;
 
