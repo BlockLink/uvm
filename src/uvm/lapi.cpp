@@ -602,7 +602,7 @@ static int auxgetstr(lua_State *L, const TValue *t, const char *k) {
     else {
         setsvalue2s(L, L->top, str);
         api_incr_top(L);
-        luaV_finishget(L, t, L->top - 1, L->top - 1, aux);
+        luaV_finishget(nullptr, L, t, L->top - 1, L->top - 1, aux); // TODO: ctx
     }
     lua_unlock(L);
     return ttnov(L->top - 1);
@@ -620,7 +620,7 @@ LUA_API int lua_gettable(lua_State *L, int idx) {
     StkId t;
     lua_lock(L);
     t = index2addr(L, idx);
-    luaV_gettable(L, t, L->top - 1, L->top - 1);
+    luaV_gettable(L, t, L->top - 1, L->top - 1); // TODO: ctx
     lua_unlock(L);
     return ttnov(L->top - 1);
 }
@@ -644,7 +644,7 @@ LUA_API int lua_geti(lua_State *L, int idx, lua_Integer n) {
     else {
         setivalue(L->top, n);
         api_incr_top(L);
-        luaV_finishget(L, t, L->top - 1, L->top - 1, aux);
+        luaV_finishget(nullptr, L, t, L->top - 1, L->top - 1, aux); // TODO: ctx
     }
     lua_unlock(L);
     return ttnov(L->top - 1);
@@ -765,7 +765,7 @@ static void auxsetstr(lua_State *L, const TValue *t, const char *k) {
     else {
         setsvalue2s(L, L->top, str);  /* push 'str' (to make it a TValue) */
         api_incr_top(L);
-        luaV_finishset(L, t, L->top - 1, L->top - 2, aux);
+        luaV_finishset(nullptr, L, t, L->top - 1, L->top - 2, aux); // TODO: ctx
         L->top -= 2;  /* pop value and key */
     }
     lua_unlock(L);  /* lock done by caller */
@@ -824,7 +824,7 @@ LUA_API void lua_seti(lua_State *L, int idx, lua_Integer n) {
     else {
         setivalue(L->top, n);
         api_incr_top(L);
-        luaV_finishset(L, t, L->top - 1, L->top - 2, aux);
+        luaV_finishset(nullptr, L, t, L->top - 1, L->top - 2, aux); // TODO: ctx
         L->top -= 2;  /* pop value and key */
     }
     lua_unlock(L);
@@ -1127,7 +1127,7 @@ LUA_API void lua_concat(lua_State *L, int n) {
     api_checknelems(L, n);
     if (n >= 2) {
         luaC_checkGC(L);
-        luaV_concat(L, n);
+        luaV_concat(nullptr, L, n); // TODO: ctx
     }
     else if (n == 0) {  /* push empty string */
         setsvalue2s(L, L->top, luaS_newlstr(L, "", 0));

@@ -279,6 +279,14 @@ func TestPairs(t *testing.T) {
 	assert.True(t, strings.Contains(out, `[[100,200],["a",1],["m",234],["n",123],["ab",1]]`))
 }
 
+func TestGetNullAsTable(t *testing.T) {
+	fmt.Println("TestGetNullAsTable")
+	execCommand(uvmCompilerPath, "../../tests_lua/test_get_null_as_table.lua")
+	out, _ := execCommand(uvmSinglePath, "../../tests_lua/test_get_null_as_table.lua.out")
+	fmt.Println(out)
+	assert.True(t, strings.Contains(out, `getfield of nil, need table here in line 3`))
+}
+
 func TestStringGmatch(t *testing.T) {
 	fmt.Println("TestStringGmatch")
 	execCommand(uvmCompilerPath, "../../tests_lua/test_gmatch.lua")
