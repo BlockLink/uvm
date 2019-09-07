@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD 11)
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(CMAKE_CXX_FLAGS "-std=c++11 -D_DARWIN_C_SOURCE -Wno-invalid-partial-specialization")
 endif()
+set(CMAKE_CXX_FLAGS "-std=c++11 -Wall")
 
 file(GLOB HEADERS "include/uvm/*.h" "include/cborcpp/*.h" "include/cbor_diff/*.h" "include/safenumber/*.h" "include/native_contract/*.h" "../jsondiff/jsondiff-cpp/include/jsondiff/*.h" "vmgc/include/vmgc/*.h")
 
@@ -106,8 +107,13 @@ LIST(APPEND BOOST_COMPONENTS thread iostreams date_time system filesystem progra
 
 add_library( uvm ${SOURCES} ${HEADERS} )
 
-target_link_libraries( uvm 
-  PUBLIC fc "/usr/local/lib/libsecp256k1.a")
+if(DEFINED ENV{SIMPLECHAIN})
+  target_link_libraries( uvm 
+    PUBLIC fc "/usr/local/lib/libsecp256k1.a")
+else()
+  target_link_libraries( uvm 
+    PUBLIC fc)
+endif()
 target_include_directories( uvm 
   PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/../jsondiff/jsondiff-cpp/include" "${CMAKE_CURRENT_SOURCE_DIR}/vmgc/include"
 )
