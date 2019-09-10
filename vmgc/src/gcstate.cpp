@@ -4,27 +4,25 @@
 #include "uvm/lstring.h"
 
 namespace vmgc {
-#define DEFAULT_GC_BLOCK_SIZE 1024*1024  
+#define DEFAULT_GC_BLOCK_SIZE 256*1024  
 
+#define MAX_GC_STR_POOL_ITEMS_COUNT 16*1024
 //#define MAX_GC_BLOCKS_SIZE 500*1024*1024 
 
 	GcState::GcState(ptrdiff_t max_gc_size) {
-		this->_malloced_blocks = std::make_shared<std::list<std::pair<intptr_t, intptr_t> > >();
 		_total_malloced_blocks_size = 0;
 		_used_size = 0;
 		_max_gc_size = max_gc_size;
 
-		this->_malloced_gcbuffers = std::make_shared<std::map<intptr_t,GcBuffer>>();
-
 		for (int i = 0; i < DEFAULT_SMALL_BUFFER_VECTOR_SIZE; i++) {
-			_empty_small_buffers[i] = std::make_shared<std::list<std::pair<intptr_t, ptrdiff_t>>>();
+			_empty_small_buffers[i] = std::make_shared<std::vector<std::pair<Block, Buffer>>>();
 		}
-
-		this->_empty_big_buffers = std::make_shared<std::list<std::pair<intptr_t, ptrdiff_t> >>();
+		this->_empty_big_buffers = std::make_shared<std::vector<std::pair<Block, Buffer>>>();
 
 		//////////////////
-		this->_malloced_str_blocks = std::make_shared<std::list<std::pair<intptr_t, intptr_t>>>();
-		this->_gc_strpool = std::make_shared<std::map<unsigned int, std::pair<intptr_t, ptrdiff_t>>>();
+		this->_malloced_str_blocks = std::make_shared<std::vector<std::pair<intptr_t, intptr_t>>>();
+		this->_gc_strpool = std::make_shared<std::unordered_map<unsigned int, std::pair<intptr_t, ptrdiff_t>>>();	
+		this->_malloced_blocks_buffers = std::make_shared<std::unordered_map<Block, std::vector<GcBuffer>, Hasher, Equal>>();
 
 		_empty_str_buffer.first = 0;
 		_empty_str_buffer.second = 0;
@@ -32,13 +30,17 @@ namespace vmgc {
 
 	void GcState::gc_free_all()
 	{
-		for (const auto& item : *_malloced_gcbuffers) {
-			if (item.second.isGcObj) {
-				auto gc_obj = (GcObject*)item.first;
-				gc_obj->~GcObject();
+		for (auto& item : (*_malloced_blocks_buffers)) {
+		//for (auto it = _malloced_blocks_buffers->begin(); it != _malloced_blocks_buffers->end(); it++) {
+			auto &buffers = item.second;
+			for (auto bufit = buffers.begin(); bufit != buffers.end(); bufit++) {
+				if (bufit->isGcObj) {
+					auto gc_obj = (GcObject*)bufit->pos;
+					gc_obj->~GcObject();
+				}
 			}
+			buffers.clear();
 		}
-		_malloced_gcbuffers->clear();
 
 		for (int i = 0; i < DEFAULT_SMALL_BUFFER_VECTOR_SIZE; i++) {
 			_empty_small_buffers[i]->clear();
@@ -64,10 +66,11 @@ namespace vmgc {
 	GcState::~GcState() {
 		gc_free_all();
 
-		for (const auto& item : (*_malloced_blocks)) {
-			free((void*)(item.first));
+		for (auto& item : (*_malloced_blocks_buffers)) {
+		//for (auto it = _malloced_blocks_buffers->begin(); it != _malloced_blocks_buffers->end(); it++) {
+			free((void*)(item.first.blockpos));
 		}
-		_malloced_blocks->clear();
+		_malloced_blocks_buffers->clear();
 
 		for (const auto& item : (*_malloced_str_blocks)) {
 			free((void*)(item.first));
@@ -81,27 +84,38 @@ namespace vmgc {
 		return ((s >> 3) + 1) << 3;
 	}
 
-	void GcState::insert_empty_buffer(std::pair<intptr_t, ptrdiff_t> &buf) {
-		auto size = buf.second;
+
+	void GcState::insert_empty_buffer(const Buffer &buf, const Block &block) {
+		auto size = buf.size;
+		std::pair<Block, Buffer>eb(block, buf);
 		if (size > 0) {
 			if ((size > DEFAULT_MAX_SMALL_BUFFER_SIZE) || (size % 8) != 0) {
-				for (auto iter = _empty_big_buffers->begin(); iter != _empty_big_buffers->end(); iter++) {
-					if (size <= iter->second) {  //inserted
-						_empty_big_buffers->emplace(iter, buf);
-						return;
-					}
-				}
-				_empty_big_buffers->push_back(buf);
+				_empty_big_buffers->push_back(eb);
 			}
 			else {
-				_empty_small_buffers[(size / 8) - 1]->push_back(buf);
+				_empty_small_buffers[(size / 8) - 1]->push_back(eb);
 			}
 		}
 	}
 
+	void GcState::insert_malloced_blocks_buffers(Block &block, GcBuffer& gcbuf,bool isNewBlock) {
+		if (isNewBlock) {
+			std::vector<GcBuffer> bufs;
+			bufs.push_back(gcbuf);
+
+			(*_malloced_blocks_buffers)[block] = bufs;
+		}
+		else {
+			(*_malloced_blocks_buffers)[block].push_back(gcbuf);
+		}
+	}
+
+
 	void* GcState::gc_malloc(size_t size, bool isGcObj) {
-		if (size <= 0)
+		if (size <= 0){
+			throw GcException(std::string("not enough memery in gc , used gc size: ") + std::to_string(_used_size));
 			return nullptr;
+		}
 		size = align8(size);
 
 		GcBuffer b;
@@ -114,58 +128,47 @@ namespace vmgc {
 		if (size <= DEFAULT_MAX_SMALL_BUFFER_SIZE) {
 			auto pbuffers = _empty_small_buffers[size/8 - 1];
 			if (!pbuffers->empty()) {  //finded
-				const auto& buf = pbuffers->front();
-				
-				b.pos = buf.first;
-				(*_malloced_gcbuffers)[buf.first] = b;
-				pbuffers->pop_front();
+				auto& buf = pbuffers->back();
+				b.pos = buf.second.pos;
+				//(*_malloced_gcbuffers)[buf.first] = b;
+				insert_malloced_blocks_buffers(buf.first,b,false);
+				pbuffers->pop_back();
 				return (void*)b.pos;
 			}
 		}
-		
-		//find _empty_big_buffers  	
-		auto len = _empty_big_buffers->size();
-		if (len > 0) {
-			const auto &frontBuf = _empty_big_buffers->front();
-			if (ptrdiff_t(size) <= _empty_big_buffers->front().second) {
-				auto bufpos = frontBuf.first;
-				auto bufsz = frontBuf.second;
+
+		//find _empty_big_buffers 
+		for (auto it = _empty_big_buffers->begin(); it != _empty_big_buffers->end(); it++) {
+			auto bufsz = it->second.size;
+			if (ptrdiff_t(size) <= bufsz) {
+				auto bufpos = it->second.pos;
 				b.pos = bufpos;
-
-				_empty_big_buffers->pop_front();
-
+				auto block = it->first;
 				if (size < size_t(bufsz)) {
-					std::pair<intptr_t, ptrdiff_t> eb;
-					eb.first = bufpos + size;
-					eb.second = bufsz - size;
-					insert_empty_buffer(eb);
+					auto aferSize = bufsz - size;
+					auto afterPos = bufpos + size;
+					if ((aferSize <= DEFAULT_MAX_SMALL_BUFFER_SIZE) && (size % 8) == 0) {
+						Buffer buf(afterPos, aferSize);
+						std::pair<Block, Buffer>eb(block, buf);
+						_empty_small_buffers[(aferSize / 8) - 1]->push_back(eb);
+						_empty_big_buffers->erase(it);
+					}
+					else {
+						it->second.pos = afterPos;
+						it->second.size = aferSize;
+					}
 				}
-
-				//_malloced_gcbuffers->insert(std::pair<intptr_t, GcBuffer>(frontBuf.first, b));
-				(*_malloced_gcbuffers)[bufpos] = b;
-				return (void*)b.pos;
+				else {
+					_empty_big_buffers->erase(it);
+				}
+				
+				insert_malloced_blocks_buffers(block, b, false);
+				return (void*)bufpos;
 			}
 
-			const auto &backBuf = _empty_big_buffers->back();
-			if (ptrdiff_t(size) <= backBuf.second) {
-				auto bufpos = backBuf.first;
-				auto bufsz = backBuf.second;
-				b.pos = bufpos;
-
-				_empty_big_buffers->pop_back();
-
-				if (ptrdiff_t(size) < bufsz) {
-					std::pair<intptr_t, ptrdiff_t> eb;
-					eb.first = bufpos + size;
-					eb.second = bufsz - size;
-					insert_empty_buffer(eb);
-				}
-
-				(*_malloced_gcbuffers)[bufpos] = b;
-				return (void*)b.pos;
-			}
 		}
 
+			
 		//malloc new block
 		//check max size
 		size_t mallocSize = DEFAULT_GC_BLOCK_SIZE;
@@ -174,29 +177,27 @@ namespace vmgc {
 		}
 		if (ptrdiff_t(mallocSize) + _total_malloced_blocks_size > _max_gc_size) {
 			_used_size -= size;
+			throw GcException(std::string("not enough memery in gc , used gc size: ") + std::to_string(_used_size) );
 			return nullptr;
 		}
 		auto p = malloc(mallocSize);
 		if (!p) {
 			_used_size -= size;
+			throw GcException(std::string("not enough memery in gc , used gc size: ") + std::to_string(_used_size));
 			return nullptr;
 		}
 		_total_malloced_blocks_size += mallocSize;
 
-		std::pair<intptr_t, intptr_t> block;
-		block.first = (intptr_t)p;
-		block.second = mallocSize;
-		_malloced_blocks->push_back(block);
-
+		Block block((intptr_t)p, (ptrdiff_t)mallocSize);
 		b.pos = (intptr_t)p;
-		(*_malloced_gcbuffers)[b.pos] = b;
+
+		insert_malloced_blocks_buffers(block, b,true);
 
 		if (size < mallocSize) {
 			//add empty buff
-			std::pair<intptr_t, ptrdiff_t> eb;
-			eb.first = (intptr_t)p + size;
-			eb.second = mallocSize - size;
-			insert_empty_buffer(eb);
+
+			Buffer eb((intptr_t)p + size, mallocSize - size);
+			insert_empty_buffer(eb, block);
 		}
 		return (void*)b.pos;
 	}
@@ -204,22 +205,24 @@ namespace vmgc {
 	void GcState::gc_free(void* p) {
 		if (nullptr == p)
 			return;
-		if (_malloced_gcbuffers->find((intptr_t)p) != _malloced_gcbuffers->end()) {
-			auto buf = (*_malloced_gcbuffers)[(intptr_t)p];
-			if (buf.isGcObj) {
-				auto gc_obj = (GcObject*)p;
-				auto objtt = gc_obj->tt;
-				auto ntt = novariant(objtt);
-				UNUSED(ntt);
-				gc_obj->~GcObject();
-			}
-			_malloced_gcbuffers->erase((intptr_t)p);  
+		
+		auto pos = (intptr_t)p;
+		for (auto it = _malloced_blocks_buffers->begin(); it != _malloced_blocks_buffers->end(); it++) {
+			auto block_pos = it->first.blockpos;
+			if ((pos >=block_pos) && (pos<(block_pos + it->first.blocksize))) {
+				auto &block_buffers = it->second;
+				for (auto bufit = block_buffers.begin(); bufit != block_buffers.end(); bufit++) {
+					if (pos == bufit->pos) {  //ÎÞÐòµÄ
 
-			std::pair<intptr_t, ptrdiff_t> eb;
-			eb.first = buf.pos;
-			eb.second = buf.size;
-			insert_empty_buffer(eb);
-			_used_size -= buf.size;
+						Buffer eb(pos, bufit->size);
+						insert_empty_buffer(eb, it->first);
+
+						_used_size -= bufit->size;
+						block_buffers.erase(bufit);
+						return;
+					}
+				}
+			}
 		}
 	}
 
@@ -233,7 +236,10 @@ namespace vmgc {
 	}
 
 	void* GcState::gc_realloc(void *p, size_t oldsz, size_t newsz) {
-		if ((oldsz < 0) || (newsz < 0))return nullptr;
+		if ((oldsz < 0) || (newsz < 0)) {
+			throw GcException(std::string("not enough memery in gc , used gc size: ") + std::to_string(_used_size));
+			return nullptr;
+		}
 
 		if (newsz == 0) {
 			//do some free
@@ -328,6 +334,9 @@ namespace vmgc {
 		auto it = _gc_strpool->find(h);
 
 		if (it == _gc_strpool->end()) {
+			if (_gc_strpool->size() >= MAX_GC_STR_POOL_ITEMS_COUNT) {
+				return nullptr;
+			}
 			*isNewStr = true;
 		}
 		else {
@@ -356,10 +365,12 @@ namespace vmgc {
 			else {
 				//malloc new block
 				if (DEFAULT_GC_BLOCK_SIZE + _total_malloced_blocks_size > _max_gc_size) {
+					throw GcException(std::string("not enough memery in gc , used gc size: ") + std::to_string(_used_size));
 					return nullptr;
 				}
 				p = malloc(DEFAULT_GC_BLOCK_SIZE);
 				if (!p) {
+					throw GcException(std::string("not enough memery in gc , used gc size: ") + std::to_string(_used_size));
 					return nullptr;
 				}
 				_total_malloced_blocks_size += DEFAULT_GC_BLOCK_SIZE;
@@ -378,7 +389,6 @@ namespace vmgc {
 			}
 			_used_size += align8sz;
 		}
-		
 		return p;
 	}
 

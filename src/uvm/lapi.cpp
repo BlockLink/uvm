@@ -748,7 +748,7 @@ LUA_API int lua_getuservalue(lua_State *L, int idx) {
 ** t[k] = value at the top of the stack (where 'k' is a string)
 */
 static void auxsetstr(lua_State *L, const TValue *t, const char *k) {
-	if (ttistable(t)) {
+	/*if (ttistable(t)) {
 		auto table_addr = (intptr_t)t->value_.gco;
 		if (L->allow_contract_modify != table_addr && L->contract_table_addresses
 			&& std::find(L->contract_table_addresses->begin(), L->contract_table_addresses->end(), table_addr) != L->contract_table_addresses->end()) {
@@ -756,7 +756,7 @@ static void auxsetstr(lua_State *L, const TValue *t, const char *k) {
 			luaG_runerror(L, msg.c_str());
 			return;
 		}
-	}
+	}*/
     const TValue *aux;
 	uvm_types::GcString *str = luaS_new(L, k);
     api_checknelems(L, 1);
@@ -780,14 +780,14 @@ LUA_API void lua_setglobal(lua_State *L, const char *name) {
 
 
 LUA_API void lua_settable(lua_State *L, int idx) {
-	if (lua_istable(L, idx)) {
+	/*if (lua_istable(L, idx)) {
 		auto table_addr = (intptr_t)lua_topointer(L, idx);
 		if (L->allow_contract_modify != table_addr && L->contract_table_addresses 
 			&& std::find(L->contract_table_addresses->begin(), L->contract_table_addresses->end(), table_addr) != L->contract_table_addresses->end()) {
 			luaG_runerror(L, "can't modify contract properties");
 			return;
 		}
-	}
+	}*/
     StkId t;
     lua_lock(L);
     api_checknelems(L, 2);
@@ -799,7 +799,7 @@ LUA_API void lua_settable(lua_State *L, int idx) {
 
 
 LUA_API void lua_setfield(lua_State *L, int idx, const char *k) {
-	if (lua_istable(L, idx)) {
+	/*if (lua_istable(L, idx)) {
 		auto table_addr = (intptr_t)lua_topointer(L, idx);
 		if (L->allow_contract_modify != table_addr && L->contract_table_addresses
 			&& std::find(L->contract_table_addresses->begin(), L->contract_table_addresses->end(), table_addr) != L->contract_table_addresses->end()) {
@@ -807,7 +807,7 @@ LUA_API void lua_setfield(lua_State *L, int idx, const char *k) {
 			luaG_runerror(L, msg.c_str());
 			return;
 		}
-	}
+	}*/
     lua_lock(L);  /* unlock done in 'auxsetstr' */
     auxsetstr(L, index2addr(L, idx), k);
 }

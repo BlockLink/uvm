@@ -205,7 +205,7 @@ void luaV_finishget(uvm::core::ExecuteContext* ctx, lua_State *L, const TValue *
 */
 void luaV_finishset(uvm::core::ExecuteContext* ctx, lua_State *L, const TValue *t, TValue *key,
 	StkId val, const TValue *oldval) {
-	if (ttistable(t)) {
+	/*if (ttistable(t)) {
 		auto table_addr = (intptr_t)t->value_.gco;
 		if (L->allow_contract_modify != table_addr && L->contract_table_addresses
 			&& std::find(L->contract_table_addresses->begin(), L->contract_table_addresses->end(), table_addr) != L->contract_table_addresses->end()) {
@@ -215,7 +215,7 @@ void luaV_finishset(uvm::core::ExecuteContext* ctx, lua_State *L, const TValue *
 			luaG_runerror(L, msg.c_str());
 			return;
 		}
-	}
+	}*/
 	int loop;  /* counter to avoid infinite loops */
 	for (loop = 0; loop < MAXTAGLOOP; loop++) {
 		const TValue *tm;
