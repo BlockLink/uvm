@@ -767,16 +767,53 @@ SafeNumber safe_number_div(const SafeNumber& a, const SafeNumber& b) {
 	// Let the result be SafeNumber r, initial value is r.x = 0, r.e = -1
 	SimpleUint128 rx = uint128_0; // r.x
 	int32_t re = -1; // r.e
+	
 	// r.x = r.x* 10 + big_a/big_b, big_a = (big_a % big_b) * 10, r.e += 1, Repeat this step until r.e >= 16 or big_a == 0 or rx > largest_x
 	do {
 		const auto& divmod = simple_uint256_divmod(big_a, big_b);
 		rx = simple_uint128_add(simple_uint128_multi(rx, 10), divmod.div_result.low); // ignore overflowed value
 		big_a = simple_uint256_multi(divmod.mod_result, uint256_10);
 		++re;
-	}while(re<16 && simple_uint128_lt(rx, largest_x) && !simple_uint256_is_zero (big_a));
+	}while(re<32 && simple_uint128_lt(rx, largest_x) && !simple_uint256_is_zero (big_a));
 	if(extra_e>=-static_cast<int32_t>(re)) {
 		re += extra_e;
 	} else {
+		rx = simple_uint128_multi(rx, uint64_pow(10, -extra_e - re));
+		re = 0;
+	}
+	return safe_number_create(sign, rx, static_cast<uint32_t>(re));
+}
+
+// a / b = a.x / b.x * 10^(b-a)
+SafeNumber safe_number_div_old(const SafeNumber& a, const SafeNumber& b) {
+	if (!safe_number_is_valid(a) || !safe_number_is_valid(b)) {
+		return a;
+	}
+	if (safe_number_is_zero(a))
+		return sn_0;
+	if (safe_number_is_zero(b))
+		return sn_nan;
+	auto sign = a.sign == b.sign;
+	int32_t extra_e = a.e - b.e; // r.e need to add extra_e. if extra_e < -r.e then r.x = r.x * 10^(-extra_e - r.e) and r.e = 0
+	SimpleUint256 big_a = simple_uint256_create(uint128_0, a.x);
+	SimpleUint256 big_b = simple_uint256_create(uint128_0, b.x);
+	// The resulting fractional form is big_a/big_b
+	// Approximate the score out of the decimal number
+	// Let the result be SafeNumber r, initial value is r.x = 0, r.e = -1
+	SimpleUint128 rx = uint128_0; // r.x
+	int32_t re = -1; // r.e
+
+					 // r.x = r.x* 10 + big_a/big_b, big_a = (big_a % big_b) * 10, r.e += 1, Repeat this step until r.e >= 16 or big_a == 0 or rx > largest_x
+	do {
+		const auto& divmod = simple_uint256_divmod(big_a, big_b);
+		rx = simple_uint128_add(simple_uint128_multi(rx, 10), divmod.div_result.low); // ignore overflowed value
+		big_a = simple_uint256_multi(divmod.mod_result, uint256_10);
+		++re;
+	} while (re<16 && simple_uint128_lt(rx, largest_x) && !simple_uint256_is_zero(big_a));
+	if (extra_e >= -static_cast<int32_t>(re)) {
+		re += extra_e;
+	}
+	else {
 		rx = simple_uint128_multi(rx, uint64_pow(10, -extra_e - re));
 		re = 0;
 	}

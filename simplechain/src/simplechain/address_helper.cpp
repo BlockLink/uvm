@@ -6,7 +6,7 @@ namespace simplechain {
 			return !addr.empty();
 		}
 		bool is_valid_contract_address(const std::string& addr) {
-			return addr.find_first_of(SIMPLECHAIN_CONTRACT_ADDRESS_PREFIX) == 0 && addr.size() > strlen(SIMPLECHAIN_CONTRACT_ADDRESS_PREFIX);
+			return addr.find(SIMPLECHAIN_CONTRACT_ADDRESS_PREFIX) == 0 && addr.size() > strlen(SIMPLECHAIN_CONTRACT_ADDRESS_PREFIX);
 		}
 	}
 }

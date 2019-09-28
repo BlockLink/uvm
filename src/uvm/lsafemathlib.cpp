@@ -15,6 +15,7 @@
 #include <boost/multiprecision/cpp_int.hpp>
 #include <uvm/uvm_lutil.h>
 #include <safenumber/safenumber.h>
+#include <uvm/uvm_api.h>
 //#include <boost/multiprecision/cpp_dec_float.hpp>
 //#include <boost/multiprecision/mpfi.hpp>
 //#include <boost/multiprecision/mpfr.hpp>
@@ -26,6 +27,7 @@
 typedef boost::multiprecision::int512_t sm_bigint;
 //typedef boost::multiprecision::mpf_float sm_bigdecimal;
 
+using uvm::lua::api::global_uvm_chain_api;
 
 static void push_bigint(lua_State *L, sm_bigint value) {
 	auto hex_str = uvm::util::hex(value.str());
@@ -1179,7 +1181,14 @@ static int safemath_safe_number_div(lua_State *L) {
 	}
 	SafeNumber result{};
 	try {
-		result = safe_number_div(a, b);
+
+		auto mod_safe_number_div_fork_height = global_uvm_chain_api->get_fork_height(L, "MOD_SAFE_NUMBER_DIV");
+		if (mod_safe_number_div_fork_height >= 0 && global_uvm_chain_api->get_header_block_num_without_gas(L) >= mod_safe_number_div_fork_height) {
+			result = safe_number_div(a, b);
+		}
+		else { 
+			result = safe_number_div_old(a, b);
+		}		
 	}
 	catch (...) {
 		lua_pushnil(L);
