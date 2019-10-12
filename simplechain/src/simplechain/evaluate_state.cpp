@@ -103,7 +103,10 @@ namespace simplechain {
 	share_type evaluate_state::get_account_asset_balance(const std::string& account_address, asset_id_t asset_id) const {
 		auto balance = amount_change_type(chain->get_account_asset_balance(account_address, asset_id));
 		for (const auto& p : invoke_contract_result.account_balances_changes) {
-			balance += p.second;
+			if (p.first.first == account_address && p.first.second == asset_id) {
+				balance += p.second;
+				break;
+			}
 		}
 		// TODO: use parent evaluate_state's cache to update balance query result
 		return share_type(balance);
