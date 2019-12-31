@@ -448,6 +448,8 @@ namespace uvm
 
             const std::string get_typed_lua_lib_code();
 
+			void add_api_to_uvm_white_list(std::string apiname);
+
 #define lerror_set(L, error, error_format, ...) do {			 \
      if (nullptr != error && strlen(error) < 1)					\
      {						\

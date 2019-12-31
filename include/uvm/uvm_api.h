@@ -658,6 +658,7 @@ namespace uvm {
 
 
           extern IUvmChainApi *global_uvm_chain_api;
+		  extern std::map<std::string, lua_CFunction> chain_apis;
 
         }
     }

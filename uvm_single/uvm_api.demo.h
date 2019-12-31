@@ -185,4 +185,8 @@ namespace uvm {
 }
 
 
+namespace chain {
+	void register_chain_api_to_uvm();
+}
+
 #endif

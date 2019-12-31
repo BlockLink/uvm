@@ -523,6 +523,7 @@ using uvm::lua::api::global_uvm_chain_api;
 
 int main(int argc, char **argv) {
 	global_uvm_chain_api = new uvm::lua::api::DemoUvmChainApi();
+	chain::register_chain_api_to_uvm();
 	int status, result;
 	uvm::lua::lib::UvmStateScope scope(true, true);
 	scope.add_system_extra_libs();

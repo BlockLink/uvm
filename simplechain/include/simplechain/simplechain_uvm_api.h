@@ -182,4 +182,5 @@ namespace simplechain {
 
       };
 
+	  void register_chain_api_to_uvm();
 }

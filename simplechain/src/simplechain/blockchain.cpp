@@ -17,6 +17,8 @@ namespace simplechain {
 	blockchain::blockchain() {
 		uvm::lua::api::global_uvm_chain_api = new simplechain::SimpleChainUvmChainApi();
 
+		register_chain_api_to_uvm();
+
 		asset core_asset;
 		core_asset.asset_id = 0;
 		core_asset.precision = SIMPLECHAIN_CORE_ASSET_PRECISION;

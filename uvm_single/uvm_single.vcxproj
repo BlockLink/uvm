@@ -125,6 +125,7 @@
     <ClCompile Include="..\simplechain\src\simplechain\storage.cpp" />
     <ClCompile Include="Keccak.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="uvmsingle_api_to_uvm.cpp" />
     <ClCompile Include="uvm_api.demo.cpp" />
   </ItemGroup>
   <ItemGroup>

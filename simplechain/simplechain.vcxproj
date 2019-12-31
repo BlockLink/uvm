@@ -126,6 +126,7 @@
     </ProjectReference>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="simplechain_api_to_uvm.cpp" />
     <ClCompile Include="src\Keccak.cpp" />
     <ClCompile Include="src\simplechain\address_helper.cpp" />
     <ClCompile Include="src\simplechain\asset.cpp" />
