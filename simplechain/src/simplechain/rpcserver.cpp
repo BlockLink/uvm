@@ -56,7 +56,10 @@ namespace simplechain {
 	{ "view_call_stack", &view_call_stack },
 
 	{ "load_contract_state", &load_contract_state },
-    { "load_new_contract_from_json", &load_new_contract_from_json }
+    { "load_new_contract_from_json", &load_new_contract_from_json },
+
+	{ "swich_node_chain", &swich_node_chain }
+	
 
 	};
 

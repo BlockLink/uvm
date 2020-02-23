@@ -3,6 +3,8 @@
 #include <simplechain/blockchain.h>
 #include <iostream>
 
+#include <Data_getter.hpp>
+
 namespace simplechain {
 	evaluate_state::evaluate_state(blockchain* chain_, transaction* tx_)
 		: chain(chain_), current_tx(tx_) {
@@ -70,7 +72,7 @@ namespace simplechain {
 		}
 		return chain->contains_contract_by_name(name);
 	}
-
+	/*
 	std::shared_ptr<contract_object> evaluate_state::get_contract_by_address(const std::string& contract_address) const {
 		for (auto& p : invoke_contract_result.new_contracts) {
 			if (p.first == contract_address) {
@@ -79,8 +81,31 @@ namespace simplechain {
 		}
 		return chain->get_contract_by_address(contract_address);
 	}
-
+	*/
+	//change
+	std::shared_ptr<contract_object> evaluate_state::get_contract_by_address(const std::string& contract_address) const {
+		for (auto& p : invoke_contract_result.new_contracts) {
+			if (p.first == contract_address) {
+				return std::make_shared<contract_object>(p.second);
+			}
+		}
+		auto r = chain->get_contract_by_address(contract_address);
+		if (!r) {
+			return Data_getter::get_contract_object(contract_address.c_str());
+		}
+		
+		return r;
+	}
+	//change
 	std::shared_ptr<contract_object> evaluate_state::get_contract_by_name(const std::string& name) const {
+		/*
+		for (auto& p : invoke_contract_result.new_contracts) {
+			if (p.second.contract_name == name) {
+				return std::make_shared<contract_object>(p.second);
+			}
+		}
+		return chain->get_contract_by_name(name);
+		*/
 		for (auto& p : invoke_contract_result.new_contracts) {
 			if (p.second.contract_name == name) {
 				return std::make_shared<contract_object>(p.second);

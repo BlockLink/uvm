@@ -17,9 +17,12 @@
 #include <fc/crypto/base58.hpp>
 #include <fc/crypto/elliptic.hpp>
 #include <fc/crypto/ripemd160.hpp>
-
-
 #include <uvm/lauxlib.h>
+
+#include <simplechain/simplechain_uvm_api.h>
+#include <simplechain/node_uvm_api.h>
+//#include<data_getter.hpp>
+
 
 namespace simplechain {
 	namespace rpc {
@@ -652,6 +655,43 @@ namespace simplechain {
 				return res;
 			}
 			return res;
+		}
+
+
+		//get contract data from remote node
+		RpcResultType swich_node_chain(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			fc::mutable_variant_object res;
+			res["exec_succeed"] = true;
+			try {
+				auto chainsource = params.at(0).as_string();
+
+				if (chainsource == "simplechain") {
+					uvm::lua::api::global_uvm_chain_api = new simplechain::SimpleChainUvmChainApi();
+					register_chain_api_to_uvm();
+				}
+				else if (chainsource == "node" && params.size()==4) {
+					Data_getter::setPara(params.at(1).as_string(), params.at(2).as_string(), params.at(3).as_string());
+					uvm::lua::api::global_uvm_chain_api = new simplechain::NodeUvmChainApi();
+					register_chain_api_to_uvm();
+				}
+				else {
+					res["exec_succeed"] = false;
+					res["error"] = "source chain must be simplechain or node";
+				}
+				
+			}
+			catch (const fc::exception& e) {
+				res["exec_succeed"] = false;
+				res["error"] = e.to_string();
+				return res;
+			}
+			catch (const std::exception& e) {
+				res["exec_succeed"] = false;
+				res["error"] = e.what();
+				return res;
+			}
+			return res;
+
 		}
 
 	}
