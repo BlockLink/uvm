@@ -33,6 +33,8 @@
 #include <simplechain/blockchain.h>
 #include <simplechain/address_helper.h>
 
+#include <cborcpp/cbor.h>
+#include <cbor_diff/cbor_diff.h>
 
 
 namespace simplechain {
@@ -583,40 +585,34 @@ namespace simplechain {
 	UvmStorageValue NodeUvmChainApi::get_storage_value_from_uvm_by_address(lua_State *L, const char *contract_address, const std::string& name
 		, const std::string& fast_map_key, bool is_fast_map)
 	{
-		//using namespace SimpleWeb;
-		std::string key = name;
-		if (is_fast_map) {
-			key = name + "." + fast_map_key;
-		}
-		return Data_getter::get_contract_storage(L, contract_address, key);
-
-		/////////////////////////////////////////////////////////
-		/*
 		UvmStorageValue null_storage;
 		null_storage.type = uvm::blockchain::StorageValueTypes::storage_value_null;
-
 		auto evaluator = get_contract_evaluator(L);
 		std::string contract_id(contract_address);
-		if (!check_contract_exist_by_address(L, contract_address))
-		{
-		return null_storage;
-		}
+		
 		try
 		{
-		std::string key = name;
-
-		if (is_fast_map) {
-		key = name + "." + fast_map_key;
-		}
-
-		auto storage_data = evaluator->get_storage(contract_id, key);
-		return StorageDataType::create_lua_storage_from_storage_data(L, storage_data);
+			std::string key = name;
+			if (is_fast_map) {
+				key = name + "." + fast_map_key;
+			}
+			auto storage_data = evaluator->get_storage(contract_id, key);
+			auto cbor_value = cbor_diff::cbor_decode(storage_data.storage_data);
+			if (!(cbor_value->is_null())) {
+				return StorageDataType::create_lua_storage_from_storage_data(L, storage_data);
+			}
+			else {
+				//get from remote node 
+				std::string key = name;
+				if (is_fast_map) {
+					key = name + "." + fast_map_key;
+				}
+				return Data_getter::get_contract_storage(L, contract_address, key);
+			}
 		}
 		catch (...) {
-		return null_storage;
+			return null_storage;
 		}
-		*/
-
 	}
 
 	static std::vector<char> json_to_chars(const jsondiff::JsonValue& json_value)
@@ -806,6 +802,8 @@ namespace simplechain {
 		return true;
 	}
 
+
+	//check???
 	lua_Integer NodeUvmChainApi::transfer_from_contract_to_address(lua_State *L, const char *contract_address, const char *to_address,
 		const char *asset_type, int64_t amount)
 	{
