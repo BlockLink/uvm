@@ -2276,6 +2276,7 @@ end
               if (insts_executed_count)
               {
                 *insts_executed_count = *insts_executed_count + add_count;
+				L->total_meter_gas = L->total_meter_gas + add_count;
               }
             }
 

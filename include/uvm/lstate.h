@@ -222,6 +222,8 @@ struct lua_State : vmgc::GcObject {
     
 	int cbor_diff_state; // 0: not_set, 1: true, 2: false
 
+	int total_meter_gas;
+
 	inline lua_State() :tt_(LUA_TTHREAD) {}
 	virtual ~lua_State() {}
 };

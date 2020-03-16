@@ -304,6 +304,7 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud) {
         close_state(L);
         L = nullptr;
     }
+	L->total_meter_gas = 0;
     return L;
 }
 

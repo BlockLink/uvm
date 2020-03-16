@@ -243,6 +243,8 @@ typedef enum {
 	UOP_CCALL, /* A B C  R(A), ... ,R(A+C-2) := CALL CONTRACT:R(A)  API:R(A+1)(ARGS: R(A+2),...R(A+B))*/
 	UOP_CSTATICCALL, /* A B C  R(A), ... ,R(A+C-2) := CALL CONTRACT:R(A)  API:R(A+1)(ARGS: R(A+2),...R(A+B))*/
 
+	UOP_METER, /*Ax  add gas , max add gas 2^26 */
+
 	UOP_DUMMY_COUNT /* not used, just to count opcodes */
 } OpCode;
 

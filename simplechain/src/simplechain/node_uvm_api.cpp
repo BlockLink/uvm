@@ -37,6 +37,9 @@
 #include <cbor_diff/cbor_diff.h>
 
 
+//todo:get header block , balance change,  chain now, based on current remote node database
+//can't replay hx chain trxs to simplechain
+
 namespace simplechain {
 	using namespace uvm::lua::api;
 
@@ -589,13 +592,12 @@ namespace simplechain {
 		null_storage.type = uvm::blockchain::StorageValueTypes::storage_value_null;
 		auto evaluator = get_contract_evaluator(L);
 		std::string contract_id(contract_address);
-		
+		std::string key = name;
+		if (is_fast_map) {
+			key = name + "." + fast_map_key;
+		}	
 		try
-		{
-			std::string key = name;
-			if (is_fast_map) {
-				key = name + "." + fast_map_key;
-			}
+		{	
 			auto storage_data = evaluator->get_storage(contract_id, key);
 			auto cbor_value = cbor_diff::cbor_decode(storage_data.storage_data);
 			if (!(cbor_value->is_null())) {
@@ -603,10 +605,6 @@ namespace simplechain {
 			}
 			else {
 				//get from remote node 
-				std::string key = name;
-				if (is_fast_map) {
-					key = name + "." + fast_map_key;
-				}
 				return Data_getter::get_contract_storage(L, contract_address, key);
 			}
 		}

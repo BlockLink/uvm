@@ -1119,8 +1119,11 @@ namespace uvm {
 
 				StkId ra;
 
-				*insts_executed_count += 1; // executed instructions count
-
+				if ((GET_OPCODE(i) != UOP_METER)) {
+					*insts_executed_count += 1; // executed instructions count
+					//L->meter_gas = L->meter_gas + 1;
+				}
+				
 											// limit instructions count, and executed instructions
 				if (has_insts_limit && *insts_executed_count > insts_limit)
 				{
@@ -1963,6 +1966,11 @@ namespace uvm {
 							}
 							)
 							vmbreak;
+					}
+					vmcase(UOP_METER) {
+						int gas = GETARG_Ax(i);
+						L->total_meter_gas = L->total_meter_gas + gas;
+						vmbreak;
 					}
 					vmcase(UOP_DUMMY_COUNT) {
 						
