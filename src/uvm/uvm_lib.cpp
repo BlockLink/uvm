@@ -728,15 +728,15 @@ namespace uvm
 						"delegate_call can't call special api name");
 					return 0;
 				}
-				// ÐèÒªÎ¬»¤contract id stackºÍstorage contract id stack£¬Ê¹ÓÃtarget×Ö½ÚÂë£¬µ«ÊÇstorageºÍÓà¶îÊ¹ÓÃµ±Ç°µÄÊý¾ÝÕ»µÄºÏÔ¼µÄÊý¾Ý
-				// ÐÞ¸ÄÕ»¶¥µÄstorage_contract_idÎªÖ®Ç°Ò»²ãµÄstorage_contract_id»òÕß²»±ä
+				// ï¿½ï¿½ÒªÎ¬ï¿½ï¿½contract id stackï¿½ï¿½storage contract id stackï¿½ï¿½Ê¹ï¿½ï¿½targetï¿½Ö½ï¿½ï¿½ë£¬ï¿½ï¿½ï¿½ï¿½storageï¿½ï¿½ï¿½ï¿½ï¿½Ê¹ï¿½Ãµï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ»ï¿½Äºï¿½Ô¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+				// ï¿½Þ¸ï¿½Õ»ï¿½ï¿½ï¿½ï¿½storage_contract_idÎªÖ®Ç°Ò»ï¿½ï¿½ï¿½storage_contract_idï¿½ï¿½ï¿½ß²ï¿½ï¿½ï¿½
 				L->next_delegate_call_flag = true;
 				BOOST_SCOPE_EXIT_ALL(L) {
 					if (L->force_stopping) {
 						L->next_delegate_call_flag = false;
 					}
 				};
-				// importºÏÔ¼È»ºóµ÷ÓÃºÏÔ¼API
+				// importï¿½ï¿½Ô¼È»ï¿½ï¿½ï¿½ï¿½Ãºï¿½Ô¼API
 
 				//import
 				lua_getglobal(L, "import_contract_from_address");
@@ -776,7 +776,7 @@ namespace uvm
 				if (ret_code != LUA_OK) {
 					return 0;
 				}
-				// ¸ù¾ÝÕ»µÄ´óÐ¡ÅÐ¶ÏµÃµ½·µ»ØÖµÊýÁ¿
+				// ï¿½ï¿½ï¿½ï¿½Õ»ï¿½Ä´ï¿½Ð¡ï¿½Ð¶ÏµÃµï¿½ï¿½ï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½ï¿½
 				auto ret_count = lua_gettop(L) - 4;
 				return ret_count;
 			}
@@ -1590,9 +1590,9 @@ end
 				}
 			}
 
-			//Ôö¼Ó¸øºÏÔ¼·¢ËÍÏûÏ¢µÄ·½Ê½¿ÉÒÔµ÷ÓÃÆäËûºÏÔ¼APIµ«ÊÇÊ§°Ü²»»áÍË³ö±¾´Îµ÷ÓÃ¶øÊÇ·µ»Ø´íÎóÂë
-			// [result, exit_code] = send_message(contract_address, api_name, args£© argsÎª array table
-			//·µ»ØÖµÎªarray table [result, exit_code]   exit_code==0 ±íÊ¾³É¹¦
+			//ï¿½ï¿½ï¿½Ó¸ï¿½ï¿½ï¿½Ô¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢ï¿½Ä·ï¿½Ê½ï¿½ï¿½ï¿½Ôµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¼APIï¿½ï¿½ï¿½ï¿½Ê§ï¿½Ü²ï¿½ï¿½ï¿½ï¿½Ë³ï¿½ï¿½ï¿½ï¿½Îµï¿½ï¿½Ã¶ï¿½ï¿½Ç·ï¿½ï¿½Ø´ï¿½ï¿½ï¿½ï¿½ï¿½
+			// [result, exit_code] = send_message(contract_address, api_name, argsï¿½ï¿½ argsÎª array table
+			//ï¿½ï¿½ï¿½ï¿½ÖµÎªarray table [result, exit_code]   exit_code==0 ï¿½ï¿½Ê¾ï¿½É¹ï¿½
 			static int send_message(lua_State *L)
 			{
 				auto common_gas = 100;
@@ -1637,7 +1637,7 @@ end
 					return 0;
 				}
 
-				//¼ÇÂ¼storage change list
+				//ï¿½ï¿½Â¼storage change list
 				UvmStateValueNode state_value_node = uvm::lua::lib::get_lua_state_value_node(L, LUA_STORAGE_CHANGELIST_KEY);
 				UvmStorageChangeList *list;
 				if (state_value_node.type != LUA_STATE_VALUE_POINTER || nullptr == state_value_node.value.pointer_value)
@@ -1654,7 +1654,7 @@ end
 				}
 				int origContractStackSize = L->using_contract_id_stack->size();
 
-				//±¸·ÝÔ­À´list size// native contract ????change list??
+				//ï¿½ï¿½ï¿½ï¿½Ô­ï¿½ï¿½list size// native contract ????change list??
 				auto origChangelistSize = list->size();
 
 				auto orig_last_execute_context = get_last_execute_context();
@@ -1710,7 +1710,7 @@ end
 				lua_pushnil(L);
 				int argidx = 0;
 				int i = 0;
-				while (lua_next(L, 6)) //lua_nextÑ¹Õ»¼üÖµ¶Ôkey,value
+				while (lua_next(L, 6)) //lua_nextÑ¹Õ»ï¿½ï¿½Öµï¿½ï¿½key,value
 				{
 					argidx++;
 					//check arg type
@@ -1723,7 +1723,7 @@ end
 						i++;
 					}
 					
-					//µ÷»»Î»ÖÃÎª value,key
+					//ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½Îª value,key
 					lua_insert(L, 6 + argidx);
 
 				}
@@ -1787,7 +1787,7 @@ end
 					L->state = Lbak->state;
 					L->errorJmp = Lbak->errorJmp;
 
-					//»Ö¸´storage   native???
+					//ï¿½Ö¸ï¿½storage   native???
 					size_t sz = list->size();
 					for (; sz > origChangelistSize; sz--) {
 						list->pop_back();
@@ -1798,7 +1798,7 @@ end
 						L->using_contract_id_stack->pop();
 					}
 
-					//»Ö¸´Õ» 
+					//ï¿½Ö¸ï¿½Õ» 
 					set_last_execute_context(orig_last_execute_context);
 
 					lua_createtable(L, 2, 0);
@@ -2687,9 +2687,9 @@ end
             {
 				register_module(L, "os", luaopen_os);
 				register_module(L, "io", luaopen_io);
-				register_module(L, "net", luaopen_net);
-				register_module(L, "http", luaopen_http);
-				register_module(L, "jsonrpc", luaopen_jsonrpc);
+				//register_module(L, "net", luaopen_net);
+				//register_module(L, "http", luaopen_http);
+				//register_module(L, "jsonrpc", luaopen_jsonrpc);
             }
 
 			void reset_lvm_instructions_executed_count(lua_State *L)

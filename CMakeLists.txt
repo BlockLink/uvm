@@ -8,7 +8,9 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(CMAKE_CXX_FLAGS "-std=c++11 -D_DARWIN_C_SOURCE -Wno-invalid-partial-specialization")
 endif()
 set(CMAKE_CXX_FLAGS "-std=c++11 -Wall")
-
+if(APPLE)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-invalid-partial-specialization")
+endif()
 file(GLOB HEADERS "include/uvm/*.h" "include/cborcpp/*.h" "include/cbor_diff/*.h" "include/safenumber/*.h" "include/native_contract/*.h" "../jsondiff/jsondiff-cpp/include/jsondiff/*.h" "vmgc/include/vmgc/*.h")
 
 set(SOURCES src/uvm/lapi.cpp
@@ -25,18 +27,18 @@ set(SOURCES src/uvm/lapi.cpp
     src/uvm/lfunc.cpp
     src/uvm/lgc.cpp
     src/uvm/lhashmap.cpp
-    src/uvm/lhttplib.cpp
+    #src/uvm/lhttplib.cpp
     src/uvm/linit.cpp
     src/uvm/liolib.cpp
     src/uvm/ljsonlib.cpp
     src/uvm/ljsonlib2.cpp
     src/uvm/json_reader.cpp
-    src/uvm/ljsonrpclib.cpp
+    #src/uvm/ljsonrpclib.cpp
     src/uvm/llex.cpp
     src/uvm/lmathlib.cpp
     src/uvm/lsafemathlib.cpp
     src/uvm/lmem.cpp
-    src/uvm/lnetlib.cpp
+    #src/uvm/lnetlib.cpp
     src/uvm/loadlib.cpp
     src/uvm/lobject.cpp
     src/uvm/lopcodes.cpp
