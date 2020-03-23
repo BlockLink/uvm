@@ -10,6 +10,8 @@ endif()
 set(CMAKE_CXX_FLAGS "-std=c++11 -Wall")
 if(APPLE)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-invalid-partial-specialization")
+else(APPLE)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
 endif()
 file(GLOB HEADERS "include/uvm/*.h" "include/cborcpp/*.h" "include/cbor_diff/*.h" "include/safenumber/*.h" "include/native_contract/*.h" "../jsondiff/jsondiff-cpp/include/jsondiff/*.h" "vmgc/include/vmgc/*.h")
 
