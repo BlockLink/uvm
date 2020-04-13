@@ -2273,11 +2273,11 @@ end
             void increment_lvm_instructions_executed_count(lua_State *L, int add_count)
             {
 				int64_t *insts_executed_count = get_lua_state_value(L, INSTRUCTIONS_EXECUTED_COUNT_LUA_STATE_MAP_KEY).int_pointer_value;
-              if (insts_executed_count)
-              {
-                *insts_executed_count = *insts_executed_count + add_count;
-				L->total_meter_gas = L->total_meter_gas + add_count;
-              }
+				 if (insts_executed_count)
+				 {
+					*insts_executed_count = *insts_executed_count + add_count;
+					//L->total_meter_gas = L->total_meter_gas + add_count;
+				 }
             }
 
             int execute_contract_api(lua_State *L, const char *contract_name,

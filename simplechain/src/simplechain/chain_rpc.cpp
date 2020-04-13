@@ -21,7 +21,7 @@
 
 #include <simplechain/simplechain_uvm_api.h>
 #include <simplechain/node_uvm_api.h>
-//#include<data_getter.hpp>
+#include <simplechain/uvm_contract_engine.h>
 
 
 namespace simplechain {
@@ -679,6 +679,28 @@ namespace simplechain {
 					res["error"] = "source chain must be simplechain or node";
 				}
 				
+			}
+			catch (const fc::exception& e) {
+				res["exec_succeed"] = false;
+				res["error"] = e.to_string();
+				return res;
+			}
+			catch (const std::exception& e) {
+				res["exec_succeed"] = false;
+				res["error"] = e.what();
+				return res;
+			}
+			return res;
+
+		}
+
+		//get contract data from remote node
+		RpcResultType set_uvm_metering(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
+			fc::mutable_variant_object res;
+			res["exec_succeed"] = true;
+			try {
+				auto meter_option = params.at(0).as_bool();
+				simplechain::uvm_is_metering = meter_option;
 			}
 			catch (const fc::exception& e) {
 				res["exec_succeed"] = false;

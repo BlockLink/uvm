@@ -94,6 +94,8 @@ namespace simplechain {
 
 		//get contract data from remote node
 		RpcResultType swich_node_chain(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
+
+		RpcResultType set_uvm_metering(blockchain* chain, HttpServer* server, const RpcRequestParams& params);
 		
 	}
 }

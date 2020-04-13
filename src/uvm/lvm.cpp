@@ -1113,24 +1113,24 @@ namespace uvm {
 				if(use_step_log) {
 					ci->u.l.savedpc--;
 					const auto cur_line = current_line();
-					printf("%s\tline:%d, now gas %d\n", luaP_opnames[GET_OPCODE(i)], cur_line, int(*insts_executed_count));
+					printf("%s\tline:%d, now gas %d", luaP_opnames[GET_OPCODE(i)], cur_line, int(*insts_executed_count));
 					ci->u.l.savedpc++;
 				}
 
 				StkId ra;
 
-				if ((GET_OPCODE(i) != UOP_METER)) {
+				if ((!L->is_metering) && (GET_OPCODE(i) != UOP_METER)) {  //非meter 情况下
 					*insts_executed_count += 1; // executed instructions count
-					//L->meter_gas = L->meter_gas + 1;
+												// limit instructions count, and executed instructions
+					if (has_insts_limit && *insts_executed_count > insts_limit)
+					{
+						global_uvm_chain_api->throw_exception(L, UVM_API_LVM_LIMIT_OVER_ERROR, "over instructions limit");
+						//vmbreak;
+						return false;
+					}
 				}
 				
-											// limit instructions count, and executed instructions
-				if (has_insts_limit && *insts_executed_count > insts_limit)
-				{
-					global_uvm_chain_api->throw_exception(L, UVM_API_LVM_LIMIT_OVER_ERROR, "over instructions limit");
-					//vmbreak;
-					return false;
-				}
+				
 				if (stopped_pointer && *stopped_pointer > 0)
 					return false;
 					//vmbreak;
@@ -1175,7 +1175,14 @@ namespace uvm {
 					}
 					vmcase(UOP_LOADBOOL) {
 						setbvalue(ra, GETARG_B(i));
-						if (GETARG_C(i)) ci->u.l.savedpc++;  /* skip next instruction (if C) */
+						if (GETARG_C(i) != 0) {
+							if (GET_OPCODE(*(ci->u.l.savedpc)) == UOP_METER) {
+								ci->u.l.savedpc++;/* skip meter instruction  */
+								//printf("skip meter instruction\n");
+							}
+							ci->u.l.savedpc++;  /* skip next instruction (if C) */
+						}
+							
 						vmbreak;
 					}
 					vmcase(UOP_LOADNIL) {
@@ -1967,9 +1974,22 @@ namespace uvm {
 							)
 							vmbreak;
 					}
-					vmcase(UOP_METER) {
-						int gas = GETARG_Ax(i);
-						L->total_meter_gas = L->total_meter_gas + gas;
+					vmcase(UOP_METER) {	
+						if (L->is_metering) {
+							int add_gas_count = GETARG_Ax(i);
+							//L->total_meter_gas = L->total_meter_gas + add_gas_count;
+							if (L->is_metering) {  //meter 情况下
+								*insts_executed_count += add_gas_count; // executed instructions count
+															// limit instructions count, and executed instructions
+								if (has_insts_limit && *insts_executed_count > insts_limit)
+								{
+									global_uvm_chain_api->throw_exception(L, UVM_API_LVM_LIMIT_OVER_ERROR, "over instructions limit");
+									//vmbreak;
+									return false;
+								}
+							}
+						}
+						
 						vmbreak;
 					}
 					vmcase(UOP_DUMMY_COUNT) {

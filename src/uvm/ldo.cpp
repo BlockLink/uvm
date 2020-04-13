@@ -834,6 +834,11 @@ static void f_parser(lua_State *L, void *ud) {
     else {
         checkmode(L, p->mode, "text");
         cl = luaY_parser(L, p->z, &p->buff, &p->dyd, p->name, c);
+		if (L->is_metering && cl) {
+			auto r = luaU_addMeter(L, cl->p, true);
+			if (!r)
+				cl = nullptr;
+		}
     }
 	if (!cl)
 		return;

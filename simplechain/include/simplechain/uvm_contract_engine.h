@@ -5,6 +5,7 @@
 #include <uvm/uvm_lib.h>
 
 namespace simplechain {
+	extern bool uvm_is_metering;
 	class UvmContractEngine : public ContractEngine
 	{
 	private:

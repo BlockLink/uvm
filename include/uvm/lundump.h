@@ -29,4 +29,6 @@ LUAI_FUNC uvm_types::GcLClosure* luaU_undump(lua_State* L, ZIO* Z, const char* n
 LUAI_FUNC int luaU_dump(lua_State* L, const uvm_types::GcProto* f, lua_Writer w,
     void* data, int strip);
 
+LUAI_FUNC bool luaU_addMeter(lua_State* L, uvm_types::GcProto * p, bool isRecurse);
+
 #endif

@@ -6,10 +6,12 @@
 
 namespace simplechain
 {
+	bool uvm_is_metering = false;
 	UvmContractEngine::UvmContractEngine(bool use_contract)
 	{
 		_scope = std::make_shared<uvm::lua::lib::UvmStateScope>(use_contract);
 		_scope->L()->allow_debug = true;
+		_scope->L()->is_metering = uvm_is_metering;
 	}
 	UvmContractEngine::~UvmContractEngine()
 	{

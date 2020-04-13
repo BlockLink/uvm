@@ -54,13 +54,10 @@ namespace simplechain {
 	{ "debugger_invoke_contract", &debugger_invoke_contract },
 	{ "view_current_contract_storage_value", &view_current_contract_storage_value },
 	{ "view_call_stack", &view_call_stack },
-
 	{ "load_contract_state", &load_contract_state },
     { "load_new_contract_from_json", &load_new_contract_from_json },
-
-	{ "swich_node_chain", &swich_node_chain }
-	
-
+	{ "swich_node_chain", &swich_node_chain },
+	{ "set_uvm_metering", &set_uvm_metering }
 	};
 
 	RpcServer::RpcServer(blockchain* chain, int port)
