@@ -694,7 +694,6 @@ namespace simplechain {
 
 		}
 
-		//get contract data from remote node
 		RpcResultType set_uvm_metering(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			fc::mutable_variant_object res;
 			res["exec_succeed"] = true;
