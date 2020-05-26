@@ -35,6 +35,7 @@ namespace simplechain {
 		std::map<std::string, std::list<uint32_t> > breakpoints;
 
 		std::shared_ptr<generic_evaluator> last_evaluator_when_debugger;
+		std::shared_ptr<transaction> last_tx_when_debugger;
 	public:
 		blockchain();
 		// @throws exception

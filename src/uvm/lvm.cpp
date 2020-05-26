@@ -2155,11 +2155,14 @@ namespace uvm {
 						_line = _ci_line(_ci);
 						_ci->u.l.savedpc++;
 					}
-					if(_cl->p && _cl->p->source) {
-                        auto _funcname = _cl->p->source->value;
-                        result.push_back(
-                                std::string("func:") + _funcname + std::string("    line:") + std::to_string(_line));
-                    }
+					std::string _funcname;
+					if (_cl->p && _cl->p->source) {
+						_funcname = _cl->p->source->value;
+					}
+					// TODO: funcname set when loaded
+                    result.push_back(
+                            std::string("func:") + _funcname + std::string(",line:") + std::to_string(_line));
+                    
 				}				
 				_ci = _ci->previous;
 			}

@@ -40,6 +40,7 @@ namespace simplechain {
 				auto op_result = evaluator_instance->evaluate(op);
 				last_op_result = op_result;
 				this->last_evaluator_when_debugger = evaluator_instance; // TODO: only save it when break into debugger
+				this->last_tx_when_debugger = tx;
 			}
 			return last_op_result;
 		}
