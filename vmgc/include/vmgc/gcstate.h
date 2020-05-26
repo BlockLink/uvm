@@ -25,7 +25,7 @@ namespace vmgc {
 #define	DEFAULT_GC_STR_HASHLIMIT 5
 #define DEFAULT_MAX_GC_SHORT_STRING_SIZE 32   //2^DEFAULT_GC_HASHLIMIT
 
-#define DEFAULT_MAX_SMALL_BUFFER_SIZE 128  //8µÄ±¶Êý
+#define DEFAULT_MAX_SMALL_BUFFER_SIZE 128  //8ï¿½Ä±ï¿½ï¿½ï¿½
 #define DEFAULT_SMALL_BUFFER_VECTOR_SIZE (DEFAULT_MAX_SMALL_BUFFER_SIZE/8)     
 
 	struct GcObject;
@@ -97,12 +97,12 @@ namespace vmgc {
 
 		std::shared_ptr<std::unordered_map<Block, std::vector<GcBuffer>, Hasher, Equal>> _malloced_blocks_buffers;
 		std::shared_ptr<std::vector<std::pair<Block, Buffer>>> _empty_small_buffers[DEFAULT_SMALL_BUFFER_VECTOR_SIZE]; //empty_size => [ [start_ptr, size], ... ]
-		std::shared_ptr<std::vector<std::pair<Block, Buffer>>> _empty_big_buffers; //ÎÞÐòµÄ
+		std::shared_ptr<std::vector<std::pair<Block, Buffer>>> _empty_big_buffers; //ï¿½ï¿½ï¿½ï¿½ï¿½
 		std::shared_ptr<std::vector<std::pair<intptr_t, intptr_t> > > _malloced_str_blocks; // [ [start_ptr, size], ... ]
 		std::shared_ptr<std::unordered_map<unsigned int,std::pair<intptr_t, ptrdiff_t>>> _gc_strpool;
 		std::pair<intptr_t, ptrdiff_t>  _empty_str_buffer; // [start_ptr, size]
 		void insert_empty_buffer(const Buffer &buf, const Block &block);
-		void GcState::insert_malloced_blocks_buffers(Block &block, GcBuffer& gcbuf, bool isNewBlock);
+		void insert_malloced_blocks_buffers(Block &block, GcBuffer& gcbuf, bool isNewBlock);
 
 	public:
 		// @throws vmgc::GcException
