@@ -635,6 +635,11 @@ namespace simplechain {
 		return state;
 	}
 
+	void blockchain::clear_debugger_state() {
+		this->last_evaluator_when_debugger = nullptr;
+		this->last_tx_when_debugger = nullptr;
+	}
+
 
 	TValue blockchain::view_contract_storage_value(const char *name, const char* fast_map_key, bool is_fast_map) const {
 		TValue result = *luaO_nilobject;

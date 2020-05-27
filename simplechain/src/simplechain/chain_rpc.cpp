@@ -441,6 +441,9 @@ namespace simplechain {
 			auto gas_limit = params.at(6).as_uint64();
 			auto gas_price = params.at(7).as_uint64();
 
+
+			chain->clear_debugger_state();
+
 			auto tx = std::make_shared<transaction>();
 			auto op = operations_helper::invoke_contract(caller_addr, contract_address, api_name, api_args_json, gas_limit, gas_price);
 			op.deposit_amount = deposit_amount;

@@ -117,6 +117,7 @@ namespace simplechain {
 		std::map<std::string, TValue> view_localvars_in_last_debugger_state() const;
 		std::map<std::string, TValue> view_upvalues_in_last_debugger_state() const;
 		debugger_state view_debugger_state() const;
+		void clear_debugger_state();
 
 		std::pair<std::string, std::string> view_current_contract_stack_item_in_last_debugger_state() const; // return contract_address => api_name
 		uint32_t view_current_line_number_in_last_debugger_state() const;

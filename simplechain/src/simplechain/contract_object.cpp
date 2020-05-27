@@ -37,6 +37,11 @@ namespace fc {
 		obj("native_contract_key", var.native_contract_key);
 		obj("derived", var.derived);
 		obj("inherit_from", var.inherit_from);
+		if (var.type_of_contract == simplechain::contract_type::normal_contract) {
+			obj("abi", var.code.abi);
+			obj("offline_abi", var.code.offline_abi);
+			obj("storage_properties", var.code.storage_properties);
+		}
 		vo = std::move(obj);
 	}
 	void from_variant(const fc::variant& var, simplechain::contract_object& vo) {
