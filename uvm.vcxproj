@@ -108,6 +108,7 @@
     <ClInclude Include="include\uvm\exceptions.h" />
     <ClInclude Include="include\uvm\json_reader.h" />
     <ClInclude Include="include\native_contract\native_contract_api.h" />
+    <ClInclude Include="include\uvm\lerror.h" />
     <ClInclude Include="include\uvm\uvm_api.h" />
     <ClInclude Include="include\uvm\uvm_api_types.h" />
     <ClInclude Include="include\uvm\uvm_common.h" />

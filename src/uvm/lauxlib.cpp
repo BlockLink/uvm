@@ -37,6 +37,7 @@
 #include <uvm/uvm_api.h>
 #include <uvm/uvm_lib.h>
 #include <uvm/uvm_lutil.h>
+#include <uvm/lerror.h>
 #include <uvm/exceptions.h>
 #include <boost/variant.hpp>
 #include <boost/lexical_cast.hpp>

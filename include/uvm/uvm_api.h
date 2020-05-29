@@ -311,105 +311,14 @@ typedef struct UvmStorageValue
 {
     uvm::blockchain::StorageValueTypes type;
     union UvmStorageValueUnion value;
-    inline UvmStorageValue()
-    {
-        type = uvm::blockchain::StorageValueTypes::storage_value_null;
-    }
-    inline static UvmStorageValue from_int(int val)
-    {
-        UvmStorageValue sv;
-        sv.type = uvm::blockchain::StorageValueTypes::storage_value_int;
-        sv.value.int_value = val;
-        return sv;
-    }
-    inline static UvmStorageValue from_string(char *val)
-    {
-        UvmStorageValue sv;
-        sv.type = uvm::blockchain::StorageValueTypes::storage_value_string;
-        sv.value.string_value = val;
-        return sv;
-    }
-
-	// 
-	inline void try_parse_type(uvm::blockchain::StorageValueTypes new_type)
-    {
-	    switch(new_type)
-	    {
-		case uvm::blockchain::StorageValueTypes::storage_value_int:
-			try_parse_to_int_type();
-			break;
-		case uvm::blockchain::StorageValueTypes::storage_value_number:
-			try_parse_to_number_type();
-			break;
-		default:
-			break;
-	    }
-    }
-
-	// int
-	inline void try_parse_to_int_type()
-    {
-	    if(type == uvm::blockchain::StorageValueTypes::storage_value_number)
-	    {
-			value.int_value = (lua_Integer)value.number_value;
-			type = uvm::blockchain::StorageValueTypes::storage_value_int;
-	    }
-    }
-
-	// number
-	inline void try_parse_to_number_type()
-    {
-		if (type == uvm::blockchain::StorageValueTypes::storage_value_int)
-		{
-			value.number_value = (lua_Number)value.int_value;
-			type = uvm::blockchain::StorageValueTypes::storage_value_number;
-		}
-    }
-
-    inline static bool is_same_base_type_with_type_parse(uvm::blockchain::StorageValueTypes type1, uvm::blockchain::StorageValueTypes type2)
-    {
-        return type1 == type2;
-    }
-    inline bool equals(UvmStorageValue &other)
-    {
-        if (type != other.type)
-            return false;
-        switch (type)
-        {
-        case uvm::blockchain::StorageValueTypes::storage_value_string:
-            return strcmp(value.string_value, other.value.string_value) == 0;
-        case uvm::blockchain::StorageValueTypes::storage_value_int:
-            return value.int_value == other.value.int_value;
-        case uvm::blockchain::StorageValueTypes::storage_value_number:
-            return value.number_value == other.value.number_value;
-        case uvm::blockchain::StorageValueTypes::storage_value_bool:
-            return value.bool_value == other.value.bool_value;
-            return value.userdata_value == other.value.userdata_value;
-        case uvm::blockchain::StorageValueTypes::storage_value_null:
-            return true;
-        default: {
-            if (uvm::blockchain::is_any_table_storage_value_type(type)
-                || uvm::blockchain::is_any_array_storage_value_type(type))
-            {
-                if (value.table_value->size() != other.value.table_value->size())
-                    return false;
-
-                for (const auto &p1 : *(value.table_value))
-                {
-                    auto found = other.value.table_value->find(p1.first);
-                    if (found == other.value.table_value->end())
-                        return false;
-                    auto this_item = p1.second;
-                    auto other_item = found->second;
-                    if (!this_item.equals(other_item))
-                        return false;
-                }
-                return true;
-            }
-            return false;
-        }
-        }
-    }
+    UvmStorageValue();
+    static UvmStorageValue from_int(int val);
+    static UvmStorageValue from_string(char* val);
+    void try_parse_type(uvm::blockchain::StorageValueTypes new_type);
+    void try_parse_to_int_type();
+    void try_parse_to_number_type();
+    static bool is_same_base_type_with_type_parse(uvm::blockchain::StorageValueTypes type1, uvm::blockchain::StorageValueTypes type2);
+    bool equals(UvmStorageValue& other);
 } UvmStorageValue;
 
 typedef struct UvmStorageChangeItem
@@ -423,12 +332,7 @@ typedef struct UvmStorageChangeItem
     struct UvmStorageValue before;
     struct UvmStorageValue after;
 
-	std::string full_key() const {
-		if (is_fast_map)
-			return key + "." + fast_map_key;
-		else
-			return key;
-	}
+    std::string full_key() const;
 
 } UvmStorageChangeItem;
 

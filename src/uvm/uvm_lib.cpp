@@ -39,6 +39,7 @@
 #include <uvm/exceptions.h>
 #include <cborcpp/cbor.h>
 #include <uvm/lvm.h>
+#include <uvm/lerror.h>
 #include <boost/scope_exit.hpp>
 #include <boost/algorithm/hex.hpp>
 

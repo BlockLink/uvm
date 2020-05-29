@@ -598,7 +598,7 @@ namespace simplechain {
 						return false;
 					}
 				}
-				uvm::lua::lib::increment_lvm_instructions_executed_count(L, storage_gas);
+				uvm::lua::lib::increment_lvm_instructions_executed_count(L, static_cast<int>(storage_gas));
 				return true;
 			}
 			intptr_t SimpleChainUvmChainApi::register_object_in_pool(lua_State *L, intptr_t object_addr, UvmOutsideObjectTypes type)
@@ -1050,7 +1050,7 @@ namespace simplechain {
 				fc::array<char, 25> bin_addr;
 				memcpy((char*)&bin_addr, (char*)&version, sizeof(version));
 				memcpy((char*)&bin_addr + 1, (char*)&addr, sizeof(addr));
-				auto checksum = fc::ripemd160::hash((char*)&bin_addr, bin_addr.size() - 4);
+				auto checksum = fc::ripemd160::hash((char*)&bin_addr, static_cast<uint32_t>(bin_addr.size() - 4));
 				memcpy(((char*)&bin_addr) + 21, (char*)&checksum._hash[0], 4);
 				return prefix + fc::to_base58(bin_addr.data, sizeof(bin_addr));
 			}
