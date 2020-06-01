@@ -114,6 +114,7 @@
     <ClInclude Include="include\uvm\uvm_bytestream.h" />
     <ClInclude Include="include\uvm\uvm_common.h" />
     <ClInclude Include="include\uvm\uvm_compat.h" />
+    <ClInclude Include="include\uvm\uvm_gas_manager.h" />
     <ClInclude Include="include\uvm\uvm_lib.h" />
     <ClInclude Include="include\uvm\uvm_libprefix.h" />
     <ClInclude Include="include\uvm\uvm_lutil.h" />

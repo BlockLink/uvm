@@ -156,7 +156,7 @@ namespace simplechain {
 			os.write(contract_buf.data(), contract_buf.size());
 			std::istream contract_istream(&contract_stream);
 			StreamFileWrapper sfw(&contract_istream);
-			const auto& code = ContractHelper::load_contract_from_common_stream_and_close(&sfw, contract_buf.size());
+			const auto& code = ContractHelper::load_contract_from_common_stream_and_close(&sfw, (int) contract_buf.size());
 
 			auto op = operations_helper::create_contract(caller_addr, code, gas_limit, gas_price);
 			tx->operations.push_back(op);
@@ -380,7 +380,7 @@ namespace simplechain {
 
 			auto contract_address = params.at(0).as_string();
 			auto line = params.at(1).as_uint64();
-			chain->add_breakpoint_in_last_debugger_state(contract_address, line);
+			chain->add_breakpoint_in_last_debugger_state(contract_address, (uint32_t) line);
 
 			res["result"] = true;
 
@@ -405,8 +405,6 @@ namespace simplechain {
 
 			return res;
 		}
-
-
 
 		RpcResultType remove_breakpoint_in_last_debugger_state(blockchain* chain, HttpServer* server, const RpcRequestParams& params) {
 			//fc::variant res;

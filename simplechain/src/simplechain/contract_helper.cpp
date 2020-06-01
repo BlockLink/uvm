@@ -156,7 +156,7 @@ else \
 			return -1;
 		}
 
-		sha.process_bytes(p_new_stream->buff.data(), p_new_stream->buff.size());
+		sha.process_bytes(p_new_stream->buff.data(), (int) p_new_stream->buff.size());
 		sha.get_digest(digest);
 		for (int i = 0; i < 5; ++i)
 			common_fwrite_int(f, (int*)&digest[i]);
@@ -164,7 +164,7 @@ else \
 		int p_new_stream_buf_size = (int)p_new_stream->buff.size();
 		common_fwrite_int(f, &p_new_stream_buf_size);
 		p_new_stream->buff.resize(p_new_stream_buf_size);
-		common_fwrite_stream(f, p_new_stream->buff.data(), p_new_stream->buff.size());
+		common_fwrite_stream(f, p_new_stream->buff.data(), (int) p_new_stream->buff.size());
 
 		int contract_apis_count = (int)p_new_stream->contract_apis.size();
 		common_fwrite_int(f, &contract_apis_count);
@@ -184,7 +184,7 @@ else \
 			common_fwrite_stream(f, p_new_stream->offline_apis[i].c_str(), offline_api_len);
 		}
 
-		int contract_emit_events_count = p_new_stream->contract_emit_events.size();
+		int contract_emit_events_count = (int) p_new_stream->contract_emit_events.size();
 		common_fwrite_int(f, &contract_emit_events_count);
 		for (int i = 0; i < contract_emit_events_count; ++i)
 		{
@@ -193,7 +193,7 @@ else \
 			common_fwrite_stream(f, p_new_stream->contract_emit_events[i].c_str(), event_len);
 		}
 
-		int contract_storage_properties_count = p_new_stream->contract_storage_properties.size();
+		int contract_storage_properties_count = (int) p_new_stream->contract_storage_properties.size();
 		common_fwrite_int(f, &contract_storage_properties_count);
 		for (const auto& storage_info : p_new_stream->contract_storage_properties)
 		{

@@ -28,6 +28,7 @@
 #include <uvm/ldebug.h>
 #include <uvm/lauxlib.h>
 #include <uvm/lualib.h>
+#include <uvm/uvm_gas_manager.h>
 
 using uvm::lua::api::global_uvm_chain_api;
 
