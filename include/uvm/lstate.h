@@ -24,6 +24,7 @@
 #include <uvm/uvm_api.h>
 #include <vmgc/vmgc.h>
 #include "uvm/lopcodes.h"
+#include <uvm/uvm_libprefix.h>
 
 #define LUA_MALLOC_TOTAL_SIZE	(500*1024*1024)
 

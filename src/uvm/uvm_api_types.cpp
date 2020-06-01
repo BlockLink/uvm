@@ -1,5 +1,6 @@
 #include <uvm/uvm_api_types.h>
 #include <uvm/uvm_api.h>
+#include <uvm/uvm_libprefix.h>
 
 UvmModuleByteStream::UvmModuleByteStream()
 {

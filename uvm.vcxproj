@@ -118,7 +118,9 @@
     <ClInclude Include="include\uvm\uvm_lib.h" />
     <ClInclude Include="include\uvm\uvm_libprefix.h" />
     <ClInclude Include="include\uvm\uvm_lutil.h" />
+    <ClInclude Include="include\uvm\uvm_module.h" />
     <ClInclude Include="include\uvm\uvm_storage.h" />
+    <ClInclude Include="include\uvm\uvm_storage_value.h" />
     <ClInclude Include="include\uvm\uvm_tokenparser.h" />
     <ClInclude Include="include\uvm\lapi.h" />
     <ClInclude Include="include\uvm\lauxlib.h" />
