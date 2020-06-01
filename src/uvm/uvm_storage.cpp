@@ -12,6 +12,7 @@
 #include <jsondiff/jsondiff.h>
 #include <jsondiff/exceptions.h>
 #include <uvm/uvm_lib.h>
+#include <uvm/uvm_bytestream.h>
 
 using uvm::lua::api::global_uvm_chain_api;
 

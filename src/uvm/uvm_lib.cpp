@@ -40,6 +40,8 @@
 #include <cborcpp/cbor.h>
 #include <uvm/lvm.h>
 #include <uvm/lerror.h>
+#include <uvm/uvm_libprefix.h>
+#include <uvm/uvm_bytestream.h>
 #include <boost/scope_exit.hpp>
 #include <boost/algorithm/hex.hpp>
 

@@ -20,6 +20,8 @@
 #include <uvm/lobject.h>
 #include <uvm/lstate.h>
 #include <uvm/exceptions.h>
+#include <uvm/uvm_libprefix.h>
+#include <uvm/uvm_bytestream.h>
 #include <fc/crypto/sha1.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/ripemd160.hpp>
@@ -231,7 +233,7 @@ namespace uvm {
 					int pos = int(origin_filename.find('/'));
 					while (pos > 0) {
 						origin_filename.replace(pos, 1, "\\");
-						pos = origin_filename.find('/');
+						pos = static_cast<int>(origin_filename.find('/'));
 					}
 					filename = origin_filename;
 					f = fopen(filename.c_str(), "rb");
@@ -342,7 +344,7 @@ namespace uvm {
 				int pos = int(contract_id.find('\\'));
 				while (pos > 0) {
 					contract_id.replace(pos, 1, "/");
-					pos = contract_id.find('\\');
+					pos = static_cast<int>(contract_id.find('\\'));
 				}
 
 				auto key = std::string(contract_name) + "$" + name; 
@@ -372,7 +374,7 @@ namespace uvm {
 				int pos = int(contract_id.find('\\'));
 				while (pos > 0) {
 					contract_id.replace(pos, 1, "/");
-					pos = contract_id.find('\\');
+					pos = static_cast<int>(contract_id.find('\\'));
 				}
 				auto key = std::string(contract_id) + "$" + name;
 				if (is_fast_map) {
@@ -411,7 +413,7 @@ namespace uvm {
 					int pos = int(contract_id.find('\\'));
 					while (pos > 0) {
 						contract_id.replace(pos, 1, "/");
-						pos = contract_id.find('\\');
+						pos = static_cast<int>(contract_id.find('\\'));
 					}
 					
 					for (const auto &change_info : *(change.second))

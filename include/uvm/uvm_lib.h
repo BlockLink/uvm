@@ -21,25 +21,6 @@
 #include <uvm/uvm_api.h>
 #include <cborcpp/cbor_object.h>
 
-#define BOOL_VAL(val) ((val)>0?true:false)
-
-#define ADDRESS_CONTRACT_PREFIX "@pointer_"
-
-#define STREAM_CONTRACT_PREFIX "@stream_"
-
-/**
- * wrapper contract name, so it wan't conflict with lua inner module names
- */
-#define CONTRACT_NAME_WRAPPER_PREFIX "@g_"
-
-#define CURRENT_CONTRACT_NAME	"@self"
-
-#define UVM_CONTRACT_INITING "uvm_contract_ininting"
-
-#define STARTING_CONTRACT_ADDRESS "starting_contract_address"
-
-#define LUA_STATE_DEBUGGER_INFO	"lua_state_debugger_info"
-
 
 /**
 * in lua_State scope, share some values, after close lua_State, you must release these shared values
@@ -226,82 +207,6 @@ namespace uvm
                 bool check_contract_bytecode_stream(UvmModuleByteStreamP stream);
             };
 
-			class UvmByteStream
-			{
-			private:
-				size_t _pos;
-				std::vector<char> _buff;
-			public:
-				inline UvmByteStream(): _pos(0) {}
-				inline virtual ~UvmByteStream(){}
-
-				inline bool eof() const
-				{
-					return _pos >= _buff.size();
-				}
-
-				inline char current() const
-				{
-					return eof() ? -1 : _buff[_pos];
-				}
-
-				inline bool next()
-				{
-					if (eof())
-						return false;
-					++_pos;
-					return true;
-				}
-
-				inline size_t pos() const
-				{
-					return _pos;
-				}
-
-				inline void reset_pos()
-				{
-					_pos = 0; 
-				}
-
-				inline size_t size() const
-				{
-					return _buff.size();
-				}
-
-				inline std::vector<char>::const_iterator begin() const
-				{
-					return _buff.begin();
-				}
-
-				inline std::vector<char>::const_iterator end() const
-				{
-					return _buff.end();
-				}
-
-				inline void push(char c)
-				{
-					_buff.push_back(c);
-				}
-
-				inline void push_some(std::vector<char> const &data)
-				{
-					_buff.resize(_buff.size() + data.size());
-					memcpy(_buff.data() + _buff.size(), data.data(), sizeof(char) * data.size());
-				}
-
-				inline bool equals(UvmByteStream *other)
-				{
-                    if (!other)
-                        return false;
-					if (this == other)
-						return true;
-					if (this->size() != other->size())
-						return false;
-					return this->_buff == other->_buff;
-				}
-
-			};
-
             lua_State *create_lua_state(bool use_contract = true, bool allow_change_global = false);
 
             bool commit_storage_changes(lua_State *L);
@@ -446,9 +351,6 @@ namespace uvm
             std::string unwrap_contract_name(const char *wrappered_contract_name);
 
             const std::string get_typed_lua_lib_code();
-
-#define GLUA_TYPE_NAMESPACE_PREFIX "$type$"
-#define GLUA_TYPE_NAMESPACE_PREFIX_WRAP(name) "$type$" #name ""
 
         }
     }

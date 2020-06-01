@@ -111,9 +111,11 @@
     <ClInclude Include="include\uvm\lerror.h" />
     <ClInclude Include="include\uvm\uvm_api.h" />
     <ClInclude Include="include\uvm\uvm_api_types.h" />
+    <ClInclude Include="include\uvm\uvm_bytestream.h" />
     <ClInclude Include="include\uvm\uvm_common.h" />
     <ClInclude Include="include\uvm\uvm_compat.h" />
     <ClInclude Include="include\uvm\uvm_lib.h" />
+    <ClInclude Include="include\uvm\uvm_libprefix.h" />
     <ClInclude Include="include\uvm\uvm_lutil.h" />
     <ClInclude Include="include\uvm\uvm_storage.h" />
     <ClInclude Include="include\uvm\uvm_tokenparser.h" />

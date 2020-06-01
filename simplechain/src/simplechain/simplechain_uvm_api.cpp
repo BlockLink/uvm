@@ -18,6 +18,7 @@
 #include <uvm/lobject.h>
 #include <uvm/lstate.h>
 #include <uvm/exceptions.h>
+#include <uvm/uvm_bytestream.h>
 #include <fc/crypto/sha1.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/ripemd160.hpp>

@@ -1,6 +1,5 @@
 ﻿/**
  * lua module injector header in uvm
- * @author zoowii@uvm
  */
 
 #ifndef uvm_api_h
