@@ -925,10 +925,17 @@ namespace uvm {
 			bool has_next_op = false;
 			try
 			{
+				bool executed = false;
 				while (!enum_has_flag(L->state, lua_VMState::LVM_STATE_HALT)
 					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_FAULT)
 					&& !enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK) && L->ci_depth <= c && startline == current_line())
 				{
+					if (L->ci_depth > c) {
+						executed = true;
+					}
+					if (executed) {
+						break;
+					}
 					 has_next_op = executeToNextOp(L);
 
 					if (from_break && enum_has_flag(L->state, lua_VMState::LVM_STATE_BREAK) && current_line() == startline) {	//skip last break ins					
@@ -2159,7 +2166,6 @@ namespace uvm {
 					if (_cl->p && _cl->p->source) {
 						_funcname = _cl->p->source->value;
 					}
-					// TODO: funcname set when loaded
                     result.push_back(
                             std::string("func:") + _funcname + std::string(",line:") + std::to_string(_line));
                     

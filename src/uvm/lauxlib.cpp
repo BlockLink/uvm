@@ -2298,7 +2298,7 @@ std::shared_ptr<UvmModuleByteStream> lua_common_open_contract(lua_State *L, cons
     {
         std::string p_str = namestr.substr(strlen(STREAM_CONTRACT_PREFIX), namestr.length() - strlen(STREAM_CONTRACT_PREFIX));
         intptr_t p;
-        std::stringstream(p_str) >> p; // TODO: not use stringstream
+        std::stringstream(p_str) >> p;
 		auto stream = std::make_shared<UvmModuleByteStream>(*(UvmModuleByteStream*)p);
         return stream;
     }

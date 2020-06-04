@@ -412,8 +412,6 @@ int lualib_net_close_socket(lua_State *L)
 	return lualib_net_close_socket_impl(L, socket);
 }
 
-// TODO: async APIs
-
 static const luaL_Reg netlib[] = {
 	{ "listen", lualib_net_listen },
 	{ "connect", lualib_net_connect },
