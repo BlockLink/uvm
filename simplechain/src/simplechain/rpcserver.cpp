@@ -102,6 +102,15 @@ namespace simplechain {
 		return req;
 	}
 
+	static void send_string_to_response(shared_ptr<HttpServer::Response> response, const std::string& str) {
+		*response << "HTTP/1.1 200 OK\r\n"
+			<< "Access-Control-Allow-Origin: *" << "\r\n"
+			<< "Access-Control-Allow-Headers: *" << "\r\n"
+			<< "Access-Control-Allow-Methods: *" << "\r\n"
+			<< "Content-Length: " << str.length() << "\r\n\r\n"
+			<< str;
+	}
+
 	static void send_rpc_response(shared_ptr<HttpServer::Response> response, const RpcResponse& rpc_response) {
 		fc::mutable_variant_object res_json;
 		res_json["result"] = rpc_response.result;
@@ -111,9 +120,7 @@ namespace simplechain {
 			res_json["error"] = rpc_response.error;
 		}
 		auto res_json_str = fc::json::to_string(res_json);
-		*response << "HTTP/1.1 200 OK\r\n"
-			<< "Content-Length: " << res_json_str.length() << "\r\n\r\n"
-			<< res_json_str;
+		send_string_to_response(response, res_json_str);
 	}
 
 	void RpcServer::start() {
@@ -152,11 +159,13 @@ namespace simplechain {
 			}
 		};
 
+		_server->resource["^/api"]["OPTIONS"] = [](shared_ptr<HttpServer::Response> response, shared_ptr<HttpServer::Request> request) {
+			send_string_to_response(response, "");
+		};
+
 		_server->default_resource["GET"] = [](shared_ptr<HttpServer::Response> response, shared_ptr<HttpServer::Request> request) {
 			std::string msg("please visit /api to use http rpc services");
-			*response << "HTTP/1.1 200 OK\r\n"
-				<< "Content-Length: " << msg.length() << "\r\n\r\n"
-				<< msg;
+			send_string_to_response(response, msg);
 		};
 
 		_server->on_error = [](shared_ptr<HttpServer::Request> /*request*/, const SimpleWeb::error_code & /*ec*/) {
