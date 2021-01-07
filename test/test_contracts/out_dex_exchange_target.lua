@@ -6,6 +6,10 @@ type Storage = {
     admin: string
 }
 
+type Contract<S> = {
+    storage: S
+}
+
 let NATIVE_EXCHANGE_ORDER_STATE_CANCELED = 0
 
 let NATIVE_EXCHANGE_ORDER_STATE_COMPLETED = 1
@@ -181,13 +185,13 @@ let function checkOrder(self: table, fillOrder: table)
     let b = safemath.number_multiply(safemath.safenumber(getNum), sn_payNum)
 
     if safemath.number_gt(a, b) then
-        return error("fill order price not satify")
+        return error("fill order price not satify " .. safemath.number_tostring(a) .. " and " .. safemath.number_tostring(b))
     end
 
     -- check balance
     var balance = tointeger(fast_map_get(addr, tostring(orderInfo.payAsset)) or 0)
     if balance < tointeger(spentNum + spentFee) then -- add fee
-        return error("not enough balance of user " .. addr)
+        return error("not enough " .. tostring(orderInfo.payAsset) .. " balance of user " .. addr .. " balance " .. tostring(balance) .. " need " .. tostring(spentNum + spentFee))
     end
 
     -- check order  canceled , remain num
@@ -614,7 +618,7 @@ function M:on_deposit_contract_token(amountStr: string)
     if self.storage.state ~= 'COMMON' then
         return error("this exchange contract state is not common")
     end
-    let addr = get_from_address()
+    let addr = caller_address  -- get_from_address() -- TODO: 应该是上上层调用者，或者caller_address。这里有点问题。考虑整体改成 approve contract token的方式
     let amount = tointeger(amountStr)
     if (not amount) or (amount <= 0) then
         return error("invalid amount")

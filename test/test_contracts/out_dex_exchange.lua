@@ -7,9 +7,13 @@ type Storage = {
     target_contract: string
 }
 
+type Contract<S> = {
+    storage: S
+}
+
 var M = Contract<Storage>()
 
-type State = 'NOT_INITED' | 'COMMON'
+-- type State = 'NOT_INITED' | 'COMMON'
 
 function M:init()
     self.storage.name = ''
